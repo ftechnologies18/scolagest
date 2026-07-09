@@ -151,3 +151,28 @@
     margin: 12mm;
   }
 }
+
+/* ───────────────────────────────────────────────────────────────────────────── */
+/* Impression des bordereaux de relance (Phase 4 — Impayés & relances)          */
+/* Même logique que `.receipt-print` mais appliquée à `.bordereau-print`.       */
+/* Permet d'imprimer uniquement le bordereau depuis le Dialog sans l'UI.        */
+/* ───────────────────────────────────────────────────────────────────────────── */
+@media print {
+  .bordereau-print,
+  .bordereau-print * {
+    visibility: visible;
+  }
+  .bordereau-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .bordereau-print .no-print {
+    display: none !important;
+  }
+}

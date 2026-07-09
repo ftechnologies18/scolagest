@@ -44,6 +44,9 @@ func main() {
         soldeSvc := services.NewSoldeService()
         paiementSvc := services.NewPaiementService(soldeSvc)
         clotureSvc := services.NewClotureService()
+        statsSvc := services.NewStatsService(soldeSvc)
+        rapportSvc := services.NewRapportService(soldeSvc)
+        impayeSvc := services.NewImpayeService(soldeSvc)
 
         // 5. Handlers
         authHandler := handlers.NewAuthHandler(authSvc)
@@ -57,6 +60,9 @@ func main() {
         soldeHandler := handlers.NewSoldeHandler(soldeSvc)
         paiementHandler := handlers.NewPaiementHandler(paiementSvc)
         clotureHandler := handlers.NewClotureHandler(clotureSvc)
+        statsHandler := handlers.NewStatsHandler(statsSvc)
+        rapportHandler := handlers.NewRapportHandler(rapportSvc)
+        impayeHandler := handlers.NewImpayeHandler(impayeSvc)
 
         // 6. Router Gin
         r := gin.Default()
@@ -86,6 +92,11 @@ func main() {
         soldeHandler.RegisterRoutes(api, authMW)
         paiementHandler.RegisterRoutes(api, authMW)
         clotureHandler.RegisterRoutes(api, authMW)
+
+        // Routes Phase 4 : tableau de bord, rapports, impayés & relances
+        statsHandler.RegisterRoutes(api, authMW)
+        rapportHandler.RegisterRoutes(api, authMW)
+        impayeHandler.RegisterRoutes(api, authMW)
 
         // Route de bienvenue
         r.GET("/", func(c *gin.Context) {

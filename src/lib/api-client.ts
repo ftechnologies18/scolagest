@@ -179,3 +179,98 @@ export function apiDelete<T>(
 export function buildApiUrl(path: string): string {
   return withTransformPort(path);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Téléchargement de fichiers (exports CSV / Excel / PDF)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Télécharge un fichier depuis le backend en passant par la gateway Caddy
+ * (ajoute `?XTransformPort=8080` et l'en-tête Authorization), puis déclenche
+ * l'enregistrement côté navigateur via un élément `<a>` éphémère.
+ *
+ * @param path Chemin API (ex : `/api/rapports/paiements?format=csv`).
+ * @param filename Nom du fichier proposé au navigateur (ex : `paiements.csv`).
+ * @returns `true` si le téléchargement a réussi, `false` sinon.
+ */
+export async function downloadFile(
+  path: string,
+  filename: string,
+): Promise<boolean> {
+  const url = withTransformPort(path);
+
+  const headers: Record<string, string> = {
+    Accept: "*/*",
+  };
+  const token = useAuthStore.getState().accessToken;
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(url, { headers });
+  } catch (err) {
+    throw new ApiError(
+      "Impossible de contacter le serveur pour le téléchargement.",
+      0,
+      err,
+    );
+  }
+
+  // 401 → tenter un refresh unique puis réessayer
+  if (res.status === 401) {
+    const refreshed = await useAuthStore.getState().refresh();
+    if (refreshed) {
+      return downloadFile(path, filename);
+    }
+    useAuthStore.getState().logout();
+    throw new ApiError("Votre session a expiré. Veuillez vous reconnecter.", 401);
+  }
+
+  if (!res.ok) {
+    let payload: unknown = null;
+    try {
+      payload = await res.text();
+    } catch {
+      // ignore
+    }
+    const message =
+      payload && typeof payload === "string" && payload.length > 0
+        ? payload
+        : `Erreur HTTP ${res.status}`;
+    throw new ApiError(message, res.status, payload);
+  }
+
+  // Récupère le blob et déclenche le téléchargement
+  let blob: Blob;
+  try {
+    blob = await res.blob();
+  } catch (err) {
+    throw new ApiError("Lecture du fichier téléchargé impossible.", 0, err);
+  }
+
+  // Tente de récupérer un nom de fichier depuis Content-Disposition
+  const disposition = res.headers.get("content-disposition");
+  let finalName = filename;
+  if (disposition) {
+    const match = /filename="?([^";]+)"?/.exec(disposition);
+    if (match && match[1]) {
+      finalName = decodeURIComponent(match[1]);
+    }
+  }
+
+  // Crée une URL objet et un <a> éphémère pour déclencher le téléchargement
+  if (typeof window === "undefined") return false;
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = finalName;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Libère la mémoire après un court délai (Chrome tolère mieux)
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  return true;
+}

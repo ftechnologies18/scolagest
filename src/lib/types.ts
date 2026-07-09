@@ -460,3 +460,165 @@ export interface CloturesQueryParams {
   date?: string;
   caissier_id?: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 4 — Rapports & tableaux de bord
+//
+// Types consommés par `src/lib/api-reports.ts` et les composants
+// `src/components/dashboard/dashboard-home.tsx`, `view-rapports.tsx`,
+// `view-impayes.tsx` ainsi que les graphiques CSS dans
+// `src/components/reports/`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** KPIs agrégés renvoyés par GET /api/dashboard. */
+export interface DashboardKpis {
+  /** Somme des paiements valides sur la période filtrée. */
+  total_encaisse: number;
+  /** Somme attendue (frais applicables) sur l'année scolaire courante. */
+  total_attendu: number;
+  /** total_encaisse / total_attendu * 100. */
+  taux_recouvrement: number;
+  /** Nombre d'élèves avec solde_du > 0. */
+  nb_impayes: number;
+  /** Nombre total d'élèves inscrits (année courante). */
+  nb_eleves: number;
+  /** Nombre de paiements enregistrés aujourd'hui. */
+  nb_paiements_jour: number;
+  /** Montant total encaissé aujourd'hui. */
+  montant_jour: number;
+}
+
+/** Ligne de répartition par cycle / classe / catégorie de frais. */
+export interface RepartitionItem {
+  /** Libellé (cycle, classe ou catégorie selon l'axe). */
+  libelle: string;
+  /** Champ alternatif pour rétro-compatibilité (cycle/classe/categorie). */
+  cycle?: string;
+  classe?: string;
+  categorie?: string;
+  attendu: number;
+  encaisse: number;
+  /** Taux de recouvrement en pourcentage (0-100). */
+  taux: number;
+  /** Effectif concerné (le cas échéant). */
+  nb_eleves?: number;
+  nb_impayes?: number;
+}
+
+/** Répartition par mode de paiement. */
+export interface RepartitionModePaiement {
+  mode: string;
+  montant: number;
+  count: number;
+}
+
+/** Évolution mensuelle (12 derniers mois). */
+export interface EvolutionMensuelle {
+  /** Libellé du mois (ex : "janv.", "févr."). */
+  mois: string;
+  montant: number;
+}
+
+/** Réponse complète de GET /api/dashboard. */
+export interface DashboardData {
+  kpis: DashboardKpis;
+  par_cycle: RepartitionItem[];
+  par_classe: RepartitionItem[];
+  par_categorie: RepartitionItem[];
+  par_mode_paiement: RepartitionModePaiement[];
+  evolution_mensuelle: EvolutionMensuelle[];
+  /** 10 derniers paiements valides. */
+  derniers_paiements: Paiement[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rapports (paiements / soldes / recouvrement)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface RapportPaiementsFilters {
+  date_debut?: string;
+  date_fin?: string;
+  cycle_id?: string;
+  classe_id?: string;
+  categorie?: string;
+  mode_paiement?: string;
+  caissier_id?: string;
+  /** Format d'export (impacts uniquement `downloadRapportPaiements`). */
+  format?: "csv" | "excel";
+}
+
+export interface RapportPaiementsResult {
+  data: Paiement[];
+  total_montant: number;
+  count: number;
+}
+
+export interface RapportSoldesFilters {
+  classe_id?: string;
+  categorie?: string;
+  statut?: "SOLDE" | "IMPAYE" | "PARTIEL" | string;
+}
+
+export interface RapportSoldesResult {
+  data: SoldeListItem[];
+  total_attendu: number;
+  total_paye: number;
+  total_solde_du: number;
+  count: number;
+}
+
+export interface RapportRecouvrementFilters {
+  cycle_id?: string;
+  classe_id?: string;
+}
+
+export interface RapportRecouvrementLigne {
+  classe: string;
+  attendu: number;
+  encaisse: number;
+  taux: number;
+  nb_eleves: number;
+  nb_impayes: number;
+}
+
+export interface RapportRecouvrementResult {
+  data: RapportRecouvrementLigne[];
+  resume: {
+    attendu: number;
+    encaisse: number;
+    taux: number;
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Impayés & relances
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Échéance en retard attachée à un élève impayé. */
+export interface EcheanceEnRetard {
+  echeance_id: string;
+  libelle: string;
+  montant: number;
+  date_limite: string;
+  jours_retard: number;
+}
+
+export interface ImpayeItem {
+  eleve_id: string;
+  eleve_nom: string;
+  eleve_prenoms: string;
+  classe: string;
+  categorie: string;
+  total_attendu: number;
+  total_paye: number;
+  solde_du: number;
+  echeances_en_retard: EcheanceEnRetard[];
+  nb_jours_retard_max: number;
+}
+
+export interface ImpayesFilters {
+  classe_id?: string;
+  categorie?: string;
+  /** Si `true`, ne renvoyer que les élèves ayant au moins une échéance en retard. */
+  echeance_passee?: boolean;
+}

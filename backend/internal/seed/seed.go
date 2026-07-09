@@ -28,6 +28,7 @@ func Seed() {
         seedUtilisateurs(db)
         SeedEleves()
         SeedFrais()
+        SeedPaiements()
 
         log.Println("✓ Seed terminé")
 }
