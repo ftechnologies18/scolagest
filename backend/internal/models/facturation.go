@@ -25,6 +25,8 @@ type Frais struct {
         MontantTotal       float64         `gorm:"type:decimal(14,2);not null" json:"montant_total"`
         NbVersementsDefaut int             `gorm:"not null;default:1" json:"nb_versements_defaut"`
         Actif              bool            `gorm:"not null;default:true" json:"actif"`
+        // Echeances : tranches d'échéancier (modèle générique, eleve_id IS NULL)
+        Echeances          []Echeance      `gorm:"foreignKey:FraisID" json:"echeances,omitempty"`
 }
 
 func (Frais) TableName() string { return "frais" }

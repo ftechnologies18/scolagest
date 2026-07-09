@@ -86,6 +86,7 @@ import {
   eleveFullName,
 } from "@/components/eleves/eleves-list";
 import { InscriptionDialog } from "@/components/eleves/inscription-dialog";
+import { EleveSoldeCard } from "@/components/eleves/eleve-solde-card";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -440,6 +441,9 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Soldes & paiements (Phase 3) */}
+      <EleveSoldeCard eleveId={eleveId} />
 
       {/* Inscriptions */}
       <Card className="overflow-hidden">

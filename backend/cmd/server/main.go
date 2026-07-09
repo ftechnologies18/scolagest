@@ -40,6 +40,10 @@ func main() {
         tuteurSvc := services.NewTuteurService()
         inscriptionSvc := services.NewInscriptionService()
         referentielSvc := services.NewReferentielService()
+        fraisSvc := services.NewFraisService()
+        soldeSvc := services.NewSoldeService()
+        paiementSvc := services.NewPaiementService(soldeSvc)
+        clotureSvc := services.NewClotureService()
 
         // 5. Handlers
         authHandler := handlers.NewAuthHandler(authSvc)
@@ -49,6 +53,10 @@ func main() {
         tuteurHandler := handlers.NewTuteurHandler(tuteurSvc)
         inscriptionHandler := handlers.NewInscriptionHandler(inscriptionSvc)
         referentielHandler := handlers.NewReferentielHandler(referentielSvc)
+        fraisHandler := handlers.NewFraisHandler(fraisSvc)
+        soldeHandler := handlers.NewSoldeHandler(soldeSvc)
+        paiementHandler := handlers.NewPaiementHandler(paiementSvc)
+        clotureHandler := handlers.NewClotureHandler(clotureSvc)
 
         // 6. Router Gin
         r := gin.Default()
@@ -72,6 +80,12 @@ func main() {
         tuteurHandler.RegisterRoutes(api, authMW)
         inscriptionHandler.RegisterRoutes(api, authMW)
         referentielHandler.RegisterRoutes(api, authMW)
+
+        // Routes Phase 3 : frais, soldes, paiements, clôtures
+        fraisHandler.RegisterRoutes(api, authMW)
+        soldeHandler.RegisterRoutes(api, authMW)
+        paiementHandler.RegisterRoutes(api, authMW)
+        clotureHandler.RegisterRoutes(api, authMW)
 
         // Route de bienvenue
         r.GET("/", func(c *gin.Context) {

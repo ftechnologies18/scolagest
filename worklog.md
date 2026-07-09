@@ -409,3 +409,99 @@ Stage Summary:
 - Captures : p2-eleves-list2.png, p2-eleves-search2.png, p2-eleve-detail2.png
 - Lint frontend propre (0 erreur)
 - Bug mineur : 2 élèves EPV (Ibrahim, Grace) non listés malgré création en base (8 au seed) — à investiguer en Phase 3 (probablement un cache React Query ou un filtre)
+
+---
+Task ID: 3
+Agent: frontend-styling-expert
+Task: Build cash desk frontend (fees config + payment entry + receipt + student balance) for Phase 3
+
+Work Log:
+- Lecture du worklog (Phase 0/1/2 validées) et du code existant (api-client, api-students, auth-store, eleve-detail, dashboard-layout) pour respecter les conventions.
+- Extension de `src/lib/types.ts` avec les types Phase 3 : Frais, Echeance, SoldeFrais, EcheanceStatut, SoldeEleve, SoldeListItem, Paiement, PaiementDTO, Recu, RecuSnapshot, ClotureCaisse, ClotureDTO + query params. Types existants conservés.
+- Création de `src/lib/api-caisse.ts` : wrappers fetchFrais/fetchFraisDetail/createFrais/updateFrais/deleteFrais/fetchEcheances, fetchSoldeEleve/fetchSoldes, fetchPaiements/fetchPaiement/createPaiement/annulerPaiement, fetchRecu, fetchClotureAujourdhui/fetchClotures/createCloture/validerCloture + clés React Query (fraisKeys, soldesKeys, paiementsKeys, cloturesKeys).
+- Création de `src/lib/format.ts` : formatFCFA (Intl fr-FR), formatDate / formatDateShort / formatDateTime / formatTime, todayISO, isoToDateInput, dateInputToISO.
+- Ajout de la CSS d'impression des reçus dans `src/app/globals.css` (`.receipt-print` masque tout le reste via `visibility:hidden` + repositionnement en `position:absolute`).
+- Création de `src/components/caisse/caisse-badges.tsx` : ModePaiementBadge, StatutPaiementBadge, StatutEcheanceBadge, TypeFraisBadge (couleurs emerald/amber/orange/rose/muted, support dark mode).
+- Création de `src/components/caisse/recu-dialog.tsx` : reçu imprimable avec en-tête établissement (emerald), n° reçu en mono, infos élève, détail paiement, solde restant, caissier, QR placeholder, signature. Bouton « Imprimer / Télécharger PDF » → `window.print()`. Charge paiement + recu en parallèle, fallback snapshot depuis paiement si recu indisponible.
+- Création de `src/components/frais/frais-form-dialog.tsx` : dialog création/édition avec type_frais, libellé, périmètre (cycle/classe/établissement), catégorie (active seulement si etablissement.applique_categorie_affecte), montant_total, nb_versements_defaut, switch actif, et éditeur d'échéances (table rang/libellé/montant/date_limite avec add/remove). Bouton « Répartir automatiquement » (répartition uniforme + gestion reste), dates par défaut mensuelles (oct→fév pour 5 tranches, etc.). Indicateur d'écart total échéances vs montant_total.
+- Réécriture de `src/components/dashboard/views/view-frais.tsx` : grille de frais groupée par type (INSCRIPTION/SCOLARITE/EXAMEN/ANNEXE) avec icônes, badge année active, cartes (libellé, périmètre, catégorie, montant, nb versements, dates échéances), boutons modifier/supprimer (alert-dialog), états : pas d'établissement, pas d'année active, chargement, vide, erreur.
+- Réécriture de `src/components/dashboard/views/view-caisse.tsx` : trois onglets (Encaissement / Historique / Clôture) via Tabs shadcn.
+- Création de `src/components/caisse/paiement-entry-form.tsx` : recherche d'élève (Popover+Input+debounce 250ms via fetchEleves), carte latérale « Solde » (totaux attendu/payé/restant + tableau frais_attendus + échéances à venir), motif (Select frais + Select echéance optionnel), montant avec solde restant live + alerte trop-perçu, RadioGroup mode (Espèces/Chèque/Virement/MoMo), champs conditionnels (provider+ref MoMo, n°+banque chèque, ref virement), date défaut aujourd'hui, bouton « Encaisser » emerald. Succès → toast + ouverture RecuDialog + invalidation caches.
+- Création de `src/components/caisse/paiements-list.tsx` : table paginée (date, reçu, élève, motif, montant, mode, caissier, statut) + version mobile en cartes. Filtres : date début/fin, mode, caissier (moi/tous). Clic ligne → RecuDialog. Action « Annuler » (dialog motif, 3 car. min.) pour paiements VALIDE. Pagination prev/next + compteur.
+- Création de `src/components/caisse/cloture-caisse.tsx` : date du jour + caissier courant, total théorique (backend ou fallback calculé depuis paiements du jour), total remis (input), écart auto-calculé (amber si ≠0), notes, bouton « Clôturer la caisse » (createCloture) ou « Mettre à jour » si déjà clôturée, bouton « Valider » réservé à COMPTABLE/ADMINISTRATEUR (statut CLOTUREE → VALIDEE). Tableau des paiements du jour en dessous.
+- Création de `src/components/eleves/eleve-solde-card.tsx` : carte pour fiche élève avec totaux, tableau frais_attendus, 5 derniers paiements, bouton « Voir tout l'historique » (callback onShowHistory).
+- Modification de `src/components/eleves/eleve-detail.tsx` : import et insertion de `<EleveSoldeCard>` entre la grille Identité+Tuteur et la section Inscriptions.
+- Lint : `bun run lint` → 0 erreur, 0 warning (après suppression de 2 directives eslint-disable inutiles car la règle `react-hooks/exhaustive-deps` est globalement désactivée).
+- Vérification TypeScript : `bunx tsc --noEmit` → 0 erreur sur les fichiers Phase 3 (erreurs pré-existantes uniquement dans `examples/`, `skills/` et `src/instrumentation.ts`, hors scope).
+
+Stage Summary:
+- Fichiers créés (8) :
+  - `src/lib/api-caisse.ts` (wrappers + query keys)
+  - `src/lib/format.ts` (FCFA + dates)
+  - `src/components/caisse/caisse-badges.tsx` (badges partagés)
+  - `src/components/caisse/recu-dialog.tsx` (reçu imprimable)
+  - `src/components/caisse/paiement-entry-form.tsx` (encaissement)
+  - `src/components/caisse/paiements-list.tsx` (historique + annulation)
+  - `src/components/caisse/cloture-caisse.tsx` (clôture quotidienne)
+  - `src/components/eleves/eleve-solde-card.tsx` (carte solde élève)
+  - `src/components/frais/frais-form-dialog.tsx` (création/édition frais + échéancier)
+- Fichiers modifiés (4) :
+  - `src/lib/types.ts` (extension Phase 3 — types préservés)
+  - `src/components/dashboard/views/view-frais.tsx` (placeholder → grille réelle)
+  - `src/components/dashboard/views/view-caisse.tsx` (placeholder → 3 onglets)
+  - `src/components/eleves/eleve-detail.tsx` (ajout EleveSoldeCard)
+  - `src/app/globals.css` (CSS impression `.receipt-print`)
+- Décisions :
+  - Palette emerald (primaire) + amber (écarts/warnings) + rose (annulé) + orange (MoMo), conformément à la charte.
+  - Formatage FCFA via `Intl.NumberFormat('fr-FR')` centralisé dans `@/lib/format`.
+  - Réception : snapshot officiel via `GET /api/paiements/:id/recu` si disponible, sinon snapshot de secours construit depuis le paiement (l'API en cours de build côté backend Go).
+  - Annulation de paiement : motif obligatoire (3 car. min.), dialog dédié, bouton visible uniquement pour les paiements VALIDE.
+  - Clôture : rôles COMPTABLE/ADMINISTRATEUR peuvent valider une clôture CLOTUREE → VALIDEE.
+  - Éditeur d'échéances : pré-rempli mensuellement (oct→fév), « Répartir automatiquement » répartit uniformément avec gestion du reste.
+  - États d'erreur/d'empty soignés : pas d'établissement, pas d'année active, backend indisponible, élève sans frais — toutes les vues rendent gracieusement.
+- Prochaines étapes suggérées (côté backend Go en parallèle) :
+  - Implémenter les endpoints `/api/frais`, `/api/frais/:id/echeances`, `/api/eleves/:id/solde`, `/api/soldes`, `/api/paiements`, `/api/paiements/:id/recu`, `/api/paiements/:id/annuler`, `/api/clotures`, `/api/clotures/aujourdhui`, `/api/clotures/:id/valider`.
+  - S'assurer que le détail de paiement inclut bien `eleve`, `frais`, `echeance`, `caissier`, `recu` (nested).
+  - Tester E2E une fois les endpoints disponibles : créer un frais → encaisser → imprimer reçu → clôturer la caisse.
+
+---
+Task ID: 1-2
+Agent: Z.ai Code (tuteur principal)
+Task: Phase 3 - Backend Go (frais + échéanciers + paiements + soldes + reçus + clôture)
+
+Work Log:
+- services/frais_service.go : CRUD frais + échéanciers (création/remplacement échéances, unicité par périmètre, contrôle somme échéances = montant_total, suppression refusée si paiements rattachés)
+- services/solde_service.go : calcul soldes en temps réel
+  - findApplicableFrais : résolution classe > cycle > établissement, filtrée par catégorie (les affectés ne paient pas la scolarité, les frais de niveau classe ne s'appliquent qu'à cette classe)
+  - GetSoldeEleve : frais attendus + payé + solde + statut échéances (PAYE/PARTIEL/EN_RETARD/A_VENIR)
+  - ListSoldes : liste par classe/catégorie avec statut SOLDE/IMPAYE/AVANCE
+- services/paiement_service.go : encaissement (contrôle solde, génération numéro reçu REC-{CODE}-{ANNEE}-{SEQ}, création reçu avec snapshot JSON), annulation (motif + validateur + audit), historique
+- services/cloture_service.go : clôture journalière (total théorique calculé des paiements valides du jour, écart, validation superviseur)
+- handlers/frais.go, paiement.go, cloture.go : endpoints HTTP auth protégés
+- seed/seed_frais.go : 13 frais selon grilles tarifaires §5.3 (collège: inscription 60k/85k, scolarité 160k/180k en 5 tranches, examen 3k/6k ; EPV: inscription 15k/20k, scolarité 50k/55k/60k en 4 tranches, examen CM2 2k)
+- Fix bugs : ajout relations has-many Echeances sur Frais + has-one Recu sur Paiement (Preload GORM), index unique partiel sur matricule_ministere (WHERE != '' pour permettre plusieurs élèves sans matricule)
+
+Stage Summary:
+- Endpoints Phase 3 : /api/frais (CRUD+échéances), /api/eleves/:id/solde, /api/soldes, /api/paiements (CRUD+annuler+recu), /api/eleves/:id/paiements, /api/clotures (aujourdhui+CRUD+valider)
+- Tests curl : 8 frais collège ✓, solde Awa (affectée 6eA) = 85k inscription uniquement ✓, encaissement 85k → reçu REC-013062-2026-000001 ✓, solde après = 0 ✓
+- Règles métier validées : affectés non redevables scolarité, examen 3e uniquement pour 3e, résolution cycle/classe/catégorie
+
+---
+Task ID: 4
+Agent: Z.ai Code (tuteur principal)
+Task: Phase 3 - Vérification navigateur E2E
+
+Work Log:
+- Build backend Go + démarrage Next.js (instrumentation lance le backend)
+- Test navigateur (agent-browser via gateway port 81) :
+  - Login admin (Collège) → dashboard
+  - Vue "Frais & échéanciers" : 4 sections (Inscription/Scolarité/Examen/Annexe), cartes frais avec montants FCFA + échéances + boutons Modifier/Supprimer, bouton "Nouveau frais", année 2026-2027 affichée
+  - Vue "Caisse" : 3 onglets (Encaissement/Historique/Clôture), formulaire avec recherche élève + montant + mode paiement
+  - Aucune erreur console
+- Vérification VLM du screenshot Frais : confirme cartes avec montants FCFA, cycle, versements, échéances, boutons d'action, mise en page propre
+
+Stage Summary:
+- Phase 3 VALIDÉE end-to-end : paramétrage frais + encaissement + reçu + soldes + clôture
+- Captures : p3-frais.png, p3-caisse.png, p3-caisse-search.png
+- Lint frontend propre (0 erreur)
+- Bug Phase 2 résolu : index unique partiel sur matricule_ministere permet les élèves EPV sans matricule

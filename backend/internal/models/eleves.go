@@ -31,7 +31,7 @@ type Eleve struct {
         BaseModel
         EtablissementID      uuid.UUID        `gorm:"type:uuid;index;not null" json:"etablissement_id"`
         Etablissement        *Etablissement   `gorm:"foreignKey:EtablissementID" json:"etablissement,omitempty"`
-        MatriculeMinistere   string           `gorm:"uniqueIndex" json:"matricule_ministere"`
+        MatriculeMinistere   string           `gorm:"index" json:"matricule_ministere"`
         IdentifiantInterne   string           `gorm:"uniqueIndex;not null" json:"identifiant_interne"`
         Nom                  string           `gorm:"not null" json:"nom"`
         Prenoms              string           `json:"prenoms"`

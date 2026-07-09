@@ -120,3 +120,34 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ───────────────────────────────────────────────────────────────────────────── */
+/* Impression des reçus (Phase 3 — Module de caisse)                            */
+/* Masque tout le contenu de la page sauf l'élément porteur de la classe        */
+/* `.receipt-print`. Celui-ci est repositionné en haut à gauche, sans marge.    */
+/* ───────────────────────────────────────────────────────────────────────────── */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .receipt-print,
+  .receipt-print * {
+    visibility: visible;
+  }
+  .receipt-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .receipt-print .no-print {
+    display: none !important;
+  }
+  @page {
+    margin: 12mm;
+  }
+}

@@ -205,3 +205,258 @@ export interface AnneeScolaire {
   statut: StatutAnnee;
   est_active: boolean;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 3 — Module de caisse : Frais, Échéances, Soldes, Paiements, Reçus,
+// Clôture de caisse.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type TypeFrais = "INSCRIPTION" | "SCOLARITE" | "EXAMEN" | "ANNEXE";
+
+/** Catégorie affectée (null = tarif unique). */
+export type CategorieFrais = "AFFECTE" | "NON_AFFECTE" | null;
+
+/** Frais configuré pour une année scolaire, éventuellement ciblé par cycle/classe. */
+export interface Frais {
+  id: string;
+  etablissement_id: string;
+  annee_scolaire_id: string;
+  cycle_id: string | null;
+  classe_id: string | null;
+  type_frais: TypeFrais;
+  categorie: CategorieFrais;
+  libelle: string;
+  montant_total: number;
+  nb_versements_defaut: number;
+  actif: boolean;
+  echeances?: Echeance[];
+  cycle?: Cycle;
+  classe?: Classe;
+  annee_scolaire?: AnneeScolaire;
+}
+
+/** Échéance de paiement (générique ou spécifique à un élève en cas de dérogation). */
+export interface Echeance {
+  id: string;
+  frais_id: string;
+  eleve_id: string | null;
+  rang: number;
+  libelle: string;
+  montant: number;
+  date_limite: string;
+  motif_derogation: string;
+}
+
+export interface EcheanceDTO {
+  rang: number;
+  libelle: string;
+  montant: number;
+  date_limite: string;
+}
+
+export interface FraisDTO {
+  cycle_id?: string | null;
+  classe_id?: string | null;
+  type_frais: TypeFrais;
+  categorie?: CategorieFrais;
+  libelle: string;
+  montant_total: number;
+  nb_versements_defaut: number;
+  echeances: EcheanceDTO[];
+  actif?: boolean;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Soldes (calculés côté backend)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface SoldeFrais {
+  frais_id: string;
+  type_frais: TypeFrais;
+  libelle: string;
+  montant_attendu: number;
+  montant_paye: number;
+  solde: number;
+}
+
+export type StatutEcheance =
+  | "PAYE"
+  | "PARTIEL"
+  | "EN_RETARD"
+  | "A_VENIR";
+
+export interface EcheanceStatut {
+  echeance_id: string;
+  rang: number;
+  libelle: string;
+  montant: number;
+  date_limite: string;
+  montant_paye: number;
+  statut: StatutEcheance;
+}
+
+export interface SoldeEleve {
+  eleve_id: string;
+  frais_attendus: SoldeFrais[];
+  total_attendu: number;
+  total_paye: number;
+  solde_du: number;
+  echeances_a_venir: EcheanceStatut[];
+}
+
+export type StatutSolde = "SOLDE" | "PARTIEL" | "IMPAYE" | string;
+
+export interface SoldeListItem {
+  eleve_id: string;
+  eleve_nom: string;
+  eleve_prenoms: string;
+  classe: string;
+  total_attendu: number;
+  total_paye: number;
+  solde_du: number;
+  statut: StatutSolde;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Paiements (encaissements)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ModePaiement =
+  | "ESPECES"
+  | "CHEQUE"
+  | "VIREMENT"
+  | "MOBILE_MONEY";
+
+export type StatutPaiement = "VALIDE" | "ANNULE" | "EN_ATTENTE";
+
+export interface Caissier {
+  id: string;
+  nom: string;
+  prenoms: string;
+}
+
+export interface Paiement {
+  id: string;
+  eleve_id: string;
+  inscription_id: string;
+  etablissement_id: string;
+  frais_id: string | null;
+  echeance_id: string | null;
+  montant: number;
+  mode_paiement: ModePaiement;
+  provider_momo: string | null;
+  reference_externe: string;
+  date_paiement: string;
+  caissier_id: string;
+  statut: StatutPaiement;
+  numero_recu: string;
+  motif_annulation: string;
+  eleve?: Eleve;
+  frais?: Frais;
+  echeance?: Echeance;
+  caissier?: Caissier;
+  recu?: Recu;
+}
+
+export interface PaiementDTO {
+  eleve_id: string;
+  frais_id?: string | null;
+  echeance_id?: string | null;
+  montant: number;
+  mode_paiement: ModePaiement;
+  provider_momo?: string | null;
+  reference_externe?: string;
+  date_paiement?: string;
+}
+
+export interface PaiementsListResponse {
+  data: Paiement[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface PaiementsQueryParams {
+  eleve_id?: string;
+  date_debut?: string;
+  date_fin?: string;
+  caissier_id?: string;
+  mode?: ModePaiement;
+  page?: number;
+  page_size?: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reçu
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface RecuSnapshotEleve {
+  nom: string;
+  prenoms: string;
+  matricule: string;
+  classe: string;
+}
+
+export interface RecuSnapshotEtablissement {
+  nom: string;
+  ville?: string;
+  code_officiel?: string;
+}
+
+export interface RecuSnapshotPaiement {
+  montant: number;
+  mode: ModePaiement;
+  motif: string;
+  caissier: string;
+  date: string;
+  reference_externe?: string;
+  provider_momo?: string | null;
+}
+
+export interface RecuSnapshot {
+  etablissement?: RecuSnapshotEtablissement;
+  eleve?: RecuSnapshotEleve;
+  paiement?: RecuSnapshotPaiement;
+  solde_restant?: number;
+  total_paye?: number;
+  total_attendu?: number;
+}
+
+export interface Recu {
+  id: string;
+  paiement_id: string;
+  numero: string;
+  pdf_url: string;
+  contenu_snapshot: string; // JSON string à parser en RecuSnapshot
+  date_emission: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Clôture de caisse
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type StatutCloture = "OUVERTE" | "CLOTUREE" | "VALIDEE";
+
+export interface ClotureCaisse {
+  id: string;
+  caissier_id: string;
+  etablissement_id: string;
+  date_cloture: string;
+  total_theorique: number;
+  total_remis: number;
+  ecart: number;
+  statut: StatutCloture;
+  valide_par: string | null;
+  notes: string;
+  caissier?: Caissier;
+}
+
+export interface ClotureDTO {
+  total_remis: number;
+  notes?: string;
+}
+
+export interface CloturesQueryParams {
+  date?: string;
+  caissier_id?: string;
+}

@@ -30,6 +30,8 @@ type Paiement struct {
         Caissier         *Utilisateur      `gorm:"foreignKey:CaissierID" json:"caissier,omitempty"`
         Statut           StatutPaiement    `gorm:"not null;default:VALIDE" json:"statut"`
         NumeroRecu       string            `gorm:"uniqueIndex" json:"numero_recu"`
+        // Recu : reçu généré automatiquement (has-one)
+        Recu             *Recu             `gorm:"foreignKey:PaiementID" json:"recu,omitempty"`
         MotifAnnulation  string            `json:"motif_annulation"`
         AnnulePar        *uuid.UUID        `gorm:"type:uuid;index" json:"annule_par"`
         DateAnnulation   *time.Time        `json:"date_annulation"`
