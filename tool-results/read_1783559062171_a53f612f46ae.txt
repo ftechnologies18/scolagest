@@ -1,0 +1,876 @@
+     1→     1→**CAHIER DES CHARGES**
+     2→     2→
+     3→     3→**ScolaGest**
+     4→     4→
+     5→     5→**Application Web de Gestion & de Caisse Scolaire**
+     6→     6→
+     7→     7→*Groupe scolaire multi-cycles (Préscolaire -- Primaire -- Collège --
+     8→     8→Lycée)*
+     9→     9→
+    10→    10→Version 1.0 -- Document de travail
+    11→    11→
+    12→    12→Freelance Technologies Côte d\'Ivoire
+    13→    13→
+    14→    14→Juillet 2026
+    15→    15→
+    16→    16→*Cas d\'usage de référence : Collège Privé Le Chandelier -- Dabou*
+    17→    17→
+    18→    18→# **Sommaire**
+    19→    19→
+    20→    20→[**Sommaire** [1](#sommaire)](#sommaire)
+    21→    21→
+    22→    22→[**1. Contexte et présentation du projet**
+    23→    23→[1](#contexte-et-présentation-du-projet)](#contexte-et-présentation-du-projet)
+    24→    24→
+    25→    25→[**2. Objectifs du projet**
+    26→    26→[1](#objectifs-du-projet)](#objectifs-du-projet)
+    27→    27→
+    28→    28→[**3. Périmètre du projet**
+    29→    29→[1](#périmètre-du-projet)](#périmètre-du-projet)
+    30→    30→
+    31→    31→[**3.1 Inclus dans le périmètre (V1)**
+    32→    32→[1](#inclus-dans-le-périmètre-v1)](#inclus-dans-le-périmètre-v1)
+    33→    33→
+    34→    34→[**3.2 Hors périmètre (V1) --- évolutions futures possibles**
+    35→    35→[1](#hors-périmètre-v1-évolutions-futures-possibles)](#hors-périmètre-v1-évolutions-futures-possibles)
+    36→    36→
+    37→    37→[**4. Acteurs et rôles utilisateurs**
+    38→    38→[1](#acteurs-et-rôles-utilisateurs)](#acteurs-et-rôles-utilisateurs)
+    39→    39→
+    40→    40→[**5. Spécifications fonctionnelles détaillées**
+    41→    41→[1](#spécifications-fonctionnelles-détaillées)](#spécifications-fonctionnelles-détaillées)
+    42→    42→
+    43→    43→[**5.1 Gestion des élèves et du matricule**
+    44→    44→[1](#gestion-des-élèves-et-du-matricule)](#gestion-des-élèves-et-du-matricule)
+    45→    45→
+    46→    46→[**5.2 Catégories d\'élèves et règles de facturation**
+    47→    47→[1](#catégories-délèves-et-règles-de-facturation)](#catégories-délèves-et-règles-de-facturation)
+    48→    48→
+    49→    49→[**5.3 Paramétrage des frais et échéanciers**
+    50→    50→[1](#paramétrage-des-frais-et-échéanciers)](#paramétrage-des-frais-et-échéanciers)
+    51→    51→
+    52→    52→[**5.3.1 Exemple de grille tarifaire (illustration --- Collège Privé Le
+    53→    53→Chandelier, année 2026-2027)**
+    54→    54→[1](#exemple-de-grille-tarifaire-illustration-collège-privé-le-chandelier-année-2026-2027)](#exemple-de-grille-tarifaire-illustration-collège-privé-le-chandelier-année-2026-2027)
+    55→    55→
+    56→    56→[**5.3.2 Exemple de grille tarifaire --- Primaire (École Primaire Privée
+    57→    57→Le Chandelier / EPV, 2026-2027)**
+    58→    58→[1](#exemple-de-grille-tarifaire-primaire-école-primaire-privée-le-chandelier-epv-2026-2027)](#exemple-de-grille-tarifaire-primaire-école-primaire-privée-le-chandelier-epv-2026-2027)
+    59→    59→
+    60→    60→[**5.3.3 Exemple de grille tarifaire --- Préscolaire (2026-2027)**
+    61→    61→[1](#exemple-de-grille-tarifaire-préscolaire-2026-2027)](#exemple-de-grille-tarifaire-préscolaire-2026-2027)
+    62→    62→
+    63→    63→[**5.4 Encaissement et gestion de caisse**
+    64→    64→[1](#encaissement-et-gestion-de-caisse)](#encaissement-et-gestion-de-caisse)
+    65→    65→
+    66→    66→[**5.5 Suivi des soldes et relances**
+    67→    67→[1](#suivi-des-soldes-et-relances)](#suivi-des-soldes-et-relances)
+    68→    68→
+    69→    69→[**5.6 Tableaux de bord et rapports**
+    70→    70→[1](#tableaux-de-bord-et-rapports)](#tableaux-de-bord-et-rapports)
+    71→    71→
+    72→    72→[**5.7 Gestion documentaire et stockage de fichiers**
+    73→    73→[1](#gestion-documentaire-et-stockage-de-fichiers)](#gestion-documentaire-et-stockage-de-fichiers)
+    74→    74→
+    75→    75→[**5.8 Gestion des années scolaires**
+    76→    76→[1](#gestion-des-années-scolaires)](#gestion-des-années-scolaires)
+    77→    77→
+    78→    78→[**6. Esquisse du modèle de données**
+    79→    79→[1](#esquisse-du-modèle-de-données)](#esquisse-du-modèle-de-données)
+    80→    80→
+    81→    81→[**7. Architecture technique**
+    82→    82→[1](#architecture-technique)](#architecture-technique)
+    83→    83→
+    84→    84→[**7.1 Vue d\'ensemble de la stack retenue**
+    85→    85→[1](#vue-densemble-de-la-stack-retenue)](#vue-densemble-de-la-stack-retenue)
+    86→    86→
+    87→    87→[**7.2 Organisation du monorepo**
+    88→    88→[1](#organisation-du-monorepo)](#organisation-du-monorepo)
+    89→    89→
+    90→    90→[**7.3 Déploiement et environnements**
+    91→    91→[1](#déploiement-et-environnements)](#déploiement-et-environnements)
+    92→    92→
+    93→    93→[**7.4 Sécurité** [1](#sécurité)](#sécurité)
+    94→    94→
+    95→    95→[**7.5 Évolutivité multi-établissements**
+    96→    96→[1](#évolutivité-multi-établissements)](#évolutivité-multi-établissements)
+    97→    97→
+    98→    98→[**8. Exigences non fonctionnelles**
+    99→    99→[1](#exigences-non-fonctionnelles)](#exigences-non-fonctionnelles)
+   100→   100→
+   101→   101→[**9. Livrables attendus**
+   102→   102→[1](#livrables-attendus)](#livrables-attendus)
+   103→   103→
+   104→   104→[**10. Planning indicatif (phasage proposé)**
+   105→   105→[1](#planning-indicatif-phasage-proposé)](#planning-indicatif-phasage-proposé)
+   106→   106→
+   107→   107→[**11. Hypothèses retenues et points à valider avec le Groupe scolaire**
+   108→   108→[1](#hypothèses-retenues-et-points-à-valider-avec-le-groupe-scolaire)](#hypothèses-retenues-et-points-à-valider-avec-le-groupe-scolaire)
+   109→   109→
+   110→   110→[**12. Glossaire** [1](#glossaire)](#glossaire)
+   111→   111→
+   112→   112→# **1. Contexte et présentation du projet**
+   113→   113→
+   114→   114→Le Groupe Scolaire (ci-après « le Groupe » ou « l\'Établissement »)
+   115→   115→couvre l\'ensemble du parcours éducatif, du préscolaire au lycée,
+   116→   116→réparti en quatre cycles :
+   117→   117→
+   118→   118→  -----------------------------------------------------------------------
+   119→   119→  **Cycle**             **Classes couvertes**
+   120→   120→  --------------------- -------------------------------------------------
+   121→   121→  Préscolaire           Petite Section (PS), Moyenne Section (MS), Grande
+   122→   122→                        Section (GS)
+   123→   123→
+   124→   124→  Primaire              CP1, CP2, CE1, CE2, CM1, CM2
+   125→   125→
+   126→   126→  Collège               6e, 5e, 4e, 3e
+   127→   127→
+   128→   128→  Lycée                 2nde, 1ère, Terminale
+   129→   129→  -----------------------------------------------------------------------
+   130→   130→
+   131→   131→La gestion actuelle des encaissements de scolarité et de frais
+   132→   132→d\'inscription est manuelle ou partiellement outillée, ce qui engendre
+   133→   133→des risques d\'erreurs de saisie, de retards de relance, de pertes de
+   134→   134→traçabilité et une difficulté à produire des états financiers fiables et
+   135→   135→consolidés par cycle, classe ou année scolaire.
+   136→   136→
+   137→   137→Le Groupe est en réalité composé d\'au moins deux entités
+   138→   138→administratives distinctes opérant sous une même bannière « Le
+   139→   139→Chandelier » à Dabou : le Collège Privé Le Chandelier (collège et lycée,
+   140→   140→code établissement 013062) et l\'École Primaire Privée Le Chandelier ---
+   141→   141→EPV (préscolaire et primaire, immatriculée sous les numéros 0103105091 /
+   142→   142→0708176273). Chacune dispose de sa propre grille tarifaire. Cette
+   143→   143→réalité de terrain confirme dès la V1 la pertinence d\'une architecture
+   144→   144→organisée par établissement (voir §7.5), même si les deux entités sont
+   145→   145→pilotées par la même direction et opèrent sur le même site.
+   146→   146→
+   147→   147→Le présent document a pour objet de définir les besoins fonctionnels,
+   148→   148→techniques et organisationnels nécessaires à la conception et au
+   149→   149→développement d\'une application web de gestion de caisse scolaire,
+   150→   150→permettant de digitaliser l\'ensemble du cycle d\'encaissement, du
+   151→   151→dossier d\'inscription de l\'élève jusqu\'au solde complet de sa
+   152→   152→scolarité.
+   153→   153→
+   154→   154→# **2. Objectifs du projet**
+   155→   155→
+   156→   156→1.  Digitaliser l\'enregistrement des élèves de tous les cycles
+   157→   157→    (préscolaire, primaire, collège, lycée) avec leur matricule
+   158→   158→    ministériel ou un identifiant interne provisoire.
+   159→   159→
+   160→   160→2.  Distinguer et gérer automatiquement les deux catégories d\'élèves :
+   161→   161→    les élèves affectés par l\'État (exonérés de scolarité, redevables
+   162→   162→    uniquement des frais d\'inscription) et les élèves non affectés /
+   163→   163→    privés (redevables de la scolarité échelonnée et des frais
+   164→   164→    d\'inscription).
+   165→   165→
+   166→   166→3.  Permettre l\'encaissement échelonné de la scolarité (tranches,
+   167→   167→    mensualités) avec suivi des échéances et de la date limite de solde
+   168→   168→    total.
+   169→   169→
+   170→   170→4.  Sécuriser et tracer chaque opération de caisse (qui, quand, combien,
+   171→   171→    pour quel élève, quel motif) avec génération automatique de reçus.
+   172→   172→
+   173→   173→5.  Fournir aux gestionnaires (direction, comptabilité, censorat) des
+   174→   174→    tableaux de bord et rapports financiers par cycle, classe, catégorie
+   175→   175→    et période.
+   176→   176→
+   177→   177→6.  Centraliser le stockage des documents et photos des élèves de façon
+   178→   178→    sécurisée et accessible.
+   179→   179→
+   180→   180→7.  Poser une architecture technique moderne, évolutive et peu coûteuse
+   181→   181→    à l\'exploitation (hébergement cloud managé).
+   182→   182→
+   183→   183→# **3. Périmètre du projet**
+   184→   184→
+   185→   185→## **3.1 Inclus dans le périmètre (V1)**
+   186→   186→
+   187→   187→-   Gestion des élèves, de leurs tuteurs/parents et de leur
+   188→   188→    cycle/classe/année scolaire.
+   189→   189→
+   190→   190→-   Gestion des deux catégories d\'élèves (affecté / non affecté) et des
+   191→   191→    règles de facturation associées.
+   192→   192→
+   193→   193→-   Paramétrage des frais (frais d\'inscription, scolarité, frais
+   194→   194→    annexes éventuels) par cycle et par année scolaire.
+   195→   195→
+   196→   196→-   Module de caisse : encaissement, échéancier, reçus, historique des
+   197→   197→    paiements, soldes.
+   198→   198→
+   199→   199→-   Tableaux de bord et rapports (situation de caisse, impayés, taux de
+   200→   200→    recouvrement).
+   201→   201→
+   202→   202→-   Gestion des utilisateurs internes et des droits d\'accès (rôles).
+   203→   203→
+   204→   204→-   Stockage des fichiers (photos d\'élèves, pièces justificatives) via
+   205→   205→    Cloudflare R2.
+   206→   206→
+   207→   207→-   Portail de consultation pour les parents (solde, historique des
+   208→   208→    paiements, reçus téléchargeables) --- confirmé pour la V1.
+   209→   209→
+   210→   210→## **3.2 Hors périmètre (V1) --- évolutions futures possibles**
+   211→   211→
+   212→   212→-   Gestion pédagogique (notes, bulletins, emplois du temps).
+   213→   213→
+   214→   214→-   Paiement en ligne par Mobile Money / carte bancaire (intégration
+   215→   215→    Orange Money, MTN Money, Wave, etc.) --- proposé en Phase 2.
+   216→   216→
+   217→   217→-   Envoi automatique de SMS/emails de relance --- proposé en Phase 2.
+   218→   218→
+   219→   219→-   Comptabilité générale complète (grand livre, bilan) --- le module
+   220→   220→    reste centré sur la caisse scolarité.
+   221→   221→
+   222→   222→-   Exploitation opérationnelle simultanée de plusieurs sites en V1 : le
+   223→   223→    Groupe fonctionne actuellement sur un seul site, mais
+   224→   224→    l\'architecture est conçue dès la conception pour accueillir
+   225→   225→    plusieurs établissements/implantations sans refonte majeure (voir
+   226→   226→    §7.5).
+   227→   227→
+   228→   228→# **4. Acteurs et rôles utilisateurs**
+   229→   229→
+   230→   230→  -----------------------------------------------------------------------
+   231→   231→  **Rôle**                 **Permissions principales**
+   232→   232→  ------------------------ ----------------------------------------------
+   233→   233→  Administrateur           Paramétrage global (années scolaires, frais,
+   234→   234→                           cycles/classes, utilisateurs, droits).
+   235→   235→
+   236→   236→  Caissier(ère)            Saisie des encaissements, édition des reçus,
+   237→   237→                           consultation des soldes élèves.
+   238→   238→
+   239→   239→  Comptable / Direction    Consultation des rapports, export des états,
+   240→   240→  financière               suivi des impayés, clôtures de caisse
+   241→   241→                           journalières/mensuelles.
+   242→   242→
+   243→   243→  Censeur / Directeur de   Consultation des situations de caisse de son
+   244→   244→  cycle                    cycle (collège, lycée, etc.), suivi des
+   245→   245→                           inscriptions.
+   246→   246→
+   247→   247→  Secrétariat / Scolarité  Création et mise à jour des dossiers élèves
+   248→   248→                           (identité, matricule, catégorie, classe).
+   249→   249→
+   250→   250→  Parent / Tuteur          Consultation du solde de son/ses enfant(s),
+   251→   251→  (optionnel)              historique des paiements, téléchargement des
+   252→   252→                           reçus.
+   253→   253→  -----------------------------------------------------------------------
+   254→   254→
+   255→   255→L\'accès est protégé par authentification (email/mot de passe) et
+   256→   256→gestion des rôles (RBAC --- Role-Based Access Control), avec
+   257→   257→journalisation (logs) des actions sensibles
+   258→   258→(création/modification/annulation d\'un paiement).
+   259→   259→
+   260→   260→# **5. Spécifications fonctionnelles détaillées**
+   261→   261→
+   262→   262→## **5.1 Gestion des élèves et du matricule**
+   263→   263→
+   264→   264→-   Chaque élève dispose d\'une fiche comprenant : nom, prénoms, date et
+   265→   265→    lieu de naissance, sexe, photo, tuteur(s)/parent(s) et contacts,
+   266→   266→    cycle, classe, année scolaire, catégorie (affecté / non affecté).
+   267→   267→
+   268→   268→-   Le matricule ministériel est attribué à partir du CP1 (primaire) et
+   269→   269→    conservé tout au long du parcours de l\'élève (primaire → collège →
+   270→   270→    lycée) : il doit être unique, éditable seulement par un rôle
+   271→   271→    autorisé, et rechercher facilement.
+   272→   272→
+   273→   273→-   Pour les élèves du préscolaire (PS, MS, GS), qui ne disposent pas
+   274→   274→    encore de matricule ministériel, un identifiant interne provisoire
+   275→   275→    est généré automatiquement par l\'application ; celui-ci peut être
+   276→   276→    remplacé par le matricule ministériel réel dès son attribution
+   277→   277→    (typiquement à l\'entrée en CP1).
+   278→   278→
+   279→   279→-   Historique de l\'élève : suivi de son passage d\'un cycle/classe à
+   280→   280→    l\'autre d\'une année sur l\'autre (promotion), avec conservation de
+   281→   281→    l\'historique des paiements des années précédentes.
+   282→   282→
+   283→   283→-   Recherche multicritère (nom, matricule, classe, catégorie, statut de
+   284→   284→    paiement).
+   285→   285→
+   286→   286→## **5.2 Catégories d\'élèves et règles de facturation**
+   287→   287→
+   288→   288→Le système gère deux catégories, avec des règles de facturation
+   289→   289→distinctes appliquées automatiquement selon la catégorie affectée à
+   290→   290→l\'élève :
+   291→   291→
+   292→   292→  ------------------------------------------------------------------------
+   293→   293→  **Catégorie**               **Frais d\'inscription**    **Scolarité**
+   294→   294→  --------------------------- --------------------------- ----------------
+   295→   295→  Élève affecté (public /     Redevable, normalement en   Non redevable
+   296→   296→  État)                       un seul versement           (pris en charge
+   297→   297→                              (dérogation possible, voir  par l\'État)
+   298→   298→                              ci-dessous)                 
+   299→   299→
+   300→   300→  Élève non affecté (privé)   Redevable                   Redevable,
+   301→   301→                                                          payable de façon
+   302→   302→                                                          échelonnée
+   303→   303→                                                          jusqu\'à solde
+   304→   304→                                                          total avant la
+   305→   305→                                                          date limite
+   306→   306→                                                          fixée pour
+   307→   307→                                                          l\'année
+   308→   308→                                                          scolaire
+   309→   309→  ------------------------------------------------------------------------
+   310→   310→
+   311→   311→La catégorie est renseignée à l\'inscription et peut être modifiée en
+   312→   312→cas de changement de statut (ex. affectation en cours d\'année), avec
+   313→   313→recalcul automatique du solde dû et conservation d\'une trace de la
+   314→   314→modification (audit).
+   315→   315→
+   316→   316→Cette distinction concerne le collège et le lycée, cycles pour lesquels
+   317→   317→l\'affectation par l\'État intervient (entrée en 6e et en 2nde). Le
+   318→   318→préscolaire et le primaire n\'ont, à ce jour, pas de distinction
+   319→   319→affecté/non affecté observée : un tarif unique s\'applique à tous les
+   320→   320→élèves de ces cycles (voir §5.3.2). Le système doit donc permettre
+   321→   321→d\'activer ou non la distinction de catégorie selon le cycle, plutôt que
+   322→   322→de l\'imposer uniformément à toute l\'application.
+   323→   323→
+   324→   324→Cas particulier --- dérogation sociale sur les frais d\'inscription des
+   325→   325→élèves affectés : par principe, les frais d\'inscription des élèves
+   326→   326→affectés sont payables en un seul versement. Toutefois, par mesure
+   327→   327→sociale, l\'établissement peut accorder à un élève affecté un
+   328→   328→échelonnement exceptionnel en 3 tranches pour solder ses frais
+   329→   329→d\'inscription. Cette dérogation :
+   330→   330→
+   331→   331→-   s\'accorde au cas par cas, à la discrétion de la
+   332→   332→    direction/administration (rôle Administrateur), et non
+   333→   333→    automatiquement à toute la catégorie des affectés ;
+   334→   334→
+   335→   335→-   doit être tracée dans le dossier de l\'élève (qui l\'a accordée, à
+   336→   336→    quelle date, motif « raison sociale »), à des fins d\'audit et de
+   337→   337→    reporting ;
+   338→   338→
+   339→   339→-   génère un échéancier propre à l\'élève concerné (3 tranches,
+   340→   340→    montants et dates à définir au cas par cas ou selon un modèle-type
+   341→   341→    de 3 échéances), distinct du paiement en un seul versement qui reste
+   342→   342→    la règle par défaut pour les affectés.
+   343→   343→
+   344→   344→## **5.3 Paramétrage des frais et échéanciers**
+   345→   345→
+   346→   346→-   Paramétrage, par année scolaire et par cycle (voire par classe), du
+   347→   347→    montant des frais d\'inscription et du montant de la scolarité
+   348→   348→    annuelle.
+   349→   349→
+   350→   350→-   Le montant des frais d\'inscription peut différer selon la catégorie
+   351→   351→    de l\'élève (affecté / non affecté), comme observé sur la grille
+   352→   352→    tarifaire de référence (voir §5.3.1) : le système doit permettre un
+   353→   353→    tarif d\'inscription distinct par catégorie et non un tarif unique.
+   354→   354→
+   355→   355→-   Par défaut, les frais d\'inscription sont dus en un seul versement
+   356→   356→    pour tous les élèves. Le système doit toutefois permettre à un rôle
+   357→   357→    autorisé (Administrateur/Direction) d\'accorder, élève par élève,
+   358→   358→    une dérogation sociale sous forme d\'un échéancier en 3 tranches
+   359→   359→    pour les frais d\'inscription d\'un élève affecté (voir §5.2).
+   360→   360→
+   361→   361→-   Définition d\'un échéancier de paiement de la scolarité : nombre de
+   362→   362→    tranches, montants et dates limites de chaque tranche. Le standard
+   363→   363→    observé est un paiement échelonné en 5 tranches (versements mensuels
+   364→   364→    de octobre à février), configurable librement par le Groupe pour les
+   365→   365→    années suivantes.
+   366→   366→
+   367→   367→-   Définition d\'une date limite globale de solde total de la scolarité
+   368→   368→    pour les élèves non affectés (dernière échéance de l\'échéancier).
+   369→   369→
+   370→   370→-   Paramétrage de frais complémentaires ponctuels tels que les frais
+   371→   371→    d\'examen (ex. classes d\'examen : 3e, Terminale), distincts de la
+   372→   372→    scolarité et de l\'inscription, dus une seule fois dans l\'année.
+   373→   373→
+   374→   374→-   Possibilité de définir des frais annexes optionnels (cantine,
+   375→   375→    transport, activités) --- évolution possible, à valider.
+   376→   376→
+   377→   377→### **5.3.1 Exemple de grille tarifaire (illustration --- Collège Privé Le Chandelier, année 2026-2027)**
+   378→   378→
+   379→   379→La grille ci-dessous, issue de l\'affiche de rentrée de l\'établissement
+   380→   380→pilote, illustre la façon dont le paramétrage des frais et de
+   381→   381→l\'échéancier doit fonctionner dans l\'application. Elle sera saisie
+   382→   382→comme donnée de configuration pour l\'année scolaire 2026-2027, et non
+   383→   383→codée en dur.
+   384→   384→
+   385→   385→Code établissement (identifiant officiel) : 013062.
+   386→   386→
+   387→   387→  -----------------------------------------------------------------------
+   388→   388→  **Catégorie**                        **Frais d\'inscription (à
+   389→   389→                                       l\'inscription)**
+   390→   390→  ------------------------------------ ----------------------------------
+   391→   391→  Élève non affecté (privé)            60 000 FCFA
+   392→   392→
+   393→   393→  Élève affecté (public/État)          85 000 FCFA
+   394→   394→  -----------------------------------------------------------------------
+   395→   395→
+   396→   396→Frais de scolarité annuels (élèves non affectés uniquement), payables en
+   397→   397→5 échéances mensuelles :
+   398→   398→
+   399→   399→  -------------------------------------------------------------------------------------------
+   400→   400→  **Classes**       **Scolarité   **1er vers. **2e vers.  **3e vers.  **4e vers.  **5e vers.
+   401→   401→                    annuelle**    (05/10)**   (05/11)**   (05/12)**   (05/01)**   (05/02)**
+   402→   402→  ----------------- ------------- ----------- ----------- ----------- ----------- -----------
+   403→   403→  1er cycle (6e --  160 000 F     40 000 F    40 000 F    35 000 F    35 000 F    10 000 F
+   404→   404→  3e)                                                                             
+   405→   405→
+   406→   406→  2nd cycle (2nde   180 000 F     50 000 F    50 000 F    35 000 F    35 000 F    10 000 F
+   407→   407→  -- Tle)                                                                         
+   408→   408→  -------------------------------------------------------------------------------------------
+   409→   409→
+   410→   410→Frais d\'examen (à titre d\'exemple de frais complémentaire ponctuel) :
+   411→   411→3 000 FCFA pour les élèves de 3e, 6 000 FCFA pour les élèves de
+   412→   412→Terminale.
+   413→   413→
+   414→   414→### **5.3.2 Exemple de grille tarifaire --- Primaire (École Primaire Privée Le Chandelier / EPV, 2026-2027)**
+   415→   415→
+   416→   416→Contrairement au collège et au lycée, la grille du primaire ne distingue
+   417→   417→pas les catégories affecté / non affecté : un tarif unique s\'applique à
+   418→   418→tous les élèves du CP au CM. Ceci s\'explique par le fait que
+   419→   419→l\'affectation par l\'État intervient à l\'entrée en 6e et en 2nde, et
+   420→   420→ne concerne donc pas le préscolaire ni le primaire. Le système doit
+   421→   421→permettre qu\'un cycle n\'active pas la distinction de catégorie si elle
+   422→   422→ne s\'applique pas.
+   423→   423→
+   424→   424→-   Frais d\'inscription : 20 000 FCFA du CP au CM, payable en un seul
+   425→   425→    versement (ce montant inclut des éléments en nature : tenue de
+   426→   426→    sport, macaron, photo, livret de suivi, frais de composition --- à
+   427→   427→    modéliser comme un forfait unique plutôt que des lignes séparées,
+   428→   428→    sauf si le Groupe souhaite un suivi détaillé par élément).
+   429→   429→
+   430→   430→-   Droit d\'examen (CM2 uniquement) : 2 000 FCFA, à rapprocher du frais
+   431→   431→    d\'examen déjà identifié pour la 3e et la Terminale (même mécanique,
+   432→   432→    classe de fin de cycle différente).
+   433→   433→
+   434→   434→  ---------------------------------------------------------------------------
+   435→   435→  **Classe**     **Frais      **1er vers. **2e vers.  **3e vers.  **4e vers.
+   436→   436→                 d\'écolage   (au         (au         (au         (au
+   437→   437→                 annuel**     05/11)**    05/11)**    05/01)**    05/02)**
+   438→   438→  -------------- ------------ ----------- ----------- ----------- -----------
+   439→   439→  CP -- CE       55 000 F     15 000 F    15 000 F    15 000 F    10 000 F
+   440→   440→
+   441→   441→  CM             60 000 F     15 000 F    15 000 F    15 000 F    15 000 F
+   442→   442→  ---------------------------------------------------------------------------
+   443→   443→
+   444→   444→Point à vérifier auprès de l\'établissement : l\'affiche transmise
+   445→   445→indique la même date limite (05 novembre) pour le 1er et le 2e
+   446→   446→versement, ce qui semble être une coquille sur le support de
+   447→   447→communication (la 2e échéance est probablement en décembre). À confirmer
+   448→   448→avant paramétrage définitif dans l\'application.
+   449→   449→
+   450→   450→### **5.3.3 Exemple de grille tarifaire --- Préscolaire (2026-2027)**
+   451→   451→
+   452→   452→Comme pour le primaire, le préscolaire (PS, MS, GS) applique un tarif
+   453→   453→unique, sans distinction affecté/non affecté :
+   454→   454→
+   455→   455→-   Frais d\'inscription : 15 000 FCFA, payable en un seul versement
+   456→   456→    (comme au primaire).
+   457→   457→
+   458→   458→-   Scolarité annuelle : 50 000 FCFA, échelonnée sur les mêmes 4
+   459→   459→    échéances que le primaire (1er versement au 05/11, 2e au 05/11 ---
+   460→   460→    sous réserve de la correction évoquée ci-dessus ---, 3e au 05/01, 4e
+   461→   461→    au 05/02).
+   462→   462→
+   463→   463→La répartition par tranche des 50 000 FCFA n\'a pas été précisée ; à
+   464→   464→titre d\'exemple de configuration (à confirmer avec le Groupe), une
+   465→   465→répartition possible serait 15 000 / 15 000 / 10 000 / 10 000 FCFA, par
+   466→   466→cohérence avec le profil dégressif observé sur les grilles du collège et
+   467→   467→du primaire. Le système doit dans tous les cas permettre de saisir
+   468→   468→librement le montant de chaque tranche du préscolaire, sans imposer
+   469→   469→cette répartition par défaut.
+   470→   470→
+   471→   471→## **5.4 Encaissement et gestion de caisse**
+   472→   472→
+   473→   473→-   Saisie d\'un encaissement : sélection de l\'élève (par matricule ou
+   474→   474→    recherche), motif (frais d\'inscription / tranche de scolarité /
+   475→   475→    solde), montant, mode de paiement (espèces, chèque, virement ;
+   476→   476→    Mobile Money en Phase 2), date.
+   477→   477→
+   478→   478→-   Contrôle automatique du montant par rapport au solde restant dû
+   479→   479→    (alerte en cas de dépassement, gestion des trop-perçus/avoirs).
+   480→   480→
+   481→   481→-   Génération immédiate d\'un reçu de paiement (numéroté, imprimable et
+   482→   482→    téléchargeable en PDF) mentionnant : élève, matricule, motif,
+   483→   483→    montant, mode de paiement, caissier, date/heure, solde restant.
+   484→   484→
+   485→   485→-   Historique complet des paiements par élève, consultable et
+   486→   486→    exportable.
+   487→   487→
+   488→   488→-   Clôture de caisse journalière : récapitulatif des encaissements du
+   489→   489→    jour par caissier, avec rapprochement (montant théorique vs montant
+   490→   490→    réellement remis).
+   491→   491→
+   492→   492→-   Gestion des annulations/corrections de paiement avec motif
+   493→   493→    obligatoire et validation par un rôle supérieur (piste d\'audit).
+   494→   494→
+   495→   495→## **5.5 Suivi des soldes et relances**
+   496→   496→
+   497→   497→-   Vue en temps réel du solde dû par élève, par classe, par cycle.
+   498→   498→
+   499→   499→-   Liste des élèves en retard de paiement (au-delà d\'une échéance) et
+   500→   500→    des élèves n\'ayant pas encore soldé à l\'approche de la date
+   501→   501→    limite.
+   502→   502→
+   503→   503→-   Génération de bordereaux de relance imprimables (modèle Phase 1) ;
+   504→   504→    envoi automatique par SMS/email prévu en Phase 2.
+   505→   505→
+   506→   506→## **5.6 Tableaux de bord et rapports**
+   507→   507→
+   508→   508→-   Tableau de bord global : total encaissé, total attendu, taux de
+   509→   509→    recouvrement, répartition par cycle/classe/catégorie.
+   510→   510→
+   511→   511→-   Rapports filtrables par période, cycle, classe, catégorie, mode de
+   512→   512→    paiement, caissier.
+   513→   513→
+   514→   514→-   Export des données (PDF / Excel) pour la comptabilité et la
+   515→   515→    direction.
+   516→   516→
+   517→   517→## **5.7 Gestion documentaire et stockage de fichiers**
+   518→   518→
+   519→   519→-   Téléversement et stockage de la photo de l\'élève et des pièces
+   520→   520→    justificatives (extrait de naissance, certificat de scolarité, etc.)
+   521→   521→    sur Cloudflare R2.
+   522→   522→
+   523→   523→-   Accès sécurisé aux fichiers (URLs signées à durée limitée, pas
+   524→   524→    d\'accès public direct au bucket).
+   525→   525→
+   526→   526→## **5.8 Gestion des années scolaires**
+   527→   527→
+   528→   528→-   Création d\'une nouvelle année scolaire avec reprise des paramètres
+   529→   529→    de frais de l\'année précédente (modifiables).
+   530→   530→
+   531→   531→-   Processus de réinscription / passage de classe en fin d\'année, avec
+   532→   532→    réinitialisation des soldes pour la nouvelle année tout en
+   533→   533→    conservant l\'historique des années antérieures.
+   534→   534→
+   535→   535→# **6. Esquisse du modèle de données**
+   536→   536→
+   537→   537→Cette esquisse liste les entités principales à affiner lors de la phase
+   538→   538→de conception détaillée (MCD/MLD).
+   539→   539→
+   540→   540→  -----------------------------------------------------------------------
+   541→   541→  **Entité**          **Attributs clés (indicatif)**
+   542→   542→  ------------------- ---------------------------------------------------
+   543→   543→  Etablissement       id, nom (ex. « Collège Privé Le Chandelier », «
+   544→   544→                      École Primaire Privée Le Chandelier / EPV »),
+   545→   545→                      code_officiel (ex. 013062, ou numéros
+   546→   546→                      d\'immatriculation), adresse, contacts,
+   547→   547→                      applique_categorie_affecte (booléen)
+   548→   548→
+   549→   549→  Eleve               id, matricule_ministere (nullable),
+   550→   550→                      identifiant_interne, nom, prenoms, date_naissance,
+   551→   551→                      sexe, photo_url, categorie (affecte/non_affecte),
+   552→   552→                      classe_id, annee_scolaire_id, tuteur_id,
+   553→   553→                      etablissement_id, statut
+   554→   554→
+   555→   555→  Tuteur              id, nom, prenoms, telephone, email, adresse,
+   556→   556→                      lien_parente
+   557→   557→
+   558→   558→  Cycle               id, libelle (préscolaire, primaire, collège,
+   559→   559→                      lycée), etablissement_id
+   560→   560→
+   561→   561→  Classe              id, libelle (ex. CP1, 6e, Terminale D), cycle_id
+   562→   562→
+   563→   563→  AnneeScolaire       id, libelle (ex. 2026-2027), date_debut, date_fin,
+   564→   564→                      date_limite_solde
+   565→   565→
+   566→   566→  Frais               id, type (inscription/scolarite/examen/annexe),
+   567→   567→                      categorie (affecte/non_affecte, si applicable),
+   568→   568→                      montant, nb_versements_defaut, classe_id ou
+   569→   569→                      cycle_id, annee_scolaire_id
+   570→   570→
+   571→   571→  Echeance            id, frais_id, eleve_id (nullable --- renseigné
+   572→   572→                      uniquement pour un échéancier dérogatoire propre à
+   573→   573→                      un élève, ex. inscription d\'un affecté en 3
+   574→   574→                      tranches), rang, montant, date_limite,
+   575→   575→                      motif_derogation (nullable)
+   576→   576→
+   577→   577→  Paiement            id, eleve_id, echeance_id (nullable), montant,
+   578→   578→                      mode_paiement, date_paiement, caissier_id, statut,
+   579→   579→                      numero_recu
+   580→   580→
+   581→   581→  Recu                id, paiement_id, numero, pdf_url, date_emission
+   582→   582→
+   583→   583→  Utilisateur         id, nom, email, role, mot_de_passe_hash,
+   584→   584→                      etablissement_id, statut
+   585→   585→
+   586→   586→  JournalAudit        id, utilisateur_id, action, entite, entite_id,
+   587→   587→                      date, details
+   588→   588→  -----------------------------------------------------------------------
+   589→   589→
+   590→   590→# **7. Architecture technique**
+   591→   591→
+   592→   592→## **7.1 Vue d\'ensemble de la stack retenue**
+   593→   593→
+   594→   594→  -----------------------------------------------------------------------
+   595→   595→  **Composant**            **Technologie retenue**
+   596→   596→  ------------------------ ----------------------------------------------
+   597→   597→  Backend / API            Go (framework recommandé : Gin ou Fiber ; ORM
+   598→   598→                           : GORM ; migrations : golang-migrate)
+   599→   599→
+   600→   600→  Frontend                 Next.js (App Router), TypeScript, Tailwind CSS
+   601→   601→
+   602→   602→  Base de données          PostgreSQL managé --- Neon (serverless,
+   603→   603→                           branchable)
+   604→   604→
+   605→   605→  Stockage fichiers        Cloudflare R2 (compatible S3) pour photos et
+   606→   606→                           pièces jointes
+   607→   607→
+   608→   608→  Hébergement Backend      Render (Web Service Go, avec variables
+   609→   609→                           d\'environnement et auto-deploy depuis GitHub)
+   610→   610→
+   611→   611→  Hébergement Frontend     Vercel (déploiement Next.js, preview par pull
+   612→   612→                           request)
+   613→   613→
+   614→   614→  Gestion de code          Dépôt GitHub unique en monorepo
+   615→   615→
+   616→   616→  CI/CD                    GitHub Actions (build, tests, lint)
+   617→   617→                           déclenchant les déploiements Vercel/Render
+   618→   618→  -----------------------------------------------------------------------
+   619→   619→
+   620→   620→## **7.2 Organisation du monorepo**
+   621→   621→
+   622→   622→Structure indicative du dépôt GitHub :
+   623→   623→
+   624→   624→caisse-scolaire/ ├── apps/ │ ├── web/ \# Frontend Next.js │ └── api/ \#
+   625→   625→Backend Go ├── packages/ │ ├── ui/ \# Composants partagés (optionnel) │
+   626→   626→└── types/ \# Types/contrats partagés (OpenAPI généré ou zod) ├──
+   627→   627→.github/workflows/ \# CI/CD └── docs/ \# Documentation technique
+   628→   628→
+   629→   629→-   Le frontend et le backend restent deux applications indépendantes au
+   630→   630→    sein du même dépôt (pas de couplage de build), chacune avec son
+   631→   631→    propre pipeline de déploiement.
+   632→   632→
+   633→   633→-   Un contrat d\'API clair (spécification OpenAPI) est maintenu à la
+   634→   634→    racine ou dans packages/types afin de garder le frontend et le
+   635→   635→    backend synchronisés.
+   636→   636→
+   637→   637→## **7.3 Déploiement et environnements**
+   638→   638→
+   639→   639→-   Trois environnements recommandés : développement (local/preview),
+   640→   640→    recette (staging), production.
+   641→   641→
+   642→   642→-   Vercel : déploiements de prévisualisation automatiques par pull
+   643→   643→    request pour le frontend.
+   644→   644→
+   645→   645→-   Render : service web Go avec variable d\'environnement DATABASE_URL
+   646→   646→    pointant vers Neon, health-check endpoint pour supervision.
+   647→   647→
+   648→   648→-   Neon : une branche de base de données par environnement (production,
+   649→   649→    staging) pour isoler les données de test des données réelles.
+   650→   650→
+   651→   651→-   Cloudflare R2 : bucket dédié avec règles CORS restreintes au domaine
+   652→   652→    de l\'application et génération d\'URLs signées côté backend Go.
+   653→   653→
+   654→   654→## **7.4 Sécurité**
+   655→   655→
+   656→   656→-   Authentification par JWT (access token + refresh token), mots de
+   657→   657→    passe hashés (bcrypt/argon2).
+   658→   658→
+   659→   659→-   Contrôle d\'accès basé sur les rôles (RBAC) appliqué côté API sur
+   660→   660→    chaque endpoint sensible.
+   661→   661→
+   662→   662→-   Chiffrement en transit (HTTPS) sur l\'ensemble des flux
+   663→   663→    front/back/stockage.
+   664→   664→
+   665→   665→-   Validation stricte des entrées côté API (montants, dates, unicité du
+   666→   666→    matricule).
+   667→   667→
+   668→   668→-   Journalisation (audit trail) des opérations financières sensibles
+   669→   669→    (création, annulation, modification de paiement).
+   670→   670→
+   671→   671→-   Sauvegardes automatiques de la base de données (fonctionnalité
+   672→   672→    native Neon : point-in-time recovery).
+   673→   673→
+   674→   674→## **7.5 Évolutivité multi-établissements**
+   675→   675→
+   676→   676→Le Groupe est déjà constitué d\'au moins deux entités distinctes opérant
+   677→   677→sur le même site à Dabou : le Collège Privé Le Chandelier (collège +
+   678→   678→lycée) et l\'École Primaire Privée Le Chandelier / EPV (préscolaire +
+   679→   679→primaire), chacune avec ses propres numéros d\'immatriculation et sa
+   680→   680→propre grille tarifaire. La notion d\'établissement n\'est donc pas une
+   681→   681→simple anticipation pour une croissance future : elle est nécessaire dès
+   682→   682→la V1 pour représenter correctement cette organisation, même si les deux
+   683→   683→entités partagent la même direction et le même lieu physique.
+   684→   684→L\'architecture retenue dès la V1 intègre :
+   685→   685→
+   686→   686→-   Une entité Etablissement en base de données, avec un
+   687→   687→    etablissement_id présent sur les entités structurantes
+   688→   688→    (utilisateurs, cycles, élèves, frais) --- dès la V1 pour distinguer
+   689→   689→    le Collège Privé Le Chandelier et l\'EPV, chacun avec son propre
+   690→   690→    identifiant officiel (013062 pour le collège ; 0103105091 /
+   691→   691→    0708176273 pour l\'EPV).
+   692→   692→
+   693→   693→-   Des règles de facturation (frais, échéanciers, présence ou non de la
+   694→   694→    distinction affecté/non affecté) rattachées à un établissement et
+   695→   695→    une année scolaire, puisque le collège/lycée applique la distinction
+   696→   696→    de catégorie alors que le primaire/préscolaire applique un tarif
+   697→   697→    unique.
+   698→   698→
+   699→   699→-   Un contrôle d\'accès (RBAC) pensé par établissement, pour que les
+   700→   700→    caissiers et la direction de chaque entité puissent, si souhaité,
+   701→   701→    avoir une vue consolidée du Groupe ou une vue limitée à leur
+   702→   702→    établissement.
+   703→   703→
+   704→   704→-   Une conception qui permettra, si le Groupe ouvre un troisième site
+   705→   705→    physique à l\'avenir, de l\'ajouter sans refonte majeure.
+   706→   706→
+   707→   707→Cette approche reste simple à l\'usage (l\'utilisateur choisit ou voit
+   708→   708→son établissement) tout en reflétant fidèlement l\'organisation réelle
+   709→   709→du Groupe et en évitant un chantier de migration ultérieur.
+   710→   710→
+   711→   711→# **8. Exigences non fonctionnelles**
+   712→   712→
+   713→   713→  -----------------------------------------------------------------------
+   714→   714→  **Exigence**        **Détail**
+   715→   715→  ------------------- ---------------------------------------------------
+   716→   716→  Performance         Temps de réponse API \< 500 ms sur les opérations
+   717→   717→                      courantes (recherche élève, saisie paiement).
+   718→   718→
+   719→   719→  Disponibilité       Cible de disponibilité compatible avec un usage
+   720→   720→                      scolaire quotidien (heures ouvrées).
+   721→   721→
+   722→   722→  Ergonomie           Interface simple, adaptée à des utilisateurs
+   723→   723→                      non-techniques (caissiers, secrétariat), responsive
+   724→   724→                      (poste fixe et tablette).
+   725→   725→
+   726→   726→  Localisation        Montants en Francs CFA (FCFA), interface en
+   727→   727→                      français, formats de date locaux.
+   728→   728→
+   729→   729→  Compatibilité       Navigateurs modernes (Chrome, Edge, Firefox) ;
+   730→   730→                      connexion internet parfois limitée --- prévoir
+   731→   731→                      gestion des erreurs réseau côté frontend.
+   732→   732→
+   733→   733→  Maintenabilité      Code documenté, typé (TypeScript / Go), tests
+   734→   734→                      automatisés sur les règles métier critiques (calcul
+   735→   735→                      de solde, catégorie affecté/non affecté).
+   736→   736→  -----------------------------------------------------------------------
+   737→   737→
+   738→   738→# **9. Livrables attendus**
+   739→   739→
+   740→   740→8.  Spécifications fonctionnelles détaillées et maquettes (wireframes)
+   741→   741→    validées.
+   742→   742→
+   743→   743→9.  Modèle de données finalisé (MCD/MLD) et schéma de migration.
+   744→   744→
+   745→   745→10. Code source du backend Go et du frontend Next.js, versionné sur le
+   746→   746→    dépôt GitHub monorepo.
+   747→   747→
+   748→   748→11. Documentation technique (architecture, déploiement, variables
+   749→   749→    d\'environnement).
+   750→   750→
+   751→   751→12. Documentation utilisateur (guide d\'utilisation par rôle : caissier,
+   752→   752→    administrateur, direction).
+   753→   753→
+   754→   754→13. Environnements de recette et de production opérationnels (Vercel,
+   755→   755→    Render, Neon, Cloudflare R2).
+   756→   756→
+   757→   757→14. Jeu de données de démonstration et scénarios de recette (tests
+   758→   758→    d\'acceptation).
+   759→   759→
+   760→   760→# **10. Planning indicatif (phasage proposé)**
+   761→   761→
+   762→   762→  -----------------------------------------------------------------------
+   763→   763→  **Phase**           **Contenu**                          **Durée
+   764→   764→                                                           indicative**
+   765→   765→  ------------------- ------------------------------------ --------------
+   766→   766→  Phase 0 --- Cadrage Validation du cahier des charges,    1 à 2 semaines
+   767→   767→                      maquettes, modèle de données         
+   768→   768→
+   769→   769→  Phase 1 --- Socle   Mise en place du monorepo, CI/CD,    2 semaines
+   770→   770→  technique           environnements                       
+   771→   771→                      (Vercel/Render/Neon/R2),             
+   772→   772→                      authentification                     
+   773→   773→
+   774→   774→  Phase 2 --- Gestion Fiches élèves, matricules,           2 à 3 semaines
+   775→   775→  des élèves          cycles/classes, catégories           
+   776→   776→
+   777→   777→  Phase 3 --- Module  Frais, échéanciers, encaissement,    3 à 4 semaines
+   778→   778→  de caisse           reçus, soldes                        
+   779→   779→
+   780→   780→  Phase 4 ---         Statistiques, exports, relances      2 semaines
+   781→   781→  Rapports & tableaux                                      
+   782→   782→  de bord                                                  
+   783→   783→
+   784→   784→  Phase 5 --- Recette Tests d\'acceptation, formation des  2 semaines
+   785→   785→  & mise en           utilisateurs, bascule                
+   786→   786→  production                                               
+   787→   787→  -----------------------------------------------------------------------
+   788→   788→
+   789→   789→Ce planning est indicatif et devra être affiné une fois le périmètre
+   790→   790→exact (portail parent, intégration Mobile Money, etc.) arbitré.
+   791→   791→
+   792→   792→# **11. Hypothèses retenues et points à valider avec le Groupe scolaire**
+   793→   793→
+   794→   794→Points confirmés à ce stade :
+   795→   795→
+   796→   796→-   Le Groupe est composé d\'au moins deux établissements distincts sur
+   797→   797→    le même site (Collège Privé Le Chandelier, et École Primaire Privée
+   798→   798→    Le Chandelier / EPV) ; l\'architecture est conçue dès la V1 pour
+   799→   799→    représenter cette réalité (voir §7.5).
+   800→   800→
+   801→   801→-   Le portail de consultation pour les parents (solde, historique,
+   802→   802→    reçus) fait partie du périmètre V1.
+   803→   803→
+   804→   804→-   La scolarité du collège et du lycée est échelonnée en 5 tranches
+   805→   805→    (versements mensuels d\'octobre à février) ; celle du primaire et du
+   806→   806→    préscolaire en 4 tranches (novembre à février, mêmes dates pour les
+   807→   807→    deux cycles) ; conformément aux grilles de référence 2026-2027 (voir
+   808→   808→    §5.3.1 à §5.3.3). Ces paramètres restent configurables pour les
+   809→   809→    années suivantes.
+   810→   810→
+   811→   811→-   Les frais d\'inscription sont dus par tous les élèves. Au
+   812→   812→    collège/lycée, leur montant diffère selon la catégorie (affecté/non
+   813→   813→    affecté), avec une dérogation sociale possible en 3 tranches pour
+   814→   814→    les affectés (voir §5.2) ; au primaire et au préscolaire, un tarif
+   815→   815→    unique s\'applique (20 000 F et 15 000 F respectivement), payable en
+   816→   816→    un seul versement, et celui du primaire couvre aussi des éléments en
+   817→   817→    nature (tenue, macaron, photo, livret, composition).
+   818→   818→
+   819→   819→-   La distinction affecté/non affecté ne s\'applique qu\'au collège et
+   820→   820→    au lycée (l\'affectation par l\'État intervenant à l\'entrée en 6e
+   821→   821→    et en 2nde) ; le préscolaire et le primaire n\'ont pas cette
+   822→   822→    distinction.
+   823→   823→
+   824→   824→Points restant à valider avec le Groupe :
+   825→   825→
+   826→   826→-   La répartition exacte des 4 tranches de la scolarité du préscolaire
+   827→   827→    (50 000 FCFA) : seule la répartition du primaire a été communiquée ;
+   828→   828→    celle du préscolaire est proposée par exemple/analogie à titre
+   829→   829→    indicatif (voir §5.3.3).
+   830→   830→
+   831→   831→-   La date exacte du 2e versement du primaire et du préscolaire :
+   832→   832→    l\'affiche indique « au 05 novembre » pour les 1er et 2e versements,
+   833→   833→    ce qui semble être une coquille à clarifier avant paramétrage (voir
+   834→   834→    §5.3.2).
+   835→   835→
+   836→   836→-   Faut-il suivre séparément les éléments en nature inclus dans les
+   837→   837→    frais d\'inscription du primaire (tenue, macaron, photo, livret,
+   838→   838→    composition), ou les traiter comme un forfait global ?
+   839→   839→
+   840→   840→-   La liste exhaustive des frais complémentaires ponctuels à prévoir
+   841→   841→    au-delà des frais/droits d\'examen (ex. cantine, transport,
+   842→   842→    assurance scolaire).
+   843→   843→
+   844→   844→-   Le paiement en Mobile Money n\'est pas requis en V1 mais est
+   845→   845→    anticipé comme évolution Phase 2, compte tenu du contexte ivoirien.
+   846→   846→
+   847→   847→-   La devise est le Franc CFA (FCFA) et l\'année scolaire suit le
+   848→   848→    calendrier ivoirien standard (rentrée en septembre/octobre).
+   849→   849→
+   850→   850→# **12. Glossaire**
+   851→   851→
+   852→   852→  -----------------------------------------------------------------------
+   853→   853→  **Terme**              **Définition**
+   854→   854→  ---------------------- ------------------------------------------------
+   855→   855→  Élève affecté          Élève orienté par l\'État dans l\'établissement
+   856→   856→                         ; exonéré de la scolarité, redevable uniquement
+   857→   857→                         des frais d\'inscription.
+   858→   858→
+   859→   859→  Élève non affecté      Élève inscrit hors procédure d\'affectation de
+   860→   860→  (privé)                l\'État ; redevable de la scolarité (échelonnée)
+   861→   861→                         et des frais d\'inscription.
+   862→   862→
+   863→   863→  Matricule              Identifiant unique attribué par le Ministère à
+   864→   864→                         chaque élève à partir du CP1, conservé durant
+   865→   865→                         tout le parcours scolaire.
+   866→   866→
+   867→   867→  Échéancier             Calendrier des tranches de paiement de la
+   868→   868→                         scolarité (montants et dates limites).
+   869→   869→
+   870→   870→  RBAC                   Role-Based Access Control --- contrôle d\'accès
+   871→   871→                         basé sur les rôles utilisateurs.
+   872→   872→
+   873→   873→  Monorepo               Dépôt de code source unique regroupant plusieurs
+   874→   874→                         applications (ici : frontend et backend).
+   875→   875→  -----------------------------------------------------------------------
+   876→   876→
