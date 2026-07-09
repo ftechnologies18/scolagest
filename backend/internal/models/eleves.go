@@ -20,6 +20,8 @@ type Tuteur struct {
         LienParente  LienParente  `json:"lien_parente"`
         Profession   string       `json:"profession"`
         Actif        bool         `gorm:"not null;default:true" json:"actif"`
+        // Eleves : liste des élèves dont ce tuteur est le tuteur principal (has-many)
+        Eleves       []Eleve      `gorm:"foreignKey:TuteurID" json:"eleves,omitempty"`
 }
 
 func (Tuteur) TableName() string { return "tuteurs" }
@@ -27,20 +29,25 @@ func (Tuteur) TableName() string { return "tuteurs" }
 // Eleve représente un élève inscrit dans un établissement.
 type Eleve struct {
         BaseModel
-        EtablissementID      uuid.UUID      `gorm:"type:uuid;index;not null" json:"etablissement_id"`
-        Etablissement        *Etablissement `gorm:"foreignKey:EtablissementID" json:"etablissement,omitempty"`
-        MatriculeMinistere   string         `gorm:"uniqueIndex" json:"matricule_ministere"`
-        IdentifiantInterne   string         `gorm:"uniqueIndex;not null" json:"identifiant_interne"`
-        Nom                  string         `gorm:"not null" json:"nom"`
-        Prenoms              string         `json:"prenoms"`
-        DateNaissance        *time.Time     `json:"date_naissance"`
-        LieuNaissance        string         `json:"lieu_naissance"`
-        Sexe                 Sexe           `json:"sexe"`
-        PhotoURL             string         `json:"photo_url"`
-        Categorie            CategorieEleve `gorm:"not null;default:NON_APPLICABLE" json:"categorie"`
-        Statut               StatutEleve    `gorm:"not null;default:ACTIF" json:"statut"`
-        TuteurID             *uuid.UUID     `gorm:"type:uuid;index" json:"tuteur_id"`
-        Tuteur               *Tuteur        `gorm:"foreignKey:TuteurID" json:"tuteur,omitempty"`
+        EtablissementID      uuid.UUID        `gorm:"type:uuid;index;not null" json:"etablissement_id"`
+        Etablissement        *Etablissement   `gorm:"foreignKey:EtablissementID" json:"etablissement,omitempty"`
+        MatriculeMinistere   string           `gorm:"uniqueIndex" json:"matricule_ministere"`
+        IdentifiantInterne   string           `gorm:"uniqueIndex;not null" json:"identifiant_interne"`
+        Nom                  string           `gorm:"not null" json:"nom"`
+        Prenoms              string           `json:"prenoms"`
+        DateNaissance        *time.Time       `json:"date_naissance"`
+        LieuNaissance        string           `json:"lieu_naissance"`
+        Sexe                 Sexe             `json:"sexe"`
+        PhotoURL             string           `json:"photo_url"`
+        Categorie            CategorieEleve   `gorm:"not null;default:NON_APPLICABLE" json:"categorie"`
+        Statut               StatutEleve      `gorm:"not null;default:ACTIF" json:"statut"`
+        TuteurID             *uuid.UUID       `gorm:"type:uuid;index" json:"tuteur_id"`
+        Tuteur               *Tuteur          `gorm:"foreignKey:TuteurID" json:"tuteur,omitempty"`
+        // Inscriptions : historique des inscriptions de l'élève par année (has-many)
+        Inscriptions         []Inscription    `gorm:"foreignKey:EleveID" json:"inscriptions,omitempty"`
+        // SearchVector : vecteur de recherche normalisé (sans accents, minuscules)
+        // pour une recherche insensible aux accents. Mis à jour à chaque create/update.
+        SearchVector string `gorm:"index" json:"-"`
 }
 
 func (Eleve) TableName() string { return "eleves" }

@@ -4,23 +4,16 @@
  * Il démarre le backend Go ScolaGest (port 8080) en tant que processus enfant
  * du serveur Next.js, afin qu'il persiste tant que le dev server tourne.
  *
- * Le backend Go est ainsi disponible pour les appels API du frontend via
- * le gateway Caddy (?XTransformPort=8080).
+ * IMPORTANT : Les imports de modules Node (node:child_process, node:fs) sont faits
+ * dynamiquement à l'intérieur de register() pour éviter les erreurs "Edge Runtime"
+ * lors de l'évaluation du module par Next.js.
  */
-
-import { execFileSync, spawn } from "node:child_process";
-import { createWriteStream, statSync, readdirSync } from "node:fs";
-import type { Stats, Dirent } from "node:fs";
 
 const BACKEND_BIN = "/tmp/scolagest-backend";
 const BACKEND_DIR = "/home/z/my-project/backend";
 const GO_BIN = "/home/z/.local/go/bin/go";
 const BACKEND_LOG = "/home/z/my-project/backend/backend.log";
 const BACKEND_PORT = 8080;
-
-// Force le runtime Node.js (l'instrumentation peut sinon tourner dans l'Edge Runtime
-// qui ne supporte pas node:child_process ni node:fs).
-export const runtime = "nodejs";
 
 let backendStarted = false;
 
@@ -35,7 +28,7 @@ async function isBackendUp(): Promise<boolean> {
   }
 }
 
-async function waitForBackend(timeoutMs = 15000): Promise<boolean> {
+async function waitForBackend(timeoutMs = 20000): Promise<boolean> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     if (await isBackendUp()) return true;
@@ -44,25 +37,64 @@ async function waitForBackend(timeoutMs = 15000): Promise<boolean> {
   return false;
 }
 
-function buildBackend(): boolean {
+ 
+async function buildBackend(): Promise<boolean> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { execFileSync } = require("node:child_process") as {
+      execFileSync: (
+        cmd: string,
+        args: string[],
+        opts: { cwd: string; stdio: "pipe"; timeout: number }
+      ) => void;
+    };
     console.log("[instrumentation] Compilation du backend Go...");
-    execFileSync(GO_BIN, ["build", "-o", BACKEND_BIN, "./cmd/server/"], {
-      cwd: BACKEND_DIR,
-      stdio: "pipe",
-      timeout: 120000,
-    });
+    execFileSync(
+      GO_BIN,
+      ["build", "-o", BACKEND_BIN, "./cmd/server/"],
+      { cwd: BACKEND_DIR, stdio: "pipe", timeout: 120000 }
+    );
     console.log("[instrumentation] Backend compilé.");
     return true;
-  } catch (e) {
-    console.error("[instrumentation] Échec compilation backend:", e);
+     
+  } catch (e: any) {
+    console.error("[instrumentation] Échec compilation backend:", e?.message || e);
     return false;
   }
 }
 
-function spawnBackend() {
-  const logStream = createWriteStream(BACKEND_LOG, { flags: "a" });
-  logStream.write(`\n--- Démarrage backend ${new Date().toISOString()} ---\n`);
+ 
+function spawnBackend(): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { spawn } = require("node:child_process") as {
+    spawn: (cmd: string, args: string[], opts: object) => {
+      pid: number;
+      stdout: { pipe: (w: unknown) => void };
+      stderr: { pipe: (w: unknown) => void };
+      on: (ev: string, cb: (arg?: number | Error) => void) => void;
+    };
+  };
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require("node:fs") as {
+    createWriteStream: (path: string, opts: { flags: string }) => {
+      write: (s: string) => void;
+    };
+    statSync: (path: string) => { mtime: Date };
+    readdirSync: (dir: string, opts: { withFileTypes: boolean }) => Array<{
+      name: string;
+      isDirectory: () => boolean;
+      isFile: () => boolean;
+    }>;
+  };
+
+  let logStream: { write: (s: string) => void };
+  try {
+    logStream = fs.createWriteStream(BACKEND_LOG, { flags: "a" });
+    logStream.write(`\n--- Démarrage backend ${new Date().toISOString()} ---\n`);
+  } catch {
+    // Fallback si le dossier n'existe pas
+    logStream = { write: () => {} };
+  }
 
   const child = spawn(BACKEND_BIN, [], {
     cwd: BACKEND_DIR,
@@ -77,10 +109,14 @@ function spawnBackend() {
     detached: false,
   });
 
-  child.stdout?.pipe(logStream);
-  child.stderr?.pipe(logStream);
+  try {
+    child.stdout.pipe(logStream);
+    child.stderr.pipe(logStream);
+  } catch {
+    /* noop */
+  }
 
-  child.on("exit", (code: number | null) => {
+  child.on("exit", (code) => {
     console.log(`[instrumentation] Backend Go terminé (code=${code})`);
     if (!backendStarted) return;
     if (code !== 0) {
@@ -96,33 +132,11 @@ function spawnBackend() {
   });
 
   console.log(`[instrumentation] Backend Go démarré (PID=${child.pid})`);
-}
-
-function sourcesNewerThan(dir: string, ref: Date): boolean {
-  let entries: Dirent[];
-  try {
-    entries = readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return false;
-  }
-  for (const e of entries) {
-    const full = `${dir}/${e.name}`;
-    if (e.isDirectory() && !e.name.startsWith(".")) {
-      if (sourcesNewerThan(full, ref)) return true;
-    } else if (e.isFile() && e.name.endsWith(".go")) {
-      let st: Stats;
-      try {
-        st = statSync(full);
-      } catch {
-        continue;
-      }
-      if (st.mtime > ref) return true;
-    }
-  }
-  return false;
+  return true;
 }
 
 export async function register() {
+  // Uniquement côté serveur
   if (typeof window !== "undefined") return;
 
   backendStarted = true;
@@ -132,26 +146,69 @@ export async function register() {
     return;
   }
 
+  // Vérifier que le binaire existe, sinon le compiler
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require("node:fs") as {
+    statSync: (path: string) => { mtime: Date };
+    readdirSync: (dir: string, opts: { withFileTypes: boolean }) => Array<{
+      name: string;
+      isDirectory: () => boolean;
+      isFile: () => boolean;
+    }>;
+  };
+
   let needBuild = true;
   try {
-    const binStat = statSync(BACKEND_BIN);
-    needBuild = sourcesNewerThan(BACKEND_DIR, binStat.mtime);
+    const binStat = fs.statSync(BACKEND_BIN);
+    needBuild = sourcesNewerThan(BACKEND_DIR, binStat.mtime, fs.readdirSync);
   } catch {
     needBuild = true;
   }
 
   if (needBuild) {
-    if (!buildBackend()) return;
+    const ok = await buildBackend();
+    if (!ok) return;
   }
 
   spawnBackend();
 
-  const ready = await waitForBackend(20000);
+  const ready = await waitForBackend(25000);
   if (ready) {
     console.log("[instrumentation] Backend prêt sur le port 8080.");
   } else {
     console.warn(
-      "[instrumentation] Backend non prêt après 20s — voir backend.log"
+      "[instrumentation] Backend non prêt après 25s — voir backend.log"
     );
   }
+}
+
+// Helper pour vérifier si les sources .go sont plus récentes que le binaire
+function sourcesNewerThan(
+  dir: string,
+  ref: Date,
+   
+  readdirSync: (dir: string, opts: { withFileTypes: boolean }) => any[]
+): boolean {
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+  for (const e of entries) {
+    const full = `${dir}/${e.name}`;
+    if (e.isDirectory() && !e.name.startsWith(".")) {
+      if (sourcesNewerThan(full, ref, readdirSync)) return true;
+    } else if (e.isFile() && e.name.endsWith(".go")) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const fs = require("node:fs") as { statSync: (p: string) => { mtime: Date } };
+        const st = fs.statSync(full);
+        if (st.mtime > ref) return true;
+      } catch {
+        continue;
+      }
+    }
+  }
+  return false;
 }
