@@ -4,13 +4,13 @@
   "private": true,
   "description": "ScolaGest — Application Web de Gestion & de Caisse Scolaire (monorepo)",
   "scripts": {
-    "dev": "cd apps/web && bun run dev",
-    "build": "cd apps/web && bun run build",
-    "start": "cd apps/web && bun run start",
-    "lint": "cd apps/web && bun run lint",
-    "db:push": "cd apps/web && bun run db:push",
-    "db:generate": "cd apps/web && bun run db:generate",
-    "backend:dev": "cd apps/api && go run ./cmd/server/",
-    "backend:build": "cd apps/api && go build -o /tmp/scolagest-backend ./cmd/server/"
+    "dev": "cd Frontend && bun run dev",
+    "build": "cd Frontend && bun run build",
+    "start": "cd Frontend && bun run start",
+    "lint": "cd Frontend && bun run lint",
+    "db:push": "cd Frontend && bun run db:push",
+    "db:generate": "cd Frontend && bun run db:generate",
+    "backend:dev": "cd backend && go run ./cmd/server/",
+    "backend:build": "cd backend && go build -o /tmp/scolagest-backend ./cmd/server/"
   }
 }

@@ -10,9 +10,9 @@
  */
 
 const BACKEND_BIN = "/tmp/scolagest-backend";
-const BACKEND_DIR = "/home/z/my-project/apps/api";
+const BACKEND_DIR = "/home/z/my-project/backend";
 const GO_BIN = "/home/z/.local/go/bin/go";
-const BACKEND_LOG = "/home/z/my-project/apps/api/backend.log";
+const BACKEND_LOG = "/home/z/my-project/backend/backend.log";
 const BACKEND_PORT = 8080;
 
 let backendStarted = false;
@@ -101,7 +101,7 @@ function spawnBackend(): boolean {
     env: {
       ...process.env,
       PORT: String(BACKEND_PORT),
-      DB_PATH: "/home/z/my-project/apps/api/data/scolagest.db",
+      DB_PATH: "/home/z/my-project/backend/data/scolagest.db",
       JWT_SECRET: "scolagest-dev-secret-change-in-production-2026",
       APP_ENV: "development",
     },

@@ -5,7 +5,7 @@
 set -e
 
 export PATH="/home/z/.local/go/bin:$PATH"
-BACKEND_DIR="/home/z/my-project/apps/api"
+BACKEND_DIR="/home/z/my-project/backend"
 BIN="/tmp/scolagest-backend"
 
 cd "$BACKEND_DIR"
