@@ -1,7 +1,5 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-node_modules
+# ===== Dépendances =====
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -10,45 +8,72 @@ node_modules
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
-
-# next.js
+# ===== Next.js =====
 /.next/
 /out/
-
-# production
 /build
+next-env.d.ts
+*.tsbuildinfo
 
-# misc
+# ===== Backend Go =====
+/backend/data/
+/backend/backend.log
+/backend/scolagest.db
+/backend/scolagest.db-*
+/tmp/scolagest-backend
+
+# ===== Variables d'environnement (SECRETS — ne jamais committer) =====
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+
+# ===== Base de données (données — régénérées par le seed) =====
+db/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# ===== Logs =====
+*.log
+dev.log
+dev.out.log
+server.log
+backend/backend.log
+.zscripts/*.log
+
+# ===== Captures d'écran / artefacts de test =====
+tool-results/
+download/
+
+# ===== Environnement sandbox (non pertinent pour le repo projet) =====
+/skills/
+/examples/
+/.zscripts/dev.pid
+/.zscripts/mini-service-*.log
+
+# ===== OS / éditeurs =====
 .DS_Store
 *.pem
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# debug
+# ===== Vercel / déploiement =====
+.vercel
+
+# ===== Divers =====
+/coverage
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
 local-*
 .claude
 .z-ai-config
-*.log
-dev.log
-dev.out.log
-test
 prompt
-
-server.log
-# Skills directory
-/skills/
+test
