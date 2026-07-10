@@ -1026,3 +1026,29 @@ Stage Summary:
 - Backend Render maintenant en région frankfurt (Europe)
 - Health check /api/health fonctionnel en production
 - URL inchangée : https://scolagest-backend.onrender.com
+
+---
+Task ID: vercel-setup
+Agent: Z.ai Code (tuteur principal)
+Task: Création projet Vercel + adaptation frontend pour production
+
+Work Log:
+- Vérification clé API Vercel (vcp_...) : ✓ valide, user DevOps FTCI, team FTECHCI (team_nmR04zzC0vipAQirsJKYiAs8)
+- Création projet Vercel "scolagest" :
+  - ID: prj_uz37c81B2yvenMgq1xYnM4kuVpxe
+  - Framework: nextjs
+  - RootDirectory: Frontend
+  - Dashboard: https://vercel.com/ftechci/scolagest
+- Adaptation Frontend/src/lib/api-client.ts :
+  - Ajout API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL (URL backend Render en prod)
+  - Fonction buildUrl() remplace withTransformPort() : utilise API_BASE_URL en prod, XTransformPort en dev
+  - 2 occurrences de withTransformPort remplacées par buildUrl
+  - buildApiUrl() mis à jour pour utiliser buildUrl
+- Mise à jour Frontend/.env.example : documentation NEXT_PUBLIC_API_BASE_URL (prod vs dev)
+- Lint : 0 erreur
+- Commit + push : 0da4070 "feat: support URL backend configurable pour déploiement Vercel"
+
+Stage Summary:
+- Projet Vercel créé, en attente connexion manuelle du dépôt GitHub par l'utilisateur
+- Code frontend adapté : support double mode (prod Render URL / dev Caddy gateway)
+- En attente OK utilisateur pour : configurer env vars Vercel + déclencher déploiement
