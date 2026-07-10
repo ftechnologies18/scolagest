@@ -1,0 +1,40 @@
+name: Deploy Backend to Render
+
+# Déploie le backend sur Render UNIQUEMENT quand des fichiers du dossier backend/ changent.
+# Vercel gère le frontend séparément (avec vercel.json ignoredBuildStep pour filtrer).
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+
+jobs:
+  deploy:
+    name: Trigger Render Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SERVICE_ID: srv-d98mdrv7f7vs73bdlm60
+        run: |
+          echo "Déclenchement du déploiement Render pour le backend..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://api.render.com/v1/services/$SERVICE_ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            -d '{}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          if [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "200" ]; then
+            echo "✓ Déploiement Render déclenché avec succès"
+          else
+            echo "✗ Échec du déploiement Render"
+            exit 1
+          fi
