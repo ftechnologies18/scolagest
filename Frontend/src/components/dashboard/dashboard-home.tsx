@@ -163,7 +163,6 @@ function roleLabel(role: string | null): string {
     CAISSIER: "Caissier(ère)",
     COMPTABLE: "Comptable",
     DIRECTION: "Direction",
-    CENSEUR: "Censeur",
     SECRETARIAT: "Secrétariat",
     PARENT: "Parent / Tuteur",
   };

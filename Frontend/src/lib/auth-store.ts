@@ -22,7 +22,6 @@ export type Role =
   | "CAISSIER"
   | "COMPTABLE"
   | "DIRECTION"
-  | "CENSEUR"
   | "SECRETARIAT"
   | "PARENT";
 

@@ -123,7 +123,6 @@ export const NAV_GROUPS: NavGroup[] = [
           "ADMINISTRATEUR",
           "DIRECTION",
           "COMPTABLE",
-          "CENSEUR",
           "SECRETARIAT",
         ],
       },
@@ -184,7 +183,6 @@ function roleLabel(role: string | null): string {
     CAISSIER: "Caissier(ère)",
     COMPTABLE: "Comptable",
     DIRECTION: "Direction",
-    CENSEUR: "Censeur",
     SECRETARIAT: "Secrétariat",
     PARENT: "Parent / Tuteur",
   };

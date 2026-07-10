@@ -214,10 +214,6 @@ func seedUtilisateurs(db *gorm.DB) {
                         etbID uuid.UUID
                         role  models.RoleUtilisateur
                 }{{college.ID, models.RoleDirection}, {epv.ID, models.RoleDirection}}},
-                {"Diabaté", "Censeur", "censeur@scolagest.ci", "censeur123", models.RoleCenseur, []struct {
-                        etbID uuid.UUID
-                        role  models.RoleUtilisateur
-                }{{college.ID, models.RoleCenseur}}},
                 {"Yapi", "Secrétariat", "secretariat@scolagest.ci", "secretariat123", models.RoleSecretariat, []struct {
                         etbID uuid.UUID
                         role  models.RoleUtilisateur

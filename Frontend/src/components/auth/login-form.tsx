@@ -57,7 +57,6 @@ const DEMO_ACCOUNTS = [
     password: "comptable123",
   },
   { role: "Direction", email: "direction@scolagest.ci", password: "direction123" },
-  { role: "Censeur", email: "censeur@scolagest.ci", password: "censeur123" },
   {
     role: "Secrétariat",
     email: "secretariat@scolagest.ci",
