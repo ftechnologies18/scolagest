@@ -882,3 +882,29 @@ Stage Summary:
 - Token utilisé inline pour le push, NON stocké dans .git/config
 - Fichiers sensibles (.env, DB, screenshots) exclus du repo
 - ATTENTION SÉCURITÉ : le token GitHub a été partagé en clair dans la conversation — l'utilisateur doit le révoquer après utilisation
+
+---
+Task ID: monorepo
+Agent: Z.ai Code (tuteur principal)
+Task: Réorganisation du repo en véritable monorepo apps/web + apps/api
+
+Work Log:
+- Constat utilisateur : le frontend était éparpillé à la racine, pas de vrai monorepo
+- Création de la structure apps/web (frontend) + apps/api (backend) via git mv
+- Déplacement physique des fichiers non-suivis (node_modules, .next, .env, db) vers apps/web
+- Création package.json racine avec scripts monorepo (dev, lint, backend:dev, backend:build, db:push)
+- Adaptation apps/web/src/instrumentation.ts : chemins /backend → /apps/api (BACKEND_DIR, BACKEND_LOG, DB_PATH)
+- Adaptation mini-services/backend/start.sh : chemin backend → apps/api
+- Mise à jour .gitignore : chemins apps/web, apps/api (exclut .env, data, logs)
+- Mise à jour README.md : structure monorepo + commandes d'installation adaptées
+- Création apps/web/.env (DATABASE_URL avec nouveau chemin) + apps/api/.env (backend config)
+- Test : bun run dev depuis la racine démarre Next.js + backend Go automatiquement (instrumentation compile depuis apps/api)
+- Lint frontend : 0 erreur
+- Commit + push vers GitHub : ebcfcd5 "refactor: réorganiser en monorepo apps/web + apps/api"
+- Vérification GitHub : apps/ contient web/ et api/, package.json + README à la racine (HTTP 200)
+
+Stage Summary:
+- Monorepo conforme au cahier des charges (§7.2) : apps/web + apps/api + docs + package.json racine
+- 199 fichiers renommés via git mv (historique préservé)
+- Fonctionnement sandbox validé : bun run dev démarre les deux services
+- Push GitHub réussi : https://github.com/ftechnologies18/scolagest
