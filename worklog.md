@@ -739,3 +739,97 @@ Stage Summary:
 - Captures : p5-momo.png, p5-parametres.png, p5-compta.png
 - Lint frontend propre (0 erreur)
 - Les 4 modules ex-§3.2 sont fonctionnels
+
+---
+Task ID: 2
+Agent: frontend-styling-expert
+Task: Build parent portal (children + balances + payments + receipts) for Phase 6
+
+Work Log:
+- Read worklog.md (Phases 0-5 done) and explored existing code: `src/app/page.tsx`, `src/lib/auth-store.ts`, `src/lib/api-client.ts`, `src/lib/api-caisse.ts`, `src/lib/format.ts`, `src/components/caisse/recu-dialog.tsx`, `src/components/dashboard/dashboard-layout.tsx`, `src/components/wireframes/wf-parent-portal.tsx`, `src/app/globals.css`, plus shadcn primitives (Dialog, Card, Table, Badge, Avatar, Select).
+- Confirmed stack: Next.js 16 + TS strict + Tailwind 4 + shadcn/ui + React Query (retry:1, retryDelay:1500). Auth store exposes `user.role_global` ("PARENT" possible). Color convention: emerald primary, amber accents, rose for "en retard" — NO indigo/blue in new code. `formatFCFA` already exists in `@/lib/format`.
+- Created `src/lib/api-parent.ts` (220 lines): TypeScript types for the 5 parent endpoints (`EnfantParent`, `SoldeDetailParent`, `PaiementParent`, `EcheanceParent`, `RecuParent`), the `parentKeys` React Query key factory, and 5 wrappers `fetchEnfants`, `fetchSoldeEnfant`, `fetchPaiementsParent(eleveId?, limit)`, `fetchEcheancesParent`, `fetchRecuParent(paiementId)`. All rely on `apiGet` (auto JWT + `?XTransformPort=8080`).
+- Created `src/components/parent/recu-dialog.tsx` (~370 lines): printable receipt Dialog for parents. Accepts an already-loaded `PaiementParent` (no extra fetch needed), lazily fetches the official snapshot via `fetchRecuParent` (retry:0 to tolerate 404). Renders header (establishment + reçu N°), élève + classe, payment detail table, mode badge (ESPECES=emerald, CHEQUE=amber, MOBILE_MONEY=orange, VIREMENT=muted), solde restant (amber if >0, emerald if 0), QR placeholder, footer. "Imprimer / Télécharger PDF" → `window.print()`. Wrapped in `.recu-print` class.
+- Extended `src/app/globals.css` with a new `@media print .recu-print` rule (mirrors `.receipt-print` / `.bordereau-print`) so parent receipts print cleanly without the surrounding Dialog UI.
+- Created `src/components/parent/enfant-detail-dialog.tsx` (~330 lines): detail Dialog for one child. Header card (avatar, nom + classe badge + catégorie badge, établissement, "À jour"/"Solde à régulariser" indicator), 3 KPI cards (Attendu/Payé/Solde dû — emerald if 0, amber if >0), frais attendus table (type, libellé, attendu, payé, solde), échéances à venir table (libellé, date limite, montant, payé, statut badge), "Voir l'historique" button that closes the dialog, sets the historique filter to this child, and scrolls to the historique section.
+- Created `src/components/parent/parent-portal.tsx` (~1150 lines, the main component):
+  - Sticky header: ScolaGest logo, "Portail Parent · {établissement}", parent avatar/name, logout button (rose-tinted).
+  - Anchored nav (3 tabs): "Mes enfants", "Historique", "Échéances" — smooth scroll + active state.
+  - Welcome banner (emerald gradient with amber accents): "Bonjour {prénom} 👋", child count, total solde dû card (emerald if 0, amber if >0).
+  - Section 1 "Mes enfants": responsive grid (1/2/3 cols) of EnfantCard — avatar with initials, nom + classe badge + catégorie badge, établissement, payment progress bar (emerald/amber/rose by remaining %), prominent solde dû (emerald or amber), "Voir le détail" button → opens EnfantDetailDialog.
+  - Section 2 "Historique": paiements table (date, enfant + classe, motif, mode badge, montant, n° reçu, statut badge, "Reçu" button). Row click OR button → opens RecuDialogParent. Filter Select ("Tous les enfants" + each child).
+  - Section 3 "Échéances": vertical timeline list (color-coded: EN_RETARD=rose, PARTIEL=amber, A_VENIR=emerald) with calendar icon, libellé + statut badge, élève + classe, date limite + "dans X jours"/"en retard de X jours"/"aujourd'hui", reste à payer.
+  - Footer: 3 blocks (établissement, "Besoin d'aide ?" with contact info, ScolaGest credit) + legal notice.
+  - Robust empty/error/loading states everywhere (LoadingBlock, ErrorBlock with retry, EmptyState).
+  - All queries use `retry: 1, retryDelay: 1500` per spec.
+- Modified `src/app/page.tsx` (only role-routing logic added): if `isAuthenticated && user?.role_global === "PARENT"` → render `<ParentPortal />`; otherwise render `<DashboardLayout />` (staff dashboard, unchanged). Loading spinner and login form branches kept intact.
+- Ran `bun run lint` → exit 0 (no errors, no warnings).
+- Ran `bunx tsc --noEmit` → no errors in any new file (the 5 remaining TS errors are all pre-existing in `examples/websocket/*`, `skills/*`, `src/instrumentation.ts` — outside this task's scope).
+- Ran `bunx next build` → success (16.8s compile, 4/4 pages generated, exit 0). The portail parent bundles cleanly.
+
+Stage Summary:
+- Files created (5):
+  - `src/lib/api-parent.ts` — types + `parentKeys` + 5 fetch wrappers.
+  - `src/components/parent/parent-portal.tsx` — main single-page portal (header, banner, 3 anchored sections, footer, dialogs wiring).
+  - `src/components/parent/enfant-detail-dialog.tsx` — child balance detail dialog.
+  - `src/components/parent/recu-dialog.tsx` — printable receipt dialog (parent variant).
+- Files modified (2):
+  - `src/app/page.tsx` — added PARENT role routing to `ParentPortal` (3-line branch, no other change).
+  - `src/app/globals.css` — added `.recu-print` `@media print` rule (mirrors existing `.receipt-print`).
+- Design: friendly family-oriented portal (rounded-2xl cards, soft emerald gradient banner, warm "Bonjour 👋"), emerald=à jour / amber=solde>0 / rose=en retard, FCFA formatting via `Intl.NumberFormat('fr-FR')`. NO indigo/blue introduced. Responsive (cards stack on mobile, table scrolls horizontally). Lucide icons: Users, Wallet, CalendarClock, Receipt, Phone, Download, ChevronRight, GraduationCap, CheckCircle2, AlertTriangle, Loader2, AlertCircle, Building2, Mail, RefreshCw, Heart, LogOut.
+- Architecture decisions:
+  - Single-page layout (no sidebar) per spec — parents don't navigate, they scroll.
+  - The receipt dialog works from the already-loaded `PaiementParent` (no double-fetch); only the official snapshot is fetched lazily.
+  - "Voir l'historique" from the child detail dialog wires up via callback: closes detail, sets `filterEleveId`, smooth-scrolls to historique section.
+  - All 4 list/detail queries gracefully degrade: loading spinners, error blocks with retry button, empty states with reassuring copy ("Aucun enfant rattaché", "Aucun paiement pour le moment", "Aucune échéance à venir — Merci !").
+- Backend contract assumed (parallel work): `/api/parent/enfants`, `/api/parent/enfants/:id/solde`, `/api/parent/paiements?eleve_id=&limit=`, `/api/parent/paiements/:id/recu`, `/api/parent/echeances`. Frontend ready to consume as soon as the Go handlers ship.
+- Lint: 0 errors. Build: success. Phase 6 (FINAL phase) frontend is complete.
+
+---
+Task ID: 1
+Agent: Z.ai Code (tuteur principal)
+Task: Phase 6 - Backend Go (ParentService + handlers + seed parent)
+
+Work Log:
+- services/parent_service.go : 
+  - GetTuteurIDFromUser (récupère tuteur_id depuis l'utilisateur PARENT)
+  - ListEnfants (élèves via tuteur_id principal + TuteurEleve N:N, avec classe actuelle + solde)
+  - GetSoldeEnfant (solde détaillé avec contrôle d'accès parent)
+  - ListPaiements (historique tous enfants ou filtré, avec contrôle d'accès)
+  - ListEcheances (10 prochaines échéances tous enfants, triées par date)
+  - GetRecu (reçu avec contrôle d'accès parent)
+  - canAccessEleve (vérifie tuteur principal OU TuteurEleve)
+- handlers/parent.go : endpoints /api/parent/{enfants, enfants/:id/solde, paiements, echeances, paiements/:id/recu}
+  - Middleware RequireParent() : vérifie role PARENT (403 sinon)
+- seed/seed_parent.go : compte parent@scolagest.ci/parent123 lié au tuteur Kouassi Jean (2 enfants : Yann collège + Sarah EPV)
+- main.go : branchement ParentService + ParentHandler
+
+Stage Summary:
+- Endpoints Phase 6 : /api/parent/enfants, /api/parent/enfants/:id/solde, /api/parent/paiements, /api/parent/echeances, /api/parent/paiements/:id/recu
+- Contrôle d'accès : seuls les PARENT accèdent aux endpoints ; un parent ne voit que ses enfants
+- Tests curl : login parent → role PARENT ✓, 2 enfants (Yann 100k solde, Sarah 75k solde) ✓, 7 échéances ✓, 4 paiements ✓, admin → /parent = 403 ✓
+
+---
+Task ID: 3
+Agent: Z.ai Code (tuteur principal)
+Task: Phase 6 - Vérification navigateur E2E
+
+Work Log:
+- Build backend Go + démarrage Next.js (instrumentation)
+- Test API (curl) : tous les endpoints parent fonctionnels, contrôle d'accès validé
+- Test navigateur (agent-browser) :
+  - Login parent@scolagest.ci/parent123 → portail parent (pas le dashboard staff)
+  - Bandeau de bienvenue "Bonjour Jean 👋" + "Vous suivez 2 enfants"
+  - Section "Mes enfants" : 2 cartes (Yann Kouassi 6e A, Sarah Kouassi CP1) avec soldes + progressions
+  - Solde total 175 000 FCFA avec avertissement
+  - Section "Historique des paiements" : tableau avec filtre enfant, reçus cliquables
+  - Navigation par ancres (Mes enfants / Historique / Échéances)
+  - Aucune erreur console
+- VLM confirme : mise en page conviviale, cartes enfants avec progressions, solde total, navigation simple
+
+Stage Summary:
+- Phase 6 VALIDÉE end-to-end : portail parent fonctionnel avec enfants, soldes, paiements, reçus, échéances
+- Compte démo : parent@scolagest.ci / parent123 (Kouassi Jean, 2 enfants)
+- Captures : p6-parent-portal.png
+- Lint frontend propre (0 erreur)
+- PROJET SCOLAGEST V1 COMPLET — Toutes les phases (0 à 6) terminées

@@ -176,3 +176,28 @@
     display: none !important;
   }
 }
+
+/* ───────────────────────────────────────────────────────────────────────────── */
+/* Impression des reçus (Phase 6 — Portail parents)                              */
+/* Même logique que `.receipt-print` mais appliquée à `.recu-print` pour le      */
+/* portail parent.                                                              */
+/* ───────────────────────────────────────────────────────────────────────────── */
+@media print {
+  .recu-print,
+  .recu-print * {
+    visibility: visible;
+  }
+  .recu-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .recu-print .no-print {
+    display: none !important;
+  }
+}

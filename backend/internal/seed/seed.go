@@ -29,6 +29,7 @@ func Seed() {
         SeedEleves()
         SeedFrais()
         SeedPaiements()
+        SeedParent()
 
         log.Println("✓ Seed terminé")
 }

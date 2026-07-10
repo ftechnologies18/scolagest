@@ -51,6 +51,7 @@ func main() {
         momoSvc := services.NewMomoService()
         messageSvc := services.NewMessageService()
         userSvc := services.NewUserService()
+        parentSvc := services.NewParentService(soldeSvc)
 
         // 5. Handlers
         authHandler := handlers.NewAuthHandler(authSvc)
@@ -71,6 +72,7 @@ func main() {
         momoHandler := handlers.NewMomoHandler(momoSvc)
         messageHandler := handlers.NewMessageHandler(messageSvc)
         userHandler := handlers.NewUserHandler(userSvc)
+        parentHandler := handlers.NewParentHandler(parentSvc)
 
         // 6. Router Gin
         r := gin.Default()
@@ -111,6 +113,9 @@ func main() {
         momoHandler.RegisterRoutes(api, authMW)
         messageHandler.RegisterRoutes(api, authMW)
         userHandler.RegisterRoutes(api, authMW)
+
+        // Routes Phase 6 : portail parent (réservé au rôle PARENT)
+        parentHandler.RegisterRoutes(api, authMW)
 
         // Route de bienvenue
         r.GET("/", func(c *gin.Context) {

@@ -6,7 +6,9 @@
  * Bascule entre trois états selon le store d'authentification :
  *   1. `isLoading` : spinner centré pendant la reprise de session.
  *   2. Non authentifié : <LoginForm /> plein écran.
- *   3. Authentifié : <DashboardLayout /> qui gère la vue active en interne.
+ *   3. Authentifié :
+ *      - role_global === "PARENT" → <ParentPortal /> (portail parents, Phase 6).
+ *      - sinon (rôles staff)    → <DashboardLayout /> (tableau de bord existant).
  *
  * Le `auth-store` est réhydraté depuis localStorage (zustand persist) avant
  * le premier effet React. Si un token est présent, on tente un GET /api/auth/me
@@ -18,11 +20,13 @@ import { GraduationCap, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { LoginForm } from "@/components/auth/login-form";
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
+import { ParentPortal } from "@/components/parent/parent-portal";
 
 export default function Page() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
   const accessToken = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const stopLoading = useAuthStore((s) => s.stopLoading);
 
@@ -73,6 +77,11 @@ export default function Page() {
     return <LoginForm />;
   }
 
-  // État 3 : authentifié
+  // État 3a : parent → portail parent (Phase 6)
+  if (user?.role_global === "PARENT") {
+    return <ParentPortal />;
+  }
+
+  // État 3b : personnel (ADMINISTRATEUR / CAISSIER / COMPTABLE / DIRECTION / …)
   return <DashboardLayout />;
 }
