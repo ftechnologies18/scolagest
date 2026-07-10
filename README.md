@@ -74,43 +74,54 @@ ScolaGest couvre l'ensemble du parcours éducatif (Préscolaire → Primaire →
 
 ```
 scolagest/
-├── src/                          # Frontend Next.js (port 3000)
-│   ├── app/                      #   App Router (route / unique)
-│   ├── components/               #   Composants UI + wireframes + vues
-│   │   ├── ui/                   #     shadcn/ui
-│   │   ├── auth/                 #     Authentification
-│   │   ├── dashboard/            #     Layout + vues staff
-│   │   ├── eleves/               #     Module élèves
-│   │   ├── caisse/               #     Module caisse
-│   │   ├── frais/                #     Module frais
-│   │   ├── comptabilite/         #     Module comptabilité
-│   │   ├── mobile-money/         #     Module MoMo
-│   │   ├── parametres/           #     Paramètres + multi-sites
-│   │   ├── parent/               #     Portail parents
-│   │   ├── phase0/               #     Présentation Phase 0
-│   │   ├── reports/              #     Composants rapports (KPIs, charts)
-│   │   └── wireframes/           #     Maquettes Phase 0
-│   ├── lib/                      #   Client API, stores, types, utils
-│   └── instrumentation.ts        #   Hook démarrage backend Go
-│
-├── backend/                      # Backend Go (port 8080)
-│   ├── cmd/server/main.go        #   Point d'entrée
-│   ├── internal/
-│   │   ├── config/               #   Configuration (env)
-│   │   ├── database/             #   Connexion DB + migrations
-│   │   ├── models/               #   25 modèles GORM (7 domaines)
-│   │   ├── services/             #   17 services métier
-│   │   ├── handlers/             #   14 handlers HTTP (~50 endpoints)
-│   │   ├── middleware/           #   Auth JWT, RBAC, CORS
-│   │   ├── utils/                #   JWT, bcrypt, normalize
-│   │   └── seed/                 #   Données de démonstration
-│   └── .env.example
+├── apps/
+│   ├── web/                      # Frontend Next.js (port 3000)
+│   │   ├── src/
+│   │   │   ├── app/              #   App Router (route / unique)
+│   │   │   ├── components/       #   Composants UI + wireframes + vues
+│   │   │   │   ├── ui/           #     shadcn/ui
+│   │   │   │   ├── auth/         #     Authentification
+│   │   │   │   ├── dashboard/    #     Layout + vues staff
+│   │   │   │   ├── eleves/       #     Module élèves
+│   │   │   │   ├── caisse/       #     Module caisse
+│   │   │   │   ├── frais/        #     Module frais
+│   │   │   │   ├── comptabilite/ #     Module comptabilité
+│   │   │   │   ├── mobile-money/ #     Module MoMo
+│   │   │   │   ├── parametres/   #     Paramètres + multi-sites
+│   │   │   │   ├── parent/       #     Portail parents
+│   │   │   │   ├── phase0/       #     Présentation Phase 0
+│   │   │   │   ├── reports/      #     Composants rapports (KPIs, charts)
+│   │   │   │   └── wireframes/   #     Maquettes Phase 0
+│   │   │   ├── lib/              #   Client API, stores, types, utils
+│   │   │   └── instrumentation.ts #  Hook démarrage backend Go
+│   │   ├── public/
+│   │   ├── prisma/
+│   │   ├── package.json
+│   │   ├── next.config.ts
+│   │   ├── tsconfig.json
+│   │   ├── tailwind.config.ts
+│   │   └── .env.example
+│   │
+│   └── api/                      # Backend Go (port 8080)
+│       ├── cmd/server/main.go    #   Point d'entrée
+│       ├── internal/
+│       │   ├── config/           #   Configuration (env)
+│       │   ├── database/         #   Connexion DB + migrations
+│       │   ├── models/           #   25 modèles GORM (7 domaines)
+│       │   ├── services/         #   17 services métier
+│       │   ├── handlers/         #   14 handlers HTTP (~50 endpoints)
+│       │   ├── middleware/       #   Auth JWT, RBAC, CORS
+│       │   ├── utils/            #   JWT, bcrypt, normalize
+│       │   └── seed/             #   Données de démonstration
+│       ├── go.mod
+│       └── .env.example
 │
 ├── docs/
 │   └── data-model.md             # Modèle de données (MCD/MLD)
-├── mini-services/backend/        # Wrapper de démarrage backend (sandbox)
-├── .env.example
+├── mini-services/                # Wrappers de démarrage (sandbox)
+├── package.json                  # Package racine (scripts monorepo)
 ├── .gitignore
+├── .env.example
 └── README.md
 ```
 
@@ -136,28 +147,29 @@ cd scolagest
 ### 2. Configuration
 
 ```bash
-# Frontend
-cp .env.example .env
+# Frontend (apps/web)
+cp apps/web/.env.example apps/web/.env
 
-# Backend
-cp backend/.env.example backend/.env
-# Éditer backend/.env : changer JWT_SECRET en production
+# Backend (apps/api)
+cp apps/api/.env.example apps/api/.env
+# Éditer apps/api/.env : changer JWT_SECRET en production
 ```
 
 ### 3. Démarrage du frontend (Next.js)
 
 ```bash
-bun install
-bun run dev
+# Depuis la racine du monorepo
+bun install    # installe les dépendances de apps/web
+bun run dev    # lance le dev server Next.js sur le port 3000
 # → http://localhost:3000
 ```
 
-> ℹ️ Le hook `src/instrumentation.ts` démarre automatiquement le backend Go au lancement du dev server Next.js (compile le backend si nécessaire, puis le lance en processus enfant sur le port 8080).
+> ℹ️ Le hook `apps/web/src/instrumentation.ts` démarre automatiquement le backend Go au lancement du dev server Next.js (compile le backend si nécessaire, puis le lance en processus enfant sur le port 8080).
 
 ### 4. Démarrage manuel du backend (optionnel)
 
 ```bash
-cd backend
+cd apps/api
 go mod tidy
 go run ./cmd/server/
 # → http://localhost:8080/api/health

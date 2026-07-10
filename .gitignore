@@ -8,30 +8,34 @@ node_modules/
 !.yarn/releases
 !.yarn/versions
 
-# ===== Next.js =====
-/.next/
+# ===== Next.js (apps/web) =====
+/apps/web/.next/
 /out/
 /build
-next-env.d.ts
+apps/web/next-env.d.ts
 *.tsbuildinfo
 
-# ===== Backend Go =====
-/backend/data/
-/backend/backend.log
-/backend/scolagest.db
-/backend/scolagest.db-*
+# ===== Backend Go (apps/api) =====
+/apps/api/data/
+/apps/api/backend.log
+/apps/api/scolagest.db
+/apps/api/scolagest.db-*
 /tmp/scolagest-backend
 
 # ===== Variables d'environnement (SECRETS — ne jamais committer) =====
 .env
 .env.*
 !.env.example
-backend/.env
-backend/.env.*
-!backend/.env.example
+apps/web/.env
+apps/web/.env.*
+!apps/web/.env.example
+apps/api/.env
+apps/api/.env.*
+!apps/api/.env.example
 
 # ===== Base de données (données — régénérées par le seed) =====
 db/
+apps/web/db/
 *.db
 *.db-journal
 *.db-wal
@@ -42,7 +46,7 @@ db/
 dev.log
 dev.out.log
 server.log
-backend/backend.log
+apps/api/backend.log
 .zscripts/*.log
 
 # ===== Captures d'écran / artefacts de test =====
