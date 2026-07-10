@@ -935,3 +935,40 @@ Stage Summary:
 - Structure conforme à la préférence utilisateur
 - 200 fichiers renommés via git mv (historique préservé)
 - Push GitHub réussi : https://github.com/ftechnologies18/scolagest
+
+---
+Task ID: neon-migration
+Agent: Z.ai Code (tuteur principal)
+Task: Migration SQLite → Neon PostgreSQL 18
+
+Work Log:
+- Installation driver gorm.io/driver/postgres (go get)
+- config.go : ajout champ DatabaseURL + méthode IsPostgreSQL() (détecte "postgres://")
+- database.go : détection automatique du driver
+  - PostgreSQL si DATABASE_URL défini (commence par postgres://)
+  - SQLite sinon (fichier DB_PATH, dev local)
+- models/base.go : suppression default:(uuid()) (fonction SQLite-only inexistante sur PostgreSQL)
+  → UUID généré côté Go via hook BeforeCreate (déjà présent), compatible les deux DB
+- services/stats_service.go : strftime (SQLite) → to_char (PostgreSQL) pour extraction mois
+- cmd/server/main.go : seed non-bloquant sur PostgreSQL (goroutine) — le serveur démarre
+  immédiatement après AutoMigrate (~30s sur Neon), le seed tourne en arrière-plan (~2min)
+- Frontend/src/instrumentation.ts : passage DATABASE_URL au backend dans l'environnement spawné
+- backend/.env : connexion Neon configurée
+- backend/.env.example : documentation DATABASE_URL vs DB_PATH (2 modes)
+
+Tests effectués (validés avant push) :
+- Connexion à Neon PostgreSQL : ✓ "Connecté à PostgreSQL"
+- AutoMigrate 25 tables : ✓ "Base de données connectée + migrations appliquées"
+- Seed idempotent : ✓ établissements, cycles, classes, utilisateurs, élèves, frais, échéances, paiements, parent créés
+- Login admin : ✓ role=ADMINISTRATEUR
+- Login parent : ✓ role=PARENT
+- Dashboard KPIs : ✓ encaissé + taux de recouvrement calculés
+- Endpoints élèves/frais/paiements : ✓ données remontées depuis Neon
+
+Stage Summary:
+- Migration SQLite → Neon PostgreSQL 18 RÉUSSIE
+- Détection automatique du driver (SQLite dev / PostgreSQL prod)
+- Code compatible les deux bases (SQLite pour dev local, Neon pour production)
+- Push GitHub : commit 6b627ce "feat: migration SQLite → Neon PostgreSQL 18"
+- Note : le sandbox tue les processus entre les appels, empêchant le test navigateur complet
+  sur Neon dans cet environnement. La migration est prouvée fonctionnelle via tests API curl.
