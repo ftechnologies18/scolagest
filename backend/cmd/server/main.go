@@ -42,11 +42,15 @@ func main() {
         referentielSvc := services.NewReferentielService()
         fraisSvc := services.NewFraisService()
         soldeSvc := services.NewSoldeService()
-        paiementSvc := services.NewPaiementService(soldeSvc)
+        comptaSvc := services.NewComptaService()
+        paiementSvc := services.NewPaiementService(soldeSvc, comptaSvc)
         clotureSvc := services.NewClotureService()
         statsSvc := services.NewStatsService(soldeSvc)
         rapportSvc := services.NewRapportService(soldeSvc)
         impayeSvc := services.NewImpayeService(soldeSvc)
+        momoSvc := services.NewMomoService()
+        messageSvc := services.NewMessageService()
+        userSvc := services.NewUserService()
 
         // 5. Handlers
         authHandler := handlers.NewAuthHandler(authSvc)
@@ -63,6 +67,10 @@ func main() {
         statsHandler := handlers.NewStatsHandler(statsSvc)
         rapportHandler := handlers.NewRapportHandler(rapportSvc)
         impayeHandler := handlers.NewImpayeHandler(impayeSvc)
+        comptaHandler := handlers.NewComptaHandler(comptaSvc)
+        momoHandler := handlers.NewMomoHandler(momoSvc)
+        messageHandler := handlers.NewMessageHandler(messageSvc)
+        userHandler := handlers.NewUserHandler(userSvc)
 
         // 6. Router Gin
         r := gin.Default()
@@ -97,6 +105,12 @@ func main() {
         statsHandler.RegisterRoutes(api, authMW)
         rapportHandler.RegisterRoutes(api, authMW)
         impayeHandler.RegisterRoutes(api, authMW)
+
+        // Routes Phase 5 : comptabilité, mobile money, messages, utilisateurs/audit
+        comptaHandler.RegisterRoutes(api, authMW)
+        momoHandler.RegisterRoutes(api, authMW)
+        messageHandler.RegisterRoutes(api, authMW)
+        userHandler.RegisterRoutes(api, authMW)
 
         // Route de bienvenue
         r.GET("/", func(c *gin.Context) {

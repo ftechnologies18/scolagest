@@ -79,6 +79,7 @@ type TransactionMobileMoney struct {
         Eleve              *Eleve              `gorm:"foreignKey:EleveID" json:"eleve,omitempty"`
         EtablissementID    uuid.UUID           `gorm:"type:uuid;index;not null" json:"etablissement_id"`
         Etablissement      *Etablissement      `gorm:"foreignKey:EtablissementID" json:"etablissement,omitempty"`
+        FraisID            *uuid.UUID          `gorm:"type:uuid;index" json:"frais_id"`
         Provider           ProviderMomo        `gorm:"not null" json:"provider"`
         Montant            float64             `gorm:"type:decimal(14,2);not null" json:"montant"`
         TelephoneClient    string              `gorm:"not null" json:"telephone_client"`

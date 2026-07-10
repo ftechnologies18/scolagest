@@ -622,3 +622,394 @@ export interface ImpayesFilters {
   /** Si `true`, ne renvoyer que les élèves ayant au moins une échéance en retard. */
   echeance_passee?: boolean;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 5 — Modules avancés : Comptabilité générale, Mobile Money,
+// SMS/Email, Multi-sites & Paramètres.
+//
+// Types consommés par `src/lib/api-phase5.ts` et les composants
+// `src/components/dashboard/views/view-comptabilite.tsx`,
+// `view-mobile-money.tsx`, `view-parametres.tsx` ainsi que les dialogues
+// dédiés dans `src/components/comptabilite/`, `mobile-money/`, `parametres/`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── Comptabilité générale ───────────────────────────────────────────────────
+
+export type StatutExercice = "OUVERT" | "CLOTURE";
+
+export interface ExerciceComptable {
+  id: string;
+  etablissement_id: string;
+  libelle: string;
+  /** Date ISO. */
+  date_debut: string;
+  /** Date ISO. */
+  date_fin: string;
+  statut: StatutExercice;
+  annee_scolaire_id?: string | null;
+}
+
+export interface ExerciceDTO {
+  libelle: string;
+  date_debut: string;
+  date_fin: string;
+  annee_scolaire_id?: string | null;
+}
+
+export type TypeCompte = "ACTIF" | "PASSIF" | "PRODUIT" | "CHARGE";
+
+export interface CompteComptable {
+  id: string;
+  etablissement_id: string;
+  /** Numéro de compte (ex : 411, 512, 706…). */
+  numero: string;
+  libelle: string;
+  type: TypeCompte;
+  parent_id?: string | null;
+  parent?: { id: string; numero: string; libelle: string } | null;
+  actif: boolean;
+}
+
+export interface CompteDTO {
+  numero: string;
+  libelle: string;
+  type: TypeCompte;
+  parent_id?: string | null;
+  actif?: boolean;
+}
+
+export type TypeJournal = "CAISSE" | "BANQUE" | "OD" | "VENTES";
+
+export interface JournalComptable {
+  id: string;
+  etablissement_id: string;
+  code: string;
+  libelle: string;
+  type: TypeJournal;
+  compte_contrepartie_id?: string | null;
+}
+
+export type StatutEcriture = "BROUILLON" | "VALIDEE";
+
+export interface LigneEcriture {
+  id?: string;
+  ecriture_id?: string;
+  compte_id: string;
+  debit: number;
+  credit: number;
+  libelle?: string;
+  compte?: { id: string; numero: string; libelle: string } | null;
+}
+
+export interface EcritureComptable {
+  id: string;
+  exercice_id: string;
+  journal_id: string;
+  paiement_id?: string | null;
+  envoi_message_id?: string | null;
+  /** Date ISO. */
+  date_ecriture: string;
+  numero_piece: string;
+  libelle: string;
+  statut: StatutEcriture;
+  created_by?: string;
+  journal?: JournalComptable | null;
+  lignes?: LigneEcriture[];
+  paiement?: { id: string; numero_recu: string } | null;
+}
+
+export interface EcrituresQueryParams {
+  exercice_id?: string;
+  journal_id?: string;
+  date_debut?: string;
+  date_fin?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface EcrituresListResponse {
+  data: EcritureComptable[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface GrandLigneMouvement {
+  date: string;
+  numero_piece: string;
+  libelle: string;
+  debit: number;
+  credit: number;
+  /** Solde cumulé. */
+  solde: number;
+}
+
+export interface GrandLigneCompte {
+  compte_id: string;
+  numero: string;
+  libelle: string;
+  solde_debit_ouv: number;
+  solde_credit_ouv: number;
+  mouvements: GrandLigneMouvement[];
+  solde_debit_fin: number;
+  solde_credit_fin: number;
+}
+
+export interface GrandLivreResult {
+  comptes: GrandLigneCompte[];
+  total_debit: number;
+  total_credit: number;
+}
+
+export interface GrandLivreQueryParams {
+  exercice_id?: string;
+  compte_id?: string;
+  date_debut?: string;
+  date_fin?: string;
+}
+
+export interface BilanCompteLigne {
+  compte_id: string;
+  numero: string;
+  libelle: string;
+  montant: number;
+}
+
+export interface BilanSection {
+  total: number;
+  comptes: BilanCompteLigne[];
+}
+
+export interface BilanResult {
+  actif: BilanSection;
+  passif: BilanSection;
+  produits: BilanSection;
+  charges: BilanSection;
+  /** Résultat = produits.total - charges.total. */
+  resultat: number;
+}
+
+// ─── Mobile Money ────────────────────────────────────────────────────────────
+
+export type ProviderMomo = "ORANGE_MONEY" | "MTN_MONEY" | "WAVE";
+
+export type StatutTransactionMomo =
+  | "INITIEE"
+  | "EN_COURS"
+  | "REUSSIE"
+  | "ECHEC"
+  | "REMBOURSEE";
+
+export interface TransactionMomo {
+  id: string;
+  paiement_id?: string | null;
+  eleve_id: string;
+  etablissement_id: string;
+  provider: ProviderMomo;
+  montant: number;
+  telephone_client: string;
+  reference_externe: string;
+  statut: StatutTransactionMomo;
+  /** Payload JSON sérialisé par le backend. */
+  payload_requete?: string | null;
+  payload_reponse?: string | null;
+  date_initiation: string;
+  date_confirmation?: string | null;
+  erreur?: string | null;
+  eleve?: { id: string; nom: string; prenoms: string; identifiant_interne: string } | null;
+}
+
+export interface TransactionsMomoQueryParams {
+  statut?: StatutTransactionMomo;
+  provider?: ProviderMomo;
+  date_debut?: string;
+  date_fin?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface TransactionsMomoListResponse {
+  data: TransactionMomo[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface InitierMomoDTO {
+  eleve_id: string;
+  frais_id?: string | null;
+  montant: number;
+  provider: ProviderMomo;
+  telephone_client: string;
+}
+
+export interface WebhookMomo {
+  id: string;
+  provider: ProviderMomo;
+  reference_externe: string;
+  statut: string;
+  payload: string;
+  date_reception: string;
+  transaction_id?: string | null;
+  reconcilie?: boolean;
+}
+
+// ─── SMS / Email (Communication) ──────────────────────────────────────────────
+
+export type TypeMessage = "SMS" | "EMAIL";
+
+export type StatutEnvoi =
+  | "EN_ATTENTE"
+  | "ENVOYE"
+  | "ECHEC"
+  | "DELIVRE";
+
+export interface TemplateMessage {
+  id: string;
+  etablissement_id?: string | null;
+  code: string;
+  type: TypeMessage;
+  sujet?: string | null;
+  corps: string;
+  actif: boolean;
+}
+
+export interface TemplateMessageDTO {
+  code: string;
+  type: TypeMessage;
+  sujet?: string;
+  corps: string;
+  etablissement_id?: string | null;
+  actif?: boolean;
+}
+
+export interface EnvoiMessage {
+  id: string;
+  eleve_id?: string | null;
+  tuteur_id?: string | null;
+  etablissement_id: string;
+  template_id?: string | null;
+  type: TypeMessage;
+  destinataire: string;
+  contenu_genere: string;
+  statut: StatutEnvoi;
+  provider?: string;
+  reference_externe?: string;
+  date_creation: string;
+  date_envoi?: string | null;
+  erreur?: string | null;
+  eleve?: { id: string; nom: string; prenoms: string } | null;
+  tuteur?: { id: string; nom: string; prenoms: string } | null;
+  template?: { id: string; code: string; type: TypeMessage } | null;
+}
+
+export interface EnvoiMessageDTO {
+  eleve_id: string;
+  template_id: string;
+  type?: TypeMessage;
+  destinataire_override?: string;
+}
+
+export interface RelanceMasseDTO {
+  eleve_ids: string[];
+  template_id: string;
+}
+
+export interface RelanceMasseResult {
+  count: number;
+  envoi_ids: string[];
+}
+
+export interface EnvoisMessageQueryParams {
+  statut?: StatutEnvoi;
+  type?: TypeMessage;
+  date_debut?: string;
+  date_fin?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface EnvoisMessageListResponse {
+  data: EnvoiMessage[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+// ─── Multi-sites & Paramètres : Utilisateurs + Audit ────────────────────────
+
+export type RoleGlobal =
+  | "ADMINISTRATEUR"
+  | "CAISSIER"
+  | "COMPTABLE"
+  | "DIRECTION"
+  | "CENSEUR"
+  | "SECRETARIAT"
+  | "PARENT";
+
+export interface EtablissementAccess {
+  id: string;
+  utilisateur_id: string;
+  etablissement_id: string;
+  role: RoleGlobal;
+  etablissement?: { id: string; nom: string; ville?: string } | null;
+}
+
+export interface Utilisateur {
+  id: string;
+  nom: string;
+  prenoms: string;
+  email: string;
+  role_global?: RoleGlobal | null;
+  statut: string;
+  accesses?: EtablissementAccess[];
+}
+
+export interface UtilisateurDTO {
+  nom: string;
+  prenoms?: string;
+  email: string;
+  password?: string;
+  role_global?: RoleGlobal;
+  statut?: string;
+}
+
+export interface EtablissementAccessDTO {
+  etablissement_id: string;
+  role: RoleGlobal;
+}
+
+export interface UtilisateursQueryParams {
+  etablissement_id?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface JournalAudit {
+  id: string;
+  utilisateur_id?: string | null;
+  utilisateur?: { id: string; nom: string; prenoms: string; email: string } | null;
+  action: string;
+  entite: string;
+  entite_id?: string | null;
+  description?: string;
+  adresse_ip?: string;
+  /** Date ISO. */
+  date_action: string;
+}
+
+export interface AuditQueryParams {
+  entite?: string;
+  utilisateur_id?: string;
+  date_debut?: string;
+  date_fin?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface AuditListResponse {
+  data: JournalAudit[];
+  total: number;
+  page: number;
+  page_size: number;
+}

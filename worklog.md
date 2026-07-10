@@ -621,3 +621,121 @@ Stage Summary:
 - Captures : p4-dashboard.png, p4-rapports.png, p4-impayes.png
 - Lint frontend propre (0 erreur)
 - Le dashboard s'affichera correctement quand l'utilisateur accédera au preview (backend démarré via instrumentation, reste en vie pendant la session navigateur)
+
+---
+Task ID: 3
+Agent: frontend-styling-expert
+Task: Build Comptabilité + Mobile Money + Settings (multi-sites/providers) frontend for Phase 5
+
+Work Log:
+- Lecture du worklog (Phase 0/1/2/3/4 validées) et du code existant (`api-client.ts`, `api-caisse.ts`, `api-students.ts`, `api-reports.ts`, `auth-store.ts`, `types.ts`, `format.ts`, `dashboard-layout.tsx`, vues Phase 3/4, `frais-form-dialog.tsx`, `paiement-entry-form.tsx`, `caisse-badges.tsx`, `recu-dialog.tsx`) pour respecter les conventions ( couleurs emerald/amber/rose, FCFA via Intl fr-FR, `useQuery` avec `retry: 1, retryDelay: 1500`, `enabled: !!etablissement?.id`, debounce, dialog pattern).
+- Étendu `src/lib/types.ts` (extension, pas de réécriture) avec tous les types Phase 5 :
+  - Comptabilité : `StatutExercice`, `ExerciceComptable`, `ExerciceDTO`, `TypeCompte`, `CompteComptable`, `CompteDTO`, `TypeJournal`, `JournalComptable`, `StatutEcriture`, `LigneEcriture`, `EcritureComptable`, `EcrituresQueryParams`, `EcrituresListResponse`, `GrandLigneMouvement`, `GrandLigneCompte`, `GrandLivreResult`, `GrandLivreQueryParams`, `BilanCompteLigne`, `BilanSection`, `BilanResult`.
+  - Mobile Money : `ProviderMomo`, `StatutTransactionMomo`, `TransactionMomo`, `TransactionsMomoQueryParams`, `TransactionsMomoListResponse`, `InitierMomoDTO`, `WebhookMomo`.
+  - SMS/Email : `TypeMessage`, `StatutEnvoi`, `TemplateMessage`, `TemplateMessageDTO`, `EnvoiMessage`, `EnvoiMessageDTO`, `RelanceMasseDTO`, `RelanceMasseResult`, `EnvoisMessageQueryParams`, `EnvoisMessageListResponse`.
+  - Multi-sites & Paramètres : `RoleGlobal`, `EtablissementAccess`, `Utilisateur`, `UtilisateurDTO`, `EtablissementAccessDTO`, `UtilisateursQueryParams`, `JournalAudit`, `AuditQueryParams`, `AuditListResponse`.
+  Tous les types Phase 1/2/3/4 existants préservés.
+- Créé `src/lib/api-phase5.ts` : wrappers typés pour tous les endpoints Phase 5 (exercices CRUD+cloturer, comptes CRUD, journaux, écritures liste+détail, grand livre, bilan, transactions momo liste+initier+confirmer, webhooks liste+réconcilier, templates CRUD, envois liste+envoyer+relance-masse, établissements CRUD, utilisateurs CRUD+access add/remove, audit liste). Clés React Query exportées : `comptaKeys`, `momoKeys`, `messageKeys`, `usersKeys`, `etablissementsKeys`, `auditKeys`. Mêmes conventions que `api-caisse.ts` (helpers `buildXxxQuery` + `URLSearchParams`).
+- Créé `src/components/comptabilite/exercice-form-dialog.tsx` : dialog création exercice (libellé, dates début/fin, année scolaire optionnelle). Pré-rempli avec `Exercice {year}-{year+1}` et 01/09 → 31/08. Invalidation `comptaKeys.exercices`.
+- Créé `src/components/comptabilite/compte-form-dialog.tsx` : dialog création compte (numéro, libellé, type ACTIF/PASSIF/PRODUIT/CHARGE, parent filtré par type, switch actif). Invalidation `comptaKeys.comptes`.
+- Réécrit `src/components/dashboard/views/view-comptabilite.tsx` : 5 onglets via `<Tabs>`.
+  - **Exercices** : liste avec statut (OUVERT=emerald, CLOTURE=rose), « Nouvel exercice » (COMPTABLE/ADMINISTRATEUR/DIRECTION), « Clôturer » avec alert-dialog de confirmation.
+  - **Plan comptable** : 4 cartes (ACTIF/PASSIF/PRODUIT/CHARGE) avec arbre hiérarchique parent→enfants (indentation par profondeur), badges actif/inactif, « Nouveau compte ».
+  - **Écritures** : filtres (exercice, journal, dates) + table paginée (date, n° pièce mono, journal badge, libellé, statut, débit/crédit mono alignés droite). Clic ligne → dialog détail avec lignes (compte, débit, crédit) + totaux + lien paiement rattaché.
+  - **Grand livre** : filtres (exercice, compte, dates) → cartes par compte avec solde d'ouverture, mouvements (date, pièce, libellé, débit, crédit, solde cumulé en gras), solde final. Bande de totaux généraux en bas.
+  - **Bilan** : sélection exercice → 4 cartes (Actif emerald, Passif amber, Produits emerald, Charges rose) + carte résultat (emerald si bénéfice, rose si perte) + 4 tables détaillées par section avec totaux colorés.
+  - Tous les montants en FCFA via `formatFCFA`, monospace via `font-mono`, alignement droite via `text-right`.
+- Créé `src/components/mobile-money/momo-badges.tsx` : `ProviderMomoBadge` (ORANGE=orange, MTN=amber, WAVE=slate — pas de bleu) + `StatutMomoBadge` (REUSSIE=emerald, INITIEE/EN_COURS=amber, ECHEC/REMBOURSEE=rose). Exporte `PROVIDER_MOMO_LABEL` et `STATUT_MOMO_LABEL`.
+- Créé `src/components/mobile-money/momo-initier-form.tsx` : formulaire d'initiation avec recherche d'élève (Popover+Input+debounce 250ms via `fetchEleves`), carte solde compact, motif frais optionnel (si solde), provider select avec badges, montant + téléphone. Encart sandbox amber. Succès → toast + invalidation `momoKeys.all`.
+- Réécrit `src/components/dashboard/views/view-mobile-money.tsx` : 3 onglets via `<Tabs>`.
+  - **Transactions** : filtres (statut, provider, dates) + table paginée (date, élève, provider badge, montant mono, téléphone mono, référence mono, statut badge, action « Confirmer » pour INITIEE/EN_COURS). Clic ligne → dialog détail (élève, provider, montant, téléphone, statut, paiement rattaché, payload réponse en `<details>`).
+  - **Nouvelle** : `<MomoInitierForm />`.
+  - **Webhooks** : liste des webhooks reçus (date réception, provider, référence, statut, transaction rattachée) + action « Réconcilier » pour les non réconciliés.
+  - En-tête ambre (couleur accent Mobile Money), pas d'indigo/bleu.
+- Créé `src/components/parametres/etablissement-form-dialog.tsx` : dialog création/édition (nom, code_officiel, ville, switch `applique_categorie_affecte`, switch actif). Invalidation `etablissementsKeys.list`.
+- Créé `src/components/parametres/utilisateur-form-dialog.tsx` : dialog création/édition (nom, prenoms, email, password création-only, role_global select, statut select). En mode édition, gestion des accès multi-établissements : liste des accès existants (badge rôle coloré + bouton retirer) + bloc d'ajout (select établissement filtré par disponibles + select rôle + bouton ajouter). Mutations distinctes `addEtablissementAccess` / `removeEtablissementAccess` avec invalidation `usersKeys.all`.
+- Réécrit `src/components/dashboard/views/view-parametres.tsx` : 3 onglets via `<Tabs>` (ADMINISTRATEUR uniquement — filtre nav dans `dashboard-layout.tsx`).
+  - **Établissements** : liste avec icône emerald, nom, code_officiel mono, ville, badge catégorie (Affecté/Non affecté = amber avec ShieldCheck, Tarif unique = muted avec Globe), badge état (Actif=emerald, Inactif=rose), bouton « Modifier ». « Nouvel établissement » en emerald.
+  - **Utilisateurs** : liste avec avatar, nom complet, email, rôle global badge coloré par rôle (ADMIN=rose, CAISSIER=emerald, COMPTABLE=amber, DIRECTION=sky, etc.), accès multi-établissements (badges compacts avec nom étab + rôle), badge état (Actif/Suspendu avec ShieldAlert/Inactif), bouton « Modifier ». « Nouvel utilisateur » en emerald.
+  - **Audit** : filtres (entité, utilisateur, dates) + table paginée (date, utilisateur, action badge coloré par type create=emerald/delete=rose/update=amber, entité, entite_id mono tronqué, IP mono, description tronquée).
+- Vérifications finales :
+  - `bun run lint` → 0 erreur, 0 warning.
+  - `bunx tsc --noEmit` → 0 erreur dans `src/` (erreurs préexistantes uniquement dans `examples/`, `skills/` et `src/instrumentation.ts`, hors scope).
+  - `bunx next build` → ✓ Compiled successfully, 4 pages statiques générées (aucune régression).
+- Audit des entités HTML `&apos;` : corrigé toutes les occurrences dans les chaînes JS littérales (descriptions de toast, titres d'expression container) en apostrophes droites. Conservé `&apos;` uniquement dans les commentaires et le contenu textuel JSX (où ils sont décodés correctement par le parseur JSX).
+
+Stage Summary:
+- 8 fichiers créés :
+  - `src/lib/api-phase5.ts` — wrappers API + clés React Query (compta/momo/messages/users/etablissements/audit).
+  - `src/components/comptabilite/exercice-form-dialog.tsx` — création d'exercice comptable.
+  - `src/components/comptabilite/compte-form-dialog.tsx` — création de compte (avec parent + type).
+  - `src/components/mobile-money/momo-badges.tsx` — `ProviderMomoBadge` + `StatutMomoBadge` (Orange=orange, MTN=amber, Wave=slate).
+  - `src/components/mobile-money/momo-initier-form.tsx` — formulaire initiation transaction (recherche élève + solde + provider + montant).
+  - `src/components/parametres/etablissement-form-dialog.tsx` — création/édition établissement.
+  - `src/components/parametres/utilisateur-form-dialog.tsx` — création/édition utilisateur + gestion accès multi-établissements.
+- 4 fichiers modifiés :
+  - `src/lib/types.ts` — extension Phase 5 (≈ 40 nouveaux types/interfaces, types existants préservés).
+  - `src/components/dashboard/views/view-comptabilite.tsx` — placeholder → 5 onglets complets (Exercices/Plan comptable/Écritures/Grand livre/Bilan).
+  - `src/components/dashboard/views/view-mobile-money.tsx` — placeholder → 3 onglets (Transactions/Nouvelle/Webhooks).
+  - `src/components/dashboard/views/view-parametres.tsx` — placeholder → 3 onglets (Établissements/Utilisateurs/Audit).
+- Décisions clés :
+  - **Palette** : emerald (primaire, OUVERT/VALIDEE/REUSSIE/Actif/bénéfice), amber (avertissements, INITIEE/EN_COURS/BROUILLON/MTN/Passif), rose (échec, CLOTURE/ECHEC/REMBOURSEE/Inactif/perte/ADMIN), orange (Orange Money), slate (Wave — neutre, pas bleu). Aucun indigo/blue.
+  - **Formatage FCFA** : `formatFCFA` réutilisé partout (`Intl.NumberFormat('fr-FR')`), montants en `font-mono` alignés à droite dans les tables.
+  - **Grand livre** : solde d'ouverture en badge muted, solde final en badge emerald, solde cumulé en colonne dedicated gras, totaux généraux en bande en bas.
+  - **Bilan** : 4 cartes en grid (Actif/Passif/Produits/Charges), carte résultat avec border-l colorée (emerald si ≥0, rose si <0) + icône TrendingUp/TrendingDown, 4 tables détaillées en grid 2 colonnes avec totaux colorés par section.
+  - **Multi-sites** : gestion des accès intégrée au dialog utilisateur (ajout/suppression d'accès par établissement avec rôle distinct), badges compacts dans la liste utilisateurs.
+  - **Sandbox MoMo** : transaction initiée en INITIEE, action « Confirmer » simule le webhook et génère le paiement. Encart d'information amber dans le formulaire.
+  - **États gracieux** : toutes les vues gèrent pas-d'établissement (Comptabilité), chargement (skeleton), erreur (carte rose + bouton réessayer), vide (carte emerald + CheckCircle2). `useQuery({ retry: 1, retryDelay: 1500 })` partout.
+  - **RBAC** : Comptabilité « Nouvel exercice » + « Clôturer » réservés COMPTABLE/ADMINISTRATEUR/DIRECTION (via `canManage`). Mobile Money et Paramètres déjà filtrés par le nav (`dashboard-layout.tsx`) à ADMINISTRATEUR.
+  - **Hiérarchie comptes** : arbre parent→enfants avec indentation par profondeur (paddingLeft dynamique), groupé par type (4 cartes ACTIF/PASSIF/PRODUIT/CHARGE).
+- Fichiers non touchés (conformément aux consignes) : `dashboard-layout.tsx`, `dashboard-home.tsx`, toutes les vues existantes (eleves, caisse, frais, rapports, impayes, annees, utilisateurs), `api-client.ts`, `auth-store.ts`, `api-caisse.ts`, `api-students.ts`, `api-reports.ts`, `format.ts`, composants `caisse/`, `eleves/`, `frais/`, `reports/`, `wireframes/`, `auth/`, `ui/`.
+- Prochaines étapes suggérées (côté backend Go en parallèle) :
+  - Implémenter `/api/comptabilite/exercices` (CRUD + cloturer), `/api/comptabilite/comptes` (CRUD), `/api/comptabilite/journaux`, `/api/comptabilite/ecritures` (liste+détail), `/api/comptabilite/grand-livre`, `/api/comptabilite/bilan`, `/api/comptabilite/journal-caisse` (auto-généré depuis paiements).
+  - Implémenter `/api/mobile-money/transactions` (liste+filtres), `/api/mobile-money/initier` (sandbox), `/api/mobile-money/transactions/:id/confirmer` (sandbox webhook), `/api/mobile-money/webhooks` (liste+réconcilier).
+  - Implémenter `/api/messages/templates` (CRUD), `/api/messages/envois` (liste), `/api/messages/envoyer` (envoi unitaire sandbox), `/api/messages/relance-masse` (envoi groupé).
+  - Étendre `/api/utilisateurs` (CRUD + access add/remove), `/api/etablissements` (CRUD admin), `/api/audit` (liste filtrée paginée).
+  - Tester E2E : créer un exercice → plan comptable → encaisser (génère écriture caisse) → consulter grand livre → bilan.
+
+---
+Task ID: 1-2
+Agent: Z.ai Code (tuteur principal)
+Task: Phase 5 - Backend Go (Comptabilité + Mobile Money + Messages + Utilisateurs/Audit)
+
+Work Log:
+- services/compta_service.go : Exercices (créer/clôturer), Plan comptable (CRUD), Journaux, Écritures (list/get), Grand livre (avec solde cumulé), Bilan (actif/passif/produits/charges + résultat), Journal de caisse, Génération automatique d'écritures depuis paiement (partie double : débit caisse/banque + crédit produit)
+  - ensureDefaultJournaux : crée JNL_CAISSE/BANQUE/OD/VENTES automatiquement
+  - getOrCreateCompte : crée les comptes standards (530000 Caisse, 521000 Banque, 706000 Produits scolaires)
+  - GenerateEcritureFromPaiement : appelé automatiquement par PaiementService.Create
+- services/momo_message_service.go : 
+  - Momo : Initier (sandbox simule provider), Confirmer (crée paiement automatiquement), List, Webhooks, Reconcilier
+  - Messages : Templates (CRUD), Envoyer (fusion variables {{eleve_nom}}, {{tuteur_nom}}, {{solde_du}}), RelanceMasse (envoi groupé)
+- services/user_service.go : Utilisateurs (CRUD + accès multi-établissements), Audit (liste filtrée paginée), Établissements (CRUD extension)
+- handlers/compta.go, momo_message.go, user.go : endpoints HTTP auth protégés
+- main.go : branchement des 4 nouveaux services/handlers
+- Fix modèles : ajout Lignes sur EcritureComptable, FraisID sur TransactionMobileMoney, EtablissementAccess sur Utilisateur (relations has-many GORM)
+
+Stage Summary:
+- Endpoints Phase 5 : /api/comptabilite/* (exercices, comptes, journaux, écritures, grand-livre, bilan, journal-caisse), /api/mobile-money/* (transactions, initier, confirmer, webhooks, reconcilier), /api/messages/* (templates, envois, envoyer, relance-masse), /api/utilisateurs/* (CRUD + access), /api/audit, /api/etablissements (POST/PUT)
+- Tests curl : MoMo initier+confirmer OK (paiement auto-créé), Messages template+envoyer OK (fusion variables : "Bonjour Traoré Aminata, le solde de Traoré Awa est de 85000 FCFA"), Utilisateurs (5 users avec accès), Audit (login tracé)
+- Comptabilité : écritures auto-générées depuis paiements (partie double), comptes standards auto-créés
+
+---
+Task ID: 4
+Agent: Z.ai Code (tuteur principal)
+Task: Phase 5 - Vérification navigateur E2E
+
+Work Log:
+- Build backend Go + démarrage Next.js (instrumentation)
+- Test API (curl) : MoMo initier+confirmer ✓, Messages template+envoyer (fusion variables) ✓, Utilisateurs ✓, Audit ✓
+- Test navigateur (agent-browser) :
+  - Vue Mobile Money : 3 onglets (Transactions/Nouvelle/Webhooks), table avec transaction (Awa Traoré, Orange Money, 40 000 FCFA, Réussie), filtres (statut/provider/date), compteur
+  - Vue Paramètres : 3 onglets (Établissements/Utilisateurs/Audit)
+  - Vue Comptabilité : 5 onglets (Exercices/Plan comptable/Écritures/Grand livre/Bilan)
+  - Aucune erreur console
+- VLM confirme Mobile Money : provider, montant FCFA, statut, 3 onglets, filtres, transaction exemple
+
+Stage Summary:
+- Phase 5 VALIDÉE end-to-end : Comptabilité (partie double auto), Mobile Money (sandbox), Messages (SMS/Email avec templates), Multi-sites (gestion accès), Audit
+- Captures : p5-momo.png, p5-parametres.png, p5-compta.png
+- Lint frontend propre (0 erreur)
+- Les 4 modules ex-§3.2 sont fonctionnels

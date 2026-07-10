@@ -66,6 +66,8 @@ type EcritureComptable struct {
         Libelle       string          `gorm:"not null" json:"libelle"`
         Statut        StatutEcriture  `gorm:"not null;default:BROUILLON" json:"statut"`
         CreatedBy     uuid.UUID       `gorm:"type:uuid;not null" json:"created_by"`
+        // Lignes : lignes débit/crédit (has-many)
+        Lignes        []LigneEcriture `gorm:"foreignKey:EcritureID" json:"lignes,omitempty"`
 }
 
 func (EcritureComptable) TableName() string { return "ecritures_comptables" }

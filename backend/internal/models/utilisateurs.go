@@ -21,6 +21,8 @@ type Utilisateur struct {
         Statut             StatutUtilisateur `gorm:"not null;default:ACTIF" json:"statut"`
         DerniereConnexion  *time.Time       `json:"derniere_connexion"`
         TentativesEchouees int              `gorm:"not null;default:0" json:"-"`
+        // EtablissementAccess : accès par établissement (multi-sites)
+        EtablissementAccess []EtablissementAccess `gorm:"foreignKey:UtilisateurID" json:"etablissement_access,omitempty"`
 }
 
 func (Utilisateur) TableName() string { return "utilisateurs" }

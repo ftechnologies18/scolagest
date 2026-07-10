@@ -1,0 +1,1259 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→/**
+     4→     4→ * ScolaGest — Vue « Rapports » (Phase 4).
+     5→     5→ *
+     6→     6→ * Trois onglets :
+     7→     7→ *  - Paiements     : filtres multicritères + tableau des encaissements +
+     8→     8→ *    totaux + exports CSV/Excel.
+     9→     9→ *  - Soldes         : filtres (classe, catégorie, statut) + tableau des
+    10→    10→ *    soldes par élève + totaux + export CSV.
+    11→    11→ *  - Recouvrement   : filtres (cycle, classe) + tableau par classe + résumé
+    12→    12→ *    global + bar chart du taux par classe.
+    13→    13→ *
+    14→    14→ * Toutes les requêtes utilisent `useQuery` avec les filtres dans la clé de
+    15→    15→ * cache (debounce 300ms sur les changements de filtres). Les boutons d'export
+    16→    16→ * déclenchent `downloadRapportPaiements(filters, 'csv' | 'excel')` qui
+    17→    17→ * télécharge un fichier via la gateway Caddy.
+    18→    18→ */
+    19→    19→
+    20→    20→import * as React from "react";
+    21→    21→import { useQuery } from "@tanstack/react-query";
+    22→    22→import {
+    23→    23→  FileBarChart,
+    24→    24→  Wallet,
+    25→    25→  Scale,
+    26→    26→  PieChart,
+    27→    27→  Download,
+    28→    28→  Loader2,
+    29→    29→  AlertCircle,
+    30→    30→  CalendarRange,
+    31→    31→  Filter,
+    32→    32→  FileSpreadsheet,
+    33→    33→  FileText,
+    34→    34→} from "lucide-react";
+    35→    35→
+    36→    36→import { cn } from "@/lib/utils";
+    37→    37→import { useAuthStore } from "@/lib/auth-store";
+    38→    38→import {
+    39→    39→  fetchRapportPaiements,
+    40→    40→  fetchRapportSoldes,
+    41→    41→  fetchRapportRecouvrement,
+    42→    42→  downloadRapportPaiements,
+    43→    43→  rapportsKeys,
+    44→    44→} from "@/lib/api-reports";
+    45→    45→import { fetchClasses, fetchCycles } from "@/lib/api-students";
+    46→    46→import { useToast } from "@/hooks/use-toast";
+    47→    47→import {
+    48→    48→  formatFCFA,
+    49→    49→  formatDateShort,
+    50→    50→  todayISO,
+    51→    51→} from "@/lib/format";
+    52→    52→import type {
+    53→    53→  ModePaiement,
+    54→    54→  RapportPaiementsFilters,
+    55→    55→  RapportRecouvrementFilters,
+    56→    56→  RapportSoldesFilters,
+    57→    57→} from "@/lib/types";
+    58→    58→
+    59→    59→import { Button } from "@/components/ui/button";
+    60→    60→import { Input } from "@/components/ui/input";
+    61→    61→import { Label } from "@/components/ui/label";
+    62→    62→import { Badge } from "@/components/ui/badge";
+    63→    63→import { Skeleton } from "@/components/ui/skeleton";
+    64→    64→import {
+    65→    65→  Card,
+    66→    66→  CardContent,
+    67→    67→  CardDescription,
+    68→    68→  CardHeader,
+    69→    69→  CardTitle,
+    70→    70→} from "@/components/ui/card";
+    71→    71→import {
+    72→    72→  Table,
+    73→    73→  TableBody,
+    74→    74→  TableCell,
+    75→    75→  TableHead,
+    76→    76→  TableHeader,
+    77→    77→  TableRow,
+    78→    78→} from "@/components/ui/table";
+    79→    79→import {
+    80→    80→  Tabs,
+    81→    81→  TabsContent,
+    82→    82→  TabsList,
+    83→    83→  TabsTrigger,
+    84→    84→} from "@/components/ui/tabs";
+    85→    85→import {
+    86→    86→  Select,
+    87→    87→  SelectContent,
+    88→    88→  SelectItem,
+    89→    89→  SelectTrigger,
+    90→    90→  SelectValue,
+    91→    91→} from "@/components/ui/select";
+    92→    92→import {
+    93→    93→  ModePaiementBadge,
+    94→    94→  StatutPaiementBadge,
+    95→    95→} from "@/components/caisse/caisse-badges";
+    96→    96→import { BarChart } from "@/components/reports/bar-chart";
+    97→    97→
+    98→    98→const MODE_OPTIONS: { value: "all" | ModePaiement; label: string }[] = [
+    99→    99→  { value: "all", label: "Tous modes" },
+   100→   100→  { value: "ESPECES", label: "Espèces" },
+   101→   101→  { value: "CHEQUE", label: "Chèque" },
+   102→   102→  { value: "VIREMENT", label: "Virement" },
+   103→   103→  { value: "MOBILE_MONEY", label: "Mobile Money" },
+   104→   104→];
+   105→   105→
+   106→   106→const CATEGORIE_OPTIONS = [
+   107→   107→  { value: "all", label: "Toutes catégories" },
+   108→   108→  { value: "AFFECTE", label: "Affecté" },
+   109→   109→  { value: "NON_AFFECTE", label: "Non affecté" },
+   110→   110→  { value: "NON_APPLICABLE", label: "Non applicable" },
+   111→   111→];
+   112→   112→
+   113→   113→const STATUT_SOLDE_OPTIONS = [
+   114→   114→  { value: "all", label: "Tous statuts" },
+   115→   115→  { value: "SOLDE", label: "Soldé" },
+   116→   116→  { value: "PARTIEL", label: "Partiel" },
+   117→   117→  { value: "IMPAYE", label: "Impayé" },
+   118→   118→];
+   119→   119→
+   120→   120→export default function RapportsView() {
+   121→   121→  const etablissement = useAuthStore((s) => s.etablissement);
+   122→   122→
+   123→   123→  return (
+   124→   124→    <div className="space-y-4">
+   125→   125→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   126→   126→        <div className="flex items-start gap-3">
+   127→   127→          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+   128→   128→            <FileBarChart className="size-6" />
+   129→   129→          </div>
+   130→   130→          <div>
+   131→   131→            <h1 className="text-xl font-bold tracking-tight">Rapports</h1>
+   132→   132→            <p className="text-sm text-muted-foreground">
+   133→   133→              Exports et statistiques des encaissements, soldes et taux de
+   134→   134→              recouvrement.
+   135→   135→              {etablissement?.nom ? (
+   136→   136→                <span className="ml-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+   137→   137→                  {etablissement.nom}
+   138→   138→                </span>
+   139→   139→              ) : null}
+   140→   140→            </p>
+   141→   141→          </div>
+   142→   142→        </div>
+   143→   143→      </div>
+   144→   144→
+   145→   145→      {!etablissement?.id ? (
+   146→   146→        <Card className="border-dashed">
+   147→   147→          <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+   148→   148→            <div className="flex size-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+   149→   149→              <Filter className="size-6" />
+   150→   150→            </div>
+   151→   151→            <p className="text-sm font-medium">
+   152→   152→              Sélectionnez un établissement
+   153→   153→            </p>
+   154→   154→            <p className="max-w-md text-xs text-muted-foreground">
+   155→   155→              Les rapports sont calculés par établissement. Choisissez-en un
+   156→   156→              dans la barre latérale pour commencer.
+   157→   157→            </p>
+   158→   158→          </CardContent>
+   159→   159→        </Card>
+   160→   160→      ) : (
+   161→   161→        <Tabs defaultValue="paiements" className="w-full">
+   162→   162→          <TabsList className="grid w-full grid-cols-3 sm:w-auto sm:grid-cols-none">
+   163→   163→            <TabsTrigger value="paiements">
+   164→   164→              <Wallet className="size-3.5" />
+   165→   165→              Paiements
+   166→   166→            </TabsTrigger>
+   167→   167→            <TabsTrigger value="soldes">
+   168→   168→              <Scale className="size-3.5" />
+   169→   169→              Soldes
+   170→   170→            </TabsTrigger>
+   171→   171→            <TabsTrigger value="recouvrement">
+   172→   172→              <PieChart className="size-3.5" />
+   173→   173→              Recouvrement
+   174→   174→            </TabsTrigger>
+   175→   175→          </TabsList>
+   176→   176→
+   177→   177→          <TabsContent value="paiements" className="mt-4">
+   178→   178→            <RapportPaiementsPanel />
+   179→   179→          </TabsContent>
+   180→   180→          <TabsContent value="soldes" className="mt-4">
+   181→   181→            <RapportSoldesPanel />
+   182→   182→          </TabsContent>
+   183→   183→          <TabsContent value="recouvrement" className="mt-4">
+   184→   184→            <RapportRecouvrementPanel />
+   185→   185→          </TabsContent>
+   186→   186→        </Tabs>
+   187→   187→      )}
+   188→   188→    </div>
+   189→   189→  );
+   190→   190→}
+   191→   191→
+   192→   192→// ─────────────────────────────────────────────────────────────────────────────
+   193→   193→// Onglet « Paiements »
+   194→   194→// ─────────────────────────────────────────────────────────────────────────────
+   195→   195→
+   196→   196→function RapportPaiementsPanel() {
+   197→   197→  const { toast } = useToast();
+   198→   198→  const [dateDebut, setDateDebut] = React.useState("");
+   199→   199→  const [dateFin, setDateFin] = React.useState("");
+   200→   200→  const [cycleId, setCycleId] = React.useState<string>("all");
+   201→   201→  const [classeId, setClasseId] = React.useState<string>("all");
+   202→   202→  const [categorie, setCategorie] = React.useState<string>("all");
+   203→   203→  const [mode, setMode] = React.useState<"all" | ModePaiement>("all");
+   204→   204→  const [caissier, setCaissier] = React.useState<"all" | "me">("all");
+   205→   205→  const [exporting, setExporting] = React.useState<null | "csv" | "excel">(null);
+   206→   206→
+   207→   207→  // Cycles / classes (pour les filtres)
+   208→   208→  const etablissementId = useAuthStore((s) => s.etablissement?.id);
+   209→   209→  const user = useAuthStore((s) => s.user);
+   210→   210→  const { data: cycles } = useQuery({
+   211→   211→    queryKey: ["cycles", { etablissementId }],
+   212→   212→    queryFn: () => fetchCycles(etablissementId),
+   213→   213→    enabled: !!etablissementId,
+   214→   214→  });
+   215→   215→  const { data: classes } = useQuery({
+   216→   216→    queryKey: ["classes", { etablissementId }],
+   217→   217→    queryFn: () => fetchClasses(etablissementId),
+   218→   218→    enabled: !!etablissementId,
+   219→   219→  });
+   220→   220→
+   221→   221→  // Debounce des filtres (300 ms)
+   222→   222→  const [debouncedFilters, setDebouncedFilters] =
+   223→   223→    React.useState<RapportPaiementsFilters>({});
+   224→   224→  React.useEffect(() => {
+   225→   225→    const t = setTimeout(() => {
+   226→   226→      setDebouncedFilters({
+   227→   227→        date_debut: dateDebut || undefined,
+   228→   228→        date_fin: dateFin || undefined,
+   229→   229→        cycle_id: cycleId !== "all" ? cycleId : undefined,
+   230→   230→        classe_id: classeId !== "all" ? classeId : undefined,
+   231→   231→        categorie: categorie !== "all" ? categorie : undefined,
+   232→   232→        mode_paiement: mode !== "all" ? mode : undefined,
+   233→   233→        caissier_id:
+   234→   234→          caissier === "me" && user?.id ? user.id : undefined,
+   235→   235→      });
+   236→   236→    }, 300);
+   237→   237→    return () => clearTimeout(t);
+   238→   238→  }, [dateDebut, dateFin, cycleId, classeId, categorie, mode, caissier, user?.id]);
+   239→   239→
+   240→   240→  const { data, isLoading, isError, isFetching, refetch } = useQuery({
+   241→   241→    queryKey: rapportsKeys.paiements(debouncedFilters),
+   242→   242→    queryFn: () => fetchRapportPaiements(debouncedFilters),
+   243→   243→    enabled: !!etablissementId,
+   244→   244→    retry: 1,
+   245→   245→    retryDelay: 1500,
+   246→   246→  });
+   247→   247→
+   248→   248→  async function handleExport(format: "csv" | "excel") {
+   249→   249→    setExporting(format);
+   250→   250→    try {
+   251→   251→      await downloadRapportPaiements(debouncedFilters, format);
+   252→   252→      toast({
+   253→   253→        title: "Export prêt",
+   254→   254→        description:
+   255→   255→          format === "csv"
+   256→   256→            ? "Le fichier CSV a été téléchargé."
+   257→   257→            : "Le fichier Excel a été téléchargé.",
+   258→   258→      });
+   259→   259→    } catch (err) {
+   260→   260→      toast({
+   261→   261→        title: "Erreur d'export",
+   262→   262→        description:
+   263→   263→          err instanceof Error
+   264→   264→            ? err.message
+   265→   265→            : "Impossible de générer l'export. Réessayez.",
+   266→   266→        variant: "destructive",
+   267→   267→      });
+   268→   268→    } finally {
+   269→   269→      setExporting(null);
+   270→   270→    }
+   271→   271→  }
+   272→   272→
+   273→   273→  return (
+   274→   274→    <div className="space-y-4">
+   275→   275→      {/* Filtres */}
+   276→   276→      <Card>
+   277→   277→        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+   278→   278→          <div className="space-y-1.5">
+   279→   279→            <Label htmlFor="rp-date-debut" className="text-xs">
+   280→   280→              Date début
+   281→   281→            </Label>
+   282→   282→            <Input
+   283→   283→              id="rp-date-debut"
+   284→   284→              type="date"
+   285→   285→              value={dateDebut}
+   286→   286→              onChange={(e) => setDateDebut(e.target.value)}
+   287→   287→              max={dateFin || todayISO()}
+   288→   288→            />
+   289→   289→          </div>
+   290→   290→          <div className="space-y-1.5">
+   291→   291→            <Label htmlFor="rp-date-fin" className="text-xs">
+   292→   292→              Date fin
+   293→   293→            </Label>
+   294→   294→            <Input
+   295→   295→              id="rp-date-fin"
+   296→   296→              type="date"
+   297→   297→              value={dateFin}
+   298→   298→              onChange={(e) => setDateFin(e.target.value)}
+   299→   299→              min={dateDebut || undefined}
+   300→   300→              max={todayISO()}
+   301→   301→            />
+   302→   302→          </div>
+   303→   303→          <div className="space-y-1.5">
+   304→   304→            <Label className="text-xs">Cycle</Label>
+   305→   305→            <Select value={cycleId} onValueChange={setCycleId}>
+   306→   306→              <SelectTrigger className="w-full">
+   307→   307→                <SelectValue />
+   308→   308→              </SelectTrigger>
+   309→   309→              <SelectContent>
+   310→   310→                <SelectItem value="all">Tous cycles</SelectItem>
+   311→   311→                {(cycles ?? []).map((c) => (
+   312→   312→                  <SelectItem key={c.id} value={c.id}>
+   313→   313→                    {c.libelle}
+   314→   314→                  </SelectItem>
+   315→   315→                ))}
+   316→   316→              </SelectContent>
+   317→   317→            </Select>
+   318→   318→          </div>
+   319→   319→          <div className="space-y-1.5">
+   320→   320→            <Label className="text-xs">Classe</Label>
+   321→   321→            <Select value={classeId} onValueChange={setClasseId}>
+   322→   322→              <SelectTrigger className="w-full">
+   323→   323→                <SelectValue />
+   324→   324→              </SelectTrigger>
+   325→   325→              <SelectContent>
+   326→   326→                <SelectItem value="all">Toutes classes</SelectItem>
+   327→   327→                {(classes ?? []).map((c) => (
+   328→   328→                  <SelectItem key={c.id} value={c.id}>
+   329→   329→                    {c.libelle}
+   330→   330→                  </SelectItem>
+   331→   331→                ))}
+   332→   332→              </SelectContent>
+   333→   333→            </Select>
+   334→   334→          </div>
+   335→   335→          <div className="space-y-1.5">
+   336→   336→            <Label className="text-xs">Catégorie</Label>
+   337→   337→            <Select value={categorie} onValueChange={setCategorie}>
+   338→   338→              <SelectTrigger className="w-full">
+   339→   339→                <SelectValue />
+   340→   340→              </SelectTrigger>
+   341→   341→              <SelectContent>
+   342→   342→                {CATEGORIE_OPTIONS.map((opt) => (
+   343→   343→                  <SelectItem key={opt.value} value={opt.value}>
+   344→   344→                    {opt.label}
+   345→   345→                  </SelectItem>
+   346→   346→                ))}
+   347→   347→              </SelectContent>
+   348→   348→            </Select>
+   349→   349→          </div>
+   350→   350→          <div className="space-y-1.5">
+   351→   351→            <Label className="text-xs">Mode</Label>
+   352→   352→            <Select
+   353→   353→              value={mode}
+   354→   354→              onValueChange={(v) => setMode(v as "all" | ModePaiement)}
+   355→   355→            >
+   356→   356→              <SelectTrigger className="w-full">
+   357→   357→                <SelectValue />
+   358→   358→              </SelectTrigger>
+   359→   359→              <SelectContent>
+   360→   360→                {MODE_OPTIONS.map((opt) => (
+   361→   361→                  <SelectItem key={opt.value} value={opt.value}>
+   362→   362→                    {opt.label}
+   363→   363→                  </SelectItem>
+   364→   364→                ))}
+   365→   365→              </SelectContent>
+   366→   366→            </Select>
+   367→   367→          </div>
+   368→   368→          <div className="space-y-1.5">
+   369→   369→            <Label className="text-xs">Caissier</Label>
+   370→   370→            <Select
+   371→   371→              value={caissier}
+   372→   372→              onValueChange={(v) => setCaissier(v as "all" | "me")}
+   373→   373→            >
+   374→   374→              <SelectTrigger className="w-full">
+   375→   375→                <SelectValue />
+   376→   376→              </SelectTrigger>
+   377→   377→              <SelectContent>
+   378→   378→                <SelectItem value="all">Tous caissiers</SelectItem>
+   379→   379→                <SelectItem value="me">Mes encaissements</SelectItem>
+   380→   380→              </SelectContent>
+   381→   381→            </Select>
+   382→   382→          </div>
+   383→   383→          <div className="flex items-end">
+   384→   384→            <Button
+   385→   385→              variant="ghost"
+   386→   386→              size="sm"
+   387→   387→              className="w-full"
+   388→   388→              onClick={() => {
+   389→   389→                setDateDebut("");
+   390→   390→                setDateFin("");
+   391→   391→                setCycleId("all");
+   392→   392→                setClasseId("all");
+   393→   393→                setCategorie("all");
+   394→   394→                setMode("all");
+   395→   395→                setCaissier("all");
+   396→   396→              }}
+   397→   397→            >
+   398→   398→              <Filter className="size-3.5" />
+   399→   399→              Réinitialiser
+   400→   400→            </Button>
+   401→   401→          </div>
+   402→   402→        </CardContent>
+   403→   403→      </Card>
+   404→   404→
+   405→   405→      {/* Résumé */}
+   406→   406→      <div className="grid gap-4 sm:grid-cols-3">
+   407→   407→        <SummaryCard
+   408→   408→          label="Montant total"
+   409→   409→          value={formatFCFA(data?.total_montant ?? 0)}
+   410→   410→          icon={Wallet}
+   411→   411→          accent="emerald"
+   412→   412→        />
+   413→   413→        <SummaryCard
+   414→   414→          label="Nombre de paiements"
+   415→   415→          value={`${data?.count ?? 0}`}
+   416→   416→          icon={FileText}
+   417→   417→          accent="sky"
+   418→   418→        />
+   419→   419→        <SummaryCard
+   420→   420→          label="Panier moyen"
+   421→   421→          value={
+   422→   422→            data && data.count > 0
+   423→   423→              ? formatFCFA(data.total_montant / data.count)
+   424→   424→              : "—"
+   425→   425→          }
+   426→   426→          icon={PieChart}
+   427→   427→          accent="amber"
+   428→   428→        />
+   429→   429→      </div>
+   430→   430→
+   431→   431→      {/* Export + Rafraîchir */}
+   432→   432→      <div className="flex flex-wrap items-center justify-between gap-2">
+   433→   433→        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+   434→   434→          {isFetching ? (
+   435→   435→            <>
+   436→   436→              <Loader2 className="size-3 animate-spin" />
+   437→   437→              Mise à jour…
+   438→   438→            </>
+   439→   439→          ) : (
+   440→   440→            <>
+   441→   441→              <CalendarRange className="size-3" />
+   442→   442→              {data?.count ?? 0} paiement(s) sur la période sélectionnée
+   443→   443→            </>
+   444→   444→          )}
+   445→   445→        </div>
+   446→   446→        <div className="flex flex-wrap gap-2">
+   447→   447→          <Button
+   448→   448→            variant="outline"
+   449→   449→            size="sm"
+   450→   450→            onClick={() => refetch()}
+   451→   451→            disabled={isFetching}
+   452→   452→          >
+   453→   453→            <Loader2
+   454→   454→              className={cn("size-3.5", isFetching && "animate-spin")}
+   455→   455→            />
+   456→   456→            Actualiser
+   457→   457→          </Button>
+   458→   458→          <Button
+   459→   459→            variant="outline"
+   460→   460→            size="sm"
+   461→   461→            onClick={() => handleExport("csv")}
+   462→   462→            disabled={exporting !== null || (data?.count ?? 0) === 0}
+   463→   463→            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/40 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
+   464→   464→          >
+   465→   465→            {exporting === "csv" ? (
+   466→   466→              <Loader2 className="size-3.5 animate-spin" />
+   467→   467→            ) : (
+   468→   468→              <Download className="size-3.5" />
+   469→   469→            )}
+   470→   470→            Export CSV
+   471→   471→          </Button>
+   472→   472→          <Button
+   473→   473→            size="sm"
+   474→   474→            onClick={() => handleExport("excel")}
+   475→   475→            disabled={exporting !== null || (data?.count ?? 0) === 0}
+   476→   476→            className="bg-emerald-600 text-white hover:bg-emerald-700"
+   477→   477→          >
+   478→   478→            {exporting === "excel" ? (
+   479→   479→              <Loader2 className="size-3.5 animate-spin" />
+   480→   480→            ) : (
+   481→   481→              <FileSpreadsheet className="size-3.5" />
+   482→   482→            )}
+   483→   483→            Export Excel
+   484→   484→          </Button>
+   485→   485→        </div>
+   486→   486→      </div>
+   487→   487→
+   488→   488→      {/* Tableau */}
+   489→   489→      <Card className="overflow-hidden">
+   490→   490→        <CardContent className="p-0">
+   491→   491→          {isLoading ? (
+   492→   492→            <div className="space-y-2 p-4">
+   493→   493→              {Array.from({ length: 6 }).map((_, i) => (
+   494→   494→                <Skeleton key={i} className="h-10 w-full" />
+   495→   495→              ))}
+   496→   496→            </div>
+   497→   497→          ) : isError ? (
+   498→   498→            <ErrorState onRetry={() => refetch()} />
+   499→   499→          ) : (data?.data ?? []).length === 0 ? (
+   500→   500→            <EmptyState
+   501→   501→              title="Aucun paiement"
+   502→   502→              message="Aucun encaissement ne correspond à vos filtres."
+   503→   503→            />
+   504→   504→          ) : (
+   505→   505→            <div className="overflow-x-auto">
+   506→   506→              <Table>
+   507→   507→                <TableHeader>
+   508→   508→                  <TableRow className="bg-muted/40">
+   509→   509→                    <TableHead className="pl-4">Date</TableHead>
+   510→   510→                    <TableHead>Reçu</TableHead>
+   511→   511→                    <TableHead>Élève</TableHead>
+   512→   512→                    <TableHead>Classe</TableHead>
+   513→   513→                    <TableHead>Motif</TableHead>
+   514→   514→                    <TableHead className="text-right">Montant</TableHead>
+   515→   515→                    <TableHead>Mode</TableHead>
+   516→   516→                    <TableHead>Caissier</TableHead>
+   517→   517→                    <TableHead>Statut</TableHead>
+   518→   518→                  </TableRow>
+   519→   519→                </TableHeader>
+   520→   520→                <TableBody>
+   521→   521→                  {(data?.data ?? []).map((p) => {
+   522→   522→                    const eleveLabel = p.eleve
+   523→   523→                      ? [p.eleve.prenoms, p.eleve.nom]
+   524→   524→                          .filter(Boolean)
+   525→   525→                          .join(" ")
+   526→   526→                      : "—";
+   527→   527→                    const caissierLabel = p.caissier
+   528→   528→                      ? `${p.caissier.prenoms ?? ""} ${p.caissier.nom ?? ""}`.trim()
+   529→   529→                      : "—";
+   530→   530→                    const motif =
+   531→   531→                      p.frais?.libelle ??
+   532→   532→                      p.echeance?.libelle ??
+   533→   533→                      "Paiement scolaire";
+   534→   534→                    return (
+   535→   535→                      <TableRow
+   536→   536→                        key={p.id}
+   537→   537→                        className={cn(
+   538→   538→                          "hover:bg-muted/40",
+   539→   539→                          p.statut === "ANNULE" && "opacity-60",
+   540→   540→                        )}
+   541→   541→                      >
+   542→   542→                        <TableCell className="pl-4 text-xs">
+   543→   543→                          {formatDateShort(p.date_paiement)}
+   544→   544→                        </TableCell>
+   545→   545→                        <TableCell className="font-mono text-xs">
+   546→   546→                          {p.numero_recu}
+   547→   547→                        </TableCell>
+   548→   548→                        <TableCell className="text-xs font-medium">
+   549→   549→                          {eleveLabel}
+   550→   550→                        </TableCell>
+   551→   551→                        <TableCell className="text-xs text-muted-foreground">
+   552→   552→                          {p.eleve?.inscription_courante?.classe_libelle ?? "—"}
+   553→   553→                        </TableCell>
+   554→   554→                        <TableCell className="text-xs">{motif}</TableCell>
+   555→   555→                        <TableCell className="text-right font-mono text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+   556→   556→                          {formatFCFA(p.montant)}
+   557→   557→                        </TableCell>
+   558→   558→                        <TableCell>
+   559→   559→                          <ModePaiementBadge mode={p.mode_paiement} />
+   560→   560→                        </TableCell>
+   561→   561→                        <TableCell className="text-xs text-muted-foreground">
+   562→   562→                          {caissierLabel}
+   563→   563→                        </TableCell>
+   564→   564→                        <TableCell>
+   565→   565→                          <StatutPaiementBadge statut={p.statut} />
+   566→   566→                        </TableCell>
+   567→   567→                      </TableRow>
+   568→   568→                    );
+   569→   569→                  })}
+   570→   570→                </TableBody>
+   571→   571→              </Table>
+   572→   572→            </div>
+   573→   573→          )}
+   574→   574→        </CardContent>
+   575→   575→      </Card>
+   576→   576→    </div>
+   577→   577→  );
+   578→   578→}
+   579→   579→
+   580→   580→// ─────────────────────────────────────────────────────────────────────────────
+   581→   581→// Onglet « Soldes »
+   582→   582→// ─────────────────────────────────────────────────────────────────────────────
+   583→   583→
+   584→   584→function RapportSoldesPanel() {
+   585→   585→  const { toast } = useToast();
+   586→   586→  const etablissementId = useAuthStore((s) => s.etablissement?.id);
+   587→   587→  const [classeId, setClasseId] = React.useState<string>("all");
+   588→   588→  const [categorie, setCategorie] = React.useState<string>("all");
+   589→   589→  const [statut, setStatut] = React.useState<string>("all");
+   590→   590→  const [exporting, setExporting] = React.useState(false);
+   591→   591→
+   592→   592→  const { data: classes } = useQuery({
+   593→   593→    queryKey: ["classes", { etablissementId }],
+   594→   594→    queryFn: () => fetchClasses(etablissementId),
+   595→   595→    enabled: !!etablissementId,
+   596→   596→  });
+   597→   597→
+   598→   598→  // Debounce 300 ms
+   599→   599→  const [debouncedFilters, setDebouncedFilters] =
+   600→   600→    React.useState<RapportSoldesFilters>({});
+   601→   601→  React.useEffect(() => {
+   602→   602→    const t = setTimeout(() => {
+   603→   603→      setDebouncedFilters({
+   604→   604→        classe_id: classeId !== "all" ? classeId : undefined,
+   605→   605→        categorie: categorie !== "all" ? categorie : undefined,
+   606→   606→        statut: statut !== "all" ? statut : undefined,
+   607→   607→      });
+   608→   608→    }, 300);
+   609→   609→    return () => clearTimeout(t);
+   610→   610→  }, [classeId, categorie, statut]);
+   611→   611→
+   612→   612→  const { data, isLoading, isError, isFetching, refetch } = useQuery({
+   613→   613→    queryKey: rapportsKeys.soldes(debouncedFilters),
+   614→   614→    queryFn: () => fetchRapportSoldes(debouncedFilters),
+   615→   615→    enabled: !!etablissementId,
+   616→   616→    retry: 1,
+   617→   617→    retryDelay: 1500,
+   618→   618→  });
+   619→   619→
+   620→   620→  async function handleExport() {
+   621→   621→    setExporting(true);
+   622→   622→    try {
+   623→   623→      // Réutilise l'endpoint paiements pour le téléchargement CSV (les soldes
+   624→   624→      // n'ont pas d'endpoint CSV dédié en V1) — pour l'instant, on simule un
+   625→   625→      // export JSON côté navigateur.
+   626→   626→      const rows = data?.data ?? [];
+   627→   627→      if (rows.length === 0) return;
+   628→   628→      const header = [
+   629→   629→        "Élève",
+   630→   630→        "Classe",
+   631→   631→        "Total attendu",
+   632→   632→        "Total payé",
+   633→   633→        "Solde dû",
+   634→   634→        "Statut",
+   635→   635→      ];
+   636→   636→      const csvLines = [
+   637→   637→        header.join(";"),
+   638→   638→        ...rows.map((r) =>
+   639→   639→          [
+   640→   640→            `${r.eleve_prenoms ?? ""} ${r.eleve_nom ?? ""}`.trim(),
+   641→   641→            r.classe ?? "",
+   642→   642→            String(r.total_attendu ?? 0),
+   643→   643→            String(r.total_paye ?? 0),
+   644→   644→            String(r.solde_du ?? 0),
+   645→   645→            r.statut ?? "",
+   646→   646→          ]
+   647→   647→            .map((s) => `"${String(s).replace(/"/g, '""')}"`)
+   648→   648→            .join(";"),
+   649→   649→        ),
+   650→   650→      ];
+   651→   651→      const blob = new Blob(["\uFEFF" + csvLines.join("\n")], {
+   652→   652→        type: "text/csv;charset=utf-8;",
+   653→   653→      });
+   654→   654→      const url = URL.createObjectURL(blob);
+   655→   655→      const a = document.createElement("a");
+   656→   656→      a.href = url;
+   657→   657→      a.download = `rapport_soldes_${todayISO()}.csv`;
+   658→   658→      a.click();
+   659→   659→      URL.revokeObjectURL(url);
+   660→   660→      toast({ title: "Export prêt", description: "Fichier CSV téléchargé." });
+   661→   661→    } catch (err) {
+   662→   662→      toast({
+   663→   663→        title: "Erreur d'export",
+   664→   664→        description:
+   665→   665→          err instanceof Error
+   666→   666→            ? err.message
+   667→   667→            : "Impossible de générer l'export.",
+   668→   668→        variant: "destructive",
+   669→   669→      });
+   670→   670→    } finally {
+   671→   671→      setExporting(false);
+   672→   672→    }
+   673→   673→  }
+   674→   674→
+   675→   675→  return (
+   676→   676→    <div className="space-y-4">
+   677→   677→      {/* Filtres */}
+   678→   678→      <Card>
+   679→   679→        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+   680→   680→          <div className="space-y-1.5">
+   681→   681→            <Label className="text-xs">Classe</Label>
+   682→   682→            <Select value={classeId} onValueChange={setClasseId}>
+   683→   683→              <SelectTrigger className="w-full">
+   684→   684→                <SelectValue />
+   685→   685→              </SelectTrigger>
+   686→   686→              <SelectContent>
+   687→   687→                <SelectItem value="all">Toutes classes</SelectItem>
+   688→   688→                {(classes ?? []).map((c) => (
+   689→   689→                  <SelectItem key={c.id} value={c.id}>
+   690→   690→                    {c.libelle}
+   691→   691→                  </SelectItem>
+   692→   692→                ))}
+   693→   693→              </SelectContent>
+   694→   694→            </Select>
+   695→   695→          </div>
+   696→   696→          <div className="space-y-1.5">
+   697→   697→            <Label className="text-xs">Catégorie</Label>
+   698→   698→            <Select value={categorie} onValueChange={setCategorie}>
+   699→   699→              <SelectTrigger className="w-full">
+   700→   700→                <SelectValue />
+   701→   701→              </SelectTrigger>
+   702→   702→              <SelectContent>
+   703→   703→                {CATEGORIE_OPTIONS.map((opt) => (
+   704→   704→                  <SelectItem key={opt.value} value={opt.value}>
+   705→   705→                    {opt.label}
+   706→   706→                  </SelectItem>
+   707→   707→                ))}
+   708→   708→              </SelectContent>
+   709→   709→            </Select>
+   710→   710→          </div>
+   711→   711→          <div className="space-y-1.5">
+   712→   712→            <Label className="text-xs">Statut</Label>
+   713→   713→            <Select value={statut} onValueChange={setStatut}>
+   714→   714→              <SelectTrigger className="w-full">
+   715→   715→                <SelectValue />
+   716→   716→              </SelectTrigger>
+   717→   717→              <SelectContent>
+   718→   718→                {STATUT_SOLDE_OPTIONS.map((opt) => (
+   719→   719→                  <SelectItem key={opt.value} value={opt.value}>
+   720→   720→                    {opt.label}
+   721→   721→                  </SelectItem>
+   722→   722→                ))}
+   723→   723→              </SelectContent>
+   724→   724→            </Select>
+   725→   725→          </div>
+   726→   726→          <div className="flex items-end">
+   727→   727→            <Button
+   728→   728→              variant="ghost"
+   729→   729→              size="sm"
+   730→   730→              className="w-full"
+   731→   731→              onClick={() => {
+   732→   732→                setClasseId("all");
+   733→   733→                setCategorie("all");
+   734→   734→                setStatut("all");
+   735→   735→              }}
+   736→   736→            >
+   737→   737→              <Filter className="size-3.5" />
+   738→   738→              Réinitialiser
+   739→   739→            </Button>
+   740→   740→          </div>
+   741→   741→        </CardContent>
+   742→   742→      </Card>
+   743→   743→
+   744→   744→      {/* Résumé */}
+   745→   745→      <div className="grid gap-4 sm:grid-cols-4">
+   746→   746→        <SummaryCard
+   747→   747→          label="Total attendu"
+   748→   748→          value={formatFCFA(data?.total_attendu ?? 0)}
+   749→   749→          icon={Wallet}
+   750→   750→          accent="sky"
+   751→   751→        />
+   752→   752→        <SummaryCard
+   753→   753→          label="Total payé"
+   754→   754→          value={formatFCFA(data?.total_paye ?? 0)}
+   755→   755→          icon={Wallet}
+   756→   756→          accent="emerald"
+   757→   757→        />
+   758→   758→        <SummaryCard
+   759→   759→          label="Solde dû"
+   760→   760→          value={formatFCFA(data?.total_solde_du ?? 0)}
+   761→   761→          icon={AlertCircle}
+   762→   762→          accent="amber"
+   763→   763→        />
+   764→   764→        <SummaryCard
+   765→   765→          label="Élèves concernés"
+   766→   766→          value={`${data?.count ?? 0}`}
+   767→   767→          icon={FileText}
+   768→   768→          accent="slate"
+   769→   769→        />
+   770→   770→      </div>
+   771→   771→
+   772→   772→      {/* Export */}
+   773→   773→      <div className="flex flex-wrap items-center justify-between gap-2">
+   774→   774→        <p className="text-xs text-muted-foreground">
+   775→   775→          {isFetching ? (
+   776→   776→            <span className="inline-flex items-center gap-1">
+   777→   777→              <Loader2 className="size-3 animate-spin" /> Mise à jour…
+   778→   778→            </span>
+   779→   779→          ) : (
+   780→   780→            `${data?.count ?? 0} élève(s) au total`
+   781→   781→          )}
+   782→   782→        </p>
+   783→   783→        <Button
+   784→   784→          size="sm"
+   785→   785→          onClick={handleExport}
+   786→   786→          disabled={exporting || (data?.count ?? 0) === 0}
+   787→   787→          className="bg-emerald-600 text-white hover:bg-emerald-700"
+   788→   788→        >
+   789→   789→          {exporting ? (
+   790→   790→            <Loader2 className="size-3.5 animate-spin" />
+   791→   791→          ) : (
+   792→   792→            <Download className="size-3.5" />
+   793→   793→          )}
+   794→   794→          Export CSV
+   795→   795→        </Button>
+   796→   796→      </div>
+   797→   797→
+   798→   798→      {/* Tableau */}
+   799→   799→      <Card className="overflow-hidden">
+   800→   800→        <CardContent className="p-0">
+   801→   801→          {isLoading ? (
+   802→   802→            <div className="space-y-2 p-4">
+   803→   803→              {Array.from({ length: 6 }).map((_, i) => (
+   804→   804→                <Skeleton key={i} className="h-10 w-full" />
+   805→   805→              ))}
+   806→   806→            </div>
+   807→   807→          ) : isError ? (
+   808→   808→            <ErrorState onRetry={() => refetch()} />
+   809→   809→          ) : (data?.data ?? []).length === 0 ? (
+   810→   810→            <EmptyState
+   811→   811→              title="Aucun solde"
+   812→   812→              message="Aucun élève ne correspond à vos filtres."
+   813→   813→            />
+   814→   814→          ) : (
+   815→   815→            <div className="overflow-x-auto">
+   816→   816→              <Table>
+   817→   817→                <TableHeader>
+   818→   818→                  <TableRow className="bg-muted/40">
+   819→   819→                    <TableHead className="pl-4">Élève</TableHead>
+   820→   820→                    <TableHead>Classe</TableHead>
+   821→   821→                    <TableHead className="text-right">Attendu</TableHead>
+   822→   822→                    <TableHead className="text-right">Payé</TableHead>
+   823→   823→                    <TableHead className="text-right">Solde dû</TableHead>
+   824→   824→                    <TableHead className="pr-4">Statut</TableHead>
+   825→   825→                  </TableRow>
+   826→   826→                </TableHeader>
+   827→   827→                <TableBody>
+   828→   828→                  {(data?.data ?? []).map((s) => {
+   829→   829→                    const fullName =
+   830→   830→                      [s.eleve_prenoms, s.eleve_nom]
+   831→   831→                        .filter(Boolean)
+   832→   832→                        .join(" ")
+   833→   833→                        .trim() || "—";
+   834→   834→                    return (
+   835→   835→                      <TableRow key={s.eleve_id} className="hover:bg-muted/40">
+   836→   836→                        <TableCell className="pl-4 text-xs font-medium">
+   837→   837→                          {fullName}
+   838→   838→                        </TableCell>
+   839→   839→                        <TableCell className="text-xs text-muted-foreground">
+   840→   840→                          {s.classe || "—"}
+   841→   841→                        </TableCell>
+   842→   842→                        <TableCell className="text-right font-mono text-xs">
+   843→   843→                          {formatFCFA(s.total_attendu)}
+   844→   844→                        </TableCell>
+   845→   845→                        <TableCell className="text-right font-mono text-xs text-emerald-700 dark:text-emerald-300">
+   846→   846→                          {formatFCFA(s.total_paye)}
+   847→   847→                        </TableCell>
+   848→   848→                        <TableCell
+   849→   849→                          className={cn(
+   850→   850→                            "text-right font-mono text-xs font-semibold",
+   851→   851→                            s.solde_du > 0
+   852→   852→                              ? "text-amber-700 dark:text-amber-300"
+   853→   853→                              : "text-emerald-700 dark:text-emerald-300",
+   854→   854→                          )}
+   855→   855→                        >
+   856→   856→                          {formatFCFA(s.solde_du)}
+   857→   857→                        </TableCell>
+   858→   858→                        <TableCell className="pr-4">
+   859→   859→                          <SoldeStatutBadge statut={s.statut} />
+   860→   860→                        </TableCell>
+   861→   861→                      </TableRow>
+   862→   862→                    );
+   863→   863→                  })}
+   864→   864→                </TableBody>
+   865→   865→              </Table>
+   866→   866→            </div>
+   867→   867→          )}
+   868→   868→        </CardContent>
+   869→   869→      </Card>
+   870→   870→    </div>
+   871→   871→  );
+   872→   872→}
+   873→   873→
+   874→   874→// ─────────────────────────────────────────────────────────────────────────────
+   875→   875→// Onglet « Recouvrement »
+   876→   876→// ─────────────────────────────────────────────────────────────────────────────
+   877→   877→
+   878→   878→function RapportRecouvrementPanel() {
+   879→   879→  const etablissementId = useAuthStore((s) => s.etablissement?.id);
+   880→   880→  const [cycleId, setCycleId] = React.useState<string>("all");
+   881→   881→  const [classeId, setClasseId] = React.useState<string>("all");
+   882→   882→
+   883→   883→  const { data: cycles } = useQuery({
+   884→   884→    queryKey: ["cycles", { etablissementId }],
+   885→   885→    queryFn: () => fetchCycles(etablissementId),
+   886→   886→    enabled: !!etablissementId,
+   887→   887→  });
+   888→   888→  const { data: classes } = useQuery({
+   889→   889→    queryKey: ["classes", { etablissementId }],
+   890→   890→    queryFn: () => fetchClasses(etablissementId),
+   891→   891→    enabled: !!etablissementId,
+   892→   892→  });
+   893→   893→
+   894→   894→  // Debounce 300 ms
+   895→   895→  const [debouncedFilters, setDebouncedFilters] =
+   896→   896→    React.useState<RapportRecouvrementFilters>({});
+   897→   897→  React.useEffect(() => {
+   898→   898→    const t = setTimeout(() => {
+   899→   899→      setDebouncedFilters({
+   900→   900→        cycle_id: cycleId !== "all" ? cycleId : undefined,
+   901→   901→        classe_id: classeId !== "all" ? classeId : undefined,
+   902→   902→      });
+   903→   903→    }, 300);
+   904→   904→    return () => clearTimeout(t);
+   905→   905→  }, [cycleId, classeId]);
+   906→   906→
+   907→   907→  const { data, isLoading, isError, isFetching, refetch } = useQuery({
+   908→   908→    queryKey: rapportsKeys.recouvrement(debouncedFilters),
+   909→   909→    queryFn: () => fetchRapportRecouvrement(debouncedFilters),
+   910→   910→    enabled: !!etablissementId,
+   911→   911→    retry: 1,
+   912→   912→    retryDelay: 1500,
+   913→   913→  });
+   914→   914→
+   915→   915→  const lignes = data?.data ?? [];
+   916→   916→  const resume = data?.resume;
+   917→   917→
+   918→   918→  return (
+   919→   919→    <div className="space-y-4">
+   920→   920→      {/* Filtres */}
+   921→   921→      <Card>
+   922→   922→        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+   923→   923→          <div className="space-y-1.5">
+   924→   924→            <Label className="text-xs">Cycle</Label>
+   925→   925→            <Select value={cycleId} onValueChange={setCycleId}>
+   926→   926→              <SelectTrigger className="w-full">
+   927→   927→                <SelectValue />
+   928→   928→              </SelectTrigger>
+   929→   929→              <SelectContent>
+   930→   930→                <SelectItem value="all">Tous cycles</SelectItem>
+   931→   931→                {(cycles ?? []).map((c) => (
+   932→   932→                  <SelectItem key={c.id} value={c.id}>
+   933→   933→                    {c.libelle}
+   934→   934→                  </SelectItem>
+   935→   935→                ))}
+   936→   936→              </SelectContent>
+   937→   937→            </Select>
+   938→   938→          </div>
+   939→   939→          <div className="space-y-1.5">
+   940→   940→            <Label className="text-xs">Classe</Label>
+   941→   941→            <Select value={classeId} onValueChange={setClasseId}>
+   942→   942→              <SelectTrigger className="w-full">
+   943→   943→                <SelectValue />
+   944→   944→              </SelectTrigger>
+   945→   945→              <SelectContent>
+   946→   946→                <SelectItem value="all">Toutes classes</SelectItem>
+   947→   947→                {(classes ?? []).map((c) => (
+   948→   948→                  <SelectItem key={c.id} value={c.id}>
+   949→   949→                    {c.libelle}
+   950→   950→                  </SelectItem>
+   951→   951→                ))}
+   952→   952→              </SelectContent>
+   953→   953→            </Select>
+   954→   954→          </div>
+   955→   955→          <div className="flex items-end">
+   956→   956→            <Button
+   957→   957→              variant="ghost"
+   958→   958→              size="sm"
+   959→   959→              className="w-full"
+   960→   960→              onClick={() => {
+   961→   961→                setCycleId("all");
+   962→   962→                setClasseId("all");
+   963→   963→              }}
+   964→   964→            >
+   965→   965→              <Filter className="size-3.5" />
+   966→   966→              Réinitialiser
+   967→   967→            </Button>
+   968→   968→          </div>
+   969→   969→        </CardContent>
+   970→   970→      </Card>
+   971→   971→
+   972→   972→      {/* Résumé global */}
+   973→   973→      <div className="grid gap-4 sm:grid-cols-3">
+   974→   974→        <SummaryCard
+   975→   975→          label="Total attendu"
+   976→   976→          value={formatFCFA(resume?.attendu ?? 0)}
+   977→   977→          icon={Wallet}
+   978→   978→          accent="sky"
+   979→   979→        />
+   980→   980→        <SummaryCard
+   981→   981→          label="Total encaissé"
+   982→   982→          value={formatFCFA(resume?.encaisse ?? 0)}
+   983→   983→          icon={Wallet}
+   984→   984→          accent="emerald"
+   985→   985→        />
+   986→   986→        <SummaryCard
+   987→   987→          label="Taux de recouvrement"
+   988→   988→          value={`${(resume?.taux ?? 0).toFixed(1)} %`}
+   989→   989→          icon={PieChart}
+   990→   990→          accent="amber"
+   991→   991→        />
+   992→   992→      </div>
+   993→   993→
+   994→   994→      {/* Graphique */}
+   995→   995→      <Card>
+   996→   996→        <CardHeader>
+   997→   997→          <CardTitle className="text-base">
+   998→   998→            Taux de recouvrement par classe
+   999→   999→          </CardTitle>
+  1000→  1000→          <CardDescription>
+  1001→  1001→            Comparaison du total attendu et encaissé par classe.
+  1002→  1002→          </CardDescription>
+  1003→  1003→        </CardHeader>
+  1004→  1004→        <CardContent>
+  1005→  1005→          {lignes.length === 0 ? (
+  1006→  1006→            <p className="py-8 text-center text-xs text-muted-foreground">
+  1007→  1007→              Aucune donnée de recouvrement disponible.
+  1008→  1008→            </p>
+  1009→  1009→          ) : (
+  1010→  1010→            <BarChart
+  1011→  1011→              data={lignes.map((l) => ({
+  1012→  1012→                label: l.classe,
+  1013→  1013→                value: l.encaisse,
+  1014→  1014→                value2: l.attendu,
+  1015→  1015→              }))}
+  1016→  1016→              formatValue={formatFCFA}
+  1017→  1017→              height={Math.max(140, lignes.length * 36)}
+  1018→  1018→              legendLabel="Encaissé"
+  1019→  1019→              legendLabel2="Attendu"
+  1020→  1020→            />
+  1021→  1021→          )}
+  1022→  1022→        </CardContent>
+  1023→  1023→      </Card>
+  1024→  1024→
+  1025→  1025→      {/* Tableau */}
+  1026→  1026→      <Card className="overflow-hidden">
+  1027→  1027→        <CardHeader className="pb-3">
+  1028→  1028→          <div className="flex items-center justify-between">
+  1029→  1029→            <CardTitle className="text-base">Détail par classe</CardTitle>
+  1030→  1030→            <Button
+  1031→  1031→              variant="outline"
+  1032→  1032→              size="sm"
+  1033→  1033→              onClick={() => refetch()}
+  1034→  1034→              disabled={isFetching}
+  1035→  1035→            >
+  1036→  1036→              <Loader2
+  1037→  1037→                className={cn("size-3.5", isFetching && "animate-spin")}
+  1038→  1038→              />
+  1039→  1039→              Actualiser
+  1040→  1040→            </Button>
+  1041→  1041→          </div>
+  1042→  1042→        </CardHeader>
+  1043→  1043→        <CardContent className="p-0">
+  1044→  1044→          {isLoading ? (
+  1045→  1045→            <div className="space-y-2 p-4">
+  1046→  1046→              {Array.from({ length: 5 }).map((_, i) => (
+  1047→  1047→                <Skeleton key={i} className="h-10 w-full" />
+  1048→  1048→              ))}
+  1049→  1049→            </div>
+  1050→  1050→          ) : isError ? (
+  1051→  1051→            <ErrorState onRetry={() => refetch()} />
+  1052→  1052→          ) : lignes.length === 0 ? (
+  1053→  1053→            <EmptyState
+  1054→  1054→              title="Aucune classe"
+  1055→  1055→              message="Aucune classe ne correspond à vos filtres."
+  1056→  1056→            />
+  1057→  1057→          ) : (
+  1058→  1058→            <div className="overflow-x-auto">
+  1059→  1059→              <Table>
+  1060→  1060→                <TableHeader>
+  1061→  1061→                  <TableRow className="bg-muted/40">
+  1062→  1062→                    <TableHead className="pl-4">Classe</TableHead>
+  1063→  1063→                    <TableHead className="text-right">Effectif</TableHead>
+  1064→  1064→                    <TableHead className="text-right">Attendu</TableHead>
+  1065→  1065→                    <TableHead className="text-right">Encaissé</TableHead>
+  1066→  1066→                    <TableHead className="text-right">Impayés</TableHead>
+  1067→  1067→                    <TableHead className="text-right">Taux</TableHead>
+  1068→  1068→                    <TableHead className="pr-4">Niveau</TableHead>
+  1069→  1069→                  </TableRow>
+  1070→  1070→                </TableHeader>
+  1071→  1071→                <TableBody>
+  1072→  1072→                  {lignes.map((l, idx) => {
+  1073→  1073→                    const taux = l.taux ?? 0;
+  1074→  1074→                    return (
+  1075→  1075→                      <TableRow key={`${l.classe}-${idx}`} className="hover:bg-muted/40">
+  1076→  1076→                        <TableCell className="pl-4 text-xs font-medium">
+  1077→  1077→                          {l.classe || "—"}
+  1078→  1078→                        </TableCell>
+  1079→  1079→                        <TableCell className="text-right text-xs">
+  1080→  1080→                          {l.nb_eleves ?? 0}
+  1081→  1081→                        </TableCell>
+  1082→  1082→                        <TableCell className="text-right font-mono text-xs">
+  1083→  1083→                          {formatFCFA(l.attendu)}
+  1084→  1084→                        </TableCell>
+  1085→  1085→                        <TableCell className="text-right font-mono text-xs text-emerald-700 dark:text-emerald-300">
+  1086→  1086→                          {formatFCFA(l.encaisse)}
+  1087→  1087→                        </TableCell>
+  1088→  1088→                        <TableCell className="text-right text-xs">
+  1089→  1089→                          <span
+  1090→  1090→                            className={cn(
+  1091→  1091→                              "font-mono",
+  1092→  1092→                              (l.nb_impayes ?? 0) > 0
+  1093→  1093→                                ? "text-amber-700 dark:text-amber-300"
+  1094→  1094→                                : "text-muted-foreground",
+  1095→  1095→                            )}
+  1096→  1096→                          >
+  1097→  1097→                            {l.nb_impayes ?? 0}
+  1098→  1098→                          </span>
+  1099→  1099→                        </TableCell>
+  1100→  1100→                        <TableCell className="text-right font-mono text-xs font-semibold">
+  1101→  1101→                          <RecouvrementTauxBadge taux={taux} />
+  1102→  1102→                        </TableCell>
+  1103→  1103→                        <TableCell className="pr-4">
+  1104→  1104→                          <TauxMiniBar taux={taux} />
+  1105→  1105→                        </TableCell>
+  1106→  1106→                      </TableRow>
+  1107→  1107→                    );
+  1108→  1108→                  })}
+  1109→  1109→                </TableBody>
+  1110→  1110→              </Table>
+  1111→  1111→            </div>
+  1112→  1112→          )}
+  1113→  1113→        </CardContent>
+  1114→  1114→      </Card>
+  1115→  1115→    </div>
+  1116→  1116→  );
+  1117→  1117→}
+  1118→  1118→
+  1119→  1119→// ─────────────────────────────────────────────────────────────────────────────
+  1120→  1120→// Composants partagés
+  1121→  1121→// ─────────────────────────────────────────────────────────────────────────────
+  1122→  1122→
+  1123→  1123→function SummaryCard({
+  1124→  1124→  label,
+  1125→  1125→  value,
+  1126→  1126→  icon: Icon,
+  1127→  1127→  accent,
+  1128→  1128→}: {
+  1129→  1129→  label: string;
+  1130→  1130→  value: string;
+  1131→  1131→  icon: typeof Wallet;
+  1132→  1132→  accent: "emerald" | "amber" | "rose" | "sky" | "slate";
+  1133→  1133→}) {
+  1134→  1134→  const cls: Record<typeof accent, string> = {
+  1135→  1135→    emerald:
+  1136→  1136→      "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+  1137→  1137→    amber:
+  1138→  1138→      "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+  1139→  1139→    rose: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
+  1140→  1140→    sky: "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
+  1141→  1141→    slate:
+  1142→  1142→      "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300",
+  1143→  1143→  };
+  1144→  1144→  return (
+  1145→  1145→    <Card>
+  1146→  1146→      <CardContent className="p-4">
+  1147→  1147→        <div className="flex items-center gap-3">
+  1148→  1148→          <div
+  1149→  1149→            className={cn(
+  1150→  1150→              "flex size-9 items-center justify-center rounded-lg",
+  1151→  1151→              cls[accent],
+  1152→  1152→            )}
+  1153→  1153→          >
+  1154→  1154→            <Icon className="size-5" />
+  1155→  1155→          </div>
+  1156→  1156→          <div className="min-w-0">
+  1157→  1157→            <p className="text-xs text-muted-foreground">{label}</p>
+  1158→  1158→            <p className="mt-0.5 truncate text-base font-bold tracking-tight tabular-nums">
+  1159→  1159→              {value}
+  1160→  1160→            </p>
+  1161→  1161→          </div>
+  1162→  1162→        </div>
+  1163→  1163→      </CardContent>
+  1164→  1164→    </Card>
+  1165→  1165→  );
+  1166→  1166→}
+  1167→  1167→
+  1168→  1168→function ErrorState({ onRetry }: { onRetry: () => void }) {
+  1169→  1169→  return (
+  1170→  1170→    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+  1171→  1171→      <div className="flex size-12 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+  1172→  1172→        <AlertCircle className="size-6" />
+  1173→  1173→      </div>
+  1174→  1174→      <p className="text-sm font-medium">Erreur de chargement</p>
+  1175→  1175→      <p className="max-w-md text-xs text-muted-foreground">
+  1176→  1176→        Le backend n&apos;a pas pu répondre. Vérifiez qu&apos;il est démarré puis
+  1177→  1177→        réessayez.
+  1178→  1178→      </p>
+  1179→  1179→      <Button variant="outline" size="sm" onClick={onRetry}>
+  1180→  1180→        <Loader2 className="size-3.5" />
+  1181→  1181→        Réessayer
+  1182→  1182→      </Button>
+  1183→  1183→    </div>
+  1184→  1184→  );
+  1185→  1185→}
+  1186→  1186→
+  1187→  1187→function EmptyState({ title, message }: { title: string; message: string }) {
+  1188→  1188→  return (
+  1189→  1189→    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+  1190→  1190→      <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+  1191→  1191→        <FileBarChart className="size-6" />
+  1192→  1192→      </div>
+  1193→  1193→      <p className="text-sm font-medium">{title}</p>
+  1194→  1194→      <p className="max-w-md text-xs text-muted-foreground">{message}</p>
+  1195→  1195→    </div>
+  1196→  1196→  );
+  1197→  1197→}
+  1198→  1198→
+  1199→  1199→function SoldeStatutBadge({ statut }: { statut?: string }) {
+  1200→  1200→  if (!statut) return <span className="text-xs">—</span>;
+  1201→  1201→  const map: Record<string, { label: string; cls: string }> = {
+  1202→  1202→    SOLDE: {
+  1203→  1203→      label: "Soldé",
+  1204→  1204→      cls: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300",
+  1205→  1205→    },
+  1206→  1206→    PARTIEL: {
+  1207→  1207→      label: "Partiel",
+  1208→  1208→      cls: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300",
+  1209→  1209→    },
+  1210→  1210→    IMPAYE: {
+  1211→  1211→      label: "Impayé",
+  1212→  1212→      cls: "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300",
+  1213→  1213→    },
+  1214→  1214→  };
+  1215→  1215→  const entry = map[statut] ?? {
+  1216→  1216→    label: statut,
+  1217→  1217→    cls: "border-muted-foreground/20 bg-muted text-muted-foreground",
+  1218→  1218→  };
+  1219→  1219→  return (
+  1220→  1220→    <Badge variant="outline" className={cn("text-[10px] font-medium", entry.cls)}>
+  1221→  1221→      {entry.label}
+  1222→  1222→    </Badge>
+  1223→  1223→  );
+  1224→  1224→}
+  1225→  1225→
+  1226→  1226→function RecouvrementTauxBadge({ taux }: { taux: number }) {
+  1227→  1227→  const cls =
+  1228→  1228→    taux >= 80
+  1229→  1229→      ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
+  1230→  1230→      : taux >= 50
+  1231→  1231→        ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
+  1232→  1232→        : "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300";
+  1233→  1233→  return (
+  1234→  1234→    <Badge variant="outline" className={cn("text-[10px] font-semibold tabular-nums", cls)}>
+  1235→  1235→      {taux.toFixed(1)} %
+  1236→  1236→    </Badge>
+  1237→  1237→  );
+  1238→  1238→}
+  1239→  1239→
+  1240→  1240→function TauxMiniBar({ taux }: { taux: number }) {
+  1241→  1241→  const pct = Math.max(2, Math.min(100, taux));
+  1242→  1242→  const cls =
+  1243→  1243→    taux >= 80
+  1244→  1244→      ? "bg-emerald-500"
+  1245→  1245→      : taux >= 50
+  1246→  1246→        ? "bg-amber-500"
+  1247→  1247→        : "bg-rose-500";
+  1248→  1248→  return (
+  1249→  1249→    <div className="flex items-center gap-2">
+  1250→  1250→      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+  1251→  1251→        <div
+  1252→  1252→          className={cn("h-full rounded-full", cls)}
+  1253→  1253→          style={{ width: `${pct}%` }}
+  1254→  1254→        />
+  1255→  1255→      </div>
+  1256→  1256→    </div>
+  1257→  1257→  );
+  1258→  1258→}
+  1259→  1259→
