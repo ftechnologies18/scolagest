@@ -28,6 +28,7 @@ next-env.d.ts
 !.env.example
 backend/.env
 backend/.env.*
+!backend/.env.example
 
 # ===== Base de données (données — régénérées par le seed) =====
 db/
