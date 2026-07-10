@@ -31,7 +31,17 @@ func main() {
         log.Println("✓ Base de données connectée + migrations appliquées")
 
         // 3. Seed des données de démonstration (idempotent)
-        seed.Seed()
+        // En production (PostgreSQL/Neon), le seed est non-bloquant (goroutine)
+        // pour que le serveur démarre immédiatement. En dev (SQLite), il est synchrone.
+        if cfg.IsPostgreSQL() {
+            log.Println("⏳ Seed en arrière-plan (PostgreSQL)...")
+            go func() {
+                seed.Seed()
+                log.Println("✓ Seed terminé (arrière-plan)")
+            }()
+        } else {
+            seed.Seed()
+        }
 
         // 4. Services
         jwtSvc := services.NewJWTService(cfg)

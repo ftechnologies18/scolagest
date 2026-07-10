@@ -102,6 +102,8 @@ function spawnBackend(): boolean {
       ...process.env,
       PORT: String(BACKEND_PORT),
       DB_PATH: "/home/z/my-project/backend/data/scolagest.db",
+      DATABASE_URL:
+        "postgresql://neondb_owner:npg_kMjD3O1ldNIS@ep-hidden-pond-abyt31ac-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require",
       JWT_SECRET: "scolagest-dev-secret-change-in-production-2026",
       APP_ENV: "development",
     },

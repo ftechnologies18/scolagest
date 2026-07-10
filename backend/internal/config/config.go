@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -10,7 +11,8 @@ import (
 // Config contient la configuration de l'application chargée depuis l'environnement.
 type Config struct {
 	Port            string
-	DBPath          string
+	DBPath          string // chemin SQLite (dev local) — ignoré si DatabaseURL est défini
+	DatabaseURL     string // URL PostgreSQL (production Neon) — si défini, utilise PostgreSQL
 	JWTSecret       string
 	JWTAccessExpHr  int    // durée de vie du access token (heures)
 	JWTRefreshExpHr int    // durée de vie du refresh token (heures)
@@ -28,6 +30,7 @@ func Load() *Config {
 	App = &Config{
 		Port:            getEnv("PORT", "8080"),
 		DBPath:          getEnv("DB_PATH", "/home/z/my-project/backend/data/scolagest.db"),
+		DatabaseURL:     getEnv("DATABASE_URL", ""),
 		JWTSecret:       getEnv("JWT_SECRET", "scolagest-dev-secret-change-in-production"),
 		JWTAccessExpHr:  getEnvInt("JWT_ACCESS_EXP_HR", 1),
 		JWTRefreshExpHr: getEnvInt("JWT_REFRESH_EXP_HR", 168), // 7 jours
@@ -55,3 +58,9 @@ func getEnvInt(key string, fallback int) int {
 
 // IsDev indique si l'application tourne en mode développement.
 func (c *Config) IsDev() bool { return c.Env == "development" }
+
+// IsPostgreSQL indique si la base de données est PostgreSQL (vs SQLite).
+// Détecte via DATABASE_URL qui commence par "postgres".
+func (c *Config) IsPostgreSQL() bool {
+	return strings.HasPrefix(strings.ToLower(c.DatabaseURL), "postgres")
+}

@@ -4,6 +4,7 @@ import (
         "time"
 
         "github.com/google/uuid"
+        "github.com/scolagest/backend/internal/config"
         "github.com/scolagest/backend/internal/database"
         "github.com/scolagest/backend/internal/models"
 )
@@ -330,9 +331,13 @@ func (s *StatsService) computeEvolutionMensuelle(etablissementID uuid.UUID) []Ev
                 Montant float64
         }
         var rows []row
-        // SQLite : strftime pour extraire le mois
+        // Extraction du mois : SQLite utilise strftime, PostgreSQL utilise to_char
+        monthExpr := "strftime('%Y-%m', date_paiement)"
+        if config.App.IsPostgreSQL() {
+                monthExpr = "to_char(date_paiement, 'YYYY-MM')"
+        }
         database.DB.Model(&models.Paiement{}).
-                Select("strftime('%Y-%m', date_paiement) as mois, COALESCE(SUM(montant), 0) as montant").
+                Select(monthExpr+" as mois, COALESCE(SUM(montant), 0) as montant").
                 Where("etablissement_id = ? AND statut = ? AND date_paiement >= ?",
                         etablissementID, models.StatutPaiementValide, time.Now().AddDate(-1, 0, 0)).
                 Group("mois").
