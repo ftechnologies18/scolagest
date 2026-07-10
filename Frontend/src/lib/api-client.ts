@@ -1,21 +1,28 @@
 "use client";
 
 /**
- * ScolaGest — Client API pour le backend Go (port 8080)
+ * ScolaGest — Client API pour le backend Go.
  *
- * Toutes les requêtes passent par la gateway Caddy du monorepo. Caddy route
- * vers le backend Go (8080) ou le frontend Next.js (3000) selon la présence
- * du paramètre de query `XTransformPort=8080`. Ce client ajoute
- * automatiquement ce paramètre à chaque appel.
+ * Deux modes de fonctionnement :
+ * - **Production** : `NEXT_PUBLIC_API_BASE_URL` est défini (ex: https://scolagest-backend.onrender.com).
+ *   Les requêtes utilisent cette URL absolue directement.
+ * - **Développement (sandbox)** : `NEXT_PUBLIC_API_BASE_URL` n'est pas défini.
+ *   Les requêtes passent par la gateway Caddy via le paramètre `?XTransformPort=8080`.
  *
- * Le client attache également l'en-tête `Authorization: Bearer <token>` à
- * partir du `auth-store` (Zustand). En cas de 401, il tente un rafraîchissement
- * unique du token via `/api/auth/refresh` puis réessaie la requête initiale.
+ * Le client attache l'en-tête `Authorization: Bearer <token>` depuis le `auth-store`.
+ * En cas de 401, il tente un rafraîchissement unique du token puis réessaie.
  */
 
 import { useAuthStore } from "@/lib/auth-store";
 
 export const API_TRANSFORM_PORT = "8080";
+
+/**
+ * URL de base du backend en production (Render).
+ * En développement (sandbox), cette variable n'est pas définie → on utilise
+ * la gateway Caddy avec ?XTransformPort=8080.
+ */
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 /** Erreur typée levée par le client API. */
 export class ApiError extends Error {
@@ -30,8 +37,17 @@ export class ApiError extends Error {
   }
 }
 
-/** Ajoute `?XTransformPort=8080` (ou `&XTransformPort=8080`) au chemin. */
-function withTransformPort(path: string): string {
+/**
+ * Construit l'URL finale de la requête.
+ * - En production : préfixe avec API_BASE_URL (URL absolue du backend Render).
+ * - En dev : ajoute `?XTransformPort=8080` pour la gateway Caddy.
+ */
+function buildUrl(path: string): string {
+  if (API_BASE_URL) {
+    // Production : URL absolue du backend Render
+    return `${API_BASE_URL}${path}`;
+  }
+  // Dev sandbox : gateway Caddy avec XTransformPort
   const separator = path.includes("?") ? "&" : "?";
   return `${path}${separator}XTransformPort=${API_TRANSFORM_PORT}`;
 }
@@ -60,7 +76,7 @@ async function request<T>(
     skipRefresh = false,
   } = options;
 
-  const url = withTransformPort(path);
+  const url = buildUrl(path);
 
   const finalHeaders: Record<string, string> = {
     "Content-Type": "application/json",
@@ -175,9 +191,9 @@ export function apiDelete<T>(
   return request<T>(path, { ...options, method: "DELETE" });
 }
 
-/** Construit l'URL complète (avec XTransformPort) sans effectuer la requête. */
+/** Construit l'URL complète (production ou dev) sans effectuer la requête. */
 export function buildApiUrl(path: string): string {
-  return withTransformPort(path);
+  return buildUrl(path);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -197,7 +213,7 @@ export async function downloadFile(
   path: string,
   filename: string,
 ): Promise<boolean> {
-  const url = withTransformPort(path);
+  const url = buildUrl(path);
 
   const headers: Record<string, string> = {
     Accept: "*/*",
