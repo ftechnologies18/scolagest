@@ -858,3 +858,27 @@ Stage Summary:
 - 50+ endpoints API, 25 modèles, 60+ composants
 - 7 comptes démo fonctionnels (6 staff + 1 parent)
 - Aucune erreur de compilation, aucun warning lint, 0 erreur console
+
+---
+Task ID: github
+Agent: Z.ai Code (tuteur principal)
+Task: Création du monorepo GitHub et push du projet ScolaGest
+
+Work Log:
+- Configuration identité git : user.name=ftechnologies18, user.email=freelancetechnologies.ci@gmail.com
+- Création .gitignore complet (exclut .env, DB SQLite, node_modules, .next, logs, tool-results, skills, examples)
+- Création README.md détaillé (aperçu, fonctionnalités, architecture, structure, installation, comptes démo)
+- Création .env.example (frontend) + backend/.env.example (backend) avec valeurs de dev
+- Retrait des fichiers sensibles de l'index git : .env, backend/data/*.db, db/custom.db, tool-results/, examples/, download/
+- Commit principal : "feat: ScolaGest V1 — Application de Gestion & Caisse Scolaire" (message détaillé avec toutes les phases)
+- Création du repo GitHub via API : POST /user/repos → ftechnologies18/scolagest (public)
+- Push via token inline (non stocké dans .git/config) : main → main réussi
+- Nettoyage reflog + gc pour éviter toute trace du token
+- Vérifications API GitHub : repo OK, .env absent (404), README.md présent (200), backend/cmd/server/main.go présent (200)
+
+Stage Summary:
+- Repo GitHub : https://github.com/ftechnologies18/scolagest (public, 209 fichiers)
+- Identité commits : ftechnologies18 <freelancetechnologies.ci@gmail.com>
+- Token utilisé inline pour le push, NON stocké dans .git/config
+- Fichiers sensibles (.env, DB, screenshots) exclus du repo
+- ATTENTION SÉCURITÉ : le token GitHub a été partagé en clair dans la conversation — l'utilisateur doit le révoquer après utilisation
