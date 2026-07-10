@@ -4,11 +4,15 @@
   "private": true,
   "description": "ScolaGest — Application Web de Gestion & de Caisse Scolaire (monorepo)",
   "scripts": {
+    "predev": "cd Frontend && bun install",
     "dev": "cd Frontend && bun run dev",
+    "prebuild": "cd Frontend && bun install",
     "build": "cd Frontend && bun run build",
     "start": "cd Frontend && bun run start",
     "lint": "cd Frontend && bun run lint",
+    "predb:push": "cd Frontend && bun install",
     "db:push": "cd Frontend && bun run db:push",
+    "predb:generate": "cd Frontend && bun install",
     "db:generate": "cd Frontend && bun run db:generate",
     "backend:dev": "cd backend && go run ./cmd/server/",
     "backend:build": "cd backend && go build -o /tmp/scolagest-backend ./cmd/server/"
