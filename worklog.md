@@ -1006,3 +1006,23 @@ Stage Summary:
 - Authentification JWT fonctionnelle (login admin validé)
 - Free plan : service spin-down après 15 min d'inactivité, spin-up ~30s
 - Commit poussé : b3dc637 "feat: CORS configurable + déploiement Render"
+
+---
+Task ID: render-region
+Agent: Z.ai Code (tuteur principal)
+Task: Changement de région Render vers Europe (frankfurt)
+
+Work Log:
+- Constat utilisateur : service créé en oregon (US West) au lieu de l'Europe
+- Suppression du service oregon (srv-d98m8n9o3t8c73e46320)
+- Recréation avec region: "frankfurt" dans serviceDetails
+- Service créé : srv-d98mdrv7f7vs73bdl60, région frankfurt (Europe)
+- URL : https://scolagest-backend.onrender.com (inchangée)
+- Déploiement en cours, health check déjà fonctionnel
+- Note : Frankfurt (Allemagne) est la seule région européenne proposée par Render
+  (les autres régions Render : oregon, ohio, singapore)
+
+Stage Summary:
+- Backend Render maintenant en région frankfurt (Europe)
+- Health check /api/health fonctionnel en production
+- URL inchangée : https://scolagest-backend.onrender.com
