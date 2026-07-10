@@ -14,9 +14,9 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import type { LucideIcon } from "lucide-react";
 import {
-  GraduationCap,
   LayoutDashboard,
   Users,
   Wallet,
@@ -294,9 +294,13 @@ export function DashboardLayout() {
     <div className="flex h-full flex-col">
       {/* Logo / marque */}
       <div className="flex h-16 shrink-0 items-center gap-2.5 border-b px-4">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm">
-          <GraduationCap className="size-5" />
-        </div>
+        <Image
+          src="/logo.png"
+          alt="ScolaGest"
+          width={36}
+          height={36}
+          className="rounded-lg shadow-sm"
+        />
         <div className="min-w-0">
           <p className="text-sm font-bold leading-tight">ScolaGest</p>
           <p className="truncate text-[10px] text-muted-foreground leading-tight">

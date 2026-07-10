@@ -10,8 +10,8 @@
  */
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import {
-  GraduationCap,
   Loader2,
   LogIn,
   Eye,
@@ -158,9 +158,14 @@ export function LoginForm() {
         <div className="w-full max-w-md">
           {/* En-tête / logo */}
           <div className="mb-6 flex flex-col items-center text-center">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
-              <GraduationCap className="size-8" />
-            </div>
+            <Image
+              src="/logo.png"
+              alt="ScolaGest"
+              width={72}
+              height={72}
+              className="rounded-2xl shadow-lg shadow-emerald-600/20"
+              priority
+            />
             <h1 className="mt-3 text-2xl font-bold tracking-tight">ScolaGest</h1>
             <p className="text-sm text-muted-foreground">
               Gestion &amp; Caisse Scolaire — Groupe Le Chandelier, Dabou

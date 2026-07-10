@@ -16,7 +16,8 @@
  */
 
 import { useEffect } from "react";
-import { GraduationCap, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { Loader2 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { LoginForm } from "@/components/auth/login-form";
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
@@ -57,9 +58,14 @@ export default function Page() {
           className="pointer-events-none absolute -bottom-32 -left-24 size-96 rounded-full bg-amber-200/30 blur-3xl"
         />
         <div className="relative z-10 flex flex-col items-center gap-4">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
-            <GraduationCap className="size-9" />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="ScolaGest"
+            width={64}
+            height={64}
+            className="rounded-2xl shadow-lg shadow-emerald-600/20"
+            priority
+          />
           <div className="flex flex-col items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight">ScolaGest</h1>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">

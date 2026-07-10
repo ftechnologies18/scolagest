@@ -20,9 +20,9 @@
  */
 
 import * as React from "react";
+import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 import {
-  GraduationCap,
   LogOut,
   Users,
   Wallet,
@@ -308,9 +308,13 @@ export function ParentPortal() {
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-emerald-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm shadow-emerald-600/20">
-            <GraduationCap className="size-6" />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="ScolaGest"
+            width={40}
+            height={40}
+            className="rounded-xl shadow-sm shadow-emerald-600/20"
+          />
           <div className="min-w-0 flex-1">
             <p className="text-base font-bold leading-tight">ScolaGest</p>
             <p className="truncate text-[11px] text-muted-foreground leading-tight">

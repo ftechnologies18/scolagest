@@ -16,9 +16,23 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "ScolaGest — Gestion & Caisse Scolaire",
-  description: "Application web de gestion et de caisse scolaire pour le Groupe Scolaire Le Chandelier (Dabou, Côte d'Ivoire). Phase 0 — Cadrage.",
-  keywords: ["ScolaGest", "caisse scolaire", "gestion scolaire", "Dabou", "Côte d'Ivoire", "Next.js", "Go"],
+  description:
+    "Application web de gestion et de caisse scolaire pour le Groupe Scolaire Le Chandelier (Dabou, Côte d'Ivoire).",
+  keywords: [
+    "ScolaGest",
+    "caisse scolaire",
+    "gestion scolaire",
+    "Dabou",
+    "Côte d'Ivoire",
+  ],
   authors: [{ name: "Freelance Technologies Côte d'Ivoire" }],
+  icons: {
+    icon: [
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/favicon-icon.png", type: "image/png" },
+    ],
+    apple: [{ url: "/icon.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({
