@@ -908,3 +908,30 @@ Stage Summary:
 - 199 fichiers renommés via git mv (historique préservé)
 - Fonctionnement sandbox validé : bun run dev démarre les deux services
 - Push GitHub réussi : https://github.com/ftechnologies18/scolagest
+
+---
+Task ID: monorepo-v2
+Agent: Z.ai Code (tuteur principal)
+Task: Réorganisation avec dossiers Frontend/ et backend/ (préférence utilisateur)
+
+Work Log:
+- Constat utilisateur : préférence pour des noms de dossiers explicites Frontend/ et backend/ plutôt que apps/web + apps/api
+- Renommage via git mv : apps/web → Frontend, apps/api → backend (historique git préservé)
+- Réinstallation dépendances Frontend (bun install → 827 packages)
+- Recréation Frontend/.env + backend/.env + backend/data/
+- Adaptation Frontend/src/instrumentation.ts : chemins /apps/api → /backend (BACKEND_DIR, BACKEND_LOG, DB_PATH)
+- Adaptation mini-services/backend/start.sh : chemin /apps/api → /backend
+- Mise à jour package.json racine : scripts cd Frontend / cd backend
+- Mise à jour .gitignore : chemins Frontend/, backend/
+- Mise à jour README.md : structure monorepo + commandes d'installation
+- Réinstallation Go (sandbox l'avait supprimé) + rebuild backend
+- Test : bun run dev depuis racine → Next.js + backend Go démarrent automatiquement, login admin OK
+- Lint Frontend : 0 erreur
+- Commit + push GitHub : c453925 "refactor: réorganiser monorepo avec dossiers Frontend/ et backend/"
+- Vérification GitHub : structure racine contient Frontend/ (dir) + backend/ (dir) + package.json + README.md
+
+Stage Summary:
+- Monorepo avec deux dossiers distincts et explicites : Frontend/ (Next.js) + backend/ (Go)
+- Structure conforme à la préférence utilisateur
+- 200 fichiers renommés via git mv (historique préservé)
+- Push GitHub réussi : https://github.com/ftechnologies18/scolagest
