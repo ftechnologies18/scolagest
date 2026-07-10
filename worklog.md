@@ -1052,3 +1052,29 @@ Stage Summary:
 - Projet Vercel créé, en attente connexion manuelle du dépôt GitHub par l'utilisateur
 - Code frontend adapté : support double mode (prod Render URL / dev Caddy gateway)
 - En attente OK utilisateur pour : configurer env vars Vercel + déclencher déploiement
+
+---
+Task ID: vercel-deploy
+Agent: Z.ai Code (tuteur principal)
+Task: Déploiement frontend sur Vercel
+
+Work Log:
+- Vérification connexion GitHub : ✓ type=github, repo=scolagest, repoId=1295946143
+- Configuration variable NEXT_PUBLIC_API_BASE_URL=https://scolagest-backend.onrender.com
+  (target: production + preview + development, type: encrypted)
+- Déclenchement déploiement production (depuis dernier commit main)
+- Déploiement ID: dpl_3KtLNWHYjC9W1Zu6GTfNEhfKQ1JY
+- Statut: READY après ~90s
+- URL production: https://scolagest.vercel.app
+
+Tests finaux de l'architecture complète :
+- Frontend Vercel : ✓ HTTP 200, page contient "ScolaGest", 0.8s
+- Backend Render : ✓ login admin → role=ADMINISTRATEUR
+- Navigateur : ✓ titre "ScolaGest — Gestion & Caisse Scolaire", page de login avec tous les champs
+- Communication Vercel → Render : ✓ (frontend appelle backend via NEXT_PUBLIC_API_BASE_URL)
+
+Stage Summary:
+- Frontend déployé sur Vercel : https://scolagest.vercel.app
+- Backend sur Render (Frankfurt) : https://scolagest-backend.onrender.com
+- Base de données Neon PostgreSQL 18 (eu-west-2 Londres)
+- ARCHITECTURE PRODUCTION COMPLÈTE ET FONCTIONNELLE
