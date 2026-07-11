@@ -1,0 +1,53 @@
+# =============================================================================
+# .dockerignore — Fichiers exclus du contexte de build Docker (backend)
+# =============================================================================
+# Réduit la taille du contexte envoyé au daemon Docker → builds plus rapides
+# et cache mieux exploité. Évite aussi de copier des secrets ou des artefacts
+# locaux dans l'image finale.
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Fichiers de config locaux (jamais dans l'image)
+.env
+.env.*
+!.env.example
+*.local
+
+# Base de données locale SQLite (dev seulement — la prod utilise Neon)
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+scolagest.db*
+backend.log
+
+# Outil local gitignoré (dbcheck — jamais en prod)
+cmd/dbcheck/
+
+# Artefacts de build locaux
+scolagest-backend
+*.exe
+*.test
+*.out
+
+# IDE / éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Tests / couverture
+coverage/
+*.coverprofile
+
+# Documentation (pas nécessaire à l'exécution)
+README.md
