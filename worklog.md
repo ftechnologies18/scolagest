@@ -2124,3 +2124,30 @@ Stage Summary:
 - Le backend Render continue de tourner sur l'ANCIENNE version (sans RequireRole) — d'où `/api/comptabilite/exercices` renvoie encore HTTP 200 au caissier au lieu de 403.
 - Le frontend Vercel compense entièrement : RoleGuard + sidebar filtrée empêchent tout accès non autorisé côté UI. La sécurité RBAC est donc effective côté frontend, mais la défense en profondeur côté backend attend la résolution du problème Render.
 - Action requête pour l'utilisateur : sur le dashboard Render (https://dashboard.render.com/web/srv-d98mdrv7f7vs73bdlm60), vérifier la version Go de l'environnement et la passer à 1.25.0 (ou ajouter un `go.mod` toolchain directive, ou un Dockerfile custom avec Go 1.25). Alternativement, vérifier les logs de build Render pour confirmer la cause exacte de l'échec.
+
+---
+Task ID: dockerfile-backend-go125
+Agent: Z.ai Code (tuteur principal)
+Task: Préparer un Dockerfile backend avec Go 1.25 pour Render (contournement des update_failed liés à go.mod exigeant 1.25.0).
+
+Work Log:
+- Diagnostic confirmé : `backend/go.mod` exige `go 1.25.0`, environnement Go natif Render antérieur → tous les deploys récents en `update_failed` (10/10).
+- Création `backend/Dockerfile` (multi-stage) :
+  - Stage 1 « builder » : image officielle `golang:1.25`, copie go.mod/go.sum d'abord (cache Docker), `go mod download`, copie sources, build statique avec `CGO_ENABLED=0 GOOS=linux GOARCH=amd64 -trimpath -ldflags="-s -w"`.
+  - Stage 2 « runtime » : `gcr.io/distroless/static-debian12:nonroot` (image minimale sans shell, utilisateur `nonroot` UID 65532, pas de libc → compatible binaire statique pur).
+  - `ENTRYPOINT ["/app/scolagest-backend"]` (forme exec, pas de shell).
+  - ENV par défaut : PORT=8080, APP_ENV=production, GIN_MODE=release.
+  - Labels OCI standard (title, description, source, licenses).
+- Création `backend/.dockerignore` : exclut `data/` (SQLite local), `cmd/dbcheck/` (outil local gitignoré), `.env*`, logs, artefacts de build, IDE, Dockerfile lui-même → contexte Docker réduit, builds plus rapides, pas de fuite de secrets.
+- Création `docs/render-docker-deploy.md` : guide pas à pas pour basculer le service Render `srv-d98mdrv7f7vs73bdlm60` de l'environnement Go natif vers Docker (dashboard Settings : Runtime=Docker, Dockerfile Path=./backend/Dockerfile, Docker Build Context Directory=backend, Build/Start Command vides). Inclut tableau des variables d'env attendues, signes de succès attendus dans les logs, commandes de vérification post-déploiement (health check + test RBAC 403), et comparatif Go natif vs Docker.
+- Validation locale du Dockerfile (Docker non disponible dans le sandbox, mais test équivalent) :
+  - Build avec flags identiques au Dockerfile : exit 0, binaire 30 445 752 octets (30 Mo, vs 44 Mo en build normal non-optimisé → -31%).
+  - `file` confirme : `ELF 64-bit LSB executable, x86-64, statically linked, stripped` → compatible distroless/static.
+  - Contexte Docker simulé (rsync sans data/ ni cmd/dbcheck/ ni .env) : build OK, prouve que le .dockerignore n'exclut rien de nécessaire.
+- Commit `b5222ea` poussé sur `main` (3 fichiers, 293 insertions).
+- ⚠ Le Dockerfile est sur GitHub mais Render ne l'utilisera PAS tant que le runtime n'est pas basculé sur Docker via le dashboard (voir docs/render-docker-deploy.md). Le workflow GitHub Action « Deploy Backend to Render » actuel déclenche un deploy de l'environnement Go natif — il continuera d'échouer jusqu'au changement de runtime.
+
+Stage Summary:
+- Dockerfile backend Go 1.25 multi-stage livré (commit b5222ea) : binaire statique 30 Mo, image distroless nonroot, testé localement.
+- Guide de déploiement Render (`docs/render-docker-deploy.md`) fourni : action manuelle requise sur le dashboard Render pour basculer Runtime=Go → Runtime=Docker.
+- Une fois le runtime Docker activé sur Render, le backend redéploiera automatiquement à chaque push `backend/**` (Auto-Deploy=yes) avec Go 1.25, et le RBAC backend (RequireRole sur /api/comptabilite et /api/mobile-money, commit 861c43f) sera enfin actif en production.
