@@ -1441,3 +1441,30 @@ Stage Summary:
 - DIRECTION : admin d'établissement (frais, classes, users, compta, paramètres)
 - SUPER_ADMIN : PAS d'accès aux données établissement (sauf mode support)
 - Comptes démo : admin=SUPER_ADMIN (sans établissement), direction=DIRECTION (admin collège+EPV)
+
+---
+Task ID: saas-billing
+Agent: Z.ai Code (tuteur principal)
+Task: Facturation SaaS (plans, abonnements, factures)
+
+Work Log:
+- models/saas_billing.go : 3 nouvelles entités (SaaPlan, SaaSubscription, SaaInvoice)
+- services/saas_billing_service.go : CRUD complet + stats de revenus
+  - Plans : Basic (25k/mois, 200 élèves), Pro (50k/mois, 1000 élèves), Enterprise (100k/mois, illimité)
+  - Abonnements : mensuel/annuel, essai configurable, auto-renouvellement
+  - Factures : génération auto, statuts (DRAFT→SENT→PAID/OVERDUE), paiement
+- handlers/saas_billing.go : /api/saas/billing/* (RequireSuperAdmin)
+- database.go : migration 3 nouvelles tables (saa_plans, saa_subscriptions, saa_invoices)
+- seed/seed_saas_billing.go : 3 plans + 2 abonnements démo (Collège=PRO essai, EPV=BASIC annuel) + 1 facture payée
+- cmd/server/main.go : branchement saasBillingSvc + saasBillingHandler
+
+Endpoints :
+- GET/POST/PUT /api/saas/billing/plans
+- GET/POST /api/saas/billing/subscriptions, POST /:id/cancel
+- GET /api/saas/billing/invoices, POST (generate), POST /:id/pay
+- GET /api/saas/billing/stats
+
+Stage Summary:
+- Module de facturation SaaS complet : plans, abonnements, factures, stats
+- 3 plans démo (Basic/Pro/Enterprise), 2 abonnements démo, 1 facture payée
+- Commit : 49ca461
