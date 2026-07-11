@@ -119,12 +119,14 @@ export function LoginForm({ onBack }: { onBack?: () => void }) {
     }
     setSubmitting(true);
     try {
-      const etabId = etablissementId === "all" ? null : etablissementId;
-      if (!etabId) {
-        toast({ title: "Établissement requis", description: "Veuillez sélectionner votre établissement.", variant: "destructive" });
-        setSubmitting(false);
-        return;
-      }
+      // "none" = SUPER_ADMIN (rôle plateforme, pas d'établissement).
+      // "all"  = pas d'établissement choisi (rôle global, ex. direction
+      //           multi-sites) — converti en null pour l'API.
+      // Sinon  = un établissement spécifique (staff standard).
+      const etabId =
+        etablissementId === "none" || etablissementId === "all"
+          ? null
+          : etablissementId || null;
       await login(email, password, etabId);
       toast({ title: "Connexion réussie", description: "Bienvenue sur ScolaGest." });
     } catch (err) {
@@ -347,6 +349,8 @@ export function LoginForm({ onBack }: { onBack?: () => void }) {
                     <SelectValue placeholder={loadingEtablissements ? "Chargement…" : "Sélectionnez…"} />
                   </SelectTrigger>
                   <SelectContent>
+                    {/* Option pour le SUPER_ADMIN (rôle plateforme, pas d'établissement). */}
+                    <SelectItem value="none">Aucun — Super Admin (plateforme)</SelectItem>
                     {etablissements.map((etab) => (
                       <SelectItem key={etab.id} value={etab.id}>
                         {etab.nom}
@@ -355,7 +359,9 @@ export function LoginForm({ onBack }: { onBack?: () => void }) {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-gray-400">Sélectionnez votre établissement pour vous connecter.</p>
+                <p className="text-[11px] text-gray-400">
+                  Sélectionnez votre établissement, ou « Aucun — Super Admin » pour un accès plateforme.
+                </p>
               </motion.div>
 
               {/* Bouton connexion */}

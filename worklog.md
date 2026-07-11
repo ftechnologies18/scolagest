@@ -2252,3 +2252,38 @@ Stage Summary:
 - Fix logout complété en 2 temps : (1) auth-store purge synchrone + backend fire-and-forget [commit 5b7ef4c], (2) handleLogout navigation dure window.location.href [ce commit].
 - La déconnexion est désormais instantanée ET la redirection vers /login est garantie (hard navigation), pour staff, SaaS, et auto-logout 401.
 - Vérifié en production : le store se vide instantanément, le garde redirige. La navigation dure élimine toute race condition router.push/refresh.
+
+---
+Task ID: fix-super-admin-login
+Agent: Z.ai Code (tuteur principal)
+Task: Corriger le bug — le SUPER_ADMIN ne peut plus se connecter.
+
+Work Log:
+- Diagnostic du flux de login SUPER_ADMIN :
+  - Test API direct (curl) : POST /api/auth/login SANS etablissement_id → 200 OK (access_token + refresh_token + role=SUPER_ADMIN). Le backend fonctionne.
+  - Test API AVEC etablissement_id → 400 « le SUPER_ADMIN ne peut pas sélectionner d'établissement — utilisez le mode support pour la maintenance » (auth_service.go ligne 60-63 : SUPER_ADMIN doit avoir etablissementID=nil).
+  - Donc le backend est correct : SUPER_ADMIN = pas d'établissement (rôle plateforme multi-tenant).
+- Cause racine FRONTEND (login-form.tsx) :
+  - handleSubmit (lignes 122-127) exigeait un etabId non-null → toast « Établissement requis » + return. SUPER_ADMIN ne pouvait donc JAMAIS soumettre le formulaire.
+  - Le selecteur d'établissement n'avait pas d'option « aucun » → SUPER_ADMIN bloqué.
+  - Le compte admin@scolagest.ci est bien listé dans DEMO_ACCOUNTS (ligne 50) mais inutilisable.
+- Correctif (Frontend/src/components/auth/login-form.tsx) :
+  - handleSubmit : nouvelle logique de mapping —
+    - "none" → null (SUPER_ADMIN, pas d'établissement)
+    - "all"  → null (rôle global, ex. direction multi-sites)
+    - sinon  → l'ID établissement (staff standard)
+    Retrait du bloc `if (!etabId) { toast; return; }` qui bloquait SUPER_ADMIN.
+  - Selecteur d'établissement : ajout d'une option `<SelectItem value="none">Aucun — Super Admin (plateforme)</SelectItem>` en tête de liste.
+  - Texte d'aide mis à jour : « Sélectionnez votre établissement, ou "Aucun — Super Admin" pour un accès plateforme. »
+- Le store auth-store.login() acceptait déjà etablissementId=null (envoie etablissement_id: null à l'API) → aucun changement côté store.
+- La redirection post-login est déjà gérée (login/page.tsx ligne 36 : role === "SUPER_ADMIN" ? "/saas/dashboard" : "/dashboard") → aucun changement.
+- Le layout (saas)/layout.tsx accepte déjà SUPER_ADMIN (garde role === "SUPER_ADMIN") → aucun changement.
+- Qualité :
+  - bun run lint (Frontend) → 0 erreur ✓
+  - bunx tsc --noEmit → 0 erreur sur mes modifications ✓ (15 erreurs pré-existantes Framer Motion Variants, lignes 185-340, déjà signalées — inchangées).
+- Aucun changement backend, DB, ou schema Neon.
+
+Stage Summary:
+- Cause racine : le formulaire de login exigeait un établissement pour tous les utilisateurs, mais le backend refuse qu'un SUPER_ADMIN en sélectionne un (rôle plateforme multi-tenant) → cercle bloquant.
+- Fix : ajout d'une option « Aucun — Super Admin (plateforme) » dans le selecteur + adaptation de la validation handleSubmit pour autoriser la soumission sans établissement (etabId=null).
+- 1 fichier modifié (login-form.tsx). SUPER_ADMIN peut désormais se connecter et est redirigé vers /saas/dashboard.
