@@ -55,6 +55,7 @@ export function EtablissementFormDialog({
   const [ville, setVille] = React.useState("");
   const [appliqueCategorie, setAppliqueCategorie] = React.useState(true);
   const [actif, setActif] = React.useState(true);
+  const [quotaClasse, setQuotaClasse] = React.useState(45);
 
   React.useEffect(() => {
     if (!open) return;
@@ -64,12 +65,14 @@ export function EtablissementFormDialog({
       setVille(etablissement.ville ?? "");
       setAppliqueCategorie(etablissement.applique_categorie_affecte ?? true);
       setActif(etablissement.actif ?? true);
+      setQuotaClasse((etablissement as Etablissement & { quota_classe?: number }).quota_classe ?? 45);
     } else {
       setNom("");
       setCodeOfficiel("");
       setVille("");
       setAppliqueCategorie(true);
       setActif(true);
+      setQuotaClasse(45);
     }
   }, [open, etablissement]);
 
@@ -81,6 +84,7 @@ export function EtablissementFormDialog({
         ville: ville.trim() || undefined,
         applique_categorie_affecte: appliqueCategorie,
         actif,
+        quota_classe: quotaClasse,
       };
       if (isEdit && etablissement) {
         return updateEtablissement(etablissement.id, payload);
@@ -187,6 +191,26 @@ export function EtablissementFormDialog({
               id="etab-cat"
               checked={appliqueCategorie}
               onCheckedChange={setAppliqueCategorie}
+            />
+          </div>
+
+          {/* Quota classe */}
+          <div className="space-y-2">
+            <Label htmlFor="etab-quota" className="text-sm font-medium">
+              Quota d&apos;élèves par classe
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Nombre maximum d&apos;élèves par classe. Quand le quota est atteint,
+              une nouvelle classe est créée automatiquement (ex: 6e A → 6e B).
+            </p>
+            <Input
+              id="etab-quota"
+              type="number"
+              min={1}
+              max={200}
+              value={quotaClasse}
+              onChange={(e) => setQuotaClasse(parseInt(e.target.value) || 45)}
+              className="w-24"
             />
           </div>
 

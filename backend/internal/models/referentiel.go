@@ -22,6 +22,10 @@ type Etablissement struct {
         LogoURL                 string `json:"logo_url"`
         CouleurTheme            string `json:"couleur_theme"`
         Actif                   bool   `gorm:"not null;default:true" json:"actif"`
+        // QuotaClasse : nombre maximum d'élèves par classe (défaut 45).
+        // Quand le quota est atteint, une nouvelle classe est créée automatiquement
+        // (ex: 6e A rempli → 6e B créée). Configurable dans les réglages.
+        QuotaClasse             int    `gorm:"not null;default:45" json:"quota_classe"`
 }
 
 func (Etablissement) TableName() string { return "etablissements" }
