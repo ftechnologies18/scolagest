@@ -2310,3 +2310,37 @@ Work Log:
 Stage Summary:
 - Lien « Espace Parent » supprimé de la page /login (staff). La page de login est désormais strictement réservée à la connexion du personnel.
 - 1 fichier modifié (login/page.tsx, -14 lignes). Accès parent conservé via la page d'accueil `/`.
+
+---
+Task ID: rbac-direction-no-caisse-momo
+Agent: Z.ai Code (tuteur principal)
+Task: La direction ne doit plus voir les modules Caisse et Mobile Money.
+
+Work Log:
+- Audit RBAC existant (3 couches : sidebar frontend, guards frontend, backend RequireRole) :
+  - Sidebar (dashboard-shell.tsx STAFF_NAV_GROUPS + dashboard-layout.tsx legacy) : DIRECTION apparaissait dans /caisse (lignes 122/132) et /mobile-money (lignes 175/185).
+  - Guards RoleGuard : /mobile-money avait allow=[CAISSIER, DIRECTION, DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR] ; /caisse n'avait AUCUN guard (accessible par URL directe à tout rôle authentifié).
+  - Backend : /api/paiements et /api/clotures n'avaient QUE authMW (pas de RequireRole → tout rôle authentifié pouvait encaisser/clôturer). /api/mobile-money avait RequireRole(CAISSIER, DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR, DIRECTION).
+- Décision RBAC : Caisse + Mobile Money réservés au CAISSIER (et COMPTABLE pour la caisse, qui peut légitimement encaisser/réconcilier). Tous les rôles de direction (DIRECTION, DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR) retirés.
+- Modifications frontend (4 fichiers) :
+  - dashboard-shell.tsx (sidebar active) :
+    - /caisse : roles [CAISSIER, COMPTABLE] (retrait DIRECTION, DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR)
+    - /mobile-money : roles [CAISSIER] (retrait DIRECTION, DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR)
+    - Commentaire d'en-tête mis à jour
+  - dashboard-layout.tsx (legacy, synchro pour cohérence) : mêmes changements
+  - app/(staff)/caisse/page.tsx : AJOUT RoleGuard allow=[CAISSIER, COMPTABLE] (n'existait pas → bloque l'accès par URL directe)
+  - app/(staff)/mobile-money/page.tsx : RoleGuard allow=[CAISSIER] (retrait des rôles direction)
+- Modifications backend (3 fichiers) :
+  - handlers/paiement.go : RequireRole(RoleCaissier, RoleComptable) sur /api/paiements/* (Create, Annule, GetRecu, Get, List). La route /api/eleves/:id/paiements (lecture) reste accessible à tout le personnel authentifié (consultation, pas d'encaissement).
+  - handlers/cloture.go : RequireRole(RoleCaissier, RoleComptable) sur /api/clotures/* (Create, Valider, List, GetAujourdhui). Ajout import models.
+  - handlers/momo_message.go : RequireRole(RoleCaissier) sur /api/mobile-money/* (retrait RoleDirection, RoleDirecteurEtudes, RoleDirecteurSuperviseur).
+- Qualité :
+  - Frontend : bun run lint → 0 erreur ✓ ; bunx tsc --noEmit → 0 erreur sur les fichiers modifiés ✓ (15 erreurs pré-existantes Framer Motion, inchangées).
+  - Backend : go non disponible dans le sandbox → validation reportée au build Render (Dockerfile golang:1.25). Cohérence vérifiée : RequireRole appliqué sur les 3 groupes, imports models présents dans les 3 fichiers, models encore utilisé ailleurs dans momo_message.go (StatutTransactionMomo, ProviderMomo, etc.).
+- Commit + push vers main → déclenche Vercel (frontend) ET Render (backend, via GitHub Action deploy-backend.yml car backend/** modifié).
+
+Stage Summary:
+- RBAC renforcé en profondeur (3 couches) : la direction n'accède plus à Caisse ni Mobile Money, ni via la sidebar, ni par URL directe (RoleGuard), ni via l'API (RequireRole 403).
+- Caisse = CAISSIER + COMPTABLE ; Mobile Money = CAISSIER seul.
+- La route /api/eleves/:id/paiements (lecture) reste accessible à tout le personnel (consultation des paiements d'un élève ≠ encaissement).
+- 7 fichiers modifiés (4 frontend, 3 backend). Aucun changement DB/schema Neon (RequireRole est du middleware, pas de migration).

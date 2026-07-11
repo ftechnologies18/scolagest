@@ -118,13 +118,10 @@ func (h *MomoHandler) Reconcilier(c *gin.Context) {
 }
 
 func (h *MomoHandler) RegisterRoutes(rg *gin.RouterGroup, authMW gin.HandlerFunc) {
-        // Mobile Money : accessible au CAISSIER et aux rôles de direction.
-        // (le caissier peut initier/réconcilier des transactions MoMo au guichet).
+        // Mobile Money : réservé au CAISSIER (guichet MoMo). La direction n'y
+        // accède pas (elle ne traite pas les transactions Mobile Money).
         m := rg.Group("/mobile-money", authMW, middleware.RequireRole(
                 models.RoleCaissier,
-                models.RoleDirecteurEtudes,
-                models.RoleDirecteurSuperviseur,
-                models.RoleDirection,
         ))
         {
                 m.GET("/transactions", h.List)

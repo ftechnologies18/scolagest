@@ -106,8 +106,9 @@ interface NavGroup {
 
 /**
  * Groupes de navigation pour le personnel d'établissement (DIRECTION,
- * CAISSIER, COMPTABLE, SECRETARIAT). DIRECTION a désormais tous les droits
- * anciennement détenus par `ADMINISTRATEUR`.
+ * CAISSIER, COMPTABLE, SECRETARIAT). DIRECTION gère le pilotage et la
+ * configuration, mais n'accède PAS à la caisse ni à Mobile Money
+ * (réservés au CAISSIER / COMPTABLE).
  */
 const STAFF_NAV_GROUPS: NavGroup[] = [
   {
@@ -126,10 +127,12 @@ const STAFF_NAV_GROUPS: NavGroup[] = [
         roles: ["CAISSIER", "COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
       },
       {
+        // Caisse : réservée au CAISSIER et au COMPTABLE (encaissement,
+        // clôture, reçus). La direction n'y accède pas.
         id: "caisse",
         label: "Caisse",
         icon: Wallet,
-        roles: ["CAISSIER", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "COMPTABLE"],
+        roles: ["CAISSIER", "COMPTABLE"],
       },
       {
         id: "impayes",
@@ -179,10 +182,12 @@ const STAFF_NAV_GROUPS: NavGroup[] = [
         roles: ["COMPTABLE"],
       },
       {
+        // Mobile Money : réservé au CAISSIER (guichet MoMo). La direction
+        // n'y accède pas.
         id: "mobile-money",
         label: "Mobile Money",
         icon: Smartphone,
-        roles: ["CAISSIER", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
+        roles: ["CAISSIER"],
       },
       {
         id: "parametres",
