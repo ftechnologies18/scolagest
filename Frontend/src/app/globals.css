@@ -201,3 +201,27 @@
     display: none !important;
   }
 }
+
+/* ───────────────────────────────────────────────────────────────────────────── */
+/* Impression du récap « payer à l'école » (Phase 6 — Portail parents redesign) */
+/* Même logique que `.recu-print` mais appliquée à `.recap-print`.              */
+/* ───────────────────────────────────────────────────────────────────────────── */
+@media print {
+  .recap-print,
+  .recap-print * {
+    visibility: visible;
+  }
+  .recap-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .recap-print .no-print {
+    display: none !important;
+  }
+}

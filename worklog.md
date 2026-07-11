@@ -1104,3 +1104,95 @@ Stage Summary:
 - Render backend : auto-deploy désactivé, GitHub Action déclenche sur backend/** ✓
 - Vercel frontend : Ignored Build Step à configurer manuellement (dashboard)
 - Tests validés : Frontend-only push → Vercel only, backend-only push → Render only
+
+---
+Task ID: 4
+Agent: frontend-styling-expert
+Task: Build parent phone+PIN access + choice page + adapted parent portal
+
+Work Log:
+- Lu `worklog.md` et inspecté les fichiers existants (auth-store, page.tsx,
+  api-client, api-parent, parent-portal, login-form, recu-dialog, globals.css)
+  pour comprendre l'architecture en place.
+- `src/lib/auth-store.ts` : ajouté `parentAccessToken`, `tuteur` (TuteurParent),
+  `isParentAuthenticated` (dérivé), `loginParent(telephone, pin)` (POST
+  /api/parent/access, public, skipAuth), `logoutParent()`. `isAuthenticated`
+  est désormais `true` si staff OU parent est authentifié. Mise à jour du
+  `partialize` pour persister `parentAccessToken` + `tuteur`, et du
+  `onRehydrateStorage` pour recalculer les drapeaux dérivés.
+- `src/lib/api-client.ts` : ajouté l'option `useParentToken` au `request()`.
+  Si activée, attache `parentAccessToken` au lieu de `accessToken`, et sur 401
+  appelle `logoutParent()` (pas de refresh possible — token court 2 h). Ajouté
+  les wrappers `parentApiGet` / `parentApiPost` exportés.
+- `src/lib/api-parent.ts` : refactorisé tous les wrappers pour utiliser
+  `parentApiGet` (au lieu de `apiGet` qui attacherait le token staff).
+  Ajouté `payerMobileMoneyParent(dto)` → POST /api/parent/payer/mobile-money,
+  `fetchRecapCaisseParent(eleveId)` → GET /api/parent/recap-caisse, et les
+  types associés (`ParentPayerMobileMoneyDTO`, `ParentPaiementMomoResponse`,
+  `RecapCaisseParent`, etc.). Ajouté la clé Query `recapCaisse(enfantId)`.
+- `src/components/parent/parent-access-form.tsx` (NOUVEAU) : formulaire
+  « Espace Parent » avec téléphone (préfixe +225 auto) + PIN 4 chiffres
+  (numérique, maxlength 4, password). Bouton ambre « Accéder à mon espace »,
+  toast sur erreur 401, encart démo cliquable (+2250701020304 / 1234), bouton
+  « Retour au choix d'espace », note sécurité (session 2 h, scoped).
+- `src/app/page.tsx` : réécrit avec 4 états (Loading / Non authentifié →
+  ChoicePage / Parent authentifié → ParentPortal / Staff authentifié →
+  DashboardLayout). `ChoicePage` affiche deux cartes côte à côte (emerald pour
+  staff, amber pour parent), stack sur mobile, chacune avec icône, titre,
+  description, liste de features et bouton d'action. Le `LoginForm` et le
+  `ParentAccessForm` reçoivent un callback `onBack` pour revenir au choix.
+- `src/components/auth/login-form.tsx` : ajouté prop optionnelle `onBack` et
+  bouton « Retour au choix d'espace » quand elle est fournie.
+- `src/components/parent/payment-momo-dialog.tsx` (NOUVEAU) : dialogue de
+  paiement Mobile Money — sélecteur provider (Orange/MTN/Wave via
+  ProviderMomoBadge), montant pré-rempli avec solde_du, téléphone pré-rempli
+  avec tuteur.telephone, validation (pas de trop-perçu), appel
+  `payerMobileMoneyParent(dto)`. Vue succès avec référence + statut.
+  Invalidation du cache `parentKeys.all` au succès.
+- `src/components/parent/recap-caisse-dialog.tsx` (NOUVEAU) : dialogue « Payer
+  à l'école » qui fetch `fetchRecapCaisseParent(enfant.id)` (token parent).
+  Affiche en-tête établissement, élève + tuteur, table financière (attendu /
+  payé / solde dû), instruction « Présentez ce récapitulatif à la caisse »,
+  modes acceptés, heures d'ouverture, QR placeholder. Bouton « Imprimer » →
+  `window.print()`. Classe `.recap-print` pour l'impression isolée.
+- `src/components/parent/parent-portal.tsx` : adapté au flux parent — utilise
+  `tuteur` (au lieu de `user`), `logoutParent()` (au lieu de `logout()`),
+  avatar ambre. La `EnfantCard` gagne 3 boutons : « Voir le détail » (emerald),
+  « Payer en ligne » (amber, désactivé si soldeOK), « Payer à l'école » (amber
+  outline). Ajout des dialogs `PaymentMomoDialog` et `RecapCaisseDialog` avec
+  leur état local.
+- `src/app/globals.css` : ajouté la règle `@media print .recap-print` (même
+  logique que `.recu-print`).
+- Lint : `bun run lint` → 0 erreur, 0 warning. (Une erreur TS préexistante
+  dans `src/instrumentation.ts` — non touchée par cette tâche — reste présente
+  mais n'entre pas dans le périmètre du lint.)
+
+Stage Summary:
+- Fichiers modifiés :
+  - `src/lib/auth-store.ts` (parent temp access + loginParent/logoutParent)
+  - `src/lib/api-client.ts` (option useParentToken + parentApiGet/parentApiPost)
+  - `src/lib/api-parent.ts` (parentApiGet/parentApiPost + endpoints MoMo & récap)
+  - `src/app/page.tsx` (ChoicePage + routing 4 états)
+  - `src/components/auth/login-form.tsx` (prop onBack optionnelle)
+  - `src/components/parent/parent-portal.tsx` (tuteur, logoutParent, boutons
+    paiement, dialogs MoMo + récap)
+  - `src/app/globals.css` (règle print .recap-print)
+- Fichiers créés :
+  - `src/components/parent/parent-access-form.tsx` (téléphone + PIN)
+  - `src/components/parent/payment-momo-dialog.tsx` (Mobile Money)
+  - `src/components/parent/recap-caisse-dialog.tsx` (récap imprimable)
+- Décisions :
+  - Token parent séparé du token staff (pas de refresh possible, 2 h, scoped
+    /api/parent/*). Sur 401 parent : `logoutParent()` (ne touche pas au flux
+    staff, réciproquement `logout()` staff préserve `isParentAuthenticated`).
+  - Page de choix = deux cartes côte à côte (emerald staff / amber parent),
+    stack mobile. Aucune route supplémentaire — bascule client-side via état
+    local `Choice`.
+  - Les boutons de paiement vivent directement sur la carte enfant (3 boutons
+    en grille sm:grid-cols-3) — accès immédiat sans re-rendu.
+  - Récap caisse : table financière + QR placeholder + encart « Présentez ce
+    récapitulatif à la caisse ». Imprimable via `.recap-print`.
+- À valider côté backend (Task ID parallèle) : POST /api/parent/access (renvoie
+  access_token + tuteur), GET /api/parent/recap-caisse, POST
+  /api/parent/payer/mobile-money. Le frontend est prêt à consommer ces
+  endpoints dès qu'ils seront disponibles.

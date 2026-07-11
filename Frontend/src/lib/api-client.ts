@@ -62,6 +62,11 @@ interface RequestOptions {
   skipRefresh?: boolean;
   /** Autorise un corps de requête vide même pour POST/PUT. */
   allowEmptyBody?: boolean;
+  /**
+   * Utilise le token parent (`parentAccessToken`) au lieu du token staff.
+   * En cas de 401, déclenche `logoutParent()` (pas de refresh possible).
+   */
+  useParentToken?: boolean;
 }
 
 async function request<T>(
@@ -74,6 +79,7 @@ async function request<T>(
     headers = {},
     skipAuth = false,
     skipRefresh = false,
+    useParentToken = false,
   } = options;
 
   const url = buildUrl(path);
@@ -85,7 +91,9 @@ async function request<T>(
   };
 
   if (!skipAuth) {
-    const token = useAuthStore.getState().accessToken;
+    const token = useParentToken
+      ? useAuthStore.getState().parentAccessToken
+      : useAuthStore.getState().accessToken;
     if (token) {
       finalHeaders.Authorization = `Bearer ${token}`;
     }
@@ -110,8 +118,16 @@ async function request<T>(
     );
   }
 
-  // 401 → tenter un refresh unique puis réessayer
+  // 401 → comportement différent selon le type de token.
   if (res.status === 401 && !skipAuth && !skipRefresh) {
+    if (useParentToken) {
+      // Le token parent est court (2 h) et non rafraîchissable : on déconnecte.
+      useAuthStore.getState().logoutParent();
+      throw new ApiError(
+        "Votre session parent a expiré. Veuillez vous reconnecter avec votre téléphone et votre PIN.",
+        401,
+      );
+    }
     const refreshed = await useAuthStore.getState().refresh();
     if (refreshed) {
       return request<T>(path, { ...options, skipRefresh: true });
@@ -189,6 +205,32 @@ export function apiDelete<T>(
   options?: Omit<RequestOptions, "method" | "body">,
 ): Promise<T> {
   return request<T>(path, { ...options, method: "DELETE" });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Variantes « parent » — utilisent `parentAccessToken` du auth-store.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Effectue un GET sur `path` avec le token parent. */
+export function parentApiGet<T>(
+  path: string,
+  options?: Omit<RequestOptions, "method" | "body" | "useParentToken">,
+): Promise<T> {
+  return request<T>(path, { ...options, method: "GET", useParentToken: true });
+}
+
+/** Effectue un POST sur `path` avec le token parent. */
+export function parentApiPost<T>(
+  path: string,
+  body?: unknown,
+  options?: Omit<RequestOptions, "method" | "body" | "useParentToken">,
+): Promise<T> {
+  return request<T>(path, {
+    ...options,
+    method: "POST",
+    body: body ?? {},
+    useParentToken: true,
+  });
 }
 
 /** Construit l'URL complète (production ou dev) sans effectuer la requête. */

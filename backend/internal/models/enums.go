@@ -72,7 +72,6 @@ const (
         RoleComptable      RoleUtilisateur = "COMPTABLE"
         RoleDirection      RoleUtilisateur = "DIRECTION"
         RoleSecretariat    RoleUtilisateur = "SECRETARIAT"
-        RoleParent         RoleUtilisateur = "PARENT"
 )
 
 // ProviderMomo : opérateurs Mobile Money supportés (contexte ivoirien).

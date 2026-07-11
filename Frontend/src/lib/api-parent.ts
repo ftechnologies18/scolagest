@@ -5,20 +5,26 @@
  *
  * Couvre les endpoints `/api/parent/*` exposés par le backend Go pour le
  * compte parent :
- *   - GET /api/parent/enfants                       → liste des enfants du tuteur
- *   - GET /api/parent/enfants/:id/solde             → solde détaillé d'un enfant
- *   - GET /api/parent/paiements?eleve_id=&limit=    → historique des paiements
- *   - GET /api/parent/paiements/:id/recu            → reçu (snapshot JSON)
- *   - GET /api/parent/echeances                     → 10 prochaines échéances
+ *   - GET  /api/parent/enfants                       → liste des enfants du tuteur
+ *   - GET  /api/parent/enfants/:id/solde             → solde détaillé d'un enfant
+ *   - GET  /api/parent/paiements?eleve_id=&limit=    → historique des paiements
+ *   - GET  /api/parent/paiements/:id/recu            → reçu (snapshot JSON)
+ *   - GET  /api/parent/echeances                     → 10 prochaines échéances
+ *   - POST /api/parent/payer/mobile-money            → initier un paiement MoMo
+ *   - GET  /api/parent/recap-caisse?eleve_id=        → récap « payer à l'école »
  *
- * Toutes les fonctions s'appuient sur le client API générique (`@/lib/api-client`)
- * qui attache automatiquement le JWT et le paramètre `?XTransformPort=8080`.
+ * Toutes les fonctions s'appuient sur `parentApiGet` / `parentApiPost`
+ * (`@/lib/api-client`) qui attachent automatiquement le **token parent**
+ * (`parentAccessToken`) et le paramètre `?XTransformPort=8080`. En cas de 401,
+ * le client déclenche `logoutParent()` (le token parent n'est pas
+ * rafraîchissable).
  *
  * Les clés de cache React Query sont centralisées dans `parentKeys` pour
  * faciliter l'invalidation croisée entre composants.
  */
 
-import { apiGet } from "@/lib/api-client";
+import { parentApiGet, parentApiPost } from "@/lib/api-client";
+import type { ProviderMomo } from "@/lib/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types de réponse (contractés avec le backend Go)
@@ -132,6 +138,8 @@ export const parentKeys = {
   echeances: () => [...parentKeys.all, "echeances"] as const,
   recu: (paiementId: string) =>
     [...parentKeys.all, "recu", paiementId] as const,
+  recapCaisse: (enfantId: string) =>
+    [...parentKeys.all, "recap-caisse", enfantId] as const,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -140,12 +148,12 @@ export const parentKeys = {
 
 /** Récupère la liste des enfants du parent connecté. */
 export function fetchEnfants(): Promise<EnfantParent[]> {
-  return apiGet<EnfantParent[]>("/api/parent/enfants");
+  return parentApiGet<EnfantParent[]>("/api/parent/enfants");
 }
 
 /** Récupère le solde détaillé (frais attendus + échéances) d'un enfant. */
 export function fetchSoldeEnfant(enfantId: string): Promise<SoldeDetailParent> {
-  return apiGet<SoldeDetailParent>(
+  return parentApiGet<SoldeDetailParent>(
     `/api/parent/enfants/${encodeURIComponent(enfantId)}/solde`,
   );
 }
@@ -161,19 +169,107 @@ export function fetchPaiementsParent(
   const qs = new URLSearchParams();
   if (eleveId) qs.set("eleve_id", eleveId);
   qs.set("limit", String(limit));
-  return apiGet<PaiementParent[]>(
+  return parentApiGet<PaiementParent[]>(
     `/api/parent/paiements?${qs.toString()}`,
   );
 }
 
 /** Récupère les 10 prochaines échéances (tous enfants confondus). */
 export function fetchEcheancesParent(): Promise<EcheanceParent[]> {
-  return apiGet<EcheanceParent[]>("/api/parent/echeances");
+  return parentApiGet<EcheanceParent[]>("/api/parent/echeances");
 }
 
 /** Récupère le reçu d'un paiement (snapshot JSON). */
 export function fetchRecuParent(paiementId: string): Promise<RecuParent> {
-  return apiGet<RecuParent>(
+  return parentApiGet<RecuParent>(
     `/api/parent/paiements/${encodeURIComponent(paiementId)}/recu`,
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Paiement Mobile Money & récap caisse — Phase 6 redesign
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Corps de la requête POST /api/parent/payer/mobile-money. */
+export interface ParentPayerMobileMoneyDTO {
+  eleve_id: string;
+  frais_id?: string | null;
+  montant: number;
+  provider: ProviderMomo;
+  telephone_client: string;
+}
+
+/** Réponse de POST /api/parent/payer/mobile-money. */
+export interface ParentPaiementMomoResponse {
+  /** Identifiant de la transaction ou du paiement créé côté backend. */
+  id: string;
+  /** Référence externe (SMS/USSD) renvoyée par le provider. */
+  reference_externe?: string;
+  /** Statut initial de la transaction (généralement `INITIEE`). */
+  statut?: string;
+  montant: number;
+  provider: ProviderMomo;
+  message?: string;
+}
+
+/** Initie un paiement Mobile Money depuis le portail parent. */
+export function payerMobileMoneyParent(
+  dto: ParentPayerMobileMoneyDTO,
+): Promise<ParentPaiementMomoResponse> {
+  return parentApiPost<ParentPaiementMomoResponse>(
+    "/api/parent/payer/mobile-money",
+    dto,
+  );
+}
+
+/** Informations sur l'établissement renvoyées par /api/parent/recap-caisse. */
+export interface RecapCaisseEtablissement {
+  id?: string;
+  nom: string;
+  ville?: string;
+  code_officiel?: string;
+  telephone?: string;
+  adresse?: string;
+}
+
+/** Informations sur l'élève renvoyées par /api/parent/recap-caisse. */
+export interface RecapCaisseEleve {
+  id: string;
+  nom: string;
+  prenoms: string;
+  matricule?: string | null;
+  classe?: string | null;
+}
+
+/** Résumé financier renvoyé par /api/parent/recap-caisse. */
+export interface RecapCaisseFinances {
+  total_attendu: number;
+  total_paye: number;
+  solde_du: number;
+}
+
+/** Réponse de GET /api/parent/recap-caisse?eleve_id=. */
+export interface RecapCaisseParent {
+  etablissement: RecapCaisseEtablissement;
+  eleve: RecapCaisseEleve;
+  tuteur?: {
+    nom?: string;
+    prenoms?: string;
+    telephone?: string;
+  };
+  finances: RecapCaisseFinances;
+  /** Date/heure d'émission du récapitulatif (ISO). */
+  date_emission?: string;
+  /** Référence interne du récapitulatif (peut être vide). */
+  reference?: string;
+}
+
+/** Récupère le récapitulatif « payer à l'école » d'un enfant. */
+export function fetchRecapCaisseParent(
+  enfantId: string,
+): Promise<RecapCaisseParent> {
+  const qs = new URLSearchParams({ eleve_id: enfantId });
+  return parentApiGet<RecapCaisseParent>(
+    `/api/parent/recap-caisse?${qs.toString()}`,
   );
 }

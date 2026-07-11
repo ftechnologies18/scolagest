@@ -39,6 +39,8 @@ import {
   Mail,
   RefreshCw,
   Heart,
+  Smartphone,
+  Landmark,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -78,6 +80,8 @@ import { cn } from "@/lib/utils";
 
 import { EnfantDetailDialog } from "./enfant-detail-dialog";
 import { RecuDialogParent } from "./recu-dialog";
+import { PaymentMomoDialog } from "./payment-momo-dialog";
+import { RecapCaisseDialog } from "./recap-caisse-dialog";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -195,9 +199,11 @@ type SectionId = "enfants" | "historique" | "echeances";
 
 export function ParentPortal() {
   const { toast } = useToast();
-  const user = useAuthStore((s) => s.user);
+  // Le portail parent s'appuie sur `tuteur` (renvoyé par /api/parent/access).
+  // L'utilisateur staff (`user`) reste null pour ce flux.
+  const tuteur = useAuthStore((s) => s.tuteur);
   const etablissement = useAuthStore((s) => s.etablissement);
-  const logout = useAuthStore((s) => s.logout);
+  const logoutParent = useAuthStore((s) => s.logoutParent);
 
   // État UI
   const [activeSection, setActiveSection] =
@@ -209,6 +215,13 @@ export function ParentPortal() {
   const [selectedPaiement, setSelectedPaiement] =
     React.useState<PaiementParent | null>(null);
   const [recuOpen, setRecuOpen] = React.useState(false);
+  // Dialogues de paiement (Phase 6 redesign)
+  const [momoEnfant, setMomoEnfant] = React.useState<EnfantParent | null>(null);
+  const [momoOpen, setMomoOpen] = React.useState(false);
+  const [recapEnfant, setRecapEnfant] = React.useState<EnfantParent | null>(
+    null,
+  );
+  const [recapOpen, setRecapOpen] = React.useState(false);
 
   // Refs pour le scroll ancré
   const enfantsRef = React.useRef<HTMLDivElement>(null);
@@ -260,7 +273,8 @@ export function ParentPortal() {
     return enfants.reduce((acc, e) => acc + (e.solde?.solde_du ?? 0), 0);
   }, [enfants]);
 
-  const parentPrenom = user?.prenoms?.trim() || user?.nom?.trim() || "chers parents";
+  const parentPrenom =
+    tuteur?.prenoms?.trim() || tuteur?.nom?.trim() || "chers parents";
 
   function scrollToSection(section: SectionId) {
     setActiveSection(section);
@@ -291,8 +305,18 @@ export function ParentPortal() {
     setRecuOpen(true);
   }
 
-  async function handleLogout() {
-    await logout();
+  function handlePayerEnLigne(enfant: EnfantParent) {
+    setMomoEnfant(enfant);
+    setMomoOpen(true);
+  }
+
+  function handlePayerALecole(enfant: EnfantParent) {
+    setRecapEnfant(enfant);
+    setRecapOpen(true);
+  }
+
+  function handleLogout() {
+    logoutParent();
     toast({
       title: "Déconnexion",
       description: "Vous avez été déconnecté avec succès.",
@@ -326,18 +350,18 @@ export function ParentPortal() {
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <div className="hidden text-right sm:block">
               <p className="text-xs font-medium leading-tight">
-                {user
-                  ? `${user.prenoms ?? ""} ${user.nom ?? ""}`.trim() ||
-                    user.email
+                {tuteur
+                  ? `${tuteur.prenoms ?? ""} ${tuteur.nom ?? ""}`.trim() ||
+                    "Parent"
                   : "Parent"}
               </p>
               <p className="text-[10px] text-muted-foreground leading-tight">
-                Parent / Tuteur
+                {tuteur?.telephone ?? "Parent / Tuteur"}
               </p>
             </div>
             <Avatar className="size-9 border">
-              <AvatarFallback className="bg-emerald-600 text-xs font-semibold text-white">
-                {initials(user?.nom, user?.prenoms)}
+              <AvatarFallback className="bg-amber-600 text-xs font-semibold text-white">
+                {initials(tuteur?.nom, tuteur?.prenoms)}
               </AvatarFallback>
             </Avatar>
             <Button
@@ -429,6 +453,8 @@ export function ParentPortal() {
                   key={enfant.id}
                   enfant={enfant}
                   onVoirDetail={() => handleVoirDetail(enfant)}
+                  onPayerEnLigne={() => handlePayerEnLigne(enfant)}
+                  onPayerALecole={() => handlePayerALecole(enfant)}
                 />
               ))}
             </div>
@@ -595,6 +621,16 @@ export function ParentPortal() {
         onOpenChange={setRecuOpen}
         paiement={selectedPaiement}
       />
+      <PaymentMomoDialog
+        open={momoOpen}
+        onOpenChange={setMomoOpen}
+        enfant={momoEnfant}
+      />
+      <RecapCaisseDialog
+        open={recapOpen}
+        onOpenChange={setRecapOpen}
+        enfant={recapEnfant}
+      />
     </div>
   );
 }
@@ -737,9 +773,13 @@ function SectionTitle({
 function EnfantCard({
   enfant,
   onVoirDetail,
+  onPayerEnLigne,
+  onPayerALecole,
 }: {
   enfant: EnfantParent;
   onVoirDetail: () => void;
+  onPayerEnLigne: () => void;
+  onPayerALecole: () => void;
 }) {
   const soldeDu = enfant.solde?.solde_du ?? 0;
   const soldeOK = soldeDu <= 0;
@@ -845,16 +885,41 @@ function EnfantCard({
           </div>
         </div>
 
-        {/* Bouton détail */}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onVoirDetail}
-          className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-900/50 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
-        >
-          Voir le détail
-          <ChevronRight className="size-4" />
-        </Button>
+        {/* Boutons d'action : détail + paiements */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onVoirDetail}
+            className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-900/50 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
+          >
+            Voir le détail
+            <ChevronRight className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            onClick={onPayerEnLigne}
+            disabled={soldeOK}
+            className="bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
+            title={
+              soldeOK
+                ? "Aucun solde dû — paiement inutile"
+                : "Payer en ligne via Mobile Money"
+            }
+          >
+            <Smartphone className="size-4" />
+            Payer en ligne
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onPayerALecole}
+            className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-900/50 dark:text-amber-300 dark:hover:bg-amber-950/30"
+          >
+            <Landmark className="size-4" />
+            Payer à l&apos;école
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

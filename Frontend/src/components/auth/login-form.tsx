@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   KeyRound,
   ChevronDown,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,7 +65,7 @@ const DEMO_ACCOUNTS = [
   },
 ];
 
-export function LoginForm() {
+export function LoginForm({ onBack }: { onBack?: () => void }) {
   const { toast } = useToast();
   const login = useAuthStore((s) => s.login);
 
@@ -279,6 +280,17 @@ export function LoginForm() {
                     </>
                   )}
                 </Button>
+
+                {onBack ? (
+                  <button
+                    type="button"
+                    onClick={onBack}
+                    className="flex w-full items-center justify-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-emerald-700"
+                  >
+                    <ArrowLeft className="size-3.5" />
+                    Retour au choix d&apos;espace
+                  </button>
+                ) : null}
               </form>
 
               {/* Identifiants de démo */}

@@ -20,6 +20,9 @@ type Tuteur struct {
         LienParente  LienParente  `json:"lien_parente"`
         Profession   string       `json:"profession"`
         Actif        bool         `gorm:"not null;default:true" json:"actif"`
+        // PinHash : code PIN à 4 chiffres hashé (bcrypt) pour l'accès parent
+        // (numéro de téléphone + PIN = accès portail parent sans compte).
+        PinHash      string       `gorm:"column:pin_hash" json:"-"`
         // Eleves : liste des élèves dont ce tuteur est le tuteur principal (has-many)
         Eleves       []Eleve      `gorm:"foreignKey:TuteurID" json:"eleves,omitempty"`
 }

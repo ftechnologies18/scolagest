@@ -304,3 +304,97 @@ func (s *ParentService) canAccessEleve(eleveID, tuteurID uuid.UUID) bool {
 		Count(&count)
 	return count > 0
 }
+
+// CanAccessEleve vérifie qu'un tuteur a accès à un élève (public pour le handler).
+func (s *ParentService) CanAccessEleve(eleveID, tuteurID uuid.UUID) bool {
+	return s.canAccessEleve(eleveID, tuteurID)
+}
+
+// GetEleveEtablissementID retourne l'ID de l'établissement d'un élève.
+func (s *ParentService) GetEleveEtablissementID(eleveID uuid.UUID) uuid.UUID {
+	var eleve models.Eleve
+	if err := database.DB.First(&eleve, "id = ?", eleveID).Error; err != nil {
+		return uuid.Nil
+	}
+	return eleve.EtablissementID
+}
+
+// RecapCaisseData contient les données d'un récapitulatif pour paiement à l'école.
+type RecapCaisseData struct {
+	Etablissement struct {
+		Nom          string `json:"nom"`
+		CodeOfficiel string `json:"code_officiel"`
+		Ville        string `json:"ville"`
+		Telephone    string `json:"telephone"`
+	} `json:"etablissement"`
+	Eleve struct {
+		Nom                string `json:"nom"`
+		Prenoms            string `json:"prenoms"`
+		MatriculeMinistere string `json:"matricule_ministere"`
+		IdentifiantInterne string `json:"identifiant_interne"`
+		Classe             string `json:"classe"`
+		Categorie          string `json:"categorie"`
+	} `json:"eleve"`
+	Tuteur struct {
+		Nom       string `json:"nom"`
+		Prenoms   string `json:"prenoms"`
+		Telephone string `json:"telephone"`
+	} `json:"tuteur"`
+	Solde struct {
+		TotalAttendu float64 `json:"total_attendu"`
+		TotalPaye    float64 `json:"total_paye"`
+		SoldeDu      float64 `json:"solde_du"`
+	} `json:"solde"`
+	FraisDetail []SoldeFrais `json:"frais_detail"`
+	Date        string       `json:"date"`
+}
+
+// GetRecapCaisse génère un récapitulatif imprimable pour paiement à l'école.
+func (s *ParentService) GetRecapCaisse(eleveID, tuteurID uuid.UUID) (*RecapCaisseData, error) {
+	if !s.canAccessEleve(eleveID, tuteurID) {
+		return nil, errors.New("accès refusé — cet élève n'est pas votre enfant")
+	}
+
+	var eleve models.Eleve
+	database.DB.Preload("Etablissement").First(&eleve, "id = ?", eleveID)
+
+	var annee models.AnneeScolaire
+	database.DB.Where("est_active = ?", true).First(&annee)
+
+	var ins models.Inscription
+	var classe models.Classe
+	database.DB.Where("eleve_id = ? AND annee_scolaire_id = ?", eleveID, annee.ID).First(&ins)
+	database.DB.First(&classe, "id = ?", ins.ClasseID)
+
+	var tuteur models.Tuteur
+	if eleve.TuteurID != nil {
+		database.DB.First(&tuteur, "id = ?", *eleve.TuteurID)
+	}
+
+	solde, _ := s.GetSoldeEleve(eleveID)
+
+	recap := &RecapCaisseData{}
+	recap.Date = time.Now().Format("02/01/2006")
+	if eleve.Etablissement != nil {
+		recap.Etablissement.Nom = eleve.Etablissement.Nom
+		recap.Etablissement.CodeOfficiel = eleve.Etablissement.CodeOfficiel
+		recap.Etablissement.Ville = eleve.Etablissement.Ville
+		recap.Etablissement.Telephone = eleve.Etablissement.Telephone
+	}
+	recap.Eleve.Nom = eleve.Nom
+	recap.Eleve.Prenoms = eleve.Prenoms
+	recap.Eleve.MatriculeMinistere = eleve.MatriculeMinistere
+	recap.Eleve.IdentifiantInterne = eleve.IdentifiantInterne
+	recap.Eleve.Classe = classe.Libelle
+	recap.Eleve.Categorie = string(eleve.Categorie)
+	recap.Tuteur.Nom = tuteur.Nom
+	recap.Tuteur.Prenoms = tuteur.Prenoms
+	recap.Tuteur.Telephone = tuteur.Telephone
+	if solde != nil {
+		recap.Solde.TotalAttendu = solde.TotalAttendu
+		recap.Solde.TotalPaye = solde.TotalPaye
+		recap.Solde.SoldeDu = solde.SoldeDu
+		recap.FraisDetail = solde.FraisAttendus
+	}
+	return recap, nil
+}
