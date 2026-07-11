@@ -81,6 +81,9 @@ type Inscription struct {
         AnneeScolaire        *AnneeScolaire     `gorm:"foreignKey:AnneeScolaireID" json:"annee_scolaire,omitempty"`
         DateInscription      time.Time          `gorm:"not null" json:"date_inscription"`
         Statut               StatutInscription  `gorm:"not null;default:INSCRIT" json:"statut"`
+        // DecisionPromotion : décision de fin d'année (PROMU/REDOUBLANT/NON_REINSCRIT).
+        // Renseignée lors du passage pour gérer les redoublants et les abandons.
+        DecisionPromotion    *DecisionPromotion `json:"decision_promotion"`
         DerogationInscription bool              `gorm:"not null;default:false" json:"derogation_inscription"`
         MotifDerogation      string             `json:"motif_derogation"`
         AccordeePar          *uuid.UUID         `gorm:"type:uuid;index" json:"accordee_par"`

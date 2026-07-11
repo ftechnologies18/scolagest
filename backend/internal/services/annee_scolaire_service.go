@@ -159,9 +159,9 @@ func (s *AnneeScolaireService) Close(id uuid.UUID) (*models.AnneeScolaire, error
 }
 
 // PromoteStudents fait passer les élèves dans la classe supérieure pour la nouvelle année.
-// Crée des inscriptions pour tous les élèves actifs dans la nouvelle année.
-// Le passage de classe suit la logique : CP1→CP2, CP2→CE1, ..., 3e→(diplôme), Terminale→(diplôme).
-func (s *AnneeScolaireService) PromoteStudents(ancienneAnneeID, nouvelleAnneeID uuid.UUID) (*PromoteResult, error) {
+// Accepte une liste de décisions individuelles (PROMU/REDOUBLANT/NON_REINSCRIT) par élève.
+// Si decisions est vide, tous les élèves sont promus par défaut (comportement précédent).
+func (s *AnneeScolaireService) PromoteStudents(ancienneAnneeID, nouvelleAnneeID uuid.UUID, decisions []EleveDecision) (*PromoteResult, error) {
         db := database.Current()
 
         // Vérifier les années
@@ -176,13 +176,15 @@ func (s *AnneeScolaireService) PromoteStudents(ancienneAnneeID, nouvelleAnneeID 
         // Récupérer toutes les classes avec leur cycle et niveau
         var classes []models.Classe
         db.Preload("Cycle").Find(&classes)
-        classeByID := make(map[uuid.UUID]models.Classe)
-        for _, c := range classes {
-                classeByID[c.ID] = c
-        }
 
-        // Construire la map de passage : classe → classe supérieure
+        // Construire la map de passage
         promotionMap := s.buildPromotionMap(classes)
+
+        // Construire la map des décisions (eleve_id → décision)
+        decisionMap := make(map[uuid.UUID]models.DecisionPromotion)
+        for _, d := range decisions {
+                decisionMap[d.EleveID] = d.Decision
+        }
 
         // Récupérer les inscriptions de l'ancienne année
         var inscriptions []models.Inscription
@@ -201,50 +203,154 @@ func (s *AnneeScolaireService) PromoteStudents(ancienneAnneeID, nouvelleAnneeID 
                         continue
                 }
 
-                // Déterminer la nouvelle classe
+                // Récupérer la décision (défaut = PROMU)
+                decision, hasDecision := decisionMap[ins.EleveID]
+                if !hasDecision {
+                        decision = models.DecisionPromu
+                }
+
                 var eleve models.Eleve
                 db.First(&eleve, "id = ?", ins.EleveID)
 
-                promo := promotionMap[ins.ClasseID]
+                // Sauvegarder la décision sur l'inscription de l'ancienne année
+                db.Model(&ins).Update("decision_promotion", decision)
 
-                if promo.IsDiplome {
-                        // L'élève est en classe d'examen (3e, Terminale, CM2) → diplômé
-                        db.Model(&eleve).Update("statut", models.StatutEleveDiplome)
-                        result.Diplomes++
+                // Traiter selon la décision
+                switch decision {
+                case models.DecisionNonReinscrit:
+                        // Abandon / transfert → pas de nouvelle inscription
+                        result.NonReinscrits++
                         continue
-                }
 
-                if promo.NouvelleClasse == uuid.Nil {
-                        // Pas de classe supérieure trouvée → skip
-                        result.Skipped++
+                case models.DecisionRedoublant:
+                        // Redoublant → réinscrit dans la MÊME classe
+                        newIns := models.Inscription{
+                                EleveID:         ins.EleveID,
+                                EtablissementID: ins.EtablissementID,
+                                ClasseID:        ins.ClasseID, // même classe
+                                AnneeScolaireID: nouvelleAnneeID,
+                                DateInscription: now,
+                                Statut:          models.StatutReinscrit,
+                        }
+                        if err := db.Create(&newIns).Error; err != nil {
+                                result.Erreurs++
+                                continue
+                        }
+                        result.Redoublants++
                         continue
-                }
 
-                // Créer la nouvelle inscription
-                newIns := models.Inscription{
-                        EleveID:         ins.EleveID,
-                        EtablissementID: ins.EtablissementID,
-                        ClasseID:        promo.NouvelleClasse,
-                        AnneeScolaireID: nouvelleAnneeID,
-                        DateInscription: now,
-                        Statut:          models.StatutReinscrit,
+                case models.DecisionPromu:
+                        // Promotion normale → classe supérieure
+                        promo := promotionMap[ins.ClasseID]
+
+                        if promo.IsDiplome {
+                                // Classe d'examen (3e, Terminale, CM2) → diplômé
+                                db.Model(&eleve).Update("statut", models.StatutEleveDiplome)
+                                result.Diplomes++
+                                continue
+                        }
+
+                        if promo.NouvelleClasse == uuid.Nil {
+                                result.Skipped++
+                                continue
+                        }
+
+                        newIns := models.Inscription{
+                                EleveID:         ins.EleveID,
+                                EtablissementID: ins.EtablissementID,
+                                ClasseID:        promo.NouvelleClasse,
+                                AnneeScolaireID: nouvelleAnneeID,
+                                DateInscription: now,
+                                Statut:          models.StatutReinscrit,
+                        }
+                        if err := db.Create(&newIns).Error; err != nil {
+                                result.Erreurs++
+                                continue
+                        }
+                        result.Promus++
                 }
-                if err := db.Create(&newIns).Error; err != nil {
-                        result.Erreurs++
-                        continue
-                }
-                result.Promus++
         }
 
         return result, nil
 }
 
+// EleveDecision : décision de promotion pour un élève spécifique.
+type EleveDecision struct {
+        EleveID  uuid.UUID                  `json:"eleve_id"`
+        Decision models.DecisionPromotion   `json:"decision"` // PROMU | REDOUBLANT | NON_REINSCRIT
+}
+
 // PromoteResult contient le résultat de la promotion des élèves.
 type PromoteResult struct {
-        Promus   int `json:"promus"`
-        Diplomes int `json:"diplomes"`
-        Skipped  int `json:"skipped"`
-        Erreurs  int `json:"erreurs"`
+        Promus         int `json:"promus"`
+        Diplomes       int `json:"diplomes"`
+        Redoublants    int `json:"redoublants"`
+        NonReinscrits  int `json:"non_reinscrits"`
+        Skipped        int `json:"skipped"`
+        Erreurs        int `json:"erreurs"`
+}
+
+// PreviewPromotion génère un aperçu des élèves avec leur décision par défaut (PROMU).
+// Permet à la Direction de voir tous les élèves et d'ajuster les décisions avant validation.
+type PreviewEleve struct {
+        EleveID        uuid.UUID `json:"eleve_id"`
+        EleveNom       string    `json:"eleve_nom"`
+        ElevePrenoms   string    `json:"eleve_prenoms"`
+        ClasseActuelle string    `json:"classe_actuelle"`
+        ClasseSuivante string    `json:"classe_suivante"` // vide si diplôme
+        EstDiplome     bool       `json:"est_diplome"`
+        Decision       string     `json:"decision"` // PROMU (défaut)
+}
+
+// PreviewPromotion retourne la liste de tous les élèves avec leur classe actuelle et suivante.
+func (s *AnneeScolaireService) PreviewPromotion(ancienneAnneeID uuid.UUID) ([]PreviewEleve, error) {
+        db := database.Current()
+
+        // Récupérer les classes
+        var classes []models.Classe
+        db.Preload("Cycle").Find(&classes)
+        promotionMap := s.buildPromotionMap(classes)
+        classeByID := make(map[uuid.UUID]models.Classe)
+        for _, c := range classes {
+                classeByID[c.ID] = c
+        }
+
+        // Récupérer les inscriptions de l'ancienne année
+        var inscriptions []models.Inscription
+        db.Where("annee_scolaire_id = ?", ancienneAnneeID).Find(&inscriptions)
+
+        var result []PreviewEleve
+        for _, ins := range inscriptions {
+                var eleve models.Eleve
+                if err := db.First(&eleve, "id = ?", ins.EleveID).Error; err != nil {
+                        continue
+                }
+                if eleve.Statut != models.StatutEleveActif {
+                        continue
+                }
+
+                classeActuelle := classeByID[ins.ClasseID]
+                promo := promotionMap[ins.ClasseID]
+
+                pe := PreviewEleve{
+                        EleveID:        eleve.ID,
+                        EleveNom:       eleve.Nom,
+                        ElevePrenoms:   eleve.Prenoms,
+                        ClasseActuelle: classeActuelle.Libelle,
+                        Decision:       string(models.DecisionPromu),
+                }
+
+                if promo.IsDiplome {
+                        pe.EstDiplome = true
+                        pe.ClasseSuivante = "(diplôme)"
+                } else if promo.NouvelleClasse != uuid.Nil {
+                        pe.ClasseSuivante = classeByID[promo.NouvelleClasse].Libelle
+                }
+
+                result = append(result, pe)
+        }
+
+        return result, nil
 }
 
 // buildPromotionMap construit la map de passage de classe.

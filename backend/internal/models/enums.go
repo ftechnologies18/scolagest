@@ -53,6 +53,17 @@ const (
         StatutAbandon    StatutInscription = "ABANDON"
 )
 
+// DecisionPromotion : décision de fin d'année pour le passage de classe.
+// Utilisée lors de la réinscription massive pour distinguer les élèves
+// qui passent, qui redoublent ou qui ne sont pas réinscrits.
+type DecisionPromotion string
+
+const (
+        DecisionPromu        DecisionPromotion = "PROMU"         // passe en classe supérieure (défaut)
+        DecisionRedoublant   DecisionPromotion = "REDOUBLANT"    // reste dans la même classe
+        DecisionNonReinscrit DecisionPromotion = "NON_REINSCRIT" // abandon / transfert (pas de nouvelle inscription)
+)
+
 // StatutEleve : état général d'un élève.
 type StatutEleve string
 

@@ -12,10 +12,20 @@ import {
   GraduationCap,
   Loader2,
   AlertCircle,
+  RotateCcw,
+  UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -56,13 +66,6 @@ interface AnneeStats {
   nb_inscriptions: number;
   nb_classes: number;
   nb_frais: number;
-}
-
-interface PromoteResult {
-  promus: number;
-  diplomes: number;
-  skipped: number;
-  erreurs: number;
 }
 
 // ─── Composant principal ─────────────────────────────────────────────────────
@@ -428,7 +431,26 @@ function CreateAnneeDialog({
   );
 }
 
-// ─── Dialog : Passage / Réinscription ────────────────────────────────────────
+// ─── Dialog : Passage / Réinscription avec décisions ────────────────────────
+
+interface PreviewEleve {
+  eleve_id: string;
+  eleve_nom: string;
+  eleve_prenoms: string;
+  classe_actuelle: string;
+  classe_suivante: string;
+  est_diplome: boolean;
+  decision: string;
+}
+
+interface PromoteResult {
+  promus: number;
+  diplomes: number;
+  redoublants: number;
+  non_reinscrits: number;
+  skipped: number;
+  erreurs: number;
+}
 
 function PromoteDialog({
   open,
@@ -443,18 +465,34 @@ function PromoteDialog({
   const [ancienneId, setAncienneId] = React.useState("");
   const [nouvelleId, setNouvelleId] = React.useState("");
   const [result, setResult] = React.useState<PromoteResult | null>(null);
+  const [decisions, setDecisions] = React.useState<Record<string, string>>({});
+
+  // Preview des élèves
+  const { data: preview, isLoading: previewLoading } = useQuery<PreviewEleve[]>({
+    queryKey: ["promotion-preview", ancienneId],
+    queryFn: () => apiPost<PreviewEleve[]>("/api/annees-scolaires/preview", { ancienne_annee_id: ancienneId }),
+    enabled: !!ancienneId && open && !result,
+    retry: 1,
+    retryDelay: 1500,
+  });
 
   const mutation = useMutation({
-    mutationFn: () =>
-      apiPost<PromoteResult>("/api/annees-scolaires/promote", {
+    mutationFn: () => {
+      const decisionsArray = Object.entries(decisions).map(([eleveId, decision]) => ({
+        eleve_id: eleveId,
+        decision,
+      }));
+      return apiPost<PromoteResult>("/api/annees-scolaires/promote", {
         ancienne_annee_id: ancienneId,
         nouvelle_annee_id: nouvelleId,
-      }),
+        decisions: decisionsArray,
+      });
+    },
     onSuccess: (data) => {
       setResult(data as PromoteResult);
       toast({
         title: "Passage effectué",
-        description: `${(data as PromoteResult).promus} promus, ${(data as PromoteResult).diplomes} diplômés`,
+        description: `${(data as PromoteResult).promus} promus, ${(data as PromoteResult).redoublants} redoublants, ${(data as PromoteResult).diplomes} diplômés`,
       });
     },
     onError: (e: unknown) => {
@@ -467,94 +505,195 @@ function PromoteDialog({
     setResult(null);
     setAncienneId("");
     setNouvelleId("");
+    setDecisions({});
   };
+
+  const updateDecision = (eleveId: string, decision: string) => {
+    setDecisions((prev) => ({ ...prev, [eleveId]: decision }));
+  };
+
+  // Stats rapides des décisions
+  const stats = React.useMemo(() => {
+    if (!preview) return { promus: 0, redoublants: 0, nonReinscrits: 0, diplomes: 0 };
+    return preview.reduce(
+      (acc, e) => {
+        const d = decisions[e.eleve_id] || "PROMU";
+        if (e.est_diplome && d === "PROMU") acc.diplomes++;
+        else if (d === "PROMU") acc.promus++;
+        else if (d === "REDOUBLANT") acc.redoublants++;
+        else if (d === "NON_REINSCRIT") acc.nonReinscrits++;
+        return acc;
+      },
+      { promus: 0, redoublants: 0, nonReinscrits: 0, diplomes: 0 },
+    );
+  }, [preview, decisions]);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent>
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Passage et réinscription des élèves</DialogTitle>
           <DialogDescription>
-            Fait passer tous les élèves dans la classe supérieure pour la nouvelle année.
-            Les élèves en classe d&apos;examen (3e, Terminale, CM2) sont marqués comme diplômés.
+            Fait passer les élèves dans la classe supérieure. Marquez les redoublants
+            et les non-réinscrits individuellement avant de valider.
           </DialogDescription>
         </DialogHeader>
 
         {result ? (
-          /* Résultat du passage */
+          /* ─── Résultat ─── */
           <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center">
                 <p className="text-3xl font-bold text-emerald-700">{result.promus}</p>
-                <p className="text-sm text-emerald-600">élèves promus</p>
+                <p className="text-xs text-emerald-600">promus</p>
               </div>
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-center">
-                <p className="text-3xl font-bold text-amber-700">{result.diplomes}</p>
-                <p className="text-sm text-amber-600">diplômés</p>
+                <p className="text-3xl font-bold text-amber-700">{result.redoublants}</p>
+                <p className="text-xs text-amber-600">redoublants</p>
               </div>
-              <div className="rounded-lg border p-3 text-center">
-                <p className="text-lg font-semibold">{result.skipped}</p>
-                <p className="text-xs text-muted-foreground">ignorés (déjà inscrits)</p>
+              <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-center">
+                <p className="text-3xl font-bold text-sky-700">{result.diplomes}</p>
+                <p className="text-xs text-sky-600">diplômés</p>
               </div>
-              <div className="rounded-lg border p-3 text-center">
-                <p className="text-lg font-semibold">{result.erreurs}</p>
-                <p className="text-xs text-muted-foreground">erreurs</p>
+              <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-center">
+                <p className="text-3xl font-bold text-rose-700">{result.non_reinscrits}</p>
+                <p className="text-xs text-rose-600">non réinscrits</p>
               </div>
             </div>
             {result.erreurs > 0 && (
               <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
                 <AlertCircle className="mt-0.5 size-4 shrink-0" />
-                <p>
-                  {result.erreurs} élève(s) n&apos;ont pas pu être promus. Vérifiez que toutes les classes supérieures existent.
-                </p>
+                <p>{result.erreurs} erreur(s) lors du traitement.</p>
               </div>
             )}
           </div>
-        ) : (
-          /* Formulaire de passage */
+        ) : !ancienneId || !nouvelleId ? (
+          /* ─── Sélection des années ─── */
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Année source (actuelle)</Label>
               <Select value={ancienneId} onValueChange={setAncienneId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner l'année source" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Sélectionner l'année source" /></SelectTrigger>
                 <SelectContent>
                   {annees.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.libelle} {a.est_active ? "(active)" : ""}
-                    </SelectItem>
+                    <SelectItem key={a.id} value={a.id}>{a.libelle} {a.est_active ? "(active)" : ""}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex justify-center">
-              <ArrowRight className="size-5 text-muted-foreground" />
-            </div>
+            <div className="flex justify-center"><ArrowRight className="size-5 text-muted-foreground" /></div>
             <div className="space-y-2">
               <Label>Année cible (nouvelle)</Label>
               <Select value={nouvelleId} onValueChange={setNouvelleId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner l'année cible" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Sélectionner l'année cible" /></SelectTrigger>
                 <SelectContent>
-                  {annees
-                    .filter((a) => a.id !== ancienneId)
-                    .map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.libelle}
-                      </SelectItem>
-                    ))}
+                  {annees.filter((a) => a.id !== ancienneId).map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.libelle}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
+            {ancienneId && nouvelleId && (
+              <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={() => {}}>
+                Voir les élèves
+              </Button>
+            )}
+          </div>
+        ) : previewLoading ? (
+          <div className="flex items-center justify-center py-12"><Loader2 className="size-8 animate-spin text-emerald-600" /></div>
+        ) : preview && preview.length > 0 ? (
+          /* ─── Liste des élèves avec décisions ─── */
+          <div className="space-y-4">
+            {/* Stats rapides */}
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <div className="rounded-lg bg-emerald-50 p-2">
+                <p className="text-xl font-bold text-emerald-700">{stats.promus}</p>
+                <p className="text-[10px] text-emerald-600">promus</p>
+              </div>
+              <div className="rounded-lg bg-amber-50 p-2">
+                <p className="text-xl font-bold text-amber-700">{stats.redoublants}</p>
+                <p className="text-[10px] text-amber-600">redoublants</p>
+              </div>
+              <div className="rounded-lg bg-sky-50 p-2">
+                <p className="text-xl font-bold text-sky-700">{stats.diplomes}</p>
+                <p className="text-[10px] text-sky-600">diplômés</p>
+              </div>
+              <div className="rounded-lg bg-rose-50 p-2">
+                <p className="text-xl font-bold text-rose-700">{stats.nonReinscrits}</p>
+                <p className="text-[10px] text-rose-600">non réinscrits</p>
+              </div>
+            </div>
+
+            {/* Tableau des élèves */}
+            <div className="max-h-[40vh] overflow-y-auto rounded-lg border">
+              <Table>
+                <TableHeader className="sticky top-0 bg-background">
+                  <TableRow>
+                    <TableHead className="w-12"></TableHead>
+                    <TableHead>Élève</TableHead>
+                    <TableHead>Classe actuelle</TableHead>
+                    <TableHead>Classe suivante</TableHead>
+                    <TableHead>Décision</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {preview.map((e) => {
+                    const decision = decisions[e.eleve_id] || "PROMU";
+                    return (
+                      <TableRow key={e.eleve_id}>
+                        <TableCell>
+                          {decision === "REDOUBLANT" ? (
+                            <RotateCcw className="size-4 text-amber-600" />
+                          ) : decision === "NON_REINSCRIT" ? (
+                            <UserX className="size-4 text-rose-600" />
+                          ) : e.est_diplome ? (
+                            <GraduationCap className="size-4 text-sky-600" />
+                          ) : (
+                            <ArrowRight className="size-4 text-emerald-600" />
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium text-sm">
+                          {e.eleve_nom} {e.eleve_prenoms}
+                        </TableCell>
+                        <TableCell className="text-sm">{e.classe_actuelle}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {decision === "REDOUBLANT" ? e.classe_actuelle : e.classe_suivante}
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={decision}
+                            onValueChange={(v) => updateDecision(e.eleve_id, v)}
+                          >
+                            <SelectTrigger className="h-8 w-[140px] text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="PROMU">
+                                {e.est_diplome ? "Diplôme" : "Promu"}
+                              </SelectItem>
+                              <SelectItem value="REDOUBLANT">Redoublant</SelectItem>
+                              <SelectItem value="NON_REINSCRIT">Non réinscrit</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
             <div className="flex items-start gap-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
               <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
               <p>
-                Tous les élèves actifs seront promus dans la classe supérieure. Les frais de la nouvelle année
-                doivent déjà être configurés.
+                Vérifiez les décisions puis validez. Les redoublants seront réinscrits
+                dans la même classe. Les non-réinscrits ne recevront pas de nouvelle inscription.
               </p>
             </div>
+          </div>
+        ) : (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            Aucun élève actif trouvé dans l&apos;année source.
           </div>
         )}
 
@@ -565,17 +704,17 @@ function PromoteDialog({
             </Button>
           ) : (
             <>
-              <Button variant="outline" onClick={handleClose}>
-                Annuler
-              </Button>
-              <Button
-                className="bg-emerald-600 hover:bg-emerald-700"
-                disabled={!ancienneId || !nouvelleId || ancienneId === nouvelleId}
-                onClick={() => mutation.mutate()}
-              >
-                {mutation.isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : <ArrowRight className="mr-2 size-4" />}
-                Lancer le passage
-              </Button>
+              <Button variant="outline" onClick={handleClose}>Annuler</Button>
+              {ancienneId && nouvelleId && preview && preview.length > 0 && (
+                <Button
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                  disabled={mutation.isPending}
+                  onClick={() => mutation.mutate()}
+                >
+                  {mutation.isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : <ArrowRight className="mr-2 size-4" />}
+                  Valider le passage ({preview.length} élèves)
+                </Button>
+              )}
             </>
           )}
         </DialogFooter>
