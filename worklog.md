@@ -1964,3 +1964,114 @@ Stage Summary:
 - Stack production vérifiée et fonctionnelle : Neon atteignable en HTTPS, 30 tables synchronisées, données seedées présentes.
 - Contrainte documentée : port 5432 bloqué en local → la connexion directe backend↔Neon se fait via Render en production (comportement attendu de l'architecture).
 - Prochaines étapes : attendre les instructions du chef de projet sur le module/fonctionnalité à traiter.
+
+---
+Task ID: onboarding-tuteur-v2
+Agent: Z.ai Code (tuteur principal)
+Task: Ré-onboarding du tuteur — le sandbox ayant été réinitialisé (clone précédent /home/z/my-project/scolagest perdu), reprise complète de l'environnement de travail local : clonage, identité Git, Go 1.25, helper Neon HTTPS, outil dbcheck.
+
+Work Log:
+- Clonage du dépôt GitHub `ftechnologies18/scolagest` (branche `main`, HEAD = `82f945a`) dans `/home/z/scolagest` (emplacement distinct du projet sandbox Next.js `/home/z/my-project` pour éviter tout conflit avec le dev server port 3000).
+- Configuration de l'identité Git locale du tuteur (au niveau du dépôt) :
+  - `user.name` = `ftechnologies18`
+  - `user.email` = `freelancetechnologies.ci@gmail.com`
+  - Remote `origin` authentifiée via token GitHub PAT (push autorisé vers `main`).
+- Installation de **Go 1.25.0** en user-space (`/home/z/.local/go`, sans sudo — tarball officiel go.dev) :
+  - `/home/z/.local/go/bin/go version` → `go1.25.0 linux/amd64` ✓
+  - Ajout au PATH via `~/.bashrc`.
+  - Conforme à `backend/go.mod` qui exige `go 1.25.0`.
+- Compilation backend Go :
+  - `go mod download` → OK
+  - `go build -o /tmp/scolagest-server ./cmd/server/` → EXIT 0, binaire 43 931 586 octets (44 Mo) ✓
+- Audit architecture confirmé (conforme au README et au worklog précédent) :
+  - 67 fichiers Go : 17 handlers, 20 services, 11 fichiers modèles (30 entités GORM au total).
+  - `database.Connect()` exécute automatiquement `migrate()` (AutoMigrate 30 modèles) + `createIndexes()`.
+  - `config.Load()` charge `.env` (optionnel) + variables d'environnement.
+- Recréation des outils locaux (perdus lors du reset sandbox, documentés dans onboarding-tuteur v1) :
+  - `.local-tools/neon-sql.sh` (exécutable, gitignoré) : wrapper curl autour de l'endpoint HTTPS SQL de Neon (`https://<host>/sql` + header `Neon-Connection-String`). Permet d'exécuter du SQL sur Neon depuis le sandbox malgré le port 5432 bloqué. Testé : `SELECT ... FROM information_schema.tables` → 30 tables renvoyées ✓.
+  - `backend/cmd/dbcheck/main.go` (gitignoré) : outil de vérification/synchro DB.
+    - Appelle `config.Load()` puis `database.Connect()` (donc AutoMigrate + createIndexes automatiques).
+    - Liste les 30 tables attendues + leur count.
+    - Vérifie la présence de `deleted_at` (soft-delete GORM).
+    - Testé en SQLite local : `DB_PATH=./data/scolagest.db go run ./cmd/dbcheck/` → ✓ 30 tables créées, binaire principal toujours compile.
+    - Bug cosmétique corrigé : détection du driver via `config.App.IsPostgreSQL()` (et non `os.Getenv("DATABASE_URL")`) car le sandbox expose `DATABASE_URL=file:/home/z/my-project/db/custom.db` (Prisma sandbox) qui n'est ni vide ni un prefix `postgres`.
+- Vérification Neon via HTTPS SQL (synchro confirmée) :
+  - 30 tables présentes ✓ (etablissements, cycles, classes, eleves, tuteurs, utilisateurs, inscriptions, frais, echeances, paiements, recus, annees_scolaires, saa_plans, saa_subscriptions, etc.).
+  - Counts conformes au seed : 2 établissements, 4 cycles, 19 classes, 8 élèves, 5 tuteurs, 6 utilisateurs, 8 inscriptions, 6 frais, 12 échéances, 4 paiements, 4 reçus, 1 année scolaire, 3 plans SaaS, 2 abonnements SaaS.
+- `.gitignore` vérifié : `/.local-tools/` et `/backend/cmd/dbcheck/` déjà exclus (configuration héritée du commit `82f945a`). `git status` clean après recréation des outils locaux ✓.
+- Aucune modification du code applicatif. Aucun commit/push effectué (l'utilisateur n'a pas encore demandé de tâche de développement).
+
+Stage Summary:
+- Environnement de travail prêt dans `/home/z/scolagest` :
+  - Go 1.25.0 installé (user-space), backend compile (44 Mo).
+  - Identité Git configurée (ftechnologies18 / freelancetechnologies.ci@gmail.com), remote authentifiée.
+  - Helper Neon HTTPS SQL opérationnel (`.local-tools/neon-sql.sh`).
+  - Outil dbcheck recréé et testé (AutoMigrate sur 30 tables OK).
+- Stack production vérifiée et fonctionnelle : Neon atteignable en HTTPS, 30 tables synchronisées, données seedées présentes.
+- Contrainte sandbox documentée : port 5432 bloqué en sortie → connexion directe backend↔Neon impossible en local. La synchro Neon se fait via :
+  1. Déploiement Render (push `backend/**` → GitHub Action → Render → AutoMigrate sur Neon), ou
+  2. Helper `.local-tools/neon-sql.sh` pour inspection/SQL direct via HTTPS.
+- Workflow adopté (respect de l'architecture en place) :
+  1. Modifications backend → `go build` local (vérif compilation) → `go run ./cmd/dbcheck/` (vérif schéma SQLite) → commit (identité ftechnologies18) → push `main` → Render redéploie → AutoMigrate synchronise Neon.
+  2. Modifications frontend → `bun run lint` local → commit → push `main` → Vercel redéploie.
+  3. Inspection/synchro Neon à la demande via `.local-tools/neon-sql.sh` (HTTPS).
+- Prochaines étapes : attendre les instructions du chef de projet sur le module/fonctionnalité à traiter.
+
+---
+Task ID: parent-login-refonte
+Agent: frontend-styling-expert
+Task: Refonte premium du login PARENT (`Frontend/src/components/parent/parent-access-form.tsx`) en layout split-screen + glassmorphism + Framer Motion, palette AMBER, miroir du login staff (emerald) qui a branding à gauche / form à droite.
+
+Work Log:
+- Lecture du worklog (sections onboarding-tuteur-v2 + historique login parent Phase 6) pour aligner conventions.
+- Lecture du fichier de référence `components/auth/login-form.tsx` (staff : split-screen emerald, branding gauche / form droite) pour caler le niveau de qualité.
+- Lecture du `parent-access-form.tsx` existant : logique métier à préserver (useState telephone/pin/submitting, normalizePhone, handlePinChange, ensureCountryCode +225, handleSubmit → loginParent, applyDemo démo +2250701020304/1234, note sécurité ShieldCheck).
+- Vérification de l'API `components/ui/input-otp.tsx` (input-otp v1.4.2) : InputOTP/InputOTPGroup/InputOTPSlot compatibles avec PIN 4 cases.
+- Réécriture complète de `parent-access-form.tsx` :
+  - Layout : `flex min-h-screen w-full overflow-hidden` ; panneau formulaire à GAUCHE (`lg:w-1/2 xl:w-[45%]`), panneau branding à DROITE (`hidden lg:flex lg:w-1/2 xl:w-[55%]`).
+  - Glassmorphism : carte form `bg-white/70 backdrop-blur-2xl border border-white/60 shadow-xl` ; 3 orbes branding `bg-white/10 backdrop-blur-xl` flottants.
+  - Framer Motion : `containerVariants`/`itemVariants` typés `Variants` (staggerChildren 0.08, spring slide-up), helper `floatingOrb` (y/x oscillent 6 s, `repeat: Infinity`, `ease: "easeInOut" as const`), `whileHover={{ scale: 1.05, y: -2 }}` sur feature cards, `whileFocus={{ scale: 1.01 }}` sur inputs + InputOTP, `whileHover/whileTap` sur bouton submit, `AnimatePresence` pour la bascule du panneau démo (height auto).
+  - Palette AMBER : branding `from-amber-500 via-amber-600 to-orange-700`, slogan « scolarité » en gradient `from-amber-300 to-amber-100 bg-clip-text`, bouton submit `bg-gradient-to-r from-amber-600 to-orange-600`. Emerald conservé uniquement pour la note ShieldCheck (cohérent). Aucune couleur indigo/blue.
+  - Contenu branding : logo glass `bg-white/15 ring-1 ring-white/20` + « ScolaGest / Espace Parent », slogan « Suivez la scolarité de vos enfants », paragraphe soldes/échéances/reçus/Mobile Money, grille 4 features (GraduationCap, Wallet, ReceiptText, Smartphone), badge Sparkles « Conçu pour les parents · FCFA · Côte d'Ivoire », grille de points radial-gradient 24 px.
+  - PIN : `<InputOTP maxLength={4} inputMode="numeric">` 4 slots `size-12 text-lg` (UX premium), onChange → handlePinChange (sanitise 4 chiffres), keep autoComplete one-time-code.
+  - Formulaire : Label htmlFor + aria, en-tête mobile compact `lg:hidden`, bouton retour `onBack` discret (ArrowLeft) en bas, footer copyright.
+  - Logique auth 100 % préservée (loginParent(tel, pin), toast succès/erreur 401, applyDemo).
+- Install dépendances frontend (`bun install`, node_modules absent à l'origine — 827 paquets).
+- Vérifications : `bun run lint` → exit 0, 0 erreur. `bunx tsc --noEmit` → 0 erreur sur `parent-access-form.tsx` (les 15 erreurs signalées sont toutes pré-existantes dans d'autres fichiers non concernés : login-form.tsx, view-impayes/parametres/utilisateurs, *-form-dialog.tsx, instrumentation.ts — hors périmètre, non touchés).
+- Commit `e64b453` (uniquement `parent-access-form.tsx`) + push `origin main` : `82f945a..e64b453 main -> main` OK.
+
+Stage Summary:
+- Artefact : `Frontend/src/components/parent/parent-access-form.tsx` refondu (389 ins / 144 del), props `ParentAccessFormProps { onBack }` inchangées, route `app/(auth)/parent/page.tsx` non modifiée.
+- Commit : `e64b453` poussé sur `main` (https://github.com/ftechnologies18/scolagest), Vercel redéploiera le frontend.
+- Qualité : lint 0 erreur, tsc 0 erreur sur le fichier refondu. Variants Framer Motion typés explicitement (`: Variants`) pour éviter l'élargissement `type: string` (le fichier de référence login-form.tsx a quant à lui une erreur tsc pré-existante sur ce même point, non corrigée car hors périmètre).
+- Décisions design : miroir gauche/droite vs staff pour distinguer les espaces ; InputOTP 4 cases retenu (API conforme, navigation clavier auto) ; AnimatePresence utilisé sur le panneau démo (bascule height auto) plutôt que sur un bouton afficher/masquer PIN (le PIN étant affiché en clair via OTP, ce dernier n'avait pas de raison d'être).
+- Limites : aucune. Le worklog.md reste modifié localement (section onboarding-tuteur-v2 pré-existante non commitée + présente append) — non inclus dans le commit conformément aux instructions (seul parent-access-form.tsx est add/commit/push).
+
+---
+Task ID: parent-login-refonte-verification
+Agent: Z.ai Code (tuteur principal)
+Task: Vérification end-to-end (Agent Browser) de la refonte du login parent déployée sur Vercel.
+
+Work Log:
+- Commit `e64b453` (frontend-styling-expert) poussé sur `main` → Vercel a redéployé automatiquement le frontend.
+- Vérification de la propagation : `curl https://scolagest.vercel.app/parent` → HTTP 200, le nouveau slogan « Suivez la scolarité » est présent dans le HTML rendu (cache Vercel HIT).
+- Agent Browser (viewport desktop 1440×900) sur `https://scolagest.vercel.app/parent` :
+  - Page charge sans erreur console, titre = « ScolaGest — Gestion & Caisse Scolaire ».
+  - Split-screen confirmé via bounding boxes : titre formulaire « Espace Parent » à x=133 (GAUCHE), slogan branding « Suivez la scolarité » à x=712 (DROITE) — miroir du login staff.
+  - Tous les éléments interactifs présents : champ téléphone, PIN OTP (4 cases), bouton « Accéder à mon espace », bouton retour, panneau démo collapsible.
+  - Classes CSS de design confirmées dans le DOM rendu : `backdrop-blur-2xl` (carte glass), 3× `backdrop-blur-xl` (orbes flottants), `from-amber-500` (dégradé branding), `from-amber-600` (dégradé bouton), `radial-gradient` (grille de points), 4 `input-otp-slot` (cases PIN), 13 éléments avec `transform` inline (animations Framer Motion actives).
+- Interactivité testée :
+  - Bouton « Identifiants de démonstration » → se déploie (expanded=true), bouton « Pré-remplir le formulaire » apparaît (AnimatePresence OK).
+  - Click « Pré-remplir » → téléphone = `+2250701020304`, PIN = `1234` (logique loginParent + applyDemo préservée).
+- Responsive testé :
+  - Mobile 375×812 : panneau branding masqué (`display:none` via `hidden lg:flex`), en-tête logo compact `lg:hidden` affiché.
+  - Tablette 768×1024 : branding toujours masqué (768 < breakpoint lg=1024).
+  - Desktop ≥1024 : split-screen actif.
+- Captures sauvegardées (artefacts locaux, non commités) : `parent-login-desktop.png` (444 Ko), `parent-login-mobile.png` (158 Ko).
+- Nettoyage : serveur dev local port 3001 arrêté, session Agent Browser fermée.
+
+Stage Summary:
+- Refonte du login parent VALIDÉE end-to-end en production sur https://scolagest.vercel.app/parent.
+- Toutes les exigences du chef de projet respectées : split-screen (branding droite + form gauche), glassmorphism (carte + orbes), Framer Motion (13 animations, AnimatePresence démo), InputOTP 4 cases PIN.
+- Palette amber distincte du staff emerald, logique auth (loginParent telephone+PIN) 100 % préservée, 0 erreur console, responsive mobile/tablette/desktop OK.
+- Commit `e64b453` live sur Vercel. Aucun autre fichier touché.
