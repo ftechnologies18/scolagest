@@ -1655,3 +1655,37 @@ Stage Summary:
 - Intégrée dans le dashboard SUPER_ADMIN (nav Facturation)
 - Section Revenus SaaS ajoutée au dashboard SaaS principal
 - Vercel déploie automatiquement (commit Frontend-only)
+
+---
+Task ID: rls-final
+Agent: Z.ai Code (tuteur principal)
+Task: Finalisation RLS — 3 étapes (rôle DB + FORCE RLS + migration services)
+
+Work Log:
+- Étape 1 : DATABASE_URL Render → scolagest_app (NOBYPASSRLS)
+  - Rôle scolagest_app créé avec mot de passe
+  - Permissions ALL sur 30 tables + séquences + CREATE sur schema + default privileges
+- Étape 2 : FORCE ROW LEVEL SECURITY sur 18 tables de données
+  - Tables globales (12) : RLS DÉSACTIVÉ (etablissements, annees, tuteurs, users, etc.)
+  - Tables protégées (18) : RLS + FORCE + 4 politiques par table (SELECT/INSERT/UPDATE/DELETE)
+  - Tests isolation validés :
+    • scolagest_app sans variable → 0 élève ✓
+    • scolagest_app + tenant=collège → 5 élèves ✓
+    • scolagest_app + tenant=EPV → 3 élèves ✓
+    • scolagest_app + is_super_admin=true → 8 élèves ✓
+    • Cross-tenant → 0 (bloqué) ✓
+- Étape 3 : Migration services Go
+  - database/rls.go : goroutine-local storage (SetCurrentTx/ClearCurrentTx/Current)
+  - database/rls.go : BeginRLSTx utilise set_config() au lieu de SET LOCAL (GORM compat)
+  - middleware/auth.go : SetCurrentTx après BeginRLSTx, ClearCurrentTx après handler
+  - 17 services : database.DB → database.Current() (sauf seed qui garde database.DB)
+- Fix : SET LOCAL → set_config() (SET LOCAL ne supporte pas les paramètres bindés GORM)
+- Commits : 1512ce3, be39dff
+
+Stage Summary:
+- RLS complet et fonctionnel au niveau base de données PostgreSQL Neon
+- Isolation multi-tenant garantie au niveau DB (pas seulement applicatif)
+- scolagest_app (NOBYPASSRLS) soumis au RLS sur 18 tables de données
+- Variables session : app.current_tenant_id (staff), app.is_super_admin (SUPER_ADMIN bypass)
+- 12 tables globales sans RLS (données de référence partagées)
+- Goroutine-local storage : chaque requête a sa propre transaction RLS isolée
