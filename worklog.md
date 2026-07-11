@@ -1411,3 +1411,33 @@ Stage Summary:
   ces endpoints dès qu'ils seront disponibles.
 - Flux parent téléphone + PIN : NON touché (les tokens parent et staff
   restent indépendants dans auth-store/api-client ; aucune régression).
+
+---
+Task ID: saas-model
+Agent: Z.ai Code (tuteur principal)
+Task: Modèle SaaS — SUPER_ADMIN (plateforme) + DIRECTION (établissement)
+
+Work Log:
+- Backend :
+  - models/enums.go : ADMINISTRATEUR → SUPER_ADMIN (5 rôles: SUPER_ADMIN, CAISSIER, COMPTABLE, DIRECTION, SECRETARIAT)
+  - services/auth_service.go : SUPER_ADMIN ne peut pas sélectionner d'établissement (rejet si etablissement_id fourni)
+  - services/saas_service.go (NOUVEAU) : ListEstablishments, GetStats, ActivateSupport/DeactivateSupport (JWT dédié 1h + audit)
+  - handlers/saas.go (NOUVEAU) : /api/saas/establishments, /stats, /audit, /support/activate, /support/deactivate + RequireSuperAdmin
+  - seed/seed.go : admin=SUPER_ADMIN sans accès établissement, direction=DIRECTION sur 2 établissements
+- Frontend (sous-agent) :
+  - Renommage ADMINISTRATEUR → SUPER_ADMIN dans 6 fichiers
+  - DIRECTION récupère tous les droits qu'avait ADMINISTRATEUR (nav complète)
+  - 4 nouvelles vues SaaS : dashboard, establishments, audit, support
+  - NAV split : SAAS_NAV_GROUPS (SUPER_ADMIN) + STAFF_NAV_GROUPS (autres)
+  - lib/api-saas.ts : wrappers API SaaS
+- DB Neon mise à jour : admin role_global ADMINISTRATEUR → SUPER_ADMIN, accès établissement supprimés (2)
+- Commit + push : cf90d00
+- Render : LIVE
+- Test : login admin → role=SUPER_ADMIN, pas d'établissement ✓
+
+Stage Summary:
+- Modèle SaaS multi-tenant implémenté : SUPER_ADMIN (plateforme) + DIRECTION (établissement)
+- SUPER_ADMIN : gère établissements, stats globales, audit, mode support (1h, tracé)
+- DIRECTION : admin d'établissement (frais, classes, users, compta, paramètres)
+- SUPER_ADMIN : PAS d'accès aux données établissement (sauf mode support)
+- Comptes démo : admin=SUPER_ADMIN (sans établissement), direction=DIRECTION (admin collège+EPV)
