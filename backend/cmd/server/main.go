@@ -3,6 +3,7 @@ package main
 import (
         "fmt"
         "log"
+        "time"
 
         "github.com/gin-gonic/gin"
         "github.com/scolagest/backend/internal/config"
@@ -25,23 +26,41 @@ func main() {
         }
 
         // 2. Connexion base de données + migrations
-        if _, err := database.Connect(); err != nil {
-                log.Fatalf("❌ Échec connexion DB: %v", err)
-        }
-        log.Println("✓ Base de données connectée + migrations appliquées")
+        // En production (Render), la connexion à Neon + AutoMigrate peut prendre
+        // 30-60s. Pour éviter que le health check Render ne tue le conteneur
+        // avant la fin du démarrage, on connecte la DB en arrière-plan avec retry.
+        // Le serveur HTTP démarre immédiatement et /api/health renvoie un status
+        // "starting" tant que la DB n'est pas prête (via database.Current()).
+        go func() {
+                maxRetries := 10
+                for attempt := 1; attempt <= maxRetries; attempt++ {
+                        log.Printf("🔌 Tentative connexion DB (%d/%d)...", attempt, maxRetries)
+                        if _, err := database.Connect(); err != nil {
+                                log.Printf("⚠️  Échec connexion DB (tentative %d): %v", attempt, err)
+                                if attempt < maxRetries {
+                                        time.Sleep(5 * time.Second)
+                                        continue
+                                }
+                                log.Printf("❌ Connexion DB définitivement échouée après %d tentatives. Le serveur tourne en mode dégradé.", maxRetries)
+                                return
+                        }
+                        log.Println("✓ Base de données connectée + migrations appliquées")
+                        // Seed des données de démonstration (idempotent)
+                        if cfg.IsPostgreSQL() {
+                                log.Println("⏳ Seed en arrière-plan (PostgreSQL)...")
+                                go func() {
+                                        seed.Seed()
+                                        log.Println("✓ Seed terminé (arrière-plan)")
+                                }()
+                        } else {
+                                seed.Seed()
+                        }
+                        return
+                }
+        }()
 
-        // 3. Seed des données de démonstration (idempotent)
-        // En production (PostgreSQL/Neon), le seed est non-bloquant (goroutine)
-        // pour que le serveur démarre immédiatement. En dev (SQLite), il est synchrone.
-        if cfg.IsPostgreSQL() {
-            log.Println("⏳ Seed en arrière-plan (PostgreSQL)...")
-            go func() {
-                seed.Seed()
-                log.Println("✓ Seed terminé (arrière-plan)")
-            }()
-        } else {
-            seed.Seed()
-        }
+        // 3. (Services initialisés ci-dessous — ils utilisent database.Current()
+        //     qui sera disponible dès que la goroutine de connexion aura réussi.)
 
         // 4. Services
         jwtSvc := services.NewJWTService(cfg)
