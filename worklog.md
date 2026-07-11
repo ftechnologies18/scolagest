@@ -1196,3 +1196,43 @@ Stage Summary:
   access_token + tuteur), GET /api/parent/recap-caisse, POST
   /api/parent/payer/mobile-money. Le frontend est prêt à consommer ces
   endpoints dès qu'ils seront disponibles.
+
+---
+Task ID: parent-phone-pin
+Agent: ZcolaGest Code (tuteur principal)
+Task: Accès parent par téléphone + PIN (sans compte utilisateur)
+
+Work Log:
+- Backend :
+  - models/eleves.go : ajout PinHash au modèle Tuteur (bcrypt)
+  - services/parent_access_service.go : Access(téléphone, PIN) → token JWT temporaire (2h), ValidateParentToken, GeneratePin, HashPin
+  - services/parent_service.go : CanAccessEleve (public), GetEleveEtablissementID, GetRecapCaisse (récapitulatif imprimable)
+  - handlers/parent.go : POST /api/parent/access (public) + ParentAuthMiddleware + endpoints protégés
+    - POST /api/parent/payer/mobile-money, GET /api/parent/recap-caisse
+  - models/enums.go : retrait RoleParent du RBAC (5 rôles staff restants)
+  - seed/seed_parent.go : suppression compte parent@scolagest.ci + génération PIN pour tuteurs (1234, 2345, ...)
+  - cmd/server/main.go : branchement ParentAccessService
+- Frontend (sous-agent) :
+  - auth-store.ts : parentAccessToken, loginParent(tel, pin), logoutParent()
+  - api-client.ts : parentApiGet/parentApiPost
+  - api-parent.ts : migration vers parentApiGet + payerMobileMoneyParent + fetchRecapCaisseParent
+  - page.tsx : page de choix (Espace Staff / Espace Parent)
+  - parent-access-form.tsx : formulaire téléphone + PIN (4 chiffres)
+  - parent-portal.tsx : boutons Payer en ligne (MoMo) + Payer à l'école (récap)
+  - payment-momo-dialog.tsx : dialogue paiement Mobile Money
+  - recap-caisse-dialog.tsx : récapitulatif imprimable pour la caisse
+- Fix build Render : go.mod restauré à go 1.25.0 + Gin 1.12.0 (les rétrogradations causaient des échecs)
+- GOTOOLCHAIN=local retiré de Render (empêchait Go 1.25)
+
+Tests production :
+- POST /api/parent/access {telephone: "+225 0701020304", pin: "1234"} → ✓ Tuteur: Kouassi Jean
+- Render : LIVE à 00:50
+- Vercel : READY (page de choix + formulaire parent)
+
+Stage Summary:
+- Accès parent par téléphone + PIN : FONCTIONNEL en production
+- Le parent n'est plus un utilisateur du RBAC mais un utilisateur temporaire (token JWT 2h)
+- PINs démo : Kouassi Jean (+225 0701020304) → 1234, Traoré Aminata (+225 0505060708) → 2345
+- Rôles RBAC : 5 (ADMINISTRATEUR, CAISSIER, COMPTABLE, DIRECTION, SECRETARIAT)
+- Comptes démo staff : 5 (admin, caissier, comptable, direction, secretariat)
+- Accès parent : téléphone + PIN (sans compte, sans mot de passe)
