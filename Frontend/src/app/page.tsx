@@ -1,17 +1,16 @@
 "use client";
 
 /**
- * ScolaGest — Page racine (route unique /)
+ * ScolaGest — Page racine (route `/`).
  *
- * Bascule entre quatre états selon le store d'authentification :
+ * Comportement :
  *   1. `isLoading` : spinner centré pendant la reprise de session.
- *   2. Non authentifié (ni staff ni parent) : <ChoicePage /> offrant deux
- *      grands boutons — « Espace Staff » (email/mot de passe) et
- *      « Espace Parent » (téléphone + PIN).
- *      - Si l'utilisateur choisit « staff » → <LoginForm /> plein écran.
- *      - Si l'utilisateur choisit « parent » → <ParentAccessForm /> plein écran.
- *   3. Authentifié staff : <DashboardLayout /> (tableau de bord existant).
- *   4. Authentifié parent : <ParentPortal /> (portail parent, adapté).
+ *   2. Authentifié staff (et non parent) : redirection vers `/dashboard`.
+ *   3. Authentifié parent : redirection vers `/portal`.
+ *   4. Authentifié staff en tant que SUPER_ADMIN : redirection vers
+ *      `/saas/dashboard`.
+ *   5. Non authentifié : page de choix (deux cartes : « Espace Staff » →
+ *      `/login`, « Espace Parent » → `/parent`).
  *
  * Le `auth-store` est réhydraté depuis localStorage (zustand persist) avant
  * le premier effet React. Si un token staff est présent, on tente un GET
@@ -19,13 +18,14 @@
  * Le token parent est non-rafraîchissable : on l'utilise tel quel.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Loader2,
   Users,
   Phone,
-  ArrowLeft,
   ShieldCheck,
   GraduationCap,
 } from "lucide-react";
@@ -38,39 +38,39 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuthStore } from "@/lib/auth-store";
-import { LoginForm } from "@/components/auth/login-form";
-import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
-import { ParentPortal } from "@/components/parent/parent-portal";
-import { ParentAccessForm } from "@/components/parent/parent-access-form";
-
-type Choice = "choice" | "staff" | "parent";
+import { useAuthBootstrap } from "@/hooks/use-auth-bootstrap";
 
 export default function Page() {
+  const router = useRouter();
+  useAuthBootstrap();
+
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
   const accessToken = useAuthStore((s) => s.accessToken);
   const parentAccessToken = useAuthStore((s) => s.parentAccessToken);
-  const fetchMe = useAuthStore((s) => s.fetchMe);
-  const stopLoading = useAuthStore((s) => s.stopLoading);
+  const role = useAuthStore((s) => s.role);
 
-  // État local : page de choix vs formulaire staff vs formulaire parent.
-  const [choice, setChoice] = useState<Choice>("choice");
-
+  // Redirige automatiquement si l'utilisateur est déjà authentifié.
   useEffect(() => {
-    // Une seule initialisation après montage côté client.
-    // À ce stade, le persist middleware a déjà réhydraté le store depuis
-    // localStorage (sous les clés `scolagest-auth`).
-    if (accessToken) {
-      // Token staff : on vérifie sa validité via /api/auth/me.
-      fetchMe();
-    } else {
-      // Pas de token staff : on s'arrête (parent ou non connecté).
-      stopLoading();
+    if (isLoading) return;
+    if (parentAccessToken) {
+      router.push("/portal");
+      return;
     }
-  }, []);
+    if (isAuthenticated && accessToken) {
+      router.push(role === "SUPER_ADMIN" ? "/saas/dashboard" : "/dashboard");
+    }
+  }, [
+    isLoading,
+    isAuthenticated,
+    accessToken,
+    parentAccessToken,
+    role,
+    router,
+  ]);
 
   // État 1 : chargement initial
-  if (isLoading) {
+  if (isLoading || parentAccessToken || (isAuthenticated && accessToken)) {
     return (
       <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-50 via-background to-amber-50">
         <div
@@ -102,36 +102,14 @@ export default function Page() {
     );
   }
 
-  // État 4 : parent authentifié (prioritaire sur le staff si les deux tokens
-  // coexistent — cas exceptionnel).
-  if (parentAccessToken) {
-    return <ParentPortal />;
-  }
-
-  // État 3 : staff authentifié
-  if (isAuthenticated && accessToken) {
-    return <DashboardLayout />;
-  }
-
-  // État 2 : non authentifié → choix d'espace ou formulaire sélectionné.
-  if (choice === "staff") {
-    return <LoginForm onBack={() => setChoice("choice")} />;
-  }
-  if (choice === "parent") {
-    return <ParentAccessForm onBack={() => setChoice("choice")} />;
-  }
-  return <ChoicePage onPick={setChoice} />;
+  return <ChoicePage />;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page de choix — deux cartes (staff / parent)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ChoicePage({
-  onPick,
-}: {
-  onPick: (choice: Choice) => void;
-}) {
+function ChoicePage() {
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-emerald-50 via-background to-amber-50">
       {/* Décorations */}
@@ -168,11 +146,7 @@ function ChoicePage({
           {/* Deux cartes */}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             {/* Espace Staff */}
-            <button
-              type="button"
-              onClick={() => onPick("staff")}
-              className="group text-left"
-            >
+            <Link href="/login" className="group text-left">
               <Card className="h-full overflow-hidden border-emerald-200 shadow-md transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg hover:shadow-emerald-200/40">
                 <CardHeader className="gap-3">
                   <div className="flex size-12 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm shadow-emerald-700/30">
@@ -206,14 +180,10 @@ function ChoicePage({
                   </Button>
                 </CardContent>
               </Card>
-            </button>
+            </Link>
 
             {/* Espace Parent */}
-            <button
-              type="button"
-              onClick={() => onPick("parent")}
-              className="group text-left"
-            >
+            <Link href="/parent" className="group text-left">
               <Card className="h-full overflow-hidden border-amber-200 shadow-md transition-all hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-lg hover:shadow-amber-200/40">
                 <CardHeader className="gap-3">
                   <div className="flex size-12 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm shadow-amber-600/30">
@@ -246,7 +216,7 @@ function ChoicePage({
                   </Button>
                 </CardContent>
               </Card>
-            </button>
+            </Link>
           </div>
 
           {/* Bandeau info */}

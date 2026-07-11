@@ -1689,3 +1689,170 @@ Stage Summary:
 - Variables session : app.current_tenant_id (staff), app.is_super_admin (SUPER_ADMIN bypass)
 - 12 tables globales sans RLS (données de référence partagées)
 - Goroutine-local storage : chaque requête a sa propre transaction RLS isolée
+
+---
+Task ID: 1-2
+Agent: frontend-styling-expert
+Task: BIG REFACTOR — Single-page → Multi-page App Router (URLs propres)
+
+Work Log:
+Refactor complet du frontend ScolaGest : on passe d'une application
+mono-page (state-switching dans `page.tsx` → `DashboardLayout`) à une
+architecture App Router multi-pages avec URLs propres. Aucune vue
+n'a été modifiée — uniquement leur point de montage.
+
+Architecture cible créée (sous `src/app/`) :
+- `(auth)/` — groupe sans layout dashboard
+  - `login/page.tsx` — `<LoginForm onBack={() => router.push("/")} />` +
+    redirection auto vers `/dashboard` (ou `/saas/dashboard` si SUPER_ADMIN)
+    après authentification. Lien flottant « Espace Parent » → `/parent`.
+  - `parent/page.tsx` — `<ParentAccessForm onBack={...} />` + redirection
+    auto vers `/portal` après authentification parent.
+- `(staff)/` — groupe avec sidebar/topbar/footer (coquille `DashboardShell`)
+  - `layout.tsx` — guard d'auth + guard de rôle (rejette SUPER_ADMIN →
+    `/saas/dashboard`). Affiche `DashboardShell` avec `STAFF_NAV_GROUPS` et
+    sélecteur d'établissement.
+  - `dashboard/page.tsx` — `<DashboardHome onNavigate={(view) =>
+    router.push(VIEW_TO_PATH[view])} />`. Mapping `DashboardViewId` → URL.
+  - `eleves/page.tsx` — `<ElevesView />`
+  - `caisse/page.tsx` — `<CaisseView />`
+  - `impayes/page.tsx` — `<ImpayesView />`
+  - `rapports/page.tsx` — `<RapportsView />`
+  - `frais/page.tsx` — `<FraisView />`
+  - `annees/page.tsx` — `<AnneesView />`
+  - `utilisateurs/page.tsx` — `<UtilisateursView />`
+  - `comptabilite/page.tsx` — `<ComptabiliteView />`
+  - `mobile-money/page.tsx` — `<MobileMoneyView />`
+  - `parametres/page.tsx` — `<ParametresView />`
+- `(saas)/` — groupe avec coquille `DashboardShell` (sans sélecteur
+  d'établissement) réservé SUPER_ADMIN
+  - `layout.tsx` — guard d'auth + guard de rôle (rejette non-SUPER_ADMIN →
+    `/dashboard`).
+  - `saas/dashboard/page.tsx` — `<SaasDashboardView onNavigate={(v) =>
+    router.push(VIEW_TO_PATH[v])} />`
+  - `saas/establishments/page.tsx` — `<SaasEstablishmentsView
+    onNavigateSupport={() => router.push("/saas/support")} />`
+  - `saas/billing/page.tsx` — `<SaasBillingView />`
+  - `saas/audit/page.tsx` — `<SaasAuditView />`
+  - `saas/support/page.tsx` — `<SaasSupportView />`
+- `(parent)/portal/page.tsx` — guard `isParentAuthenticated` (sinon
+  redirection vers `/parent`) + `<ParentPortal />`.
+
+Page racine `src/app/page.tsx` REWRITE :
+- `useAuthBootstrap()` amorce la réhydratation du store.
+- Si `parentAccessToken` → `router.push("/portal")`.
+- Si `isAuthenticated && accessToken` → `router.push(role === "SUPER_ADMIN"
+  ? "/saas/dashboard" : "/dashboard")`.
+- Sinon → `<ChoicePage />` (deux cartes « Espace Staff » emerald → `/login`
+  et « Espace Parent » amber → `/parent`, maintenant des `<Link>` au lieu de
+  boutons avec `onClick`).
+
+Nouveaux fichiers partagés :
+- `src/components/dashboard/dashboard-shell.tsx` — coquille partagée
+  (sidebar + topbar + footer) qui remplace l'ancien `DashboardLayout`.
+  - Importe ses propres icônes lucide-react statiquement (LayoutDashboard,
+    Users, Wallet, AlertTriangle, FileBarChart, Coins, CalendarDays,
+    UserCog, BookOpen, Smartphone, Settings, Building2, ScrollText,
+    CreditCard, LifeBuoy, Menu, Search, Bell, LogOut, ChevronDown,
+    CheckCircle2).
+  - Exporte `STAFF_NAV_GROUPS` et `SAAS_NAV_GROUPS` (items `NavItem` avec
+    `href` au lieu d'`id`).
+  - Active link via `usePathname()` d'`next/navigation` (exact ou
+    `startsWith(href + "/")`).
+  - Title de la page dérivé du pathname (cherche le nav item actif).
+  - Sidebar nav items rendus en `<Link href={item.href}>` de `next/link`.
+  - Le logo est lui-même un `<Link>` vers `/dashboard` (staff) ou
+    `/saas/dashboard` (SUPER_ADMIN).
+  - Sélecteur d'établissement conditionné par `showEtablissement` (true
+    pour staff, false pour SaaS).
+  - Déconnexion : `await logout()` puis `router.push(logoutRedirect)` puis
+    `router.refresh()`.
+- `src/hooks/use-auth-bootstrap.ts` — hook `useAuthBootstrap()` qui
+  factorise l'initialisation du store : si `accessToken` → `fetchMe()`,
+  sinon `stopLoading()`. Hook appelé par la racine et par chaque layout.
+  Effet vide `[]` (une seule initialisation au montage client).
+
+Adaptation `DashboardHome.onNavigate` :
+- Le composant `DashboardHome` lui-même n'est pas modifié (sa signature
+  `onNavigate: (view: DashboardViewId) => void` reste inchangée).
+- La page `dashboard/page.tsx` passe `onNavigate={(view) =>
+  router.push(VIEW_TO_PATH[view])}` où `VIEW_TO_PATH` mappe chaque
+  `DashboardViewId` vers son chemin App Router (`"caisse"` → `"/caisse"`,
+  `"saas-billing"` → `"/saas/billing"`, etc.).
+
+Adaptation `SaasDashboardView.onNavigate` :
+- La page `saas/dashboard/page.tsx` passe `onNavigate={(view) =>
+  router.push(VIEW_TO_PATH[view])}` avec mapping restreint aux 4 vues
+  SaaS navigables (`saas-establishments`, `saas-audit`, `saas-billing`,
+  `saas-support`).
+
+Adaptation `SaasEstablishmentsView.onNavigateSupport` :
+- La page `saas/establishments/page.tsx` passe
+  `onNavigateSupport={() => router.push("/saas/support")}`.
+
+Guards d'authentification (dans chaque layout/page) :
+- Pattern uniforme : `useAuthBootstrap()` → `useEffect` qui, après
+  `isLoading=false`, applique les redirections selon `isAuthenticated`,
+  `accessToken`, `role`, `parentAccessToken`. Pendant le chargement ou
+  l'attente de redirection, un spinner plein écran (logo + Loader2 +
+  dégradés emerald/amber) est affiché pour éviter tout flash de contenu
+  non autorisé.
+- `(staff)/layout.tsx` : redirige vers `/login` si non authentifié, vers
+  `/saas/dashboard` si SUPER_ADMIN.
+- `(saas)/layout.tsx` : redirige vers `/login` si non authentifié, vers
+  `/dashboard` si non-SUPER_ADMIN.
+- `(parent)/portal/page.tsx` : redirige vers `/parent` si
+  `!isParentAuthenticated`. Après `logoutParent()` (appelé à l'intérieur
+  de `ParentPortal`), le guard détecte la perte du token et redirige.
+- `(auth)/login/page.tsx` : redirige vers `/dashboard` (ou `/saas/dashboard`)
+  si déjà authentifié staff.
+- `(auth)/parent/page.tsx` : redirige vers `/portal` si déjà authentifié
+  parent.
+
+Ancien fichier `src/components/dashboard/dashboard-layout.tsx` :
+- Conservé pour référence mais n'est plus importé nulle part. Le compilateur
+  ne le signale pas car `@typescript-eslint/no-unused-vars` est désactivé
+  dans la config ESLint. Le supprimer est optionnel (à faire lors d'un
+  nettoyage ultérieur).
+
+Lint & types :
+- `bun run lint` → EXIT=0 (0 erreur, 0 warning).
+- `bunx tsc --noEmit` → uniquement l'erreur préexistante dans
+  `src/instrumentation.ts:132` (non touchée par cette tâche, déjà
+  documentée). Aucune nouvelle erreur TS.
+- `bunx next build` → 23 routes générées avec succès (1 dynamique `/api`,
+  22 statiques : `/`, `/login`, `/parent`, `/portal`, `/dashboard`, 10
+  routes staff, 5 routes saas, `/_not-found`).
+
+Stage Summary:
+- Refactor multi-pages App Router COMPLET : 22 fichiers créés
+  (1 page racine réécrite + 1 hook + 1 composant shell partagé + 2 pages
+  auth + 1 layout staff + 11 pages staff + 1 layout saas + 5 pages saas +
+  1 page portail parent).
+- Toutes les URLs sont propres et navigables directement (deep-linking
+  fonctionnel) : `/dashboard`, `/eleves`, `/caisse`, `/saas/billing`,
+  `/portal`, etc.
+- Toutes les vues existantes (`view-caisse`, `view-eleves`, …,
+  `view-saas-billing`, `ParentPortal`, `LoginForm`, `ParentAccessForm`)
+  sont réutilisées telles quelles — aucune modification de leur logique
+  métier.
+- Auth guards uniformisés via `useAuthBootstrap()` + spinner plein écran
+  pendant la résolution (pas de flash de contenu non autorisé).
+- Navigation active-link basée sur `usePathname()` (exact ou préfixe
+  `/href/...`), titre de page dérivé du pathname.
+- Déconnexion : `logout()` → `router.push("/login")` + `router.refresh()`
+  pour s'assurer que les caches React Query sont invalidés côté client.
+- Charte respectée : emerald pour la sidebar active + boutons primaires,
+  amber pour les accents parent et le point de notification, fond dégradé
+  emerald/amber sur les écrans de chargement. Aucun indigo/blue. Textes
+  en français, devise FCFA préservée via les composants existants.
+- Build Next.js 16.1.3 (Turbopack) réussit en 16.7s avec 23 routes
+  statiques pré-rendues — le routeur App Router reconnaît toutes les
+  nouvelles URLs.
+- Aucune régression : le flux parent téléphone+PIN, le multi-sites
+  (sélecteur d'établissement), le RBAC (filtrage nav par rôle) et le
+  mode SUPER_ADMIN sont préservés via le `auth-store` et la coquille
+  partagée `DashboardShell`.
+- À valider côté UI : naviguer entre les pages (sidebar), tester le
+  rechargement direct d'une URL (deep-link), vérifier les redirections
+  (login non-auth → /login, SUPER_ADMIN → /saas/dashboard, etc.).
