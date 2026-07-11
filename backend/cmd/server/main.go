@@ -51,6 +51,7 @@ func main() {
         inscriptionSvc := services.NewInscriptionService()
         referentielSvc := services.NewReferentielService()
         fraisSvc := services.NewFraisService()
+        anneeSvc := services.NewAnneeScolaireService(fraisSvc)
         soldeSvc := services.NewSoldeService()
         comptaSvc := services.NewComptaService()
         paiementSvc := services.NewPaiementService(soldeSvc, comptaSvc)
@@ -74,6 +75,7 @@ func main() {
         tuteurHandler := handlers.NewTuteurHandler(tuteurSvc)
         inscriptionHandler := handlers.NewInscriptionHandler(inscriptionSvc)
         referentielHandler := handlers.NewReferentielHandler(referentielSvc)
+        anneeHandler := handlers.NewAnneeScolaireHandler(anneeSvc)
         fraisHandler := handlers.NewFraisHandler(fraisSvc)
         soldeHandler := handlers.NewSoldeHandler(soldeSvc)
         paiementHandler := handlers.NewPaiementHandler(paiementSvc)
@@ -111,6 +113,7 @@ func main() {
         tuteurHandler.RegisterRoutes(api, authMW)
         inscriptionHandler.RegisterRoutes(api, authMW)
         referentielHandler.RegisterRoutes(api, authMW)
+        anneeHandler.RegisterRoutes(api, authMW)
 
         // Routes Phase 3 : frais, soldes, paiements, clôtures
         fraisHandler.RegisterRoutes(api, authMW)
