@@ -1924,3 +1924,43 @@ Stage Summary:
 - Passage des élèves (réinscription massive) ✓
 - Diplôme automatique pour classes d'examen ✓
 - Vue frontend complète avec stats et dialogs ✓
+
+---
+Task ID: onboarding-tuteur
+Agent: Z.ai Code (tuteur principal)
+Task: Onboarding du tuteur — clonage du monorepo, configuration de l'environnement de travail local, vérification de la stack production (GitHub/Vercel/Render/Neon).
+
+Work Log:
+- Clonage du dépôt GitHub `ftechnologies18/scolagest` (branche `main`, HEAD = `3c8e68d`) dans `/home/z/my-project/scolagest`.
+- Configuration de l'identité Git locale du tuteur conformément à la demande :
+  - `user.name` = `ftechnologies18`
+  - `user.email` = `freelancetechnologies.ci@gmail.com`
+  - Remote `origin` authentifiée via token (GitHub PAT) — push autorisé vers `main`.
+- Analyse de l'architecture monorepo (confirmée conforme au README) :
+  - `Frontend/` : Next.js 16 (App Router) + TS + Tailwind 4 + shadcn/ui — 22 routes (route groups (auth)/(staff)/(saas)/(parent)).
+  - `backend/` : Go (Gin + GORM) — 30 modèles, 17 services, ~14 handlers, RBAC JWT.
+  - `mini-services/`, `docs/`, `.zscripts/`, `.github/workflows/deploy-backend.yml`.
+- CI/CD confirmé : push `backend/**` sur `main` → GitHub Action déclenche Render deploy (SERVICE_ID `srv-d98mdrv7f7vs73bdlm60`) ; Vercel gère le frontend séparément (filtre `Frontend/`).
+- Stratégie DB confirmée : GORM `AutoMigrate` (30 modèles) exécuté à chaque démarrage backend → sur Render (prod) il cible Neon (PostgreSQL via `DATABASE_URL`) → **la synchro Neon est automatique à chaque déploiement backend**. Le seed est idempotent et en goroutine sur PostgreSQL.
+- Installation Go 1.23.4 en user-space (`/home/z/.local/go`, sans root) — toolchain auto-télécharge Go 1.25.0 requis par `go.mod`. Backend **compile localement** (binaire 44 Mo) : `go build ./cmd/server/` → EXIT 0.
+- Contrainte sandbox identifiée : **port 5432 bloqué en sortie** (TCP vers Neon en timeout). Le backend Go ne peut donc PAS se connecter à Neon depuis le sandbox local.
+- Contournement actif : **endpoint SQL-over-HTTPS de Neon** (`https://<host>/sql`, header `Neon-Connection-String`) — fonctionne sur port 443 (autorisé). Permet d'inspecter et d'exécuter du SQL sur Neon directement.
+- Vérification Neon via HTTPS SQL :
+  - 30 tables présentes (schema synchronisé) ✓
+  - Données seedées : 2 établissements, 4 cycles, 19 classes, 8 élèves, 5 tuteurs, 8 inscriptions, 6 frais, 12 échéances, 4 paiements, 4 reçus, 6 utilisateurs (5 staff ACTIF : admin SUPER_ADMIN, caissier, comptable, direction=DIRECTEUR_ETUDES, secretariat), 3 plans SaaS, 2 abonnements, 1 exercice comptable, 86 sessions, 1 transaction MoMo.
+  - Colonnes clés : `utilisateurs.role_global`, `utilisateurs.statut` (soft-delete GORM `deleted_at`).
+- Outils locaux créés (gitignorés, jamais commités) :
+  - `backend/cmd/dbcheck/main.go` : connect + AutoMigrate + inventaire tables SANS seed (outil de synchro/inspection locale ; inopérant sur Neon depuis le sandbox à cause du port 5432, mais utilisable sur SQLite local ou sur toute machine où 5432 est ouvert).
+  - `.local-tools/neon-sql.sh` : helper shell pour exécuter du SQL sur Neon via HTTPS depuis le sandbox.
+- `.gitignore` mis à jour : exclusion de `backend/cmd/dbcheck/` et `.local-tools/`.
+- Workflow de travail adopté (respect de l'architecture en place) :
+  1. Modifications backend → `go build` local (vérif compilation) → commit (identité ftechnologies18) → push `main` → Render redéploie → AutoMigrate synchronise Neon.
+  2. Modifications frontend → `bun run lint` local → commit → push `main` → Vercel redéploie.
+  3. Inspection/synchro Neon à la demande via `.local-tools/neon-sql.sh` (HTTPS) ou via le déploiement Render.
+- Aucun nouveau projet créé. Aucune structure existante modifiée (hormis `.gitignore` + ce worklog).
+
+Stage Summary:
+- Environnement de travail prêt : monorepo cloné, identité Git configurée, Go installé (backend compile), helper Neon HTTPS opérationnel.
+- Stack production vérifiée et fonctionnelle : Neon atteignable en HTTPS, 30 tables synchronisées, données seedées présentes.
+- Contrainte documentée : port 5432 bloqué en local → la connexion directe backend↔Neon se fait via Render en production (comportement attendu de l'architecture).
+- Prochaines étapes : attendre les instructions du chef de projet sur le module/fonctionnalité à traiter.

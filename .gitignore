@@ -21,6 +21,11 @@ Frontend/next-env.d.ts
 /backend/scolagest.db
 /backend/scolagest.db-*
 /tmp/scolagest-backend
+# Outil utilitaire local de vérification/synchro DB (jamais commité)
+/backend/cmd/dbcheck/
+
+# ===== Outils locaux du tuteur (jamais commités) =====
+/.local-tools/
 
 # ===== Variables d'environnement (SECRETS — ne jamais committer) =====
 .env
