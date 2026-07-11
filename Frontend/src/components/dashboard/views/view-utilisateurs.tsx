@@ -53,6 +53,8 @@ import type { Utilisateur, RoleGlobal, EtablissementAccess } from "@/lib/types";
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Super Admin",
   DIRECTION: "Direction",
+  DIRECTEUR_ETUDES: "Directeur des Études",
+  DIRECTEUR_SUPERVISEUR: "Directeur Superviseur",
   CAISSIER: "Caissier(ère)",
   COMPTABLE: "Comptable",
   SECRETARIAT: "Secrétariat",
@@ -61,6 +63,10 @@ const ROLE_LABELS: Record<string, string> = {
 const ROLE_CLS: Record<string, string> = {
   SUPER_ADMIN: "border-rose-200 bg-rose-50 text-rose-700",
   DIRECTION: "border-sky-200 bg-sky-50 text-sky-700",
+  DIRECTEUR_ETUDES:
+    "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/50 dark:bg-sky-950/40 dark:text-sky-300",
+  DIRECTEUR_SUPERVISEUR:
+    "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-300",
   CAISSIER: "border-emerald-200 bg-emerald-50 text-emerald-700",
   COMPTABLE: "border-amber-200 bg-amber-50 text-amber-700",
   SECRETARIAT: "border-muted-foreground/20 bg-muted text-muted-foreground",
@@ -180,6 +186,8 @@ export default function UtilisateursView() {
           <SelectContent>
             <SelectItem value="all">Tous les rôles</SelectItem>
             <SelectItem value="DIRECTION">Direction</SelectItem>
+            <SelectItem value="DIRECTEUR_ETUDES">Directeur des Études</SelectItem>
+            <SelectItem value="DIRECTEUR_SUPERVISEUR">Directeur Superviseur</SelectItem>
             <SelectItem value="CAISSIER">Caissier(ère)</SelectItem>
             <SelectItem value="COMPTABLE">Comptable</SelectItem>
             <SelectItem value="SECRETARIAT">Secrétariat</SelectItem>
@@ -522,6 +530,8 @@ function AccessDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="DIRECTION">Direction</SelectItem>
+            <SelectItem value="DIRECTEUR_ETUDES">Directeur des Études</SelectItem>
+            <SelectItem value="DIRECTEUR_SUPERVISEUR">Directeur Superviseur</SelectItem>
                     <SelectItem value="CAISSIER">Caissier</SelectItem>
                     <SelectItem value="COMPTABLE">Comptable</SelectItem>
                     <SelectItem value="SECRETARIAT">Secrétariat</SelectItem>

@@ -51,14 +51,14 @@ func (h *UserHandler) Create(c *gin.Context) {
                 case models.RoleSuperAdmin:
                         c.JSON(http.StatusForbidden, gin.H{"error": "création de SUPER_ADMIN interdite — contactez le support SaaS"})
                         return
-                case models.RoleDirection:
+                case models.RoleDirection, models.RoleDirecteurEtudes, models.RoleDirecteurSuperviseur:
                         if requesterRoleTyped != models.RoleSuperAdmin {
                                 c.JSON(http.StatusForbidden, gin.H{"error": "seul le SUPER_ADMIN peut créer un compte Direction (lié à la souscription d'abonnement)"})
                                 return
                         }
                 default:
                         // CAISSIER, COMPTABLE, SECRETARIAT : seul DIRECTION (ou SUPER_ADMIN) peut créer
-                        if requesterRoleTyped != models.RoleDirection && requesterRoleTyped != models.RoleSuperAdmin {
+                        if !models.IsDirectorRole(requesterRoleTyped) && requesterRoleTyped != models.RoleSuperAdmin {
                                 c.JSON(http.StatusForbidden, gin.H{"error": "seul la Direction peut créer des utilisateurs staff"})
                                 return
                         }
@@ -94,7 +94,7 @@ func (h *UserHandler) Update(c *gin.Context) {
                 case models.RoleSuperAdmin:
                         c.JSON(http.StatusForbidden, gin.H{"error": "modification vers SUPER_ADMIN interdite"})
                         return
-                case models.RoleDirection:
+                case models.RoleDirection, models.RoleDirecteurEtudes, models.RoleDirecteurSuperviseur:
                         if requesterRoleTyped != models.RoleSuperAdmin {
                                 c.JSON(http.StatusForbidden, gin.H{"error": "seul le SUPER_ADMIN peut attribuer le rôle Direction"})
                                 return

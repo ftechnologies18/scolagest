@@ -80,11 +80,14 @@ const (
 type RoleUtilisateur string
 
 const (
-        RoleSuperAdmin   RoleUtilisateur = "SUPER_ADMIN"
-        RoleCaissier     RoleUtilisateur = "CAISSIER"
-        RoleComptable    RoleUtilisateur = "COMPTABLE"
-        RoleDirection    RoleUtilisateur = "DIRECTION"
-        RoleSecretariat  RoleUtilisateur = "SECRETARIAT"
+        RoleSuperAdmin       RoleUtilisateur = "SUPER_ADMIN"
+        RoleCaissier         RoleUtilisateur = "CAISSIER"
+        RoleComptable        RoleUtilisateur = "COMPTABLE"
+        RoleDirecteurEtudes  RoleUtilisateur = "DIRECTEUR_ETUDES"
+        RoleDirecteurSuperviseur RoleUtilisateur = "DIRECTEUR_SUPERVISEUR"
+        RoleSecretariat      RoleUtilisateur = "SECRETARIAT"
+        // RoleDirection : legacy (migré vers DIRECTEUR_ETUDES / DIRECTEUR_SUPERVISEUR)
+        RoleDirection        RoleUtilisateur = "DIRECTION"
 )
 
 // ProviderMomo : opéérateurs Mobile Money supportés (contexte ivoirien).
@@ -246,3 +249,11 @@ const (
         ExerciceOuvert   StatutExercice = "OUVERT"
         ExerciceCloture  StatutExercice = "CLOTURE"
 )
+
+// IsDirectorRole vérifie si un rôle est un rôle de direction
+// (DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR, ou DIRECTION legacy).
+func IsDirectorRole(role RoleUtilisateur) bool {
+	return role == RoleDirecteurEtudes ||
+		role == RoleDirecteurSuperviseur ||
+		role == RoleDirection
+}

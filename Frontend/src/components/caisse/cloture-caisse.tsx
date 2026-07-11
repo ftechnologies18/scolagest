@@ -66,7 +66,7 @@ import {
   StatutPaiementBadge,
 } from "./caisse-badges";
 
-const SUPERVISEUR_ROLES = ["COMPTABLE", "DIRECTION"];
+const SUPERVISEUR_ROLES = ["COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"];
 
 export function ClotureCaissePanel() {
   const { toast } = useToast();

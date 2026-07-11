@@ -950,6 +950,8 @@ export type RoleGlobal =
   | "CAISSIER"
   | "COMPTABLE"
   | "DIRECTION"
+  | "DIRECTEUR_ETUDES"
+  | "DIRECTEUR_SUPERVISEUR"
   | "SECRETARIAT"
   | "PARENT";
 

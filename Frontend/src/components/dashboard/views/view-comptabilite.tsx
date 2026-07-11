@@ -247,7 +247,7 @@ function ExercicesPanel() {
   const [cloturerTarget, setCloturerTarget] =
     React.useState<ExerciceComptable | null>(null);
 
-  const canManage = ["COMPTABLE", "DIRECTION"].includes(
+  const canManage = ["COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"].includes(
     role ?? "",
   );
 
@@ -435,7 +435,7 @@ function StatutExerciceBadge({ statut }: { statut: ExerciceComptable["statut"] }
 function PlanComptablePanel() {
   const etablissement = useAuthStore((s) => s.etablissement);
   const role = useAuthStore((s) => s.role);
-  const canManage = ["COMPTABLE", "DIRECTION"].includes(
+  const canManage = ["COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"].includes(
     role ?? "",
   );
 

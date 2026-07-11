@@ -65,7 +65,8 @@ import {
 } from "@/components/ui/select";
 
 const ALL_ROLE_OPTIONS: { value: RoleGlobal; label: string }[] = [
-  { value: "DIRECTION", label: "Direction" },
+  { value: "DIRECTEUR_ETUDES", label: "Directeur des Études" },
+  { value: "DIRECTEUR_SUPERVISEUR", label: "Directeur Superviseur" },
   { value: "CAISSIER", label: "Caissier(ère)" },
   { value: "COMPTABLE", label: "Comptable" },
   { value: "SECRETARIAT", label: "Secrétariat" },
@@ -105,7 +106,7 @@ export function UtilisateurFormDialog({
       return ALL_ROLE_OPTIONS; // tous les rôles sauf SUPER_ADMIN et PARENT
     }
     // DIRECTION et autres : pas DIRECTION
-    return ALL_ROLE_OPTIONS.filter((r) => r.value !== "DIRECTION");
+    return ALL_ROLE_OPTIONS.filter((r) => r.value !== "DIRECTION" && r.value !== "DIRECTEUR_ETUDES" && r.value !== "DIRECTEUR_SUPERVISEUR");
   }, [currentUserRole]);
 
   const [nom, setNom] = React.useState("");
