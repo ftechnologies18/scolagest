@@ -42,9 +42,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/lib/auth-store";
-import { fetchUtilisateurs, createUtilisateur, updateUtilisateur, addAccess, removeAccess, fetchEtablissements } from "@/lib/api-phase5";
+import { fetchUtilisateurs, createUtilisateur, updateUtilisateur, addEtablissementAccess, removeEtablissementAccess, fetchEtablissements } from "@/lib/api-phase5";
 import { UtilisateurFormDialog } from "@/components/parametres/utilisateur-form-dialog";
 import type { Utilisateur, RoleGlobal, EtablissementAccess } from "@/lib/types";
 
@@ -234,13 +234,13 @@ export default function UtilisateursView() {
                         });
                       }}
                       onAddAccess={(etbId, role) => {
-                        addAccess(u.id, { etablissement_id: etbId, role: role as RoleGlobal }).then(() => {
+                        addEtablissementAccess(u.id, { etablissement_id: etbId, role: role as RoleGlobal }).then(() => {
                           queryClient.invalidateQueries({ queryKey: ["utilisateurs"] });
                           toast({ title: "Accès ajouté", description: "L'utilisateur a maintenant accès à cet établissement." });
                         });
                       }}
                       onRemoveAccess={(etbId) => {
-                        removeAccess(u.id, etbId).then(() => {
+                        removeEtablissementAccess(u.id, etbId).then(() => {
                           queryClient.invalidateQueries({ queryKey: ["utilisateurs"] });
                           toast({ title: "Accès retiré" });
                         });

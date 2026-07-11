@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { formatFCFA } from "@/lib/format";
 
