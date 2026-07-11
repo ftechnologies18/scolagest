@@ -11,7 +11,7 @@
  * Colonnes : date, n° reçu, élève, motif, montant, mode, caissier, statut.
  * Clic sur une ligne → ouverture du reçu imprimable.
  * Action « Annuler » (avec motif) pour les paiements VALIDE ; réservée aux
- * rôles CAISSIER / ADMINISTRATEUR / COMPTABLE.
+ * rôles CAISSIER / DIRECTION / COMPTABLE.
  *
  * États : chargement (skeleton), vide, erreur.
  */

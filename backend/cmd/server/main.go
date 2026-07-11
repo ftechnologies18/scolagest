@@ -63,6 +63,7 @@ func main() {
         userSvc := services.NewUserService()
         parentSvc := services.NewParentService(soldeSvc)
         parentAccessSvc := services.NewParentAccessService(jwtSvc)
+        saasSvc := services.NewSaasService(jwtSvc)
 
         // 5. Handlers
         authHandler := handlers.NewAuthHandler(authSvc)
@@ -84,6 +85,7 @@ func main() {
         messageHandler := handlers.NewMessageHandler(messageSvc)
         userHandler := handlers.NewUserHandler(userSvc)
         parentHandler := handlers.NewParentHandler(parentSvc, parentAccessSvc, momoSvc)
+        saasHandler := handlers.NewSaasHandler(saasSvc)
 
         // 6. Router Gin
         r := gin.Default()
@@ -127,6 +129,9 @@ func main() {
 
         // Routes Phase 6 : portail parent (réservé au rôle PARENT)
         parentHandler.RegisterRoutes(api)
+
+        // Routes SaaS : gestion plateforme (SUPER_ADMIN uniquement)
+        saasHandler.RegisterRoutes(api, authMW)
 
         // Route de bienvenue
         r.GET("/", func(c *gin.Context) {

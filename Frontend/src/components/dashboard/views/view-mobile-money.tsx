@@ -11,7 +11,7 @@
  *  - Webhooks           : liste des derniers webhooks reçus + action
  *    « Réconcilier ».
  *
- * Rôles autorisés : CAISSIER / ADMINISTRATEUR (filtre nav dans
+ * Rôles autorisés : CAISSIER / DIRECTION (filtre nav dans
  * `dashboard-layout.tsx`).
  *
  * Provider badges : Orange = orange, MTN = amber, Wave = slate (pas de bleu).

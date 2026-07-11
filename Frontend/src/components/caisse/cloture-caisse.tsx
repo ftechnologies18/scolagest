@@ -12,7 +12,7 @@
  *  - un champ notes
  *  - bouton « Clôturer » → createCloture
  *  - si une clôture existe déjà aujourd'hui (statut CLOTUREE), résumé +
- *    bouton « Valider » pour COMPTABLE/ADMINISTRATEUR
+ *    bouton « Valider » pour COMPTABLE/DIRECTION
  *  - tableau des paiements du jour en dessous.
  */
 
@@ -66,7 +66,7 @@ import {
   StatutPaiementBadge,
 } from "./caisse-badges";
 
-const SUPERVISEUR_ROLES = ["COMPTABLE", "ADMINISTRATEUR"];
+const SUPERVISEUR_ROLES = ["COMPTABLE", "DIRECTION"];
 
 export function ClotureCaissePanel() {
   const { toast } = useToast();

@@ -50,7 +50,7 @@ import { useAuthStore, type Etablissement } from "@/lib/auth-store";
 import { apiGet, ApiError } from "@/lib/api-client";
 
 const DEMO_ACCOUNTS = [
-  { role: "Administrateur", email: "admin@scolagest.ci", password: "admin123" },
+  { role: "Super Admin (SaaS)", email: "admin@scolagest.ci", password: "admin123" },
   { role: "Caissier", email: "caissier@scolagest.ci", password: "caissier123" },
   {
     role: "Comptable",

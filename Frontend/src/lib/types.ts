@@ -938,8 +938,15 @@ export interface EnvoisMessageListResponse {
 
 // ─── Multi-sites & Paramètres : Utilisateurs + Audit ────────────────────────
 
+/**
+ * Rôle global d'un utilisateur.
+ *
+ * `SUPER_ADMIN` = propriétaire de la plateforme SaaS (gestion multi-tenant,
+ * audit global, mode support). `DIRECTION` est désormais l'administrateur
+ * d'établissement (rôle historiquement tenu par `ADMINISTRATEUR`).
+ */
 export type RoleGlobal =
-  | "ADMINISTRATEUR"
+  | "SUPER_ADMIN"
   | "CAISSIER"
   | "COMPTABLE"
   | "DIRECTION"

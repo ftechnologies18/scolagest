@@ -1236,3 +1236,178 @@ Stage Summary:
 - Rôles RBAC : 5 (ADMINISTRATEUR, CAISSIER, COMPTABLE, DIRECTION, SECRETARIAT)
 - Comptes démo staff : 5 (admin, caissier, comptable, direction, secretariat)
 - Accès parent : téléphone + PIN (sans compte, sans mot de passe)
+
+---
+Task ID: 3
+Agent: frontend-styling-expert
+Task: Adapter le frontend au modèle SaaS — renommer ADMINISTRATEUR en SUPER_ADMIN, donner la main totale à DIRECTION sur l'établissement, ajouter un périmètre SaaS dédié au SUPER_ADMIN (établissements, audit, mode support)
+
+Work Log:
+- Lu `worklog.md` (notamment Task ID 4 sur le flux parent téléphone + PIN)
+  et inspecté les fichiers à modifier (auth-store, types, dashboard-layout,
+  dashboard-home, view-parametres, view-comptabilite, cloture-caisse,
+  utilisateur-form-dialog, login-form, paiements-list, view-caisse,
+  view-mobile-money, api-client, api-phase5, format).
+
+Renommage ADMINISTRATEUR → SUPER_ADMIN (rôle RBAC) :
+- `src/lib/auth-store.ts` : type `Role` — `ADMINISTRATEUR` remplacé par
+  `SUPER_ADMIN`. Doc mise à jour (SUPER_ADMIN = proprio SaaS, DIRECTION =
+  admin d'établissement).
+- `src/lib/types.ts` : type `RoleGlobal` — même renommage + doc.
+- `src/components/dashboard/dashboard-layout.tsx` :
+  - `STAFF_NAV_GROUPS` : tous les `["ADMINISTRATEUR", ...]` → `["DIRECTION",
+    ...]`. DIRECTION détient désormais Frais, Années, Utilisateurs, Compta,
+    Mobile Money, Paramètres (outre Caisse/Impayés/Rapports). Items
+    « Tableau de bord » et « Élèves » restreints explicitement aux 4 rôles
+    staff (CAISSIER, COMPTABLE, DIRECTION, SECRETARIAT) — SUPER_ADMIN exclu.
+  - `SAAS_NAV_GROUPS` (NOUVEAU) : groupe « Pilotage SaaS » avec 4 items
+    réservés à SUPER_ADMIN — Tableau de bord SaaS, Établissements, Audit,
+    Mode Support (icônes LayoutDashboard, Building2, ScrollText, LifeBuoy).
+  - `NAV_GROUPS` = `[...STAFF_NAV_GROUPS, ...SAAS_NAV_GROUPS]`.
+  - `roleLabel` : `SUPER_ADMIN` → "Super Admin (SaaS)" ; `ADMINISTRATEUR`
+    supprimé.
+  - `defaultViewForRole(role)` : renvoie `saas-dashboard` pour SUPER_ADMIN,
+    `dashboard` sinon. Utilisé par l'`useEffect` qui reset `activeView`
+    si la vue courante devient interdite au rôle (au lieu de toujours
+    forcer `"dashboard"`).
+  - `visibleGroups` : choisit `SAAS_NAV_GROUPS` pour SUPER_ADMIN,
+    `STAFF_NAV_GROUPS` sinon (l'`isItemAllowed` filtre ensuite par rôle).
+  - Sélecteur d'établissement masqué pour SUPER_ADMIN (il pilote tous les
+    tenants au niveau SaaS, l'établissement actif n'a pas de sens).
+  - `useEffect` de chargement des établissements court-circuited pour
+    SUPER_ADMIN (pas d'appel à `/api/etablissements`).
+  - 4 nouveaux imports de vues SaaS + 2 nouvelles icônes (LifeBuoy,
+    ScrollText). Branchement des 4 vues dans la zone de contenu principal.
+- `src/components/dashboard/dashboard-home.tsx` :
+  - `DashboardViewId` étendu avec `saas-dashboard`, `saas-establishments`,
+    `saas-audit`, `saas-support`.
+  - `roleLabel` : `SUPER_ADMIN` → "Super Admin (SaaS)" ; `ADMINISTRATEUR`
+    supprimé.
+  - Safety net : si `role === "SUPER_ADMIN"`, on rend `SaasDashboardView`
+    (positionné après tous les hooks pour respecter les Rules of Hooks).
+    Au pire, si un SUPER_ADMIN arrive sur `activeView === "dashboard"`,
+    il voit le tableau de bord SaaS plutôt que la page « sélectionnez un
+    établissement ».
+- `src/components/dashboard/views/view-parametres.tsx` : `ROLE_LABEL` et
+  `ROLE_CLS` — `ADMINISTRATEUR` remplacé par `SUPER_ADMIN`. Commentaire
+  JSDoc mis à jour (« DIRECTION uniquement » au lieu de
+  « ADMINISTRATEUR uniquement »).
+- `src/components/parametres/utilisateur-form-dialog.tsx` : `ROLE_OPTIONS`
+  et `ROLE_LABEL` — `ADMINISTRATEUR` remplacé par `SUPER_ADMIN` avec le
+  label « Super Admin (SaaS) ».
+- `src/components/auth/login-form.tsx` : compte démo « Administrateur » →
+  « Super Admin (SaaS) » (email/mdp inchangés : admin@scolagest.ci /
+  admin123).
+- `src/components/caisse/cloture-caisse.tsx` : `SUPERVISEUR_ROLES` =
+  `["COMPTABLE", "DIRECTION"]` (au lieu de `["COMPTABLE",
+  "ADMINISTRATEUR"]`). Commentaire JSDoc mis à jour.
+- `src/components/dashboard/views/view-comptabilite.tsx` : `canManage`
+  (x2 : Exercices + Plan comptable) = `["COMPTABLE", "DIRECTION"]`.
+  Commentaire JSDoc mis à jour.
+- `src/components/dashboard/views/view-caisse.tsx`,
+  `src/components/dashboard/views/view-mobile-money.tsx`,
+  `src/components/caisse/paiements-list.tsx` : commentaires JSDoc mis à
+  jour (« ADMINISTRATEUR » → « DIRECTION » dans les rôles autorisés).
+
+Nouveau client API SaaS :
+- `src/lib/api-saas.ts` (NOUVEAU) :
+  - Types : `SaasSupportStatus`, `SaasStats` (inclut `support`),
+    `SaasEstablishment` (avec `nb_eleves`, `nb_utilisateurs`, `actif`),
+    `SaasAuditQueryParams`, `SaasAuditEntry`, `SaasAuditResponse`.
+  - `saasKeys` : clés React Query (stats, establishments, audit, support).
+  - Wrappers : `fetchSaasStats()` (GET /api/saas/stats),
+    `fetchSaasEstablishments()` (GET /api/saas/establishments),
+    `fetchSaasAudit(params)` (GET /api/saas/audit, avec query string
+    paginée + filtres entite/utilisateur/etablissement/dates),
+    `activateSupport(etablissementId)` (POST
+    /api/saas/support/activate, body `{ etablissement_id }`),
+    `deactivateSupport()` (POST /api/saas/support/deactivate).
+
+Vues SaaS (NOUVEAU, dans `src/components/dashboard/views/`) :
+- `view-saas-dashboard.tsx` : écran d'accueil SUPER_ADMIN. 6 KPIs (nb
+  établissements, nb actifs, nb élèves total, nb utilisateurs total, nb
+  paiements total, montant total encaissé en FCFA) + bandeau « Mode
+  support » (actif/inactif, établissement, expiration) avec raccourci
+  vers la vue Mode Support + table des 5 premiers établissements. États
+  loading/error/vide. `onNavigate` optionnel pour aller à
+  saas-establishments / saas-audit / saas-support.
+- `view-saas-establishments.tsx` : liste complète des établissements
+  avec recherche par nom/code/ville. Bouton « Activer le support » par
+  ligne (border amber) → `activateSupport(etabId)` via useMutation, puis
+  invalidation `saasKeys.stats` + `saasKeys.support` + toast +
+  `onNavigateSupport()`. Si le support est déjà actif sur l'établissement,
+  le bouton devient « Gérer » (outline) qui navigue vers la vue Support.
+- `view-saas-audit.tsx` : journal d'audit global (cross-tenant). Filtres
+  (entité, établissement, dates) + table paginée (PAGE_SIZE=20). Badge
+  couleur selon l'action (rose si supprim*, emerald si cré*, amber sinon).
+  Colonnes : date, utilisateur, action, entité, établissement, IP,
+  description.
+- `view-saas-support.tsx` : gestion du mode support. Carte de statut
+  (emerald si inactif, amber si actif) avec InfoTiles (établissement,
+  expiration, statut). Si inactif : table des établissements avec bouton
+  « Activer le support » (désactivé si `!e.actif`). Si actif : bouton
+  « Désactiver » avec AlertDialog de confirmation (rose) →
+  `deactivateSupport()`. Toutes les mutations invalident
+  `saasKeys.stats` + `saasKeys.support` + toast.
+
+Lint & types :
+- `bun run lint` → EXIT=0 (0 erreur, 0 warning).
+- `bunx tsc --noEmit` → 1 erreur préexistante dans
+  `src/instrumentation.ts:132` (non touchée par cette tâche, déjà
+  documentée dans le worklog Task ID 4). Aucune nouvelle erreur TS
+  introduite dans les fichiers modifiés/créés.
+
+Stage Summary:
+- Fichiers modifiés :
+  - `src/lib/auth-store.ts` (Role : SUPER_ADMIN remplace ADMINISTRATEUR)
+  - `src/lib/types.ts` (RoleGlobal : idem)
+  - `src/components/dashboard/dashboard-layout.tsx` (NAV_GROUPS scindé en
+    STAFF_NAV_GROUPS + SAAS_NAV_GROUPS, roleLabel SUPER_ADMIN, sélecteur
+    d'établissement masqué pour SUPER_ADMIN, defaultViewForRole, routing
+    des 4 vues SaaS)
+  - `src/components/dashboard/dashboard-home.tsx` (DashboardViewId étendu,
+    roleLabel SUPER_ADMIN, safety net SaasDashboardView pour SUPER_ADMIN)
+  - `src/components/dashboard/views/view-parametres.tsx` (ROLE_LABEL/CLS)
+  - `src/components/dashboard/views/view-comptabilite.tsx` (canManage)
+  - `src/components/dashboard/views/view-caisse.tsx` (commentaire)
+  - `src/components/dashboard/views/view-mobile-money.tsx` (commentaire)
+  - `src/components/caisse/cloture-caisse.tsx` (SUPERVISEUR_ROLES)
+  - `src/components/caisse/paiements-list.tsx` (commentaire)
+  - `src/components/parametres/utilisateur-form-dialog.tsx` (ROLE_OPTIONS/LABEL)
+  - `src/components/auth/login-form.tsx` (compte démo renommé)
+- Fichiers créés :
+  - `src/lib/api-saas.ts` (5 wrappers + types + clés React Query)
+  - `src/components/dashboard/views/view-saas-dashboard.tsx` (KPIs +
+    table + bandeau support)
+  - `src/components/dashboard/views/view-saas-establishments.tsx` (liste
+    + activation support par ligne)
+  - `src/components/dashboard/views/view-saas-audit.tsx` (journal global
+    paginé + filtres)
+  - `src/components/dashboard/views/view-saas-support.tsx` (gestion mode
+    support + AlertDialog de désactivation)
+- Décisions :
+  - Le SUPER_ADMIN n'a accès à AUCUNE vue d'établissement par défaut —
+    uniquement les 4 vues SaaS. Pour consulter les données d'un tenant,
+    il doit activer le mode support (tracé, durée limitée).
+  - DIRECTION récupère l'intégralité des droits qu'avait ADMINISTRATEUR
+    (Frais, Années, Utilisateurs, Compta, Mobile Money, Paramètres).
+  - Le sélecteur d'établissement est masqué pour SUPER_ADMIN (pas de
+    notion d'établissement actif au niveau SaaS).
+  - DashboardHome rend SaasDashboardView pour SUPER_ADMIN comme safety
+    net (cas où activeView serait transitoirement `"dashboard"` avant
+    que l'useEffect ne le reset vers `"saas-dashboard"`).
+  - Les mutations `activateSupport`/`deactivateSupport` invalident à la
+    fois `saasKeys.stats` (qui contient le statut support) et
+    `saasKeys.support` (réservé au besoin). Toast de confirmation à
+    chaque action.
+  - La couleur ambre est utilisée pour tout ce qui touche au mode
+    support (carte de statut, boutons d'activation, icône LifeBuoy) —
+    cohérent avec la charte (emerald primary, amber accents).
+- À valider côté backend (Task ID parallèle) : GET /api/saas/stats (avec
+  champ `support`), GET /api/saas/establishments (avec compteurs
+  nb_eleves/nb_utilisateurs), GET /api/saas/audit (cross-tenant),
+  POST /api/saas/support/activate (body `{ etablissement_id }`),
+  POST /api/saas/support/deactivate. Le frontend est prêt à consommer
+  ces endpoints dès qu'ils seront disponibles.
+- Flux parent téléphone + PIN : NON touché (les tokens parent et staff
+  restent indépendants dans auth-store/api-client ; aucune régression).

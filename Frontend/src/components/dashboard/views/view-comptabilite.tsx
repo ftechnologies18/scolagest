@@ -5,7 +5,7 @@
  *
  * Cinq onglets :
  *  - Exercices    : liste des exercices comptables, « Nouvel exercice »,
- *    « Clôturer » (réservé COMPTABLE / ADMINISTRATEUR / DIRECTION).
+ *    « Clôturer » (réservé COMPTABLE / DIRECTION).
  *  - Plan comptable : arbre hiérarchique des comptes (groupés par type
  *    ACTIF / PASSIF / PRODUIT / CHARGE), « Nouveau compte ».
  *  - Écritures    : filtres (exercice, journal, dates) + table paginée.
@@ -15,7 +15,7 @@
  *  - Bilan        : sélection de l&apos;exercice → 4 cartes (Actif / Passif /
  *    Produits / Charges) + résultat (produits − charges), tables détaillées.
  *
- * Rôles autorisés : COMPTABLE / ADMINISTRATEUR / DIRECTION (filtre nav
+ * Rôles autorisés : COMPTABLE / DIRECTION (filtre nav
  * appliqué dans `dashboard-layout.tsx`).
  *
  * Toutes les requêtes sont `enabled: !!etablissement?.id` avec
@@ -247,7 +247,7 @@ function ExercicesPanel() {
   const [cloturerTarget, setCloturerTarget] =
     React.useState<ExerciceComptable | null>(null);
 
-  const canManage = ["COMPTABLE", "ADMINISTRATEUR", "DIRECTION"].includes(
+  const canManage = ["COMPTABLE", "DIRECTION"].includes(
     role ?? "",
   );
 
@@ -435,7 +435,7 @@ function StatutExerciceBadge({ statut }: { statut: ExerciceComptable["statut"] }
 function PlanComptablePanel() {
   const etablissement = useAuthStore((s) => s.etablissement);
   const role = useAuthStore((s) => s.role);
-  const canManage = ["COMPTABLE", "ADMINISTRATEUR", "DIRECTION"].includes(
+  const canManage = ["COMPTABLE", "DIRECTION"].includes(
     role ?? "",
   );
 

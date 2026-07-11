@@ -35,6 +35,8 @@ import {
   Building2,
   ChevronDown,
   CheckCircle2,
+  LifeBuoy,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -79,6 +81,10 @@ import UtilisateursView from "./views/view-utilisateurs";
 import ComptabiliteView from "./views/view-comptabilite";
 import MobileMoneyView from "./views/view-mobile-money";
 import ParametresView from "./views/view-parametres";
+import SaasDashboardView from "./views/view-saas-dashboard";
+import SaasEstablishmentsView from "./views/view-saas-establishments";
+import SaasAuditView from "./views/view-saas-audit";
+import SaasSupportView from "./views/view-saas-support";
 
 /** Identifiants de vues gérées par la coquille. */
 export type ViewId = DashboardViewId;
@@ -96,35 +102,44 @@ interface NavGroup {
   items: NavItem[];
 }
 
-/** Liste des groupes de navigation (exportée pour usage externe). */
-export const NAV_GROUPS: NavGroup[] = [
+/**
+ * Groupes de navigation pour le personnel d'établissement (DIRECTION,
+ * CAISSIER, COMPTABLE, SECRETARIAT). DIRECTION a désormais tous les droits
+ * anciennement détenus par `ADMINISTRATEUR`.
+ */
+const STAFF_NAV_GROUPS: NavGroup[] = [
   {
     label: "Pilotage",
     items: [
-      { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
-      { id: "eleves", label: "Élèves", icon: Users },
+      {
+        id: "dashboard",
+        label: "Tableau de bord",
+        icon: LayoutDashboard,
+        roles: ["CAISSIER", "COMPTABLE", "DIRECTION", "SECRETARIAT"],
+      },
+      {
+        id: "eleves",
+        label: "Élèves",
+        icon: Users,
+        roles: ["CAISSIER", "COMPTABLE", "DIRECTION", "SECRETARIAT"],
+      },
       {
         id: "caisse",
         label: "Caisse",
         icon: Wallet,
-        roles: ["CAISSIER", "ADMINISTRATEUR", "COMPTABLE"],
+        roles: ["CAISSIER", "DIRECTION", "COMPTABLE"],
       },
       {
         id: "impayes",
         label: "Impayés & relances",
         icon: AlertTriangle,
-        roles: ["CAISSIER", "ADMINISTRATEUR", "COMPTABLE", "DIRECTION"],
+        roles: ["CAISSIER", "DIRECTION", "COMPTABLE"],
       },
       {
         id: "rapports",
         label: "Rapports",
         icon: FileBarChart,
-        roles: [
-          "ADMINISTRATEUR",
-          "DIRECTION",
-          "COMPTABLE",
-          "SECRETARIAT",
-        ],
+        roles: ["DIRECTION", "COMPTABLE", "SECRETARIAT"],
       },
     ],
   },
@@ -135,19 +150,19 @@ export const NAV_GROUPS: NavGroup[] = [
         id: "frais",
         label: "Frais & échéanciers",
         icon: Coins,
-        roles: ["ADMINISTRATEUR", "DIRECTION"],
+        roles: ["DIRECTION"],
       },
       {
         id: "annees",
         label: "Années scolaires",
         icon: CalendarDays,
-        roles: ["ADMINISTRATEUR", "DIRECTION"],
+        roles: ["DIRECTION"],
       },
       {
         id: "utilisateurs",
         label: "Utilisateurs",
         icon: UserCog,
-        roles: ["ADMINISTRATEUR"],
+        roles: ["DIRECTION"],
       },
     ],
   },
@@ -158,28 +173,71 @@ export const NAV_GROUPS: NavGroup[] = [
         id: "comptabilite",
         label: "Comptabilité",
         icon: BookOpen,
-        roles: ["COMPTABLE", "ADMINISTRATEUR"],
+        roles: ["COMPTABLE", "DIRECTION"],
       },
       {
         id: "mobile-money",
         label: "Mobile Money",
         icon: Smartphone,
-        roles: ["ADMINISTRATEUR"],
+        roles: ["DIRECTION"],
       },
       {
         id: "parametres",
         label: "Paramètres",
         icon: Settings,
-        roles: ["ADMINISTRATEUR"],
+        roles: ["DIRECTION"],
       },
     ],
   },
 ];
 
+/**
+ * Groupes de navigation SaaS réservés au `SUPER_ADMIN` (propriétaire de la
+ * plateforme). Le SUPER_ADMIN n'a pas accès aux données d'établissement
+ * sauf si le mode support est activé.
+ */
+const SAAS_NAV_GROUPS: NavGroup[] = [
+  {
+    label: "Pilotage SaaS",
+    items: [
+      {
+        id: "saas-dashboard",
+        label: "Tableau de bord SaaS",
+        icon: LayoutDashboard,
+        roles: ["SUPER_ADMIN"],
+      },
+      {
+        id: "saas-establishments",
+        label: "Établissements",
+        icon: Building2,
+        roles: ["SUPER_ADMIN"],
+      },
+      {
+        id: "saas-audit",
+        label: "Audit",
+        icon: ScrollText,
+        roles: ["SUPER_ADMIN"],
+      },
+      {
+        id: "saas-support",
+        label: "Mode Support",
+        icon: LifeBuoy,
+        roles: ["SUPER_ADMIN"],
+      },
+    ],
+  },
+];
+
+/** Liste fusionnée des groupes de navigation (exportée pour usage externe). */
+export const NAV_GROUPS: NavGroup[] = [
+  ...STAFF_NAV_GROUPS,
+  ...SAAS_NAV_GROUPS,
+];
+
 function roleLabel(role: string | null): string {
   if (!role) return "Utilisateur";
   const map: Record<string, string> = {
-    ADMINISTRATEUR: "Administrateur",
+    SUPER_ADMIN: "Super Admin (SaaS)",
     CAISSIER: "Caissier(ère)",
     COMPTABLE: "Comptable",
     DIRECTION: "Direction",
@@ -209,6 +267,14 @@ function isItemAllowed(item: NavItem, role: string | null): boolean {
   return item.roles.includes(role as Role);
 }
 
+/**
+ * Vue par défaut selon le rôle. Le SUPER_ADMIN arrive sur le tableau de bord
+ * SaaS, les autres rôles sur le tableau de bord d'établissement.
+ */
+function defaultViewForRole(role: string | null): ViewId {
+  return role === "SUPER_ADMIN" ? "saas-dashboard" : "dashboard";
+}
+
 export function DashboardLayout() {
   const { toast } = useToast();
   const user = useAuthStore((s) => s.user);
@@ -223,7 +289,12 @@ export function DashboardLayout() {
   const [loadingEtabs, setLoadingEtabs] = useState(true);
 
   // Charge la liste des établissements (pour le sélecteur multi-sites).
+  // Non pertinent pour le SUPER_ADMIN (il gère tous les tenants via SaaS).
   useEffect(() => {
+    if (role === "SUPER_ADMIN") {
+      setLoadingEtabs(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -238,21 +309,27 @@ export function DashboardLayout() {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  // Filtrage RBAC des groupes de navigation.
-  const visibleGroups = useMemo<NavGroup[]>(() => {
-    return NAV_GROUPS.map((group) => ({
-      ...group,
-      items: group.items.filter((it) => isItemAllowed(it, role)),
-    })).filter((g) => g.items.length > 0);
   }, [role]);
 
-  // Si la vue active devient invisible (changement de rôle), on revient au tableau de bord.
+  // Filtrage RBAC des groupes de navigation. Le SUPER_ADMIN ne voit que les
+  // vues SaaS, les autres rôles ne voient que les vues d'établissement.
+  const visibleGroups = useMemo<NavGroup[]>(() => {
+    const sourceGroups =
+      role === "SUPER_ADMIN" ? SAAS_NAV_GROUPS : STAFF_NAV_GROUPS;
+    return sourceGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((it) => isItemAllowed(it, role)),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [role]);
+
+  // Si la vue active devient invisible (changement de rôle), on revient à la
+  // vue par défaut du rôle courant.
   useEffect(() => {
     const current = findNavItem(activeView);
-    if (current && !isItemAllowed(current, role)) {
-      setActiveView("dashboard");
+    if (!current || !isItemAllowed(current, role)) {
+      setActiveView(defaultViewForRole(role));
     }
   }, [role, activeView]);
 
@@ -307,34 +384,36 @@ export function DashboardLayout() {
         </div>
       </div>
 
-      {/* Sélecteur d'établissement */}
-      <div className="shrink-0 border-b p-3">
-        <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          <Building2 className="size-3" />
-          Établissement actif
-        </p>
-        <Select
-          value={etablissementSelectValue}
-          onValueChange={handleEtablissementChange}
-          disabled={loadingEtabs || etablissements.length === 0}
-        >
-          <SelectTrigger className="w-full bg-muted/40">
-            <SelectValue
-              placeholder={
-                loadingEtabs ? "Chargement…" : "Tous établissements"
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous établissements</SelectItem>
-            {etablissements.map((etab) => (
-              <SelectItem key={etab.id} value={etab.id}>
-                {etab.nom}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Sélecteur d'établissement (masqué pour le SUPER_ADMIN) */}
+      {role !== "SUPER_ADMIN" && (
+        <div className="shrink-0 border-b p-3">
+          <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <Building2 className="size-3" />
+            Établissement actif
+          </p>
+          <Select
+            value={etablissementSelectValue}
+            onValueChange={handleEtablissementChange}
+            disabled={loadingEtabs || etablissements.length === 0}
+          >
+            <SelectTrigger className="w-full bg-muted/40">
+              <SelectValue
+                placeholder={
+                  loadingEtabs ? "Chargement…" : "Tous établissements"
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous établissements</SelectItem>
+              {etablissements.map((etab) => (
+                <SelectItem key={etab.id} value={etab.id}>
+                  {etab.nom}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Navigation */}
       <ScrollArea className="flex-1">
@@ -546,6 +625,25 @@ export function DashboardLayout() {
               {activeView === "comptabilite" && <ComptabiliteView />}
               {activeView === "mobile-money" && <MobileMoneyView />}
               {activeView === "parametres" && <ParametresView />}
+              {activeView === "saas-dashboard" && (
+                <SaasDashboardView
+                  onNavigate={(v) =>
+                    handleNavigate(
+                      v as
+                        | "saas-establishments"
+                        | "saas-audit"
+                        | "saas-support",
+                    )
+                  }
+                />
+              )}
+              {activeView === "saas-establishments" && (
+                <SaasEstablishmentsView
+                  onNavigateSupport={() => handleNavigate("saas-support")}
+                />
+              )}
+              {activeView === "saas-audit" && <SaasAuditView />}
+              {activeView === "saas-support" && <SaasSupportView />}
             </div>
 
             {/* Pied de page */}

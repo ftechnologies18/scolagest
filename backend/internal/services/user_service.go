@@ -33,7 +33,7 @@ func (s *UserService) List(etablissementID *uuid.UUID) ([]models.Utilisateur, er
 		// Utilisateurs ayant accès à cet établissement OU admin global
 		q = q.Joins("LEFT JOIN etablissement_access ON etablissement_access.utilisateur_id = utilisateurs.id").
 			Where("etablissement_access.etablissement_id = ? OR utilisateurs.role_global = ?",
-				*etablissementID, models.RoleAdministrateur).
+				*etablissementID, models.RoleSuperAdmin).
 			Group("utilisateurs.id")
 	}
 	var users []models.Utilisateur

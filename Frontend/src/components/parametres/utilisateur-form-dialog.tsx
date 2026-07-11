@@ -64,7 +64,7 @@ import {
 } from "@/components/ui/select";
 
 const ROLE_OPTIONS: { value: RoleGlobal; label: string }[] = [
-  { value: "ADMINISTRATEUR", label: "Administrateur" },
+  { value: "SUPER_ADMIN", label: "Super Admin (SaaS)" },
   { value: "CAISSIER", label: "Caissier(ère)" },
   { value: "COMPTABLE", label: "Comptable" },
   { value: "DIRECTION", label: "Direction" },
@@ -73,7 +73,7 @@ const ROLE_OPTIONS: { value: RoleGlobal; label: string }[] = [
 ];
 
 const ROLE_LABEL: Record<RoleGlobal, string> = {
-  ADMINISTRATEUR: "Administrateur",
+  SUPER_ADMIN: "Super Admin (SaaS)",
   CAISSIER: "Caissier(ère)",
   COMPTABLE: "Comptable",
   DIRECTION: "Direction",

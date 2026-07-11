@@ -3,7 +3,7 @@
 /**
  * ScolaGest — Vue « Paramètres » (Phase 5).
  *
- * Trois onglets (ADMINISTRATEUR uniquement, filtre nav dans
+ * Trois onglets (DIRECTION uniquement, filtre nav dans
  * `dashboard-layout.tsx`) :
  *  - Établissements : liste + création / édition, code_officiel, ville,
  *    applique_categorie_affecte, actif.
@@ -90,7 +90,7 @@ import { UtilisateurFormDialog } from "@/components/parametres/utilisateur-form-
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ROLE_LABEL: Record<RoleGlobal, string> = {
-  ADMINISTRATEUR: "Administrateur",
+  SUPER_ADMIN: "Super Admin (SaaS)",
   CAISSIER: "Caissier(ère)",
   COMPTABLE: "Comptable",
   DIRECTION: "Direction",
@@ -99,7 +99,7 @@ const ROLE_LABEL: Record<RoleGlobal, string> = {
 };
 
 const ROLE_CLS: Record<RoleGlobal, string> = {
-  ADMINISTRATEUR:
+  SUPER_ADMIN:
     "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300",
   CAISSIER:
     "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300",

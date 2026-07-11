@@ -64,17 +64,19 @@ const (
 )
 
 // RoleUtilisateur : rôles RBAC de l'application.
+// SUPER_ADMIN = propriétaire SaaS (gère la plateforme, pas les établissements)
+// DIRECTION = admin d'établissement (gère son établissement)
 type RoleUtilisateur string
 
 const (
-        RoleAdministrateur RoleUtilisateur = "ADMINISTRATEUR"
-        RoleCaissier       RoleUtilisateur = "CAISSIER"
-        RoleComptable      RoleUtilisateur = "COMPTABLE"
-        RoleDirection      RoleUtilisateur = "DIRECTION"
-        RoleSecretariat    RoleUtilisateur = "SECRETARIAT"
+        RoleSuperAdmin   RoleUtilisateur = "SUPER_ADMIN"
+        RoleCaissier     RoleUtilisateur = "CAISSIER"
+        RoleComptable    RoleUtilisateur = "COMPTABLE"
+        RoleDirection    RoleUtilisateur = "DIRECTION"
+        RoleSecretariat  RoleUtilisateur = "SECRETARIAT"
 )
 
-// ProviderMomo : opérateurs Mobile Money supportés (contexte ivoirien).
+// ProviderMomo : opéérateurs Mobile Money supportés (contexte ivoirien).
 type ProviderMomo string
 
 const (

@@ -25,9 +25,17 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { apiGet, apiPost } from "@/lib/api-client";
 
-/** Liste des rôles RBAC connus (côté frontend). */
+/**
+ * Liste des rôles RBAC connus (côté frontend).
+ *
+ * `SUPER_ADMIN` = propriétaire de la plateforme SaaS (gestion multi-tenant,
+ * audit global, mode support). N'a PAS accès aux données d'un établissement
+ * sauf si le « mode support » est activé. `DIRECTION` est désormais
+ * l'administrateur d'établissement (rôle historiquement tenu par
+ * `ADMINISTRATEUR`).
+ */
 export type Role =
-  | "ADMINISTRATEUR"
+  | "SUPER_ADMIN"
   | "CAISSIER"
   | "COMPTABLE"
   | "DIRECTION"

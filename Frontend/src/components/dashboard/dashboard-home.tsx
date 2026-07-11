@@ -86,6 +86,7 @@ import type {
   RepartitionItem,
   RepartitionModePaiement,
 } from "@/lib/types";
+import SaasDashboardView from "./views/view-saas-dashboard";
 
 export type DashboardViewId =
   | "dashboard"
@@ -98,7 +99,12 @@ export type DashboardViewId =
   | "utilisateurs"
   | "comptabilite"
   | "mobile-money"
-  | "parametres";
+  | "parametres"
+  // Vues SaaS (SUPER_ADMIN uniquement)
+  | "saas-dashboard"
+  | "saas-establishments"
+  | "saas-audit"
+  | "saas-support";
 
 interface DashboardHomeProps {
   onNavigate: (view: DashboardViewId) => void;
@@ -159,7 +165,7 @@ function getGreeting(): string {
 function roleLabel(role: string | null): string {
   if (!role) return "Utilisateur";
   const map: Record<string, string> = {
-    ADMINISTRATEUR: "Administrateur",
+    SUPER_ADMIN: "Super Admin (SaaS)",
     CAISSIER: "Caissier(ère)",
     COMPTABLE: "Comptable",
     DIRECTION: "Direction",
@@ -302,6 +308,25 @@ export function DashboardHome({ onNavigate }: DashboardHomeProps) {
   const displayName = user
     ? `${user.prenoms ?? ""} ${user.nom ?? ""}`.trim() || user.email
     : "Utilisateur";
+
+  // ─── SUPER_ADMIN : redirige vers le tableau de bord SaaS ────────────────
+  // Le SUPER_ADMIN n'a pas accès aux données d'établissement (sauf mode
+  // support actif). On affiche directement la vue SaaS plutôt que le
+  // tableau de bord d'établissement.
+  if (role === "SUPER_ADMIN") {
+    return (
+      <SaasDashboardView
+        onNavigate={(v) =>
+          onNavigate(
+            v as
+              | "saas-establishments"
+              | "saas-audit"
+              | "saas-support",
+          )
+        }
+      />
+    );
+  }
 
   // ─── Pas d'établissement : message d'invite ──────────────────────────────
   if (!etablissement?.id) {

@@ -9,7 +9,7 @@
  *  - Clôture      : `<ClotureCaissePanel />` (clôture quotidienne)
  *
  * La vue s'adapte aux rôles : tous les rôles caisse/accueil peuvent encaisser
- * et voir l'historique ; seuls COMPTABLE/ADMINISTRATEUR peuvent valider une
+ * et voir l'historique ; seuls COMPTABLE/DIRECTION peuvent valider une
  * clôture.
  */
 

@@ -195,13 +195,13 @@ func seedUtilisateurs(db *gorm.DB) {
                 }
         }
 
-        // Rôle global pour l'admin = ADMINISTRATEUR (super-admin tous établissements)
-        adminRole := models.RoleAdministrateur
+        // SUPER_ADMIN = propriétaire SaaS (pas d'accès établissement)
+        adminRole := models.RoleSuperAdmin
         users := []userDef{
-                {"Konan", "Administrateur", "admin@scolagest.ci", "admin123", models.RoleAdministrateur, []struct {
+                {"Konan", "Super Admin (SaaS)", "admin@scolagest.ci", "admin123", models.RoleSuperAdmin, []struct {
                         etbID uuid.UUID
                         role  models.RoleUtilisateur
-                }{{college.ID, models.RoleAdministrateur}, {epv.ID, models.RoleAdministrateur}}},
+                }{}}, // SUPER_ADMIN : aucun accès établissement (rôle plateforme)
                 {"Traoré", "Aminata (Caissière)", "caissier@scolagest.ci", "caissier123", models.RoleCaissier, []struct {
                         etbID uuid.UUID
                         role  models.RoleUtilisateur
@@ -235,7 +235,7 @@ func seedUtilisateurs(db *gorm.DB) {
                                 Statut:           models.StatutUserActif,
                         }
                         // L'admin n'a pas de roleGlobal pointant sur un établissement unique — il garde ADMINISTRATEUR global
-                        if u.role == models.RoleAdministrateur {
+                        if u.role == models.RoleSuperAdmin {
                                 user.RoleGlobal = &adminRole
                         }
                         if err := db.Create(&user).Error; err != nil {
