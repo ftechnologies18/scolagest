@@ -33,12 +33,15 @@ import {
   Users,
   Wallet,
   Timer,
+  MessageSquare,
+  Send,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth-store";
 import { fetchImpayes, impayesKeys } from "@/lib/api-reports";
 import { fetchClasses } from "@/lib/api-students";
+import { apiPost } from "@/lib/api-client";
 import { useToast } from "@/hooks/use-toast";
 import { formatFCFA, formatDateShort } from "@/lib/format";
 import type { ImpayeItem, ImpayesFilters } from "@/lib/types";
@@ -95,11 +98,39 @@ export default function ImpayesView() {
   // Filtres
   const [classeId, setClasseId] = React.useState<string>("all");
   const [categorie, setCategorie] = React.useState<string>("all");
-  const [echeancePassee, setEcheancePassee] = React.useState(true);
+  const [echeancePassee, setEcheancePassee] = React.useState(false);
 
   // Sélection (élèves pour le bordereau)
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [bordereauOpen, setBordereauOpen] = React.useState(false);
+  const [smsSending, setSmsSending] = React.useState(false);
+
+  // Bug 4 : Envoi SMS de relance via POST /api/messages/relance-masse
+  const handleSendSMS = async () => {
+    if (selected.size === 0) return;
+    setSmsSending(true);
+    try {
+      const eleveIds = Array.from(selected);
+      // Récupérer le template RELANCE (ou utiliser un template par défaut)
+      const result = await apiPost<{ count: number }>("/api/messages/relance-masse", {
+        eleve_ids: eleveIds,
+        template_id: undefined, // le backend utilisera un template par défaut
+      });
+      toast({
+        title: "Relances envoyées",
+        description: `${(result as { count: number }).count} SMS de relance envoyé(s).`,
+      });
+      setSelected(new Set());
+    } catch {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer les relances. Vérifiez que le backend est démarré.",
+        variant: "destructive",
+      });
+    } finally {
+      setSmsSending(false);
+    }
+  };
 
   // Classes pour filtre
   const { data: classes } = useQuery({
@@ -337,7 +368,17 @@ export default function ImpayesView() {
                 className="bg-amber-600 text-white hover:bg-amber-700"
               >
                 <Printer className="size-3.5" />
-                Générer bordereau {selected.size > 0 ? `(${selected.size})` : ""}
+                Bordereau {selected.size > 0 ? `(${selected.size})` : ""}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selected.size === 0 || smsSending}
+                onClick={handleSendSMS}
+                className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+              >
+                {smsSending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+                Relance SMS {selected.size > 0 ? `(${selected.size})` : ""}
               </Button>
             </div>
           </div>

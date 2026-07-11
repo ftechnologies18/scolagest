@@ -71,7 +71,7 @@ export function LoginForm({ onBack }: { onBack?: () => void }) {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [etablissementId, setEtablissementId] = useState<string>("all");
+  const [etablissementId, setEtablissementId] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [etablissements, setEtablissements] = useState<Etablissement[]>([]);
@@ -113,7 +113,17 @@ export function LoginForm({ onBack }: { onBack?: () => void }) {
     }
     setSubmitting(true);
     try {
+      // Bug fix : forcer la sélection d'un établissement (RLS nécessite etablissement_id)
       const etabId = etablissementId === "all" ? null : etablissementId;
+      if (!etabId) {
+        toast({
+          title: "Établissement requis",
+          description: "Veuillez sélectionner votre établissement pour vous connecter.",
+          variant: "destructive",
+        });
+        setSubmitting(false);
+        return;
+      }
       await login(email, password, etabId);
       toast({
         title: "Connexion réussie",
@@ -248,7 +258,6 @@ export function LoginForm({ onBack }: { onBack?: () => void }) {
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Tous établissements</SelectItem>
                       {etablissements.map((etab) => (
                         <SelectItem key={etab.id} value={etab.id}>
                           {etab.nom}
@@ -258,8 +267,7 @@ export function LoginForm({ onBack }: { onBack?: () => void }) {
                     </SelectContent>
                   </Select>
                   <p className="text-[11px] text-muted-foreground">
-                    Optionnel — laissez « Tous établissements » pour utiliser
-                    votre établissement principal.
+                    Sélectionnez votre établissement pour vous connecter.
                   </p>
                 </div>
 
