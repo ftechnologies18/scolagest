@@ -64,7 +64,7 @@ func (s *PaiementService) List(filter PaiementFilter) (*PaiementResult, error) {
                 filter.PageSize = 20
         }
 
-        q := database.DB.Model(&models.Paiement{})
+        q := database.Current().Model(&models.Paiement{})
         if filter.EtablissementID != nil {
                 q = q.Where("paiements.etablissement_id = ?", *filter.EtablissementID)
         }
@@ -105,7 +105,7 @@ func (s *PaiementService) List(filter PaiementFilter) (*PaiementResult, error) {
 // Get retourne un paiement par ID avec ses relations.
 func (s *PaiementService) Get(id uuid.UUID) (*models.Paiement, error) {
         var p models.Paiement
-        if err := database.DB.
+        if err := database.Current().
                 Preload("Eleve").Preload("Frais").Preload("Echeance").
                 Preload("Caissier").Preload("Recu").
                 First(&p, "id = ?", id).Error; err != nil {
@@ -130,17 +130,17 @@ func (s *PaiementService) Create(dto PaiementDTO, caissierID uuid.UUID, etabliss
 
         // Vérifier l'élève
         var eleve models.Eleve
-        if err := database.DB.First(&eleve, "id = ?", dto.EleveID).Error; err != nil {
+        if err := database.Current().First(&eleve, "id = ?", dto.EleveID).Error; err != nil {
                 return nil, errors.New("élève introuvable")
         }
 
         // Vérifier l'inscription active
         var annee models.AnneeScolaire
-        if err := database.DB.Where("est_active = ?", true).First(&annee).Error; err != nil {
+        if err := database.Current().Where("est_active = ?", true).First(&annee).Error; err != nil {
                 return nil, errors.New("aucune année scolaire active")
         }
         var inscription models.Inscription
-        if err := database.DB.Where("eleve_id = ? AND annee_scolaire_id = ?", dto.EleveID, annee.ID).
+        if err := database.Current().Where("eleve_id = ? AND annee_scolaire_id = ?", dto.EleveID, annee.ID).
                 Order("date_inscription DESC").First(&inscription).Error; err != nil {
                 return nil, errors.New("l'élève n'est pas inscrit pour l'année active")
         }
@@ -184,7 +184,7 @@ func (s *PaiementService) Create(dto PaiementDTO, caissierID uuid.UUID, etabliss
                 Statut:           models.StatutPaiementValide,
                 NumeroRecu:       numeroRecu,
         }
-        if err := database.DB.Create(&p).Error; err != nil {
+        if err := database.Current().Create(&p).Error; err != nil {
                 return nil, fmt.Errorf("création paiement: %w", err)
         }
 
@@ -211,7 +211,7 @@ func (s *PaiementService) Annule(id uuid.UUID, motif string, validatorID uuid.UU
                 return nil, errors.New("le motif d'annulation est obligatoire")
         }
         var p models.Paiement
-        if err := database.DB.First(&p, "id = ?", id).Error; err != nil {
+        if err := database.Current().First(&p, "id = ?", id).Error; err != nil {
                 return nil, errors.New("paiement introuvable")
         }
         if p.Statut == models.StatutPaiementAnnule {
@@ -224,7 +224,7 @@ func (s *PaiementService) Annule(id uuid.UUID, motif string, validatorID uuid.UU
                 "annule_par":       validatorID,
                 "date_annulation":  now,
         }
-        if err := database.DB.Model(&p).Updates(updates).Error; err != nil {
+        if err := database.Current().Model(&p).Updates(updates).Error; err != nil {
                 return nil, err
         }
         return s.Get(id)
@@ -233,7 +233,7 @@ func (s *PaiementService) Annule(id uuid.UUID, motif string, validatorID uuid.UU
 // GetRecu retourne le reçu d'un paiement (avec snapshot).
 func (s *PaiementService) GetRecu(paiementID uuid.UUID) (*models.Recu, error) {
         var recu models.Recu
-        if err := database.DB.First(&recu, "paiement_id = ?", paiementID).Error; err != nil {
+        if err := database.Current().First(&recu, "paiement_id = ?", paiementID).Error; err != nil {
                 if errors.Is(err, gorm.ErrRecordNotFound) {
                         return nil, errors.New("reçu introuvable")
                 }
@@ -246,11 +246,11 @@ func (s *PaiementService) GetRecu(paiementID uuid.UUID) (*models.Recu, error) {
 func (s *PaiementService) createRecu(p *models.Paiement, eleve *models.Eleve, inscription *models.Inscription, annee *models.AnneeScolaire, caissierID uuid.UUID) error {
         // Récupérer le caissier + l'établissement + la classe
         var caissier models.Utilisateur
-        database.DB.First(&caissier, "id = ?", caissierID)
+        database.Current().First(&caissier, "id = ?", caissierID)
         var etb models.Etablissement
-        database.DB.First(&etb, "id = ?", p.EtablissementID)
+        database.Current().First(&etb, "id = ?", p.EtablissementID)
         var classe models.Classe
-        database.DB.First(&classe, "id = ?", inscription.ClasseID)
+        database.Current().First(&classe, "id = ?", inscription.ClasseID)
 
         // Calculer le solde restant après ce paiement
         solde, _ := s.soldeSvc.GetSoldeEleve(p.EleveID)
@@ -263,11 +263,11 @@ func (s *PaiementService) createRecu(p *models.Paiement, eleve *models.Eleve, in
         motif := "Paiement"
         if p.FraisID != nil {
                 var frais models.Frais
-                database.DB.First(&frais, "id = ?", *p.FraisID)
+                database.Current().First(&frais, "id = ?", *p.FraisID)
                 motif = frais.Libelle
                 if p.EcheanceID != nil {
                         var ech models.Echeance
-                        database.DB.First(&ech, "id = ?", *p.EcheanceID)
+                        database.Current().First(&ech, "id = ?", *p.EcheanceID)
                         if ech.Libelle != "" {
                                 motif = fmt.Sprintf("%s — %s", frais.Libelle, ech.Libelle)
                         }
@@ -309,23 +309,23 @@ func (s *PaiementService) createRecu(p *models.Paiement, eleve *models.Eleve, in
                 ContenuSnapshot: string(snapshotJSON),
                 DateEmission:    time.Now(),
         }
-        return database.DB.Create(&recu).Error
+        return database.Current().Create(&recu).Error
 }
 
 // generateNumeroRecu génère un numéro de reçu unique au format REC-{CODE_ETB}-{ANNEE}-{SEQ}.
 func (s *PaiementService) generateNumeroRecu(etablissementID, anneeID uuid.UUID) (string, error) {
         var etb models.Etablissement
-        if err := database.DB.First(&etb, "id = ?", etablissementID).Error; err != nil {
+        if err := database.Current().First(&etb, "id = ?", etablissementID).Error; err != nil {
                 return "", errors.New("établissement introuvable")
         }
         var annee models.AnneeScolaire
-        if err := database.DB.First(&annee, "id = ?", anneeID).Error; err != nil {
+        if err := database.Current().First(&annee, "id = ?", anneeID).Error; err != nil {
                 return "", errors.New("année scolaire introuvable")
         }
 
         // Compter les paiements existants pour cet établissement + année
         var count int64
-        database.DB.Model(&models.Paiement{}).
+        database.Current().Model(&models.Paiement{}).
                 Joins("JOIN inscriptions ON inscriptions.id = paiements.inscription_id").
                 Where("paiements.etablissement_id = ? AND inscriptions.annee_scolaire_id = ?", etablissementID, anneeID).
                 Count(&count)
@@ -340,7 +340,7 @@ func (s *PaiementService) generateNumeroRecu(etablissementID, anneeID uuid.UUID)
         for {
                 numero := fmt.Sprintf("REC-%s-%s-%06d", etb.CodeOfficiel, yearStr, sequence)
                 var exists int64
-                database.DB.Model(&models.Paiement{}).Where("numero_recu = ?", numero).Count(&exists)
+                database.Current().Model(&models.Paiement{}).Where("numero_recu = ?", numero).Count(&exists)
                 if exists == 0 {
                         return numero, nil
                 }
@@ -354,7 +354,7 @@ func (s *PaiementService) ListByEleve(eleveID uuid.UUID, limit int) ([]models.Pa
                 limit = 20
         }
         var paiements []models.Paiement
-        if err := database.DB.
+        if err := database.Current().
                 Preload("Frais").Preload("Echeance").Preload("Caissier").
                 Where("eleve_id = ?", eleveID).
                 Order("date_paiement DESC").

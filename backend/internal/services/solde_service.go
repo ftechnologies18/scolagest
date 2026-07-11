@@ -48,19 +48,19 @@ type SoldeEleve struct {
 func (s *SoldeService) GetSoldeEleve(eleveID uuid.UUID) (*SoldeEleve, error) {
         // 1. Récupérer l'élève + son inscription active (classe + année)
         var eleve models.Eleve
-        if err := database.DB.First(&eleve, "id = ?", eleveID).Error; err != nil {
+        if err := database.Current().First(&eleve, "id = ?", eleveID).Error; err != nil {
                 return nil, err
         }
 
         // Annee active
         var annee models.AnneeScolaire
-        if err := database.DB.Where("est_active = ?", true).First(&annee).Error; err != nil {
+        if err := database.Current().Where("est_active = ?", true).First(&annee).Error; err != nil {
                 return nil, err
         }
 
         // Inscription active = la plus récente pour l'année active
         var inscription models.Inscription
-        if err := database.DB.Where("eleve_id = ? AND annee_scolaire_id = ?", eleveID, annee.ID).
+        if err := database.Current().Where("eleve_id = ? AND annee_scolaire_id = ?", eleveID, annee.ID).
                 Order("date_inscription DESC").First(&inscription).Error; err != nil {
                 // Pas d'inscription → solde vide
                 return &SoldeEleve{EleveID: eleveID}, nil
@@ -89,7 +89,7 @@ func (s *SoldeService) GetSoldeEleve(eleveID uuid.UUID) (*SoldeEleve, error) {
 
                 // Montant payé = somme des paiements valides pour ce frais
                 var paye float64
-                database.DB.Model(&models.Paiement{}).
+                database.Current().Model(&models.Paiement{}).
                         Where("eleve_id = ? AND frais_id = ? AND statut = ?", eleveID, f.ID, models.StatutPaiementValide).
                         Select("COALESCE(SUM(montant), 0)").Scan(&paye)
 
@@ -107,7 +107,7 @@ func (s *SoldeService) GetSoldeEleve(eleveID uuid.UUID) (*SoldeEleve, error) {
                 // Statut des échéances
                 for _, e := range echeances {
                         var echeancePaye float64
-                        database.DB.Model(&models.Paiement{}).
+                        database.Current().Model(&models.Paiement{}).
                                 Where("eleve_id = ? AND echeance_id = ? AND statut = ?", eleveID, e.ID, models.StatutPaiementValide).
                                 Select("COALESCE(SUM(montant), 0)").Scan(&echeancePaye)
 
@@ -154,12 +154,12 @@ type SoldeListItem struct {
 // ListSoldes retourne les soldes des élèves filtrés par classe/catégorie/statut.
 func (s *SoldeService) ListSoldes(etablissementID uuid.UUID, classeID *uuid.UUID, categorie *models.CategorieEleve) ([]SoldeListItem, error) {
         var annee models.AnneeScolaire
-        if err := database.DB.Where("est_active = ?", true).First(&annee).Error; err != nil {
+        if err := database.Current().Where("est_active = ?", true).First(&annee).Error; err != nil {
                 return nil, nil
         }
 
         // Récupérer les élèves inscrits cette année
-        q := database.DB.Model(&models.Eleve{}).
+        q := database.Current().Model(&models.Eleve{}).
                 Select("eleves.id, eleves.nom, eleves.prenoms, eleves.categorie, classes.libelle as classe").
                 Joins("JOIN inscriptions ON inscriptions.eleve_id = eleves.id").
                 Joins("JOIN classes ON classes.id = inscriptions.classe_id").
@@ -214,13 +214,13 @@ func (s *SoldeService) ListSoldes(etablissementID uuid.UUID, classeID *uuid.UUID
 func (s *SoldeService) findApplicableFrais(etablissementID, anneeID uuid.UUID, classeID uuid.UUID, categorie models.CategorieEleve) ([]models.Frais, error) {
         // Récupérer le cycle de la classe de l'élève
         var classe models.Classe
-        if err := database.DB.First(&classe, "id = ?", classeID).Error; err != nil {
+        if err := database.Current().First(&classe, "id = ?", classeID).Error; err != nil {
                 return nil, err
         }
         eleveCycleID := classe.CycleID
 
         var allFrais []models.Frais
-        database.DB.Where("etablissement_id = ? AND annee_scolaire_id = ? AND actif = ?", etablissementID, anneeID, true).
+        database.Current().Where("etablissement_id = ? AND annee_scolaire_id = ? AND actif = ?", etablissementID, anneeID, true).
                 Find(&allFrais)
 
         // Filtrer : ne garder que les frais applicables à cet élève (cycle/classe matchant)
@@ -281,12 +281,12 @@ func (s *SoldeService) findApplicableFrais(etablissementID, anneeID uuid.UUID, c
 func (s *SoldeService) findEcheances(fraisID, eleveID uuid.UUID) []models.Echeance {
         // D'abord chercher les échéances dérogatoires
         var derogatory []models.Echeance
-        database.DB.Where("frais_id = ? AND eleve_id = ?", fraisID, eleveID).Order("rang ASC").Find(&derogatory)
+        database.Current().Where("frais_id = ? AND eleve_id = ?", fraisID, eleveID).Order("rang ASC").Find(&derogatory)
         if len(derogatory) > 0 {
                 return derogatory
         }
         // Sinon les échéances génériques
         var generic []models.Echeance
-        database.DB.Where("frais_id = ? AND eleve_id IS NULL", fraisID).Order("rang ASC").Find(&generic)
+        database.Current().Where("frais_id = ? AND eleve_id IS NULL", fraisID).Order("rang ASC").Find(&generic)
         return generic
 }

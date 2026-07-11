@@ -65,7 +65,7 @@ type EvolutionItem struct {
 // GetDashboard calcule toutes les données du tableau de bord.
 func (s *StatsService) GetDashboard(etablissementID uuid.UUID, dateDebut, dateFin *time.Time) (*DashboardData, error) {
         var annee models.AnneeScolaire
-        if err := database.DB.Where("est_active = ?", true).First(&annee).Error; err != nil {
+        if err := database.Current().Where("est_active = ?", true).First(&annee).Error; err != nil {
                 return nil, err
         }
 
@@ -94,7 +94,7 @@ func (s *StatsService) GetDashboard(etablissementID uuid.UUID, dateDebut, dateFi
 
         // 3. Derniers paiements
         var paiements []models.Paiement
-        database.DB.
+        database.Current().
                 Preload("Eleve").Preload("Frais").Preload("Caissier").
                 Where("etablissement_id = ? AND statut = ?", etablissementID, models.StatutPaiementValide).
                 Order("date_paiement DESC").
@@ -110,7 +110,7 @@ func (s *StatsService) computeKPIs(etablissementID, anneeID uuid.UUID, dateDebut
         kpis := DashboardKPIs{}
 
         // Total encaissé sur la période
-        database.DB.Model(&models.Paiement{}).
+        database.Current().Model(&models.Paiement{}).
                 Where("etablissement_id = ? AND statut = ? AND date_paiement BETWEEN ? AND ?",
                         etablissementID, models.StatutPaiementValide, dateDebut, dateFin).
                 Select("COALESCE(SUM(montant), 0)").Scan(&kpis.TotalEncaisse)
@@ -135,14 +135,14 @@ func (s *StatsService) computeKPIs(etablissementID, anneeID uuid.UUID, dateDebut
         startDay := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
         endDay := startDay.Add(24 * time.Hour)
         var countJour int64
-        database.DB.Model(&models.Paiement{}).
+        database.Current().Model(&models.Paiement{}).
                 Where("etablissement_id = ? AND statut = ? AND date_paiement >= ? AND date_paiement < ?",
                         etablissementID, models.StatutPaiementValide, startDay, endDay).
                 Count(&countJour).
                 Scan(&kpis.MontantJour)
         kpis.NbPaiementsJour = int(countJour)
         // Montant jour séparé (car Count + Scan ne font pas la somme)
-        database.DB.Model(&models.Paiement{}).
+        database.Current().Model(&models.Paiement{}).
                 Where("etablissement_id = ? AND statut = ? AND date_paiement >= ? AND date_paiement < ?",
                         etablissementID, models.StatutPaiementValide, startDay, endDay).
                 Select("COALESCE(SUM(montant), 0)").Scan(&kpis.MontantJour)
@@ -158,7 +158,7 @@ func (s *StatsService) computeParCycle(etablissementID, anneeID uuid.UUID) []Rep
                 NbEleves int
         }
         var rows []row
-        database.DB.Model(&models.Eleve{}).
+        database.Current().Model(&models.Eleve{}).
                 Select("cycles.libelle as label, COUNT(DISTINCT eleves.id) as nb_eleves").
                 Joins("JOIN inscriptions ON inscriptions.eleve_id = eleves.id").
                 Joins("JOIN classes ON classes.id = inscriptions.classe_id").
@@ -173,7 +173,7 @@ func (s *StatsService) computeParCycle(etablissementID, anneeID uuid.UUID) []Rep
                 var attendu, encaisse float64
                 // Récupérer les élèves de ce cycle
                 var eleveIDs []uuid.UUID
-                database.DB.Model(&models.Eleve{}).
+                database.Current().Model(&models.Eleve{}).
                         Select("DISTINCT eleves.id").
                         Joins("JOIN inscriptions ON inscriptions.eleve_id = eleves.id").
                         Joins("JOIN classes ON classes.id = inscriptions.classe_id").
@@ -210,7 +210,7 @@ func (s *StatsService) computeParClasse(etablissementID, anneeID uuid.UUID) []Re
                 NbEleves int
         }
         var rows []row
-        database.DB.Model(&models.Eleve{}).
+        database.Current().Model(&models.Eleve{}).
                 Select("classes.libelle as label, COUNT(DISTINCT eleves.id) as nb_eleves").
                 Joins("JOIN inscriptions ON inscriptions.eleve_id = eleves.id").
                 Joins("JOIN classes ON classes.id = inscriptions.classe_id").
@@ -223,7 +223,7 @@ func (s *StatsService) computeParClasse(etablissementID, anneeID uuid.UUID) []Re
         for _, r := range rows {
                 var attendu, encaisse float64
                 var eleveIDs []uuid.UUID
-                database.DB.Model(&models.Eleve{}).
+                database.Current().Model(&models.Eleve{}).
                         Select("DISTINCT eleves.id").
                         Joins("JOIN inscriptions ON inscriptions.eleve_id = eleves.id").
                         Joins("JOIN classes ON classes.id = inscriptions.classe_id").
@@ -258,7 +258,7 @@ func (s *StatsService) computeParCategorie(etablissementID, anneeID uuid.UUID) [
                 Categorie string
         }
         var rows []row
-        database.DB.Model(&models.Eleve{}).
+        database.Current().Model(&models.Eleve{}).
                 Select("DISTINCT eleves.categorie as categorie").
                 Joins("JOIN inscriptions ON inscriptions.eleve_id = eleves.id").
                 Where("inscriptions.annee_scolaire_id = ? AND eleves.etablissement_id = ?", anneeID, etablissementID).
@@ -269,7 +269,7 @@ func (s *StatsService) computeParCategorie(etablissementID, anneeID uuid.UUID) [
                 var attendu, encaisse float64
                 var count int
                 var eleveIDs []uuid.UUID
-                database.DB.Model(&models.Eleve{}).
+                database.Current().Model(&models.Eleve{}).
                         Select("DISTINCT eleves.id").
                         Joins("JOIN inscriptions ON inscriptions.eleve_id = eleves.id").
                         Where("inscriptions.annee_scolaire_id = ? AND eleves.etablissement_id = ? AND eleves.categorie = ?",
@@ -306,7 +306,7 @@ func (s *StatsService) computeParModePaiement(etablissementID uuid.UUID, dateDeb
                 Count   int
         }
         var rows []row
-        database.DB.Model(&models.Paiement{}).
+        database.Current().Model(&models.Paiement{}).
                 Select("mode_paiement as mode, COALESCE(SUM(montant), 0) as montant, COUNT(*) as count").
                 Where("etablissement_id = ? AND statut = ? AND date_paiement BETWEEN ? AND ?",
                         etablissementID, models.StatutPaiementValide, dateDebut, dateFin).
@@ -336,7 +336,7 @@ func (s *StatsService) computeEvolutionMensuelle(etablissementID uuid.UUID) []Ev
         if config.App.IsPostgreSQL() {
                 monthExpr = "to_char(date_paiement, 'YYYY-MM')"
         }
-        database.DB.Model(&models.Paiement{}).
+        database.Current().Model(&models.Paiement{}).
                 Select(monthExpr+" as mois, COALESCE(SUM(montant), 0) as montant").
                 Where("etablissement_id = ? AND statut = ? AND date_paiement >= ?",
                         etablissementID, models.StatutPaiementValide, time.Now().AddDate(-1, 0, 0)).

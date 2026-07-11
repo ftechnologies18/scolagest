@@ -31,7 +31,7 @@ type TuteurDTO struct {
 
 // List retourne les tuteurs, avec recherche optionnelle.
 func (s *TuteurService) List(search string, etablissementID *uuid.UUID) ([]models.Tuteur, error) {
-	q := database.DB.Model(&models.Tuteur{})
+	q := database.Current().Model(&models.Tuteur{})
 
 	if search != "" {
 		like := "%" + strings.ToLower(search) + "%"
@@ -58,7 +58,7 @@ func (s *TuteurService) List(search string, etablissementID *uuid.UUID) ([]model
 // Get retourne un tuteur par ID, avec ses élèves.
 func (s *TuteurService) Get(id uuid.UUID) (*models.Tuteur, error) {
 	var tuteur models.Tuteur
-	if err := database.DB.
+	if err := database.Current().
 		Preload("Eleve").
 		First(&tuteur, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -85,7 +85,7 @@ func (s *TuteurService) Create(dto TuteurDTO) (*models.Tuteur, error) {
 	if dto.Actif != nil {
 		tuteur.Actif = *dto.Actif
 	}
-	if err := database.DB.Create(&tuteur).Error; err != nil {
+	if err := database.Current().Create(&tuteur).Error; err != nil {
 		return nil, err
 	}
 	return &tuteur, nil
@@ -94,7 +94,7 @@ func (s *TuteurService) Create(dto TuteurDTO) (*models.Tuteur, error) {
 // Update modifie un tuteur.
 func (s *TuteurService) Update(id uuid.UUID, dto TuteurDTO) (*models.Tuteur, error) {
 	var tuteur models.Tuteur
-	if err := database.DB.First(&tuteur, "id = ?", id).Error; err != nil {
+	if err := database.Current().First(&tuteur, "id = ?", id).Error; err != nil {
 		return nil, errors.New("tuteur introuvable")
 	}
 	updates := map[string]interface{}{
@@ -110,7 +110,7 @@ func (s *TuteurService) Update(id uuid.UUID, dto TuteurDTO) (*models.Tuteur, err
 	if dto.Actif != nil {
 		updates["actif"] = *dto.Actif
 	}
-	if err := database.DB.Model(&tuteur).Updates(updates).Error; err != nil {
+	if err := database.Current().Model(&tuteur).Updates(updates).Error; err != nil {
 		return nil, err
 	}
 	return s.Get(id)
@@ -119,11 +119,11 @@ func (s *TuteurService) Update(id uuid.UUID, dto TuteurDTO) (*models.Tuteur, err
 // Delete supprime un tuteur (soft delete). Refusé s'il a des élèves rattachés.
 func (s *TuteurService) Delete(id uuid.UUID) error {
 	var count int64
-	database.DB.Model(&models.Eleve{}).Where("tuteur_id = ?", id).Count(&count)
+	database.Current().Model(&models.Eleve{}).Where("tuteur_id = ?", id).Count(&count)
 	if count > 0 {
 		return errors.New("impossible de supprimer un tuteur ayant des élèves rattachés")
 	}
-	result := database.DB.Delete(&models.Tuteur{}, "id = ?", id)
+	result := database.Current().Delete(&models.Tuteur{}, "id = ?", id)
 	if result.RowsAffected == 0 {
 		return errors.New("tuteur introuvable")
 	}
@@ -149,7 +149,7 @@ type InscriptionDTO struct {
 // ListByEleve retourne toutes les inscriptions d'un élève (historique).
 func (s *InscriptionService) ListByEleve(eleveID uuid.UUID) ([]models.Inscription, error) {
 	var inscriptions []models.Inscription
-	if err := database.DB.
+	if err := database.Current().
 		Preload("Classe").
 		Preload("AnneeScolaire").
 		Preload("Etablissement").
@@ -165,13 +165,13 @@ func (s *InscriptionService) ListByEleve(eleveID uuid.UUID) ([]models.Inscriptio
 func (s *InscriptionService) Create(eleveID uuid.UUID, dto InscriptionDTO, userID uuid.UUID) (*models.Inscription, error) {
 	// Récupérer l'élève pour déterminer l'établissement
 	var eleve models.Eleve
-	if err := database.DB.First(&eleve, "id = ?", eleveID).Error; err != nil {
+	if err := database.Current().First(&eleve, "id = ?", eleveID).Error; err != nil {
 		return nil, errors.New("élève introuvable")
 	}
 
 	// Vérifier l'unicité (élève + année scolaire)
 	var count int64
-	database.DB.Model(&models.Inscription{}).
+	database.Current().Model(&models.Inscription{}).
 		Where("eleve_id = ? AND annee_scolaire_id = ?", eleveID, dto.AnneeScolaireID).
 		Count(&count)
 	if count > 0 {
@@ -204,13 +204,13 @@ func (s *InscriptionService) Create(eleveID uuid.UUID, dto InscriptionDTO, userI
 		inscription.DateDerogation = &now
 	}
 
-	if err := database.DB.Create(&inscription).Error; err != nil {
+	if err := database.Current().Create(&inscription).Error; err != nil {
 		return nil, err
 	}
 
 	// Recharger avec relations
 	var result models.Inscription
-	database.DB.
+	database.Current().
 		Preload("Classe").
 		Preload("AnneeScolaire").
 		Preload("Etablissement").
@@ -221,7 +221,7 @@ func (s *InscriptionService) Create(eleveID uuid.UUID, dto InscriptionDTO, userI
 // Update modifie une inscription (statut, dérogation).
 func (s *InscriptionService) Update(id uuid.UUID, dto InscriptionDTO, userID uuid.UUID) (*models.Inscription, error) {
 	var inscription models.Inscription
-	if err := database.DB.First(&inscription, "id = ?", id).Error; err != nil {
+	if err := database.Current().First(&inscription, "id = ?", id).Error; err != nil {
 		return nil, errors.New("inscription introuvable")
 	}
 
@@ -238,12 +238,12 @@ func (s *InscriptionService) Update(id uuid.UUID, dto InscriptionDTO, userID uui
 		updates["date_derogation"] = now
 	}
 
-	if err := database.DB.Model(&inscription).Updates(updates).Error; err != nil {
+	if err := database.Current().Model(&inscription).Updates(updates).Error; err != nil {
 		return nil, err
 	}
 
 	var result models.Inscription
-	database.DB.
+	database.Current().
 		Preload("Classe").
 		Preload("AnneeScolaire").
 		First(&result, "id = ?", id)

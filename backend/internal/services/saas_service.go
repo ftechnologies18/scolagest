@@ -38,7 +38,7 @@ type SaasEstablishment struct {
 // ListEstablishments retourne tous les établissements (vue SaaS, sans données sensibles).
 func (s *SaasService) ListEstablishments() ([]SaasEstablishment, error) {
         var etabs []models.Etablissement
-        if err := database.DB.Order("nom ASC").Find(&etabs).Error; err != nil {
+        if err := database.Current().Order("nom ASC").Find(&etabs).Error; err != nil {
                 return nil, err
         }
 
@@ -55,8 +55,8 @@ func (s *SaasService) ListEstablishments() ([]SaasEstablishment, error) {
                         Actif:                e.Actif,
                 }
                 // Compter les élèves et utilisateurs (statistiques uniquement)
-                database.DB.Model(&models.Eleve{}).Where("etablissement_id = ?", e.ID).Count(&se.NbEleves)
-                database.DB.Model(&models.EtablissementAccess{}).Where("etablissement_id = ?", e.ID).Count(&se.NbUtilisateurs)
+                database.Current().Model(&models.Eleve{}).Where("etablissement_id = ?", e.ID).Count(&se.NbEleves)
+                database.Current().Model(&models.EtablissementAccess{}).Where("etablissement_id = ?", e.ID).Count(&se.NbUtilisateurs)
                 result = append(result, se)
         }
         return result, nil
@@ -75,12 +75,12 @@ type SaasStats struct {
 // GetStats retourne les statistiques globales de la plateforme.
 func (s *SaasService) GetStats() (*SaasStats, error) {
         stats := &SaasStats{}
-        database.DB.Model(&models.Etablissement{}).Count(&stats.NbEtablissements)
-        database.DB.Model(&models.Etablissement{}).Where("actif = ?", true).Count(&stats.NbEtablissementsActifs)
-        database.DB.Model(&models.Eleve{}).Count(&stats.NbElevesTotal)
-        database.DB.Model(&models.EtablissementAccess{}).Distinct("utilisateur_id").Count(&stats.NbUtilisateursTotal)
-        database.DB.Model(&models.Paiement{}).Where("statut = ?", models.StatutPaiementValide).Count(&stats.NbPaiementsTotal)
-        database.DB.Model(&models.Paiement{}).Where("statut = ?", models.StatutPaiementValide).
+        database.Current().Model(&models.Etablissement{}).Count(&stats.NbEtablissements)
+        database.Current().Model(&models.Etablissement{}).Where("actif = ?", true).Count(&stats.NbEtablissementsActifs)
+        database.Current().Model(&models.Eleve{}).Count(&stats.NbElevesTotal)
+        database.Current().Model(&models.EtablissementAccess{}).Distinct("utilisateur_id").Count(&stats.NbUtilisateursTotal)
+        database.Current().Model(&models.Paiement{}).Where("statut = ?", models.StatutPaiementValide).Count(&stats.NbPaiementsTotal)
+        database.Current().Model(&models.Paiement{}).Where("statut = ?", models.StatutPaiementValide).
                 Select("COALESCE(SUM(montant), 0)").Scan(&stats.MontantTotalEncaisse)
         return stats, nil
 }
@@ -100,12 +100,12 @@ type SupportClaims struct {
 func (s *SaasService) ActivateSupport(userID uuid.UUID, etablissementID uuid.UUID) (string, error) {
         // Vérifier que l'établissement existe
         var etb models.Etablissement
-        if err := database.DB.First(&etb, "id = ?", etablissementID).Error; err != nil {
+        if err := database.Current().First(&etb, "id = ?", etablissementID).Error; err != nil {
                 return "", errors.New("établissement introuvable")
         }
 
         // Journaliser l'activation du mode support (audit)
-        database.DB.Create(&models.JournalAudit{
+        database.Current().Create(&models.JournalAudit{
                 BaseModel:      models.BaseModel{ID: uuid.New()},
                 UtilisateurID:  &userID,
                 EtablissementID: &etablissementID,
@@ -135,7 +135,7 @@ func (s *SaasService) ActivateSupport(userID uuid.UUID, etablissementID uuid.UUI
 
 // DeactivateSupport journalise la désactivation du mode support.
 func (s *SaasService) DeactivateSupport(userID uuid.UUID, etablissementID *uuid.UUID) error {
-        database.DB.Create(&models.JournalAudit{
+        database.Current().Create(&models.JournalAudit{
                 BaseModel:      models.BaseModel{ID: uuid.New()},
                 UtilisateurID:  &userID,
                 EtablissementID: etablissementID,

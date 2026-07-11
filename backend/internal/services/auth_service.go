@@ -33,7 +33,7 @@ type LoginResult struct {
 // Login authentifie un utilisateur par email/mot de passe et émet des tokens.
 // Si etablissementID est fourni, vérifie l'accès et détermine le rôle effectif.
 func (s *AuthService) Login(email, password string, etablissementID *uuid.UUID, ip, userAgent string) (*LoginResult, error) {
-        db := database.DB
+        db := database.Current()
 
         var user models.Utilisateur
         if err := db.Where("email = ?", email).First(&user).Error; err != nil {
@@ -156,7 +156,7 @@ func (s *AuthService) Refresh(refreshTokenStr string, ip, userAgent string) (str
 
         // Vérifier que la session existe et n'est pas révoquée
         var session models.Session
-        if err := database.DB.Where("token_hash = ? AND type = ?", HashToken(refreshTokenStr), models.SessionRefresh).First(&session).Error; err != nil {
+        if err := database.Current().Where("token_hash = ? AND type = ?", HashToken(refreshTokenStr), models.SessionRefresh).First(&session).Error; err != nil {
                 return "", "", errors.New("session introuvable")
         }
         if session.Revoked {
@@ -164,7 +164,7 @@ func (s *AuthService) Refresh(refreshTokenStr string, ip, userAgent string) (str
         }
 
         var user models.Utilisateur
-        if err := database.DB.First(&user, "id = ?", claims.UserID).Error; err != nil {
+        if err := database.Current().First(&user, "id = ?", claims.UserID).Error; err != nil {
                 return "", "", errors.New("utilisateur introuvable")
         }
         if user.Statut != models.StatutUserActif {
@@ -187,8 +187,8 @@ func (s *AuthService) Refresh(refreshTokenStr string, ip, userAgent string) (str
         }
 
         // Révoquer l'ancien refresh, créer le nouveau
-        database.DB.Model(&session).Update("revoked", true)
-        database.DB.Create(&models.Session{
+        database.Current().Model(&session).Update("revoked", true)
+        database.Current().Create(&models.Session{
                 BaseModel:      models.BaseModel{ID: uuid.New()},
                 UtilisateurID:  user.ID,
                 TokenHash:      HashToken(accessToken),
@@ -198,7 +198,7 @@ func (s *AuthService) Refresh(refreshTokenStr string, ip, userAgent string) (str
                 UserAgent:      userAgent,
                 EtablissementID: session.EtablissementID,
         })
-        database.DB.Create(&models.Session{
+        database.Current().Create(&models.Session{
                 BaseModel:      models.BaseModel{ID: uuid.New()},
                 UtilisateurID:  user.ID,
                 TokenHash:      HashToken(newRefreshToken),
@@ -214,7 +214,7 @@ func (s *AuthService) Refresh(refreshTokenStr string, ip, userAgent string) (str
 
 // Logout révoque toutes les sessions actives d'un utilisateur.
 func (s *AuthService) Logout(userID uuid.UUID, ip string) error {
-        result := database.DB.Model(&models.Session{}).
+        result := database.Current().Model(&models.Session{}).
                 Where("utilisateur_id = ? AND revoked = ?", userID, false).
                 Update("revoked", true)
         s.audit(userID, nil, models.AuditLogout, "Utilisateur", userID.String(), ip)
@@ -224,7 +224,7 @@ func (s *AuthService) Logout(userID uuid.UUID, ip string) error {
 // GetMe retourne l'utilisateur courant + son établissement/rôle effectif.
 func (s *AuthService) GetMe(userID uuid.UUID, etablissementID *uuid.UUID) (*models.Utilisateur, *models.Etablissement, models.RoleUtilisateur, error) {
         var user models.Utilisateur
-        if err := database.DB.First(&user, "id = ?", userID).Error; err != nil {
+        if err := database.Current().First(&user, "id = ?", userID).Error; err != nil {
                 return nil, nil, "", err
         }
 
@@ -233,12 +233,12 @@ func (s *AuthService) GetMe(userID uuid.UUID, etablissementID *uuid.UUID) (*mode
 
         if etablissementID != nil {
                 var access models.EtablissementAccess
-                if err := database.DB.Where("utilisateur_id = ? AND etablissement_id = ?", userID, *etablissementID).First(&access).Error; err == nil {
+                if err := database.Current().Where("utilisateur_id = ? AND etablissement_id = ?", userID, *etablissementID).First(&access).Error; err == nil {
                         role = access.Role
                 } else if user.RoleGlobal != nil {
                         role = *user.RoleGlobal
                 }
-                if err := database.DB.First(&etablissement, "id = ?", *etablissementID).Error; err != nil {
+                if err := database.Current().First(&etablissement, "id = ?", *etablissementID).Error; err != nil {
                         etablissement = nil
                 }
         } else if user.RoleGlobal != nil {
@@ -250,7 +250,7 @@ func (s *AuthService) GetMe(userID uuid.UUID, etablissementID *uuid.UUID) (*mode
 
 // audit enregistre une entrée dans le journal d'audit.
 func (s *AuthService) audit(userID uuid.UUID, etablissementID *uuid.UUID, action models.ActionAudit, entite, entiteID, ip string) {
-        database.DB.Create(&models.JournalAudit{
+        database.Current().Create(&models.JournalAudit{
                 BaseModel:      models.BaseModel{ID: uuid.New()},
                 UtilisateurID:  &userID,
                 EtablissementID: etablissementID,

@@ -39,7 +39,7 @@ type EleveResult struct {
 
 // List retourne une liste paginée d'élèves selon les filtres.
 func (s *EleveService) List(filter EleveFilter) (*EleveResult, error) {
-        db := database.DB
+        db := database.Current()
 
         if filter.Page < 1 {
                 filter.Page = 1
@@ -96,7 +96,7 @@ func (s *EleveService) List(filter EleveFilter) (*EleveResult, error) {
 // Get retourne un élève par son ID, avec ses relations.
 func (s *EleveService) Get(id uuid.UUID) (*models.Eleve, error) {
         var eleve models.Eleve
-        if err := database.DB.
+        if err := database.Current().
                 Preload("Etablissement").
                 Preload("Tuteur").
                 Preload("Inscriptions.Classe").
@@ -129,7 +129,7 @@ type EleveDTO struct {
 func (s *EleveService) Create(dto EleveDTO, etablissementID uuid.UUID) (*models.Eleve, error) {
         // Vérifier l'établissement
         var etb models.Etablissement
-        if err := database.DB.First(&etb, "id = ?", etablissementID).Error; err != nil {
+        if err := database.Current().First(&etb, "id = ?", etablissementID).Error; err != nil {
                 return nil, errors.New("établissement introuvable")
         }
 
@@ -145,7 +145,7 @@ func (s *EleveService) Create(dto EleveDTO, etablissementID uuid.UUID) (*models.
         // Unicité du matricule ministériel si fourni
         if dto.MatriculeMinistere != nil && *dto.MatriculeMinistere != "" {
                 var count int64
-                database.DB.Model(&models.Eleve{}).Where("matricule_ministere = ?", *dto.MatriculeMinistere).Count(&count)
+                database.Current().Model(&models.Eleve{}).Where("matricule_ministere = ?", *dto.MatriculeMinistere).Count(&count)
                 if count > 0 {
                         return nil, errors.New("matricule ministériel déjà attribué à un autre élève")
                 }
@@ -180,7 +180,7 @@ func (s *EleveService) Create(dto EleveDTO, etablissementID uuid.UUID) (*models.
         }
         eleve.SearchVector = s.buildSearchVector(&eleve)
 
-        if err := database.DB.Create(&eleve).Error; err != nil {
+        if err := database.Current().Create(&eleve).Error; err != nil {
                 return nil, fmt.Errorf("création élève: %w", err)
         }
 
@@ -191,13 +191,13 @@ func (s *EleveService) Create(dto EleveDTO, etablissementID uuid.UUID) (*models.
 // Update modifie un élève existant.
 func (s *EleveService) Update(id uuid.UUID, dto EleveDTO) (*models.Eleve, error) {
         var eleve models.Eleve
-        if err := database.DB.First(&eleve, "id = ?", id).Error; err != nil {
+        if err := database.Current().First(&eleve, "id = ?", id).Error; err != nil {
                 return nil, errors.New("élève introuvable")
         }
 
         // Vérifier l'établissement pour la cohérence catégorie
         var etb models.Etablissement
-        database.DB.First(&etb, "id = ?", eleve.EtablissementID)
+        database.Current().First(&etb, "id = ?", eleve.EtablissementID)
 
         updates := map[string]interface{}{
                 "nom":         dto.Nom,
@@ -226,7 +226,7 @@ func (s *EleveService) Update(id uuid.UUID, dto EleveDTO) (*models.Eleve, error)
         // Matricule ministériel : vérifier l'unicité si changement
         if dto.MatriculeMinistere != nil && *dto.MatriculeMinistere != "" && *dto.MatriculeMinistere != eleve.MatriculeMinistere {
                 var count int64
-                database.DB.Model(&models.Eleve{}).
+                database.Current().Model(&models.Eleve{}).
                         Where("matricule_ministere = ? AND id != ?", *dto.MatriculeMinistere, id).
                         Count(&count)
                 if count > 0 {
@@ -237,22 +237,22 @@ func (s *EleveService) Update(id uuid.UUID, dto EleveDTO) (*models.Eleve, error)
                 updates["matricule_ministere"] = ""
         }
 
-        if err := database.DB.Model(&eleve).Updates(updates).Error; err != nil {
+        if err := database.Current().Model(&eleve).Updates(updates).Error; err != nil {
                 return nil, fmt.Errorf("mise à jour élève: %w", err)
         }
 
         // Recalculer le search_vector (qui dépend des champs modifiés)
         var updated models.Eleve
-        database.DB.First(&updated, "id = ?", id)
+        database.Current().First(&updated, "id = ?", id)
         updated.SearchVector = s.buildSearchVector(&updated)
-        database.DB.Model(&updated).Update("search_vector", updated.SearchVector)
+        database.Current().Model(&updated).Update("search_vector", updated.SearchVector)
 
         return s.Get(id)
 }
 
 // Delete supprime un élève (soft delete via GORM DeletedAt).
 func (s *EleveService) Delete(id uuid.UUID) error {
-        result := database.DB.Delete(&models.Eleve{}, "id = ?", id)
+        result := database.Current().Delete(&models.Eleve{}, "id = ?", id)
         if result.Error != nil {
                 return result.Error
         }
@@ -266,7 +266,7 @@ func (s *EleveService) Delete(id uuid.UUID) error {
 // {PREFIX-ETB}-{ANNEE}-{SEQUENCE}, ex. "COL-2026-0001", "EPV-2026-0002".
 func (s *EleveService) generateIdentifiantInterne(etablissementID uuid.UUID) (string, error) {
         var etb models.Etablissement
-        if err := database.DB.First(&etb, "id = ?", etablissementID).Error; err != nil {
+        if err := database.Current().First(&etb, "id = ?", etablissementID).Error; err != nil {
                 return "", errors.New("établissement introuvable")
         }
 
@@ -283,7 +283,7 @@ func (s *EleveService) generateIdentifiantInterne(etablissementID uuid.UUID) (st
 
         // Compter les élèves existants pour la séquence
         var count int64
-        database.DB.Model(&models.Eleve{}).Where("etablissement_id = ?", etablissementID).Count(&count)
+        database.Current().Model(&models.Eleve{}).Where("etablissement_id = ?", etablissementID).Count(&count)
         sequence := count + 1
 
         identifiant := fmt.Sprintf("%s-%d-%04d", prefix, year, sequence)
@@ -291,7 +291,7 @@ func (s *EleveService) generateIdentifiantInterne(etablissementID uuid.UUID) (st
         // Vérifier l'unicité (au cas où) et incrémenter si besoin
         for {
                 var exists int64
-                database.DB.Model(&models.Eleve{}).Where("identifiant_interne = ?", identifiant).Count(&exists)
+                database.Current().Model(&models.Eleve{}).Where("identifiant_interne = ?", identifiant).Count(&exists)
                 if exists == 0 {
                         return identifiant, nil
                 }

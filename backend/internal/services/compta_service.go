@@ -22,7 +22,7 @@ func NewComptaService() *ComptaService { return &ComptaService{} }
 // ListExercices retourne les exercices d'un établissement.
 func (s *ComptaService) ListExercices(etablissementID uuid.UUID) ([]models.ExerciceComptable, error) {
 	var ex []models.ExerciceComptable
-	if err := database.DB.Where("etablissement_id = ?", etablissementID).
+	if err := database.Current().Where("etablissement_id = ?", etablissementID).
 		Order("date_debut DESC").Find(&ex).Error; err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func (s *ComptaService) CreateExercice(dto ExerciceDTO, etablissementID uuid.UUI
 	}
 	// Vérifier qu'il n'y a pas déjà un exercice ouvert chevauchant
 	var count int64
-	database.DB.Model(&models.ExerciceComptable{}).
+	database.Current().Model(&models.ExerciceComptable{}).
 		Where("etablissement_id = ? AND statut = ? AND date_fin >= ?",
 			etablissementID, models.ExerciceOuvert, dto.DateDebut).
 		Count(&count)
@@ -59,7 +59,7 @@ func (s *ComptaService) CreateExercice(dto ExerciceDTO, etablissementID uuid.UUI
 		Statut:          models.ExerciceOuvert,
 		AnneeScolaireID: dto.AnneeScolaireID,
 	}
-	if err := database.DB.Create(&ex).Error; err != nil {
+	if err := database.Current().Create(&ex).Error; err != nil {
 		return nil, err
 	}
 	return &ex, nil
@@ -68,14 +68,14 @@ func (s *ComptaService) CreateExercice(dto ExerciceDTO, etablissementID uuid.UUI
 // CloturerExercice clôture un exercice (et génère les écritures manquantes).
 func (s *ComptaService) CloturerExercice(id uuid.UUID) (*models.ExerciceComptable, error) {
 	var ex models.ExerciceComptable
-	if err := database.DB.First(&ex, "id = ?", id).Error; err != nil {
+	if err := database.Current().First(&ex, "id = ?", id).Error; err != nil {
 		return nil, errors.New("exercice introuvable")
 	}
 	if ex.Statut == models.ExerciceCloture {
 		return nil, errors.New("exercice déjà clôturé")
 	}
-	database.DB.Model(&ex).Update("statut", models.ExerciceCloture)
-	database.DB.First(&ex, "id = ?", id)
+	database.Current().Model(&ex).Update("statut", models.ExerciceCloture)
+	database.Current().First(&ex, "id = ?", id)
 	return &ex, nil
 }
 
@@ -84,7 +84,7 @@ func (s *ComptaService) CloturerExercice(id uuid.UUID) (*models.ExerciceComptabl
 // ListComptes retourne le plan comptable d'un établissement (hiérarchique).
 func (s *ComptaService) ListComptes(etablissementID uuid.UUID) ([]models.CompteComptable, error) {
 	var comptes []models.CompteComptable
-	if err := database.DB.Where("etablissement_id = ?", etablissementID).
+	if err := database.Current().Where("etablissement_id = ?", etablissementID).
 		Order("numero ASC").Find(&comptes).Error; err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (s *ComptaService) CreateCompte(dto CompteDTO, etablissementID uuid.UUID) (
 	}
 	// Vérifier unicité du numéro par établissement
 	var count int64
-	database.DB.Model(&models.CompteComptable{}).
+	database.Current().Model(&models.CompteComptable{}).
 		Where("etablissement_id = ? AND numero = ?", etablissementID, dto.Numero).
 		Count(&count)
 	if count > 0 {
@@ -120,7 +120,7 @@ func (s *ComptaService) CreateCompte(dto CompteDTO, etablissementID uuid.UUID) (
 		ParentID:        dto.ParentID,
 		Actif:           true,
 	}
-	if err := database.DB.Create(&c).Error; err != nil {
+	if err := database.Current().Create(&c).Error; err != nil {
 		return nil, err
 	}
 	return &c, nil
@@ -131,7 +131,7 @@ func (s *ComptaService) CreateCompte(dto CompteDTO, etablissementID uuid.UUID) (
 // ListJournaux retourne les journaux d'un établissement.
 func (s *ComptaService) ListJournaux(etablissementID uuid.UUID) ([]models.JournalComptable, error) {
 	var j []models.JournalComptable
-	if err := database.DB.Where("etablissement_id = ?", etablissementID).
+	if err := database.Current().Where("etablissement_id = ?", etablissementID).
 		Order("code ASC").Find(&j).Error; err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func (s *ComptaService) ListEcritures(filter EcritureFilter) (*EcritureResult, e
 	if filter.PageSize < 1 || filter.PageSize > 100 {
 		filter.PageSize = 20
 	}
-	q := database.DB.Model(&models.EcritureComptable{}).
+	q := database.Current().Model(&models.EcritureComptable{}).
 		Preload("Journal").Preload("Lignes.Compte").Preload("Paiement")
 	if filter.EtablissementID != nil {
 		q = q.Joins("JOIN journaux_comptables ON journaux_comptables.id = ecritures_comptables.journal_id").
@@ -199,7 +199,7 @@ func (s *ComptaService) ListEcritures(filter EcritureFilter) (*EcritureResult, e
 // GetEcriture retourne une écriture avec ses lignes.
 func (s *ComptaService) GetEcriture(id uuid.UUID) (*models.EcritureComptable, error) {
 	var e models.EcritureComptable
-	if err := database.DB.
+	if err := database.Current().
 		Preload("Journal").Preload("Lignes.Compte").Preload("Paiement").
 		First(&e, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -244,7 +244,7 @@ type GrandLivreResult struct {
 // GrandLivre génère le grand livre pour un exercice/compte/période.
 func (s *ComptaService) GrandLivre(etablissementID, exerciceID uuid.UUID, compteID *uuid.UUID, dateDebut, dateFin *time.Time) (*GrandLivreResult, error) {
 	// Récupérer les comptes (filtré si compteID fourni)
-	q := database.DB.Model(&models.CompteComptable{}).Where("etablissement_id = ?", etablissementID)
+	q := database.Current().Model(&models.CompteComptable{}).Where("etablissement_id = ?", etablissementID)
 	if compteID != nil {
 		q = q.Where("id = ?", *compteID)
 	}
@@ -254,7 +254,7 @@ func (s *ComptaService) GrandLivre(etablissementID, exerciceID uuid.UUID, compte
 	result := &GrandLivreResult{}
 	for _, c := range comptes {
 		// Récupérer les lignes d'écriture de ce compte
-		lq := database.DB.Model(&models.LigneEcriture{}).
+		lq := database.Current().Model(&models.LigneEcriture{}).
 			Joins("JOIN ecritures_comptables ON ecritures_comptables.id = lignes_ecritures.ecriture_id").
 			Joins("JOIN journaux_comptables ON journaux_comptables.id = ecritures_comptables.journal_id").
 			Where("lignes_ecritures.compte_id = ? AND journaux_comptables.etablissement_id = ? AND ecritures_comptables.statut = ?",
@@ -347,11 +347,11 @@ func (s *ComptaService) Bilan(etablissementID, exerciceID uuid.UUID) (*BilanResu
 
 	for i, t := range types {
 		var comptes []models.CompteComptable
-		database.DB.Where("etablissement_id = ? AND type = ?", etablissementID, t).Order("numero").Find(&comptes)
+		database.Current().Where("etablissement_id = ? AND type = ?", etablissementID, t).Order("numero").Find(&comptes)
 		for _, c := range comptes {
 			// Calculer le solde du compte pour l'exercice
 			var debit, credit float64
-			q := database.DB.Model(&models.LigneEcriture{}).
+			q := database.Current().Model(&models.LigneEcriture{}).
 				Joins("JOIN ecritures_comptables ON ecritures_comptables.id = lignes_ecritures.ecriture_id").
 				Where("lignes_ecritures.compte_id = ? AND ecritures_comptables.exercice_id = ? AND ecritures_comptables.statut = ?",
 					c.ID, exerciceID, models.EcritureValidee)
@@ -383,7 +383,7 @@ func (s *ComptaService) Bilan(etablissementID, exerciceID uuid.UUID) (*BilanResu
 func (s *ComptaService) GenerateEcritureFromPaiement(p *models.Paiement, userID uuid.UUID) error {
 	// Récupérer/ créer l'exercice ouvert
 	var ex models.ExerciceComptable
-	if err := database.DB.Where("etablissement_id = ? AND statut = ? AND date_debut <= ? AND date_fin >= ?",
+	if err := database.Current().Where("etablissement_id = ? AND statut = ? AND date_debut <= ? AND date_fin >= ?",
 		p.EtablissementID, models.ExerciceOuvert, p.DatePaiement, p.DatePaiement).First(&ex).Error; err != nil {
 		// Pas d'exercice → créer automatiquement pour l'année
 		year := p.DatePaiement.Year()
@@ -394,7 +394,7 @@ func (s *ComptaService) GenerateEcritureFromPaiement(p *models.Paiement, userID 
 			DateFin:         time.Date(year, 12, 31, 23, 59, 59, 0, time.UTC),
 			Statut:          models.ExerciceOuvert,
 		}
-		database.DB.Create(&ex)
+		database.Current().Create(&ex)
 	}
 
 	// Déterminer le journal (caisse pour espèces, banque pour chèque/virement/momo)
@@ -403,11 +403,11 @@ func (s *ComptaService) GenerateEcritureFromPaiement(p *models.Paiement, userID 
 	if p.ModePaiement == models.ModeCheque || p.ModePaiement == models.ModeVirement || p.ModePaiement == models.ModeMobileMoney {
 		journalType = models.JournalBanque
 	}
-	database.DB.Where("etablissement_id = ? AND type = ?", p.EtablissementID, journalType).First(&journal)
+	database.Current().Where("etablissement_id = ? AND type = ?", p.EtablissementID, journalType).First(&journal)
 	if journal.ID == uuid.Nil {
 		// Créer les journaux par défaut
 		s.ensureDefaultJournaux(p.EtablissementID)
-		database.DB.Where("etablissement_id = ? AND type = ?", p.EtablissementID, journalType).First(&journal)
+		database.Current().Where("etablissement_id = ? AND type = ?", p.EtablissementID, journalType).First(&journal)
 	}
 
 	// Récupérer les comptes (caisse/banque + produit scolarité)
@@ -424,13 +424,13 @@ func (s *ComptaService) GenerateEcritureFromPaiement(p *models.Paiement, userID 
 	motif := "Paiement"
 	if p.FraisID != nil {
 		var f models.Frais
-		database.DB.First(&f, "id = ?", *p.FraisID)
+		database.Current().First(&f, "id = ?", *p.FraisID)
 		if f.Libelle != "" {
 			motif = f.Libelle
 		}
 	}
 	var eleve models.Eleve
-	database.DB.First(&eleve, "id = ?", p.EleveID)
+	database.Current().First(&eleve, "id = ?", p.EleveID)
 
 	ecriture := models.EcritureComptable{
 		ExerciceID:   ex.ID,
@@ -442,18 +442,18 @@ func (s *ComptaService) GenerateEcritureFromPaiement(p *models.Paiement, userID 
 		Statut:       models.EcritureValidee,
 		CreatedBy:    userID,
 	}
-	if err := database.DB.Create(&ecriture).Error; err != nil {
+	if err := database.Current().Create(&ecriture).Error; err != nil {
 		return fmt.Errorf("création écriture: %w", err)
 	}
 
 	// Lignes : débit caisse/banque, crédit produit
-	database.DB.Create(&models.LigneEcriture{
+	database.Current().Create(&models.LigneEcriture{
 		EcritureID: ecriture.ID,
 		CompteID:   compteDebit,
 		Debit:      p.Montant,
 		Libelle:    "Encaissement " + string(p.ModePaiement),
 	})
-	database.DB.Create(&models.LigneEcriture{
+	database.Current().Create(&models.LigneEcriture{
 		EcritureID: ecriture.ID,
 		CompteID:   compteProduit,
 		Credit:     p.Montant,
@@ -476,10 +476,10 @@ func (s *ComptaService) ensureDefaultJournaux(etablissementID uuid.UUID) {
 	}
 	for _, d := range defaults {
 		var count int64
-		database.DB.Model(&models.JournalComptable{}).
+		database.Current().Model(&models.JournalComptable{}).
 			Where("etablissement_id = ? AND code = ?", etablissementID, d.code).Count(&count)
 		if count == 0 {
-			database.DB.Create(&models.JournalComptable{
+			database.Current().Create(&models.JournalComptable{
 				EtablissementID: etablissementID,
 				Code:            d.code,
 				Libelle:         d.libelle,
@@ -492,7 +492,7 @@ func (s *ComptaService) ensureDefaultJournaux(etablissementID uuid.UUID) {
 // getOrCreateCompte récupère ou crée un compte standard.
 func (s *ComptaService) getOrCreateCompte(etablissementID uuid.UUID, numero, libelle string, t models.TypeCompte) uuid.UUID {
 	var c models.CompteComptable
-	database.DB.Where("etablissement_id = ? AND numero = ?", etablissementID, numero).First(&c)
+	database.Current().Where("etablissement_id = ? AND numero = ?", etablissementID, numero).First(&c)
 	if c.ID != uuid.Nil {
 		return c.ID
 	}
@@ -503,7 +503,7 @@ func (s *ComptaService) getOrCreateCompte(etablissementID uuid.UUID, numero, lib
 		Type:            t,
 		Actif:           true,
 	}
-	database.DB.Create(&c)
+	database.Current().Create(&c)
 	return c.ID
 }
 
@@ -516,7 +516,7 @@ type JournalCaisseResult struct {
 
 // JournalCaisse retourne les écritures de caisse/banque pour une période.
 func (s *ComptaService) JournalCaisse(etablissementID uuid.UUID, dateDebut, dateFin *time.Time) (*JournalCaisseResult, error) {
-	q := database.DB.Model(&models.EcritureComptable{}).
+	q := database.Current().Model(&models.EcritureComptable{}).
 		Preload("Journal").Preload("Lignes.Compte").Preload("Paiement").
 		Joins("JOIN journaux_comptables ON journaux_comptables.id = ecritures_comptables.journal_id").
 		Where("journaux_comptables.etablissement_id = ? AND journaux_comptables.type IN ?",

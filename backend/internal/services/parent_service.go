@@ -47,7 +47,7 @@ type EnfantParent struct {
 // GetTuteurIDFromUser récupère le tuteur_id d'un utilisateur (role PARENT).
 func (s *ParentService) GetTuteurIDFromUser(userID uuid.UUID) (*uuid.UUID, error) {
 	var user models.Utilisateur
-	if err := database.DB.First(&user, "id = ?", userID).Error; err != nil {
+	if err := database.Current().First(&user, "id = ?", userID).Error; err != nil {
 		return nil, errors.New("utilisateur introuvable")
 	}
 	if user.TuteurID == nil {
@@ -61,7 +61,7 @@ func (s *ParentService) ListEnfants(tuteurID uuid.UUID) ([]EnfantParent, error) 
 	// Récupérer les élèves dont le tuteur principal est ce tuteur
 	// + ceux liés via TuteurEleve (N:N)
 	var eleves []models.Eleve
-	database.DB.
+	database.Current().
 		Preload("Etablissement").
 		Where("tuteur_id = ? OR id IN (SELECT eleve_id FROM tuteur_eleves WHERE tuteur_id = ?)",
 			tuteurID, tuteurID).
@@ -87,9 +87,9 @@ func (s *ParentService) ListEnfants(tuteurID uuid.UUID) ([]EnfantParent, error) 
 		}
 		// Classe actuelle (inscription de l'année active)
 		var annee models.AnneeScolaire
-		if err := database.DB.Where("est_active = ?", true).First(&annee).Error; err == nil {
+		if err := database.Current().Where("est_active = ?", true).First(&annee).Error; err == nil {
 			var ins models.Inscription
-			if err := database.DB.Preload("Classe").
+			if err := database.Current().Preload("Classe").
 				Where("eleve_id = ? AND annee_scolaire_id = ?", e.ID, annee.ID).
 				Order("date_inscription DESC").First(&ins).Error; err == nil && ins.Classe != nil {
 				ep.ClasseActuelle = ins.Classe.Libelle
@@ -179,7 +179,7 @@ func (s *ParentService) ListPaiements(tuteurID uuid.UUID, eleveID *uuid.UUID, li
 
 	// Récupérer les paiements
 	var paiements []models.Paiement
-	q := database.DB.
+	q := database.Current().
 		Preload("Frais").
 		Preload("Inscription.Classe").
 		Where("eleve_id IN ?", enfantIDs).
@@ -279,7 +279,7 @@ func (s *ParentService) ListEcheances(tuteurID uuid.UUID) ([]EcheanceParent, err
 func (s *ParentService) GetRecu(paiementID, tuteurID uuid.UUID) (*models.Recu, error) {
 	// Vérifier que le paiement appartient à un enfant du parent
 	var p models.Paiement
-	if err := database.DB.First(&p, "id = ?", paiementID).Error; err != nil {
+	if err := database.Current().First(&p, "id = ?", paiementID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("paiement introuvable")
 		}
@@ -289,7 +289,7 @@ func (s *ParentService) GetRecu(paiementID, tuteurID uuid.UUID) (*models.Recu, e
 		return nil, errors.New("accès refusé — ce paiement ne concerne pas votre enfant")
 	}
 	var recu models.Recu
-	if err := database.DB.First(&recu, "paiement_id = ?", paiementID).Error; err != nil {
+	if err := database.Current().First(&recu, "paiement_id = ?", paiementID).Error; err != nil {
 		return nil, fmt.Errorf("reçu introuvable: %w", err)
 	}
 	return &recu, nil
@@ -298,7 +298,7 @@ func (s *ParentService) GetRecu(paiementID, tuteurID uuid.UUID) (*models.Recu, e
 // canAccessEleve vérifie qu'un tuteur a accès à un élève (tuteur principal ou via TuteurEleve).
 func (s *ParentService) canAccessEleve(eleveID, tuteurID uuid.UUID) bool {
 	var count int64
-	database.DB.Model(&models.Eleve{}).
+	database.Current().Model(&models.Eleve{}).
 		Where("id = ? AND (tuteur_id = ? OR id IN (SELECT eleve_id FROM tuteur_eleves WHERE tuteur_id = ?))",
 			eleveID, tuteurID, tuteurID).
 		Count(&count)
@@ -313,7 +313,7 @@ func (s *ParentService) CanAccessEleve(eleveID, tuteurID uuid.UUID) bool {
 // GetEleveEtablissementID retourne l'ID de l'établissement d'un élève.
 func (s *ParentService) GetEleveEtablissementID(eleveID uuid.UUID) uuid.UUID {
 	var eleve models.Eleve
-	if err := database.DB.First(&eleve, "id = ?", eleveID).Error; err != nil {
+	if err := database.Current().First(&eleve, "id = ?", eleveID).Error; err != nil {
 		return uuid.Nil
 	}
 	return eleve.EtablissementID
@@ -356,19 +356,19 @@ func (s *ParentService) GetRecapCaisse(eleveID, tuteurID uuid.UUID) (*RecapCaiss
 	}
 
 	var eleve models.Eleve
-	database.DB.Preload("Etablissement").First(&eleve, "id = ?", eleveID)
+	database.Current().Preload("Etablissement").First(&eleve, "id = ?", eleveID)
 
 	var annee models.AnneeScolaire
-	database.DB.Where("est_active = ?", true).First(&annee)
+	database.Current().Where("est_active = ?", true).First(&annee)
 
 	var ins models.Inscription
 	var classe models.Classe
-	database.DB.Where("eleve_id = ? AND annee_scolaire_id = ?", eleveID, annee.ID).First(&ins)
-	database.DB.First(&classe, "id = ?", ins.ClasseID)
+	database.Current().Where("eleve_id = ? AND annee_scolaire_id = ?", eleveID, annee.ID).First(&ins)
+	database.Current().First(&classe, "id = ?", ins.ClasseID)
 
 	var tuteur models.Tuteur
 	if eleve.TuteurID != nil {
-		database.DB.First(&tuteur, "id = ?", *eleve.TuteurID)
+		database.Current().First(&tuteur, "id = ?", *eleve.TuteurID)
 	}
 
 	solde, _ := s.soldeSvc.GetSoldeEleve(eleveID)

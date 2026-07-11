@@ -27,7 +27,7 @@ func (s *ClotureService) GetAujourdhui(caissierID, etablissementID uuid.UUID) (*
 	today := time.Now()
 	start := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
 	end := start.Add(24 * time.Hour)
-	err := database.DB.Where("caissier_id = ? AND etablissement_id = ? AND date_cloture >= ? AND date_cloture < ?",
+	err := database.Current().Where("caissier_id = ? AND etablissement_id = ? AND date_cloture >= ? AND date_cloture < ?",
 		caissierID, etablissementID, start, end).First(&cloture).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
@@ -61,7 +61,7 @@ func (s *ClotureService) Create(dto ClotureDTO, caissierID, etablissementID uuid
 			"notes":           dto.Notes,
 			"statut":          models.StatutClotureCloturee,
 		}
-		if err := database.DB.Model(existing).Updates(updates).Error; err != nil {
+		if err := database.Current().Model(existing).Updates(updates).Error; err != nil {
 			return nil, err
 		}
 		return s.GetAujourdhui(caissierID, etablissementID)
@@ -78,7 +78,7 @@ func (s *ClotureService) Create(dto ClotureDTO, caissierID, etablissementID uuid
 		Statut:          models.StatutClotureCloturee,
 		Notes:           dto.Notes,
 	}
-	if err := database.DB.Create(&cloture).Error; err != nil {
+	if err := database.Current().Create(&cloture).Error; err != nil {
 		return nil, err
 	}
 	return &cloture, nil
@@ -87,22 +87,22 @@ func (s *ClotureService) Create(dto ClotureDTO, caissierID, etablissementID uuid
 // Valider valide une clôture (par un superviseur COMPTABLE/ADMINISTRATEUR).
 func (s *ClotureService) Valider(id, validatorID uuid.UUID) (*models.ClotureCaisse, error) {
 	var cloture models.ClotureCaisse
-	if err := database.DB.First(&cloture, "id = ?", id).Error; err != nil {
+	if err := database.Current().First(&cloture, "id = ?", id).Error; err != nil {
 		return nil, errors.New("clôture introuvable")
 	}
-	if err := database.DB.Model(&cloture).Updates(map[string]interface{}{
+	if err := database.Current().Model(&cloture).Updates(map[string]interface{}{
 		"statut":     models.StatutClotureValidee,
 		"valide_par": validatorID,
 	}).Error; err != nil {
 		return nil, err
 	}
-	database.DB.First(&cloture, "id = ?", id)
+	database.Current().First(&cloture, "id = ?", id)
 	return &cloture, nil
 }
 
 // List retourne les clôtures selon les filtres.
 func (s *ClotureService) List(etablissementID *uuid.UUID, caissierID *uuid.UUID, date *time.Time) ([]models.ClotureCaisse, error) {
-	q := database.DB.Model(&models.ClotureCaisse{}).Preload("Caissier")
+	q := database.Current().Model(&models.ClotureCaisse{}).Preload("Caissier")
 	if etablissementID != nil {
 		q = q.Where("etablissement_id = ?", *etablissementID)
 	}
@@ -127,7 +127,7 @@ func (s *ClotureService) computeTotalTheorique(caissierID, etablissementID uuid.
 	start := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
 	end := start.Add(24 * time.Hour)
 	var total float64
-	err := database.DB.Model(&models.Paiement{}).
+	err := database.Current().Model(&models.Paiement{}).
 		Where("caissier_id = ? AND etablissement_id = ? AND statut = ? AND date_paiement >= ? AND date_paiement < ?",
 			caissierID, etablissementID, models.StatutPaiementValide, start, end).
 		Select("COALESCE(SUM(montant), 0)").Scan(&total).Error

@@ -56,9 +56,9 @@ func (s *ImpayeService) List(filter ImpayeFilter) ([]ImpayeItem, error) {
 
 	// Récupérer tous les élèves inscrits (filtrés par classe/catégorie)
 	var annee models.AnneeScolaire
-	database.DB.Where("est_active = ?", true).First(&annee)
+	database.Current().Where("est_active = ?", true).First(&annee)
 
-	q := database.DB.Model(&models.Eleve{}).
+	q := database.Current().Model(&models.Eleve{}).
 		Select("eleves.id, eleves.nom, eleves.prenoms, eleves.categorie, classes.libelle as classe").
 		Joins("JOIN inscriptions ON inscriptions.eleve_id = eleves.id").
 		Joins("JOIN classes ON classes.id = inscriptions.classe_id").
@@ -142,11 +142,11 @@ type BordereauData struct {
 // GenerateBordereau génère un bordereau de relance pour une liste d'élèves.
 func (s *ImpayeService) GenerateBordereau(etablissementID uuid.UUID, eleveIDs []uuid.UUID) (*BordereauData, error) {
 	var etb models.Etablissement
-	if err := database.DB.First(&etb, "id = ?", etablissementID).Error; err != nil {
+	if err := database.Current().First(&etb, "id = ?", etablissementID).Error; err != nil {
 		return nil, err
 	}
 	var annee models.AnneeScolaire
-	database.DB.Where("est_active = ?", true).First(&annee)
+	database.Current().Where("est_active = ?", true).First(&annee)
 
 	var items []ImpayeItem
 	total := 0.0
@@ -156,12 +156,12 @@ func (s *ImpayeService) GenerateBordereau(etablissementID uuid.UUID, eleveIDs []
 			continue
 		}
 		var eleve models.Eleve
-		database.DB.First(&eleve, "id = ?", eid)
+		database.Current().First(&eleve, "id = ?", eid)
 		// Classe
 		var ins models.Inscription
 		var classe models.Classe
-		database.DB.Where("eleve_id = ? AND annee_scolaire_id = ?", eid, annee.ID).First(&ins)
-		database.DB.First(&classe, "id = ?", ins.ClasseID)
+		database.Current().Where("eleve_id = ? AND annee_scolaire_id = ?", eid, annee.ID).First(&ins)
+		database.Current().First(&classe, "id = ?", ins.ClasseID)
 
 		// Échéances en retard
 		var echeancesRetard []EcheanceEnRetard

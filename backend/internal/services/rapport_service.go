@@ -41,7 +41,7 @@ type RapportPaiementsResult struct {
 
 // RapportPaiements génère le rapport des paiements filtré.
 func (s *RapportService) RapportPaiements(filter RapportPaiementFilter) (*RapportPaiementsResult, error) {
-	q := database.DB.Model(&models.Paiement{}).
+	q := database.Current().Model(&models.Paiement{}).
 		Preload("Eleve").Preload("Frais").Preload("Echeance").Preload("Caissier").
 		Where("paiements.statut = ?", models.StatutPaiementValide)
 
@@ -125,7 +125,7 @@ func (s *RapportService) RapportPaiementsCSV(filter RapportPaiementFilter) ([]by
 		// Classe via inscription (non préchargée — on la récupère)
 		if p.InscriptionID != uuid.Nil {
 			var ins models.Inscription
-			database.DB.Preload("Classe").First(&ins, "id = ?", p.InscriptionID)
+			database.Current().Preload("Classe").First(&ins, "id = ?", p.InscriptionID)
 			if ins.Classe != nil {
 				classe = ins.Classe.Libelle
 			}
@@ -202,7 +202,7 @@ type RecouvrementResume struct {
 // RapportRecouvrement génère le rapport de recouvrement par classe.
 func (s *RapportService) RapportRecouvrement(etablissementID uuid.UUID, cycleID *uuid.UUID) (*RecouvrementResult, error) {
 	// Récupérer les classes (filtrées par cycle si fourni)
-	q := database.DB.Model(&models.Classe{}).
+	q := database.Current().Model(&models.Classe{}).
 		Joins("JOIN cycles ON cycles.id = classes.cycle_id").
 		Where("cycles.etablissement_id = ?", etablissementID)
 	if cycleID != nil {
@@ -212,13 +212,13 @@ func (s *RapportService) RapportRecouvrement(etablissementID uuid.UUID, cycleID 
 	q.Preload("Cycle").Order("cycles.ordre, classes.niveau, classes.libelle").Find(&classes)
 
 	var annee models.AnneeScolaire
-	database.DB.Where("est_active = ?", true).First(&annee)
+	database.Current().Where("est_active = ?", true).First(&annee)
 
 	result := &RecouvrementResult{}
 	for _, c := range classes {
 		// Récupérer les élèves de cette classe
 		var eleveIDs []uuid.UUID
-		database.DB.Model(&models.Inscription{}).
+		database.Current().Model(&models.Inscription{}).
 			Where("classe_id = ? AND annee_scolaire_id = ?", c.ID, annee.ID).
 			Pluck("eleve_id", &eleveIDs)
 		if len(eleveIDs) == 0 {

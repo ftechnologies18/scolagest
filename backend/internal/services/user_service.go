@@ -28,7 +28,7 @@ type UtilisateurDTO struct {
 
 // List retourne les utilisateurs (filtrés par établissement si fourni).
 func (s *UserService) List(etablissementID *uuid.UUID) ([]models.Utilisateur, error) {
-	q := database.DB.Model(&models.Utilisateur{}).Preload("Tuteur")
+	q := database.Current().Model(&models.Utilisateur{}).Preload("Tuteur")
 	if etablissementID != nil {
 		// Utilisateurs ayant accès à cet établissement OU admin global
 		q = q.Joins("LEFT JOIN etablissement_access ON etablissement_access.utilisateur_id = utilisateurs.id").
@@ -40,7 +40,7 @@ func (s *UserService) List(etablissementID *uuid.UUID) ([]models.Utilisateur, er
 	q.Order("nom ASC, prenoms ASC").Find(&users)
 	// Charger les accès pour chaque utilisateur
 	for i := range users {
-		database.DB.Where("utilisateur_id = ?", users[i].ID).Find(&users[i].EtablissementAccess)
+		database.Current().Where("utilisateur_id = ?", users[i].ID).Find(&users[i].EtablissementAccess)
 	}
 	_ = gorm.ErrRecordNotFound
 	return users, nil
@@ -53,7 +53,7 @@ func (s *UserService) Create(dto UtilisateurDTO) (*models.Utilisateur, error) {
 	}
 	// Vérifier unicité email
 	var count int64
-	database.DB.Model(&models.Utilisateur{}).Where("email = ?", dto.Email).Count(&count)
+	database.Current().Model(&models.Utilisateur{}).Where("email = ?", dto.Email).Count(&count)
 	if count > 0 {
 		return nil, errors.New("email déjà utilisé")
 	}
@@ -66,7 +66,7 @@ func (s *UserService) Create(dto UtilisateurDTO) (*models.Utilisateur, error) {
 		RoleGlobal:     dto.RoleGlobal,
 		Statut:         models.StatutUserActif,
 	}
-	if err := database.DB.Create(&u).Error; err != nil {
+	if err := database.Current().Create(&u).Error; err != nil {
 		return nil, err
 	}
 	return &u, nil
@@ -75,7 +75,7 @@ func (s *UserService) Create(dto UtilisateurDTO) (*models.Utilisateur, error) {
 // Update modifie un utilisateur (sans le mot de passe).
 func (s *UserService) Update(id uuid.UUID, dto UtilisateurDTO) (*models.Utilisateur, error) {
 	var u models.Utilisateur
-	if err := database.DB.First(&u, "id = ?", id).Error; err != nil {
+	if err := database.Current().First(&u, "id = ?", id).Error; err != nil {
 		return nil, errors.New("utilisateur introuvable")
 	}
 	updates := map[string]interface{}{
@@ -86,15 +86,15 @@ func (s *UserService) Update(id uuid.UUID, dto UtilisateurDTO) (*models.Utilisat
 	if dto.RoleGlobal != nil {
 		updates["role_global"] = *dto.RoleGlobal
 	}
-	if err := database.DB.Model(&u).Updates(updates).Error; err != nil {
+	if err := database.Current().Model(&u).Updates(updates).Error; err != nil {
 		return nil, err
 	}
 	// Si password fourni, le mettre à jour
 	if dto.Password != "" {
 		hash, _ := utils.HashPassword(dto.Password)
-		database.DB.Model(&u).Update("mot_de_passe_hash", hash)
+		database.Current().Model(&u).Update("mot_de_passe_hash", hash)
 	}
-	database.DB.First(&u, "id = ?", id)
+	database.Current().First(&u, "id = ?", id)
 	return &u, nil
 }
 
@@ -108,7 +108,7 @@ type AccessDTO struct {
 func (s *UserService) AddAccess(userID uuid.UUID, dto AccessDTO) (*models.EtablissementAccess, error) {
 	// Vérifier que l'accès n'existe pas déjà
 	var count int64
-	database.DB.Model(&models.EtablissementAccess{}).
+	database.Current().Model(&models.EtablissementAccess{}).
 		Where("utilisateur_id = ? AND etablissement_id = ?", userID, dto.EtablissementID).Count(&count)
 	if count > 0 {
 		return nil, errors.New("accès déjà existant")
@@ -118,7 +118,7 @@ func (s *UserService) AddAccess(userID uuid.UUID, dto AccessDTO) (*models.Etabli
 		EtablissementID: dto.EtablissementID,
 		Role:            dto.Role,
 	}
-	if err := database.DB.Create(&access).Error; err != nil {
+	if err := database.Current().Create(&access).Error; err != nil {
 		return nil, err
 	}
 	return &access, nil
@@ -126,7 +126,7 @@ func (s *UserService) AddAccess(userID uuid.UUID, dto AccessDTO) (*models.Etabli
 
 // RemoveAccess supprime un accès établissement.
 func (s *UserService) RemoveAccess(userID, etablissementID uuid.UUID) error {
-	result := database.DB.Where("utilisateur_id = ? AND etablissement_id = ?", userID, etablissementID).
+	result := database.Current().Where("utilisateur_id = ? AND etablissement_id = ?", userID, etablissementID).
 		Delete(&models.EtablissementAccess{})
 	if result.RowsAffected == 0 {
 		return errors.New("accès introuvable")
@@ -163,7 +163,7 @@ func (s *UserService) ListAudit(filter AuditFilter) (*AuditResult, error) {
 	if filter.PageSize < 1 || filter.PageSize > 100 {
 		filter.PageSize = 20
 	}
-	q := database.DB.Model(&models.JournalAudit{}).Preload("Utilisateur")
+	q := database.Current().Model(&models.JournalAudit{}).Preload("Utilisateur")
 	if filter.EtablissementID != nil {
 		q = q.Where("etablissement_id = ?", *filter.EtablissementID)
 	}
@@ -208,7 +208,7 @@ func (s *UserService) CreateEtablissement(dto EtablissementDTO) (*models.Etablis
 		return nil, errors.New("nom et code officiel obligatoires")
 	}
 	var count int64
-	database.DB.Model(&models.Etablissement{}).Where("code_officiel = ?", dto.CodeOfficiel).Count(&count)
+	database.Current().Model(&models.Etablissement{}).Where("code_officiel = ?", dto.CodeOfficiel).Count(&count)
 	if count > 0 {
 		return nil, errors.New("code officiel déjà utilisé")
 	}
@@ -223,7 +223,7 @@ func (s *UserService) CreateEtablissement(dto EtablissementDTO) (*models.Etablis
 		CouleurTheme:             dto.CouleurTheme,
 		Actif:                    true,
 	}
-	if err := database.DB.Create(&e).Error; err != nil {
+	if err := database.Current().Create(&e).Error; err != nil {
 		return nil, err
 	}
 	return &e, nil
@@ -232,19 +232,19 @@ func (s *UserService) CreateEtablissement(dto EtablissementDTO) (*models.Etablis
 // UpdateEtablissement modifie un établissement.
 func (s *UserService) UpdateEtablissement(id uuid.UUID, dto EtablissementDTO) (*models.Etablissement, error) {
 	var e models.Etablissement
-	if err := database.DB.First(&e, "id = ?", id).Error; err != nil {
+	if err := database.Current().First(&e, "id = ?", id).Error; err != nil {
 		return nil, errors.New("établissement introuvable")
 	}
 	// Vérifier unicité du code si changé
 	if dto.CodeOfficiel != e.CodeOfficiel {
 		var count int64
-		database.DB.Model(&models.Etablissement{}).
+		database.Current().Model(&models.Etablissement{}).
 			Where("code_officiel = ? AND id != ?", dto.CodeOfficiel, id).Count(&count)
 		if count > 0 {
 			return nil, errors.New("code officiel déjà utilisé")
 		}
 	}
-	database.DB.Model(&e).Updates(map[string]interface{}{
+	database.Current().Model(&e).Updates(map[string]interface{}{
 		"nom":                        dto.Nom,
 		"code_officiel":              dto.CodeOfficiel,
 		"adresse":                    dto.Adresse,
@@ -255,7 +255,7 @@ func (s *UserService) UpdateEtablissement(id uuid.UUID, dto EtablissementDTO) (*
 		"couleur_theme":              dto.CouleurTheme,
 		"actif":                      dto.Actif,
 	})
-	database.DB.First(&e, "id = ?", id)
+	database.Current().First(&e, "id = ?", id)
 	return &e, nil
 }
 

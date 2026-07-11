@@ -39,7 +39,7 @@ type FraisDTO struct {
 
 // List retourne les frais d'un établissement pour une année, avec échéances.
 func (s *FraisService) List(etablissementID, anneeScolaireID *uuid.UUID) ([]models.Frais, error) {
-	q := database.DB.Model(&models.Frais{}).
+	q := database.Current().Model(&models.Frais{}).
 		Preload("Echeances").
 		Preload("Cycle").
 		Preload("Classe").
@@ -60,7 +60,7 @@ func (s *FraisService) List(etablissementID, anneeScolaireID *uuid.UUID) ([]mode
 // Get retourne un frais par ID avec ses échéances.
 func (s *FraisService) Get(id uuid.UUID) (*models.Frais, error) {
 	var frais models.Frais
-	if err := database.DB.
+	if err := database.Current().
 		Preload("Echeances", "eleve_id IS NULL").
 		Preload("Cycle").
 		Preload("Classe").
@@ -92,7 +92,7 @@ func (s *FraisService) Create(dto FraisDTO, etablissementID uuid.UUID) (*models.
 
 	// Vérifier l'établissement
 	var etb models.Etablissement
-	if err := database.DB.First(&etb, "id = ?", etablissementID).Error; err != nil {
+	if err := database.Current().First(&etb, "id = ?", etablissementID).Error; err != nil {
 		return nil, errors.New("établissement introuvable")
 	}
 
@@ -128,7 +128,7 @@ func (s *FraisService) Create(dto FraisDTO, etablissementID uuid.UUID) (*models.
 		NbVersementsDefaut: dto.NbVersementsDefaut,
 		Actif:              true,
 	}
-	if err := database.DB.Create(&frais).Error; err != nil {
+	if err := database.Current().Create(&frais).Error; err != nil {
 		return nil, fmt.Errorf("création frais: %w", err)
 	}
 
@@ -141,7 +141,7 @@ func (s *FraisService) Create(dto FraisDTO, etablissementID uuid.UUID) (*models.
 			Montant:    e.Montant,
 			DateLimite: e.DateLimite,
 		}
-		if err := database.DB.Create(&echeance).Error; err != nil {
+		if err := database.Current().Create(&echeance).Error; err != nil {
 			return nil, fmt.Errorf("création échéance %d: %w", e.Rang, err)
 		}
 	}
@@ -152,7 +152,7 @@ func (s *FraisService) Create(dto FraisDTO, etablissementID uuid.UUID) (*models.
 // Update modifie un frais + remplace ses échéances.
 func (s *FraisService) Update(id uuid.UUID, dto FraisDTO) (*models.Frais, error) {
 	var frais models.Frais
-	if err := database.DB.First(&frais, "id = ?", id).Error; err != nil {
+	if err := database.Current().First(&frais, "id = ?", id).Error; err != nil {
 		return nil, errors.New("frais introuvable")
 	}
 
@@ -180,13 +180,13 @@ func (s *FraisService) Update(id uuid.UUID, dto FraisDTO) (*models.Frais, error)
 		"montant_total":        dto.MontantTotal,
 		"nb_versements_defaut": dto.NbVersementsDefaut,
 	}
-	if err := database.DB.Model(&frais).Updates(updates).Error; err != nil {
+	if err := database.Current().Model(&frais).Updates(updates).Error; err != nil {
 		return nil, err
 	}
 
 	// Remplacer les échéances génériques (eleve_id IS NULL)
 	// NB: on ne supprime pas les échéances dérogatoires (eleve_id NOT NULL)
-	database.DB.Where("frais_id = ? AND eleve_id IS NULL", id).Delete(&models.Echeance{})
+	database.Current().Where("frais_id = ? AND eleve_id IS NULL", id).Delete(&models.Echeance{})
 	for _, e := range dto.Echeances {
 		echeance := models.Echeance{
 			FraisID:    id,
@@ -195,7 +195,7 @@ func (s *FraisService) Update(id uuid.UUID, dto FraisDTO) (*models.Frais, error)
 			Montant:    e.Montant,
 			DateLimite: e.DateLimite,
 		}
-		database.DB.Create(&echeance)
+		database.Current().Create(&echeance)
 	}
 
 	return s.Get(id)
@@ -205,13 +205,13 @@ func (s *FraisService) Update(id uuid.UUID, dto FraisDTO) (*models.Frais, error)
 // Refusé si des paiements y sont rattachés.
 func (s *FraisService) Delete(id uuid.UUID) error {
 	var count int64
-	database.DB.Model(&models.Paiement{}).Where("frais_id = ?", id).Count(&count)
+	database.Current().Model(&models.Paiement{}).Where("frais_id = ?", id).Count(&count)
 	if count > 0 {
 		return errors.New("impossible de supprimer un frais ayant des paiements rattachés")
 	}
 	// Supprimer les échéances génériques
-	database.DB.Where("frais_id = ? AND eleve_id IS NULL", id).Delete(&models.Echeance{})
-	result := database.DB.Delete(&models.Frais{}, "id = ?", id)
+	database.Current().Where("frais_id = ? AND eleve_id IS NULL", id).Delete(&models.Echeance{})
+	result := database.Current().Delete(&models.Frais{}, "id = ?", id)
 	if result.RowsAffected == 0 {
 		return errors.New("frais introuvable")
 	}
@@ -221,7 +221,7 @@ func (s *FraisService) Delete(id uuid.UUID) error {
 // ListEcheances retourne les échéances d'un frais (modèle générique uniquement).
 func (s *FraisService) ListEcheances(fraisID uuid.UUID) ([]models.Echeance, error) {
 	var echeances []models.Echeance
-	if err := database.DB.Where("frais_id = ? AND eleve_id IS NULL", fraisID).
+	if err := database.Current().Where("frais_id = ? AND eleve_id IS NULL", fraisID).
 		Order("rang ASC").Find(&echeances).Error; err != nil {
 		return nil, err
 	}
@@ -230,7 +230,7 @@ func (s *FraisService) ListEcheances(fraisID uuid.UUID) ([]models.Echeance, erro
 
 // checkUnicity vérifie qu'il n'existe pas déjà un frais identique.
 func (s *FraisService) checkUnicity(etablissementID uuid.UUID, dto FraisDTO, excludeID uuid.UUID) error {
-	q := database.DB.Model(&models.Frais{}).
+	q := database.Current().Model(&models.Frais{}).
 		Where("etablissement_id = ? AND annee_scolaire_id = ? AND type_frais = ?",
 			etablissementID, dto.AnneeScolaireID, dto.TypeFrais)
 	if excludeID != uuid.Nil {

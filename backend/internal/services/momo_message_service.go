@@ -52,7 +52,7 @@ func (s *MomoService) List(filter MomoFilter) (*MomoResult, error) {
         if filter.PageSize < 1 || filter.PageSize > 100 {
                 filter.PageSize = 20
         }
-        q := database.DB.Model(&models.TransactionMobileMoney{}).Preload("Eleve")
+        q := database.Current().Model(&models.TransactionMobileMoney{}).Preload("Eleve")
         if filter.EtablissementID != nil {
                 q = q.Where("etablissement_id = ?", *filter.EtablissementID)
         }
@@ -86,7 +86,7 @@ func (s *MomoService) Initier(dto MomoInitierDTO, etablissementID uuid.UUID) (*m
         }
         // Vérifier l'élève
         var eleve models.Eleve
-        if err := database.DB.First(&eleve, "id = ?", dto.EleveID).Error; err != nil {
+        if err := database.Current().First(&eleve, "id = ?", dto.EleveID).Error; err != nil {
                 return nil, errors.New("élève introuvable")
         }
 
@@ -118,7 +118,7 @@ func (s *MomoService) Initier(dto MomoInitierDTO, etablissementID uuid.UUID) (*m
         })
         tx.PayloadReponse = string(payloadResp)
 
-        if err := database.DB.Create(&tx).Error; err != nil {
+        if err := database.Current().Create(&tx).Error; err != nil {
                 return nil, err
         }
         return &tx, nil
@@ -128,7 +128,7 @@ func (s *MomoService) Initier(dto MomoInitierDTO, etablissementID uuid.UUID) (*m
 // En production, cette méthode serait appelée par le webhook du provider.
 func (s *MomoService) Confirmer(id uuid.UUID) (*models.TransactionMobileMoney, error) {
         var tx models.TransactionMobileMoney
-        if err := database.DB.First(&tx, "id = ?", id).Error; err != nil {
+        if err := database.Current().First(&tx, "id = ?", id).Error; err != nil {
                 return nil, errors.New("transaction introuvable")
         }
         if tx.Statut == models.StatutMomoReussie {
@@ -148,15 +148,15 @@ func (s *MomoService) Confirmer(id uuid.UUID) (*models.TransactionMobileMoney, e
                 "date":    now,
         })
         updates["payload_reponse"] = string(payloadResp)
-        database.DB.Model(&tx).Updates(updates)
+        database.Current().Model(&tx).Updates(updates)
 
         // Créer le paiement associé
         var eleve models.Eleve
-        database.DB.First(&eleve, "id = ?", tx.EleveID)
+        database.Current().First(&eleve, "id = ?", tx.EleveID)
         var annee models.AnneeScolaire
-        database.DB.Where("est_active = ?", true).First(&annee)
+        database.Current().Where("est_active = ?", true).First(&annee)
         var inscription models.Inscription
-        database.DB.Where("eleve_id = ? AND annee_scolaire_id = ?", tx.EleveID, annee.ID).First(&inscription)
+        database.Current().Where("eleve_id = ? AND annee_scolaire_id = ?", tx.EleveID, annee.ID).First(&inscription)
 
         // Numéro de reçu
         numeroRecu := fmt.Sprintf("REC-MOMO-%s-%06d", time.Now().Format("2006"), time.Now().Unix()%1000000)
@@ -175,12 +175,12 @@ func (s *MomoService) Confirmer(id uuid.UUID) (*models.TransactionMobileMoney, e
                 Statut:           models.StatutPaiementValide,
                 NumeroRecu:       numeroRecu,
         }
-        database.DB.Create(&paiement)
+        database.Current().Create(&paiement)
 
         // Lier le paiement à la transaction
-        database.DB.Model(&tx).Update("paiement_id", paiement.ID)
+        database.Current().Model(&tx).Update("paiement_id", paiement.ID)
 
-        database.DB.First(&tx, "id = ?", id)
+        database.Current().First(&tx, "id = ?", id)
         return &tx, nil
 }
 
@@ -200,7 +200,7 @@ type WebhookLog struct {
 func (s *MomoService) ListWebhooks(etablissementID uuid.UUID) ([]WebhookLog, error) {
         // En V1 sandbox, on simule les webhooks en listant les transactions avec payload_reponse
         var txs []models.TransactionMobileMoney
-        database.DB.Where("etablissement_id = ?", etablissementID).
+        database.Current().Where("etablissement_id = ?", etablissementID).
                 Order("date_initiation DESC").Limit(20).Find(&txs)
 
         var webhooks []WebhookLog
@@ -234,7 +234,7 @@ func NewMessageService() *MessageService { return &MessageService{} }
 // ListTemplates retourne les templates (globaux + établissement).
 func (s *MessageService) ListTemplates(etablissementID uuid.UUID) ([]models.TemplateMessage, error) {
         var t []models.TemplateMessage
-        database.DB.Where("etablissement_id IS NULL OR etablissement_id = ?", etablissementID).
+        database.Current().Where("etablissement_id IS NULL OR etablissement_id = ?", etablissementID).
                 Order("code ASC").Find(&t)
         return t, nil
 }
@@ -261,7 +261,7 @@ func (s *MessageService) CreateTemplate(dto TemplateDTO) (*models.TemplateMessag
                 Corps:           dto.Corps,
                 Actif:           true,
         }
-        if err := database.DB.Create(&t).Error; err != nil {
+        if err := database.Current().Create(&t).Error; err != nil {
                 return nil, err
         }
         return &t, nil
@@ -270,16 +270,16 @@ func (s *MessageService) CreateTemplate(dto TemplateDTO) (*models.TemplateMessag
 // UpdateTemplate modifie un template.
 func (s *MessageService) UpdateTemplate(id uuid.UUID, dto TemplateDTO) (*models.TemplateMessage, error) {
         var t models.TemplateMessage
-        if err := database.DB.First(&t, "id = ?", id).Error; err != nil {
+        if err := database.Current().First(&t, "id = ?", id).Error; err != nil {
                 return nil, errors.New("template introuvable")
         }
-        database.DB.Model(&t).Updates(map[string]interface{}{
+        database.Current().Model(&t).Updates(map[string]interface{}{
                 "code":  dto.Code,
                 "type":  dto.Type,
                 "sujet": dto.Sujet,
                 "corps": dto.Corps,
         })
-        database.DB.First(&t, "id = ?", id)
+        database.Current().First(&t, "id = ?", id)
         return &t, nil
 }
 
@@ -294,7 +294,7 @@ type EnvoiFilter struct {
 
 // ListEnvois retourne les envois.
 func (s *MessageService) ListEnvois(filter EnvoiFilter) ([]models.EnvoiMessage, error) {
-        q := database.DB.Model(&models.EnvoiMessage{}).
+        q := database.Current().Model(&models.EnvoiMessage{}).
                 Preload("Eleve").Preload("Tuteur").Preload("Template")
         if filter.EtablissementID != nil {
                 q = q.Where("etablissement_id = ?", *filter.EtablissementID)
@@ -328,18 +328,18 @@ type EnvoyerDTO struct {
 func (s *MessageService) Envoyer(dto EnvoyerDTO, etablissementID uuid.UUID) (*models.EnvoiMessage, error) {
         // Récupérer l'élève + tuteur
         var eleve models.Eleve
-        if err := database.DB.Preload("Tuteur").First(&eleve, "id = ?", dto.EleveID).Error; err != nil {
+        if err := database.Current().Preload("Tuteur").First(&eleve, "id = ?", dto.EleveID).Error; err != nil {
                 return nil, errors.New("élève introuvable")
         }
         if eleve.TuteurID == nil {
                 return nil, errors.New("cet élève n'a pas de tuteur rattaché")
         }
         var tuteur models.Tuteur
-        database.DB.First(&tuteur, "id = ?", *eleve.TuteurID)
+        database.Current().First(&tuteur, "id = ?", *eleve.TuteurID)
 
         // Récupérer le template
         var tmpl models.TemplateMessage
-        if err := database.DB.First(&tmpl, "id = ?", dto.TemplateID).Error; err != nil {
+        if err := database.Current().First(&tmpl, "id = ?", dto.TemplateID).Error; err != nil {
                 return nil, errors.New("template introuvable")
         }
 
@@ -374,7 +374,7 @@ func (s *MessageService) Envoyer(dto EnvoyerDTO, etablissementID uuid.UUID) (*mo
         }
         now := time.Now()
         envoi.DateEnvoi = &now
-        database.DB.Create(&envoi)
+        database.Current().Create(&envoi)
         return &envoi, nil
 }
 

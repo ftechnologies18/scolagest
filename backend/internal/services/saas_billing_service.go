@@ -21,7 +21,7 @@ func NewSaasBillingService() *SaasBillingService { return &SaasBillingService{} 
 // ListPlans retourne tous les plans d'abonnement.
 func (s *SaasBillingService) ListPlans() ([]models.SaaPlan, error) {
 	var plans []models.SaaPlan
-	database.DB.Order("prix_mensuel ASC").Find(&plans)
+	database.Current().Order("prix_mensuel ASC").Find(&plans)
 	return plans, nil
 }
 
@@ -52,7 +52,7 @@ func (s *SaasBillingService) CreatePlan(dto PlanDTO) (*models.SaaPlan, error) {
 		NbUsersMax:  dto.NbUsersMax,
 		Actif:       true,
 	}
-	if err := database.DB.Create(&plan).Error; err != nil {
+	if err := database.Current().Create(&plan).Error; err != nil {
 		return nil, err
 	}
 	return &plan, nil
@@ -61,10 +61,10 @@ func (s *SaasBillingService) CreatePlan(dto PlanDTO) (*models.SaaPlan, error) {
 // UpdatePlan modifie un plan.
 func (s *SaasBillingService) UpdatePlan(id uuid.UUID, dto PlanDTO) (*models.SaaPlan, error) {
 	var plan models.SaaPlan
-	if err := database.DB.First(&plan, "id = ?", id).Error; err != nil {
+	if err := database.Current().First(&plan, "id = ?", id).Error; err != nil {
 		return nil, errors.New("plan introuvable")
 	}
-	database.DB.Model(&plan).Updates(map[string]interface{}{
+	database.Current().Model(&plan).Updates(map[string]interface{}{
 		"nom":          dto.Nom,
 		"description":  dto.Description,
 		"prix_mensuel": dto.PrixMensuel,
@@ -73,7 +73,7 @@ func (s *SaasBillingService) UpdatePlan(id uuid.UUID, dto PlanDTO) (*models.SaaP
 		"nb_users_max":  dto.NbUsersMax,
 		"actif":         dto.Actif,
 	})
-	database.DB.First(&plan, "id = ?", id)
+	database.Current().First(&plan, "id = ?", id)
 	return &plan, nil
 }
 
@@ -91,7 +91,7 @@ type SubscriptionDTO struct {
 func (s *SaasBillingService) CreateSubscription(dto SubscriptionDTO) (*models.SaaSubscription, error) {
 	// Vérifier qu'il n'y a pas déjà un abonnement actif
 	var count int64
-	database.DB.Model(&models.SaaSubscription{}).
+	database.Current().Model(&models.SaaSubscription{}).
 		Where("etablissement_id = ? AND statut IN ?", dto.EtablissementID,
 			[]models.StatutSubscription{models.SubActive, models.SubTrialing}).Count(&count)
 	if count > 0 {
@@ -100,7 +100,7 @@ func (s *SaasBillingService) CreateSubscription(dto SubscriptionDTO) (*models.Sa
 
 	// Vérifier le plan
 	var plan models.SaaPlan
-	if err := database.DB.First(&plan, "id = ?", dto.PlanID).Error; err != nil {
+	if err := database.Current().First(&plan, "id = ?", dto.PlanID).Error; err != nil {
 		return nil, errors.New("plan introuvable")
 	}
 
@@ -127,7 +127,7 @@ func (s *SaasBillingService) CreateSubscription(dto SubscriptionDTO) (*models.Sa
 		}
 	}
 
-	if err := database.DB.Create(&sub).Error; err != nil {
+	if err := database.Current().Create(&sub).Error; err != nil {
 		return nil, err
 	}
 	return &sub, nil
@@ -136,14 +136,14 @@ func (s *SaasBillingService) CreateSubscription(dto SubscriptionDTO) (*models.Sa
 // ListSubscriptions retourne tous les abonnements.
 func (s *SaasBillingService) ListSubscriptions() ([]models.SaaSubscription, error) {
 	var subs []models.SaaSubscription
-	database.DB.Preload("Etablissement").Preload("Plan").Order("date_debut DESC").Find(&subs)
+	database.Current().Preload("Etablissement").Preload("Plan").Order("date_debut DESC").Find(&subs)
 	return subs, nil
 }
 
 // GetSubscription retourne l'abonnement d'un établissement.
 func (s *SaasBillingService) GetSubscription(etablissementID uuid.UUID) (*models.SaaSubscription, error) {
 	var sub models.SaaSubscription
-	if err := database.DB.Preload("Plan").Preload("Etablissement").
+	if err := database.Current().Preload("Plan").Preload("Etablissement").
 		Where("etablissement_id = ?", etablissementID).
 		Order("date_debut DESC").First(&sub).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -157,14 +157,14 @@ func (s *SaasBillingService) GetSubscription(etablissementID uuid.UUID) (*models
 // CancelSubscription annule un abonnement.
 func (s *SaasBillingService) CancelSubscription(id uuid.UUID) (*models.SaaSubscription, error) {
 	var sub models.SaaSubscription
-	if err := database.DB.First(&sub, "id = ?", id).Error; err != nil {
+	if err := database.Current().First(&sub, "id = ?", id).Error; err != nil {
 		return nil, errors.New("abonnement introuvable")
 	}
-	database.DB.Model(&sub).Updates(map[string]interface{}{
+	database.Current().Model(&sub).Updates(map[string]interface{}{
 		"statut":             models.SubCancelled,
 		"auto_renouvellement": false,
 	})
-	database.DB.First(&sub, "id = ?", id)
+	database.Current().First(&sub, "id = ?", id)
 	return &sub, nil
 }
 
@@ -173,7 +173,7 @@ func (s *SaasBillingService) CancelSubscription(id uuid.UUID) (*models.SaaSubscr
 // GenerateInvoice génère une facture pour un abonnement.
 func (s *SaasBillingService) GenerateInvoice(subID uuid.UUID) (*models.SaaInvoice, error) {
 	var sub models.SaaSubscription
-	if err := database.DB.Preload("Plan").First(&sub, "id = ?", subID).Error; err != nil {
+	if err := database.Current().Preload("Plan").First(&sub, "id = ?", subID).Error; err != nil {
 		return nil, errors.New("abonnement introuvable")
 	}
 
@@ -190,7 +190,7 @@ func (s *SaasBillingService) GenerateInvoice(subID uuid.UUID) (*models.SaaInvoic
 
 	// Générer le numéro de facture
 	var count int64
-	database.DB.Model(&models.SaaInvoice{}).Count(&count)
+	database.Current().Model(&models.SaaInvoice{}).Count(&count)
 	numero := fmt.Sprintf("INV-%d-%04d", time.Now().Year(), count+1)
 
 	inv := models.SaaInvoice{
@@ -207,20 +207,20 @@ func (s *SaasBillingService) GenerateInvoice(subID uuid.UUID) (*models.SaaInvoic
 		DateEmission:   periodeDebut,
 		DateEcheance:   periodeDebut.AddDate(0, 0, 15), // 15 jours pour payer
 	}
-	if err := database.DB.Create(&inv).Error; err != nil {
+	if err := database.Current().Create(&inv).Error; err != nil {
 		return nil, err
 	}
 
 	// Mettre à jour la prochaine facture
 	nextDate := periodeFin
-	database.DB.Model(&sub).Update("prochaine_facture", nextDate)
+	database.Current().Model(&sub).Update("prochaine_facture", nextDate)
 
 	return &inv, nil
 }
 
 // ListInvoices retourne les factures (filtrables par établissement/statut).
 func (s *SaasBillingService) ListInvoices(etablissementID *uuid.UUID, statut *models.StatutInvoice) ([]models.SaaInvoice, error) {
-	q := database.DB.Model(&models.SaaInvoice{}).
+	q := database.Current().Model(&models.SaaInvoice{}).
 		Preload("Etablissement").Preload("Subscription.Plan")
 	if etablissementID != nil {
 		q = q.Where("etablissement_id = ?", *etablissementID)
@@ -236,11 +236,11 @@ func (s *SaasBillingService) ListInvoices(etablissementID *uuid.UUID, statut *mo
 // PayInvoice marque une facture comme payée.
 func (s *SaasBillingService) PayInvoice(id uuid.UUID, modePaiement, reference string) (*models.SaaInvoice, error) {
 	var inv models.SaaInvoice
-	if err := database.DB.First(&inv, "id = ?", id).Error; err != nil {
+	if err := database.Current().First(&inv, "id = ?", id).Error; err != nil {
 		return nil, errors.New("facture introuvable")
 	}
 	now := time.Now()
-	database.DB.Model(&inv).Updates(map[string]interface{}{
+	database.Current().Model(&inv).Updates(map[string]interface{}{
 		"statut":             models.InvoicePaid,
 		"date_paiement":      now,
 		"mode_paiement":      modePaiement,
@@ -249,12 +249,12 @@ func (s *SaasBillingService) PayInvoice(id uuid.UUID, modePaiement, reference st
 
 	// Réactiver l'abonnement si nécessaire
 	var sub models.SaaSubscription
-	database.DB.First(&sub, "id = ?", inv.SubscriptionID)
+	database.Current().First(&sub, "id = ?", inv.SubscriptionID)
 	if sub.Statut == models.SubPastDue || sub.Statut == models.SubSuspended {
-		database.DB.Model(&sub).Update("statut", models.SubActive)
+		database.Current().Model(&sub).Update("statut", models.SubActive)
 	}
 
-	database.DB.First(&inv, "id = ?", id)
+	database.Current().First(&inv, "id = ?", id)
 	return &inv, nil
 }
 
@@ -276,30 +276,30 @@ func (s *SaasBillingService) GetBillingStats() (*BillingStats, error) {
 	stats := &BillingStats{}
 
 	// Abonnements
-	database.DB.Model(&models.SaaSubscription{}).Where("statut = ?", models.SubActive).Count(&stats.NbAbonnementsActifs)
-	database.DB.Model(&models.SaaSubscription{}).Where("statut = ?", models.SubTrialing).Count(&stats.NbAbonnementsEssai)
+	database.Current().Model(&models.SaaSubscription{}).Where("statut = ?", models.SubActive).Count(&stats.NbAbonnementsActifs)
+	database.Current().Model(&models.SaaSubscription{}).Where("statut = ?", models.SubTrialing).Count(&stats.NbAbonnementsEssai)
 
 	// Revenu mensuel (somme des factures payées ce mois)
 	now := time.Now()
 	startMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-	database.DB.Model(&models.SaaInvoice{}).
+	database.Current().Model(&models.SaaInvoice{}).
 		Where("statut = ? AND date_paiement >= ?", models.InvoicePaid, startMonth).
 		Select("COALESCE(SUM(montant_ttc), 0)").Scan(&stats.RevenuMensuel)
 
 	// Revenu annuel
 	startYear := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location())
-	database.DB.Model(&models.SaaInvoice{}).
+	database.Current().Model(&models.SaaInvoice{}).
 		Where("statut = ? AND date_paiement >= ?", models.InvoicePaid, startYear).
 		Select("COALESCE(SUM(montant_ttc), 0)").Scan(&stats.RevenuAnnuel)
 
 	// Revenu en attente (factures impayées)
-	database.DB.Model(&models.SaaInvoice{}).
+	database.Current().Model(&models.SaaInvoice{}).
 		Where("statut IN ?", []models.StatutInvoice{models.InvoiceSent, models.InvoiceOverdue}).
 		Select("COALESCE(SUM(montant_ttc), 0)").Scan(&stats.RevenuEnAttente)
 
 	// Compteurs factures
-	database.DB.Model(&models.SaaInvoice{}).Where("statut = ?", models.InvoicePaid).Count(&stats.NbFacturesPayees)
-	database.DB.Model(&models.SaaInvoice{}).Where("statut IN ?", []models.StatutInvoice{models.InvoiceSent, models.InvoiceOverdue}).Count(&stats.NbFacturesImpayees)
+	database.Current().Model(&models.SaaInvoice{}).Where("statut = ?", models.InvoicePaid).Count(&stats.NbFacturesPayees)
+	database.Current().Model(&models.SaaInvoice{}).Where("statut IN ?", []models.StatutInvoice{models.InvoiceSent, models.InvoiceOverdue}).Count(&stats.NbFacturesImpayees)
 
 	return stats, nil
 }

@@ -46,7 +46,7 @@ func (s *ParentAccessService) Access(telephone, pin string) (*ParentAccessResult
 
 	// Chercher le tuteur par téléphone
 	var tuteur models.Tuteur
-	err := database.DB.Where(
+	err := database.Current().Where(
 		"REPLACE(REPLACE(REPLACE(REPLACE(telephone, ' ', ''), '+', ''), '-', ''), '.', '') = ? OR telephone = ?",
 		normalizedTel, telephone,
 	).First(&tuteur).Error

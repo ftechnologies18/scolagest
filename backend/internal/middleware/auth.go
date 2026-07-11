@@ -48,10 +48,12 @@ func AuthMiddleware(jwtSvc *services.JWTService) gin.HandlerFunc {
                 }
                 tx, finalize := database.BeginRLSTx(c.Request.Context(), tenantID, isSuperAdmin)
                 c.Set("db_tx", tx)
+                database.SetCurrentTx(tx) // Rendre la tx accessible aux services via database.Current()
 
                 c.Next() // Continuer vers le handler
 
                 // Finaliser la transaction RLS après le handler
+                database.ClearCurrentTx() // Nettoyer le goroutine-local
                 commit := c.Writer.Status() < 400
                 finalize(commit)
         }

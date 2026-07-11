@@ -1,7 +1,11 @@
 package database
 
 import (
+	"bytes"
 	"context"
+	"runtime"
+	"strconv"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -10,9 +14,44 @@ import (
 // txKey est la clé de contexte pour stocker la transaction RLS.
 type txKey struct{}
 
+// goroutineTxs stocke les transactions RLS par goroutine ID.
+// Chaque requête HTTP s'exécute dans son propre goroutine, donc cette approche
+// est sûre : chaque goroutine a sa propre transaction, isolée des autres.
+var goroutineTxs sync.Map
+
+// getGoroutineID extrait l'ID du goroutine courant (pour le stockage thread-local).
+func getGoroutineID() uint64 {
+	b := make([]byte, 64)
+	b = b[:runtime.Stack(b, false)]
+	b = bytes.TrimPrefix(b, []byte("goroutine "))
+	b = b[:bytes.IndexByte(b, ' ')]
+	n, _ := strconv.ParseUint(string(b), 10, 64)
+	return n
+}
+
+// SetCurrentTx stocke la transaction RLS pour le goroutine courant.
+// Appelé par AuthMiddleware au début de chaque requête.
+func SetCurrentTx(tx *gorm.DB) {
+	goroutineTxs.Store(getGoroutineID(), tx)
+}
+
+// ClearCurrentTx supprime la transaction RLS pour le goroutine courant.
+// Appelé par AuthMiddleware à la fin de chaque requête.
+func ClearCurrentTx() {
+	goroutineTxs.Delete(getGoroutineID())
+}
+
+// Current retourne la transaction RLS du goroutine courant, ou la connexion
+// globale si aucune transaction n'est active (ex: seed, background tasks).
+// Tous les services doivent utiliser database.Current() au lieu de database.DB.
+func Current() *gorm.DB {
+	if tx, ok := goroutineTxs.Load(getGoroutineID()); ok {
+		return tx.(*gorm.DB)
+	}
+	return DB
+}
+
 // BeginRLSTx démarre une transaction et configure les variables RLS.
-// Établit le contexte tenant pour la requête en cours.
-// Retourne la transaction et une fonction de finalisation (commit/rollback).
 func BeginRLSTx(ctx context.Context, tenantID string, isSuperAdmin bool) (*gorm.DB, func(commit bool)) {
 	tx := DB.WithContext(ctx).Begin()
 
@@ -32,7 +71,6 @@ func BeginRLSTx(ctx context.Context, tenantID string, isSuperAdmin bool) (*gorm.
 }
 
 // GetDB récupère la transaction RLS depuis le contexte Gin.
-// Si aucune transaction n'est trouvée, retourne la connexion globale (sans RLS).
 func GetDB(c *gin.Context) *gorm.DB {
 	if tx, exists := c.Get("db_tx"); exists {
 		if db, ok := tx.(*gorm.DB); ok && db != nil {
@@ -42,7 +80,7 @@ func GetDB(c *gin.Context) *gorm.DB {
 	return DB
 }
 
-// WithTx stocke une transaction dans un context.Context (pour propagation).
+// WithTx stocke une transaction dans un context.Context.
 func WithTx(ctx context.Context, tx *gorm.DB) context.Context {
 	return context.WithValue(ctx, txKey{}, tx)
 }

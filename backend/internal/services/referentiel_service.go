@@ -13,7 +13,7 @@ func NewReferentielService() *ReferentielService { return &ReferentielService{} 
 
 // ListCycles retourne les cycles d'un établissement, avec leurs classes.
 func (s *ReferentielService) ListCycles(etablissementID *uuid.UUID) ([]models.Cycle, error) {
-        q := database.DB.Model(&models.Cycle{}).Preload("Classes")
+        q := database.Current().Model(&models.Cycle{}).Preload("Classes")
         if etablissementID != nil {
                 q = q.Where("etablissement_id = ?", *etablissementID)
         }
@@ -26,7 +26,7 @@ func (s *ReferentielService) ListCycles(etablissementID *uuid.UUID) ([]models.Cy
 
 // ListClasses retourne les classes (filtrées par cycle ou établissement).
 func (s *ReferentielService) ListClasses(etablissementID *uuid.UUID, cycleID *uuid.UUID) ([]models.Classe, error) {
-        q := database.DB.Model(&models.Classe{}).Preload("Cycle")
+        q := database.Current().Model(&models.Classe{}).Preload("Cycle")
 
         if cycleID != nil {
                 q = q.Where("classes.cycle_id = ?", *cycleID)
@@ -47,7 +47,7 @@ func (s *ReferentielService) ListClasses(etablissementID *uuid.UUID, cycleID *uu
 // ListAnneesScolaires retourne toutes les années scolaires.
 func (s *ReferentielService) ListAnneesScolaires() ([]models.AnneeScolaire, error) {
         var annees []models.AnneeScolaire
-        if err := database.DB.Order("date_debut DESC").Find(&annees).Error; err != nil {
+        if err := database.Current().Order("date_debut DESC").Find(&annees).Error; err != nil {
                 return nil, err
         }
         return annees, nil
@@ -56,7 +56,7 @@ func (s *ReferentielService) ListAnneesScolaires() ([]models.AnneeScolaire, erro
 // GetActiveAnnee retourne l'année scolaire active.
 func (s *ReferentielService) GetActiveAnnee() (*models.AnneeScolaire, error) {
         var annee models.AnneeScolaire
-        if err := database.DB.Where("est_active = ?", true).First(&annee).Error; err != nil {
+        if err := database.Current().Where("est_active = ?", true).First(&annee).Error; err != nil {
                 return nil, err
         }
         return &annee, nil
