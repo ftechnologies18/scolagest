@@ -180,31 +180,52 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
-        // Best-effort : on prévient le backend, mais on vide le store quoi qu'il arrive.
-        try {
-          if (get().accessToken) {
-            await apiPost("/api/auth/logout", {}, { skipRefresh: true });
+        // On capture le token AVANT de vider le store afin de pouvoir
+        // prévenir le backend (révocation des sessions) sans bloquer l'UI.
+        const token = get().accessToken;
+
+        // 1. Vide le store IMMÉDIATEMENT (synchrone) pour que les gardes
+        //    d'auth des layouts (staff/saas) redirigent vers /login sans
+        //    attendre le backend. C'est crucial : un appel réseau vers le
+        //    backend Render (cold start possible, jusqu'à 60 s) ne doit
+        //    JAMAIS bloquer la déconnexion côté UI — sinon la page reste
+        //    figée et l'utilisateur n'est pas redirigé.
+        set({
+          accessToken: null,
+          refreshToken: null,
+          user: null,
+          etablissement: null,
+          role: null,
+          isAuthenticated: get().isParentAuthenticated,
+          isLoading: false,
+        });
+        if (typeof window !== "undefined") {
+          // Force la persistance à se réinitialiser.
+          try {
+            window.localStorage.removeItem("scolagest-auth");
+          } catch {
+            // ignore
           }
-        } catch {
-          // ignore: le backend peut être injoignable ou le token déjà expiré
-        } finally {
-          set({
-            accessToken: null,
-            refreshToken: null,
-            user: null,
-            etablissement: null,
-            role: null,
-            isAuthenticated: get().isParentAuthenticated,
-            isLoading: false,
+        }
+
+        // 2. Prévient le backend en arrière-plan (fire-and-forget, non
+        //    bloquant). On passe le token capturé via un en-tête explicite
+        //    (skipAuth=true pour que le store — désormais vide — ne
+        //    surcharge pas l'en-tête Authorization). Best-effort : un échec
+        //    (backend injoignable, token expiré) est silencieux ; les tokens
+        //    expireront naturellement (access 15 min, refresh 7 j).
+        if (token) {
+          apiPost(
+            "/api/auth/logout",
+            {},
+            {
+              skipRefresh: true,
+              skipAuth: true,
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          ).catch(() => {
+            // ignore : best-effort, la UI est déjà déconnectée.
           });
-          if (typeof window !== "undefined") {
-            // Force la persistance à se réinitialiser
-            try {
-              window.localStorage.removeItem("scolagest-auth");
-            } catch {
-              // ignore
-            }
-          }
         }
       },
 

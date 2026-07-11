@@ -2194,3 +2194,31 @@ Stage Summary:
 - Nouveau service ID : `srv-d98v5omcjfls73fddck0` (l'ancien `srv-d98mdrv7f7vs73bdlm60` a été supprimé).
 - ⚠ RAPPEL SÉCURITÉ : le token API Render `rnd_6ItLWQaVwR33lFkKWqdn5HqYjyq1` a été partagé en clair dans le chat → à révoquer et régénérer sur le dashboard Render.
 - ⚠ Le healthCheckPath a été désactivé (vide) sur le service Render. À réactiver sur le dashboard avec `/api/health` + grace period 60s une fois le service stable (optionnel, le service marche très bien sans car le binaire ne crash plus).
+
+---
+Task ID: fix-logout-freeze
+Agent: Z.ai Code (tuteur principal)
+Task: Corriger le bug de déconnexion — la page reste figée au lieu de rediriger vers /login.
+
+Work Log:
+- Diagnostic du flux de déconnexion staff/SaaS :
+  - `DashboardShell.handleLogout` (dashboard-shell.tsx, actif pour staff + saas) fait `await logout()` puis `router.push(logoutRedirect)`.
+  - `auth-store.logout()` attendait `await apiPost("/api/auth/logout")` (révocation backend) DANS un try/finally, le `set({...vide...})` n'étant exécuté qu'au finally — donc APRÈS la résolution réseau.
+  - Le client API (`api-client.ts`) n'a AUCUN timeout/AbortController sur `fetch`. Sur Render free tier (cold start jusqu'à 60 s), le POST /api/auth/logout bloquait `await logout()` → `router.push()` et la garde d'auth du layout `(staff)/layout.tsx` (useEffect sur `isAuthenticated`) ne se déclenchaient qu'après → page figée.
+  - `dashboard-layout.tsx` (legacy) trouvé mais non utilisé (référencé uniquement dans des commentaires des vues) — non touché.
+  - Flux parent (`logoutParent()`) déjà synchrone → non affecté.
+- Correctif (`Frontend/src/lib/auth-store.ts`, méthode `logout`) :
+  - Capture le `accessToken` AVANT de vider le store.
+  - Vide le store **synchrone** (set + removeItem localStorage) IMMÉDIATEMENT → les gardes d'auth des layouts (staff/saas) redirigent vers /login instantanément, et `await logout()` résout instantanément côté `handleLogout` (le toast + router.push s'exécutent tout de suite).
+  - Prévient le backend en **fire-and-forget** (non bloquant) via `apiPost("/api/auth/logout", {}, { skipRefresh:true, skipAuth:true, headers:{Authorization:`Bearer ${token}`} })`. `skipAuth:true` empêche le store (désormais vide) de surcharger l'en-tête ; le token capturé est passé explicitement. `.catch(()=>{})` : best-effort silencieux.
+  - Sécurité préservée : si l'appel backend échoue, les tokens expirent naturellement (access 15 min, refresh 7 j). Le backend `Logout` (auth_service.go) révoque les sessions — best-effort, déjà le cas.
+  - Corrige aussi les appels `useAuthStore.getState().logout()` du api-client (401 auto-logout, lignes 136 et 285) : désormais la purge locale est synchrone → la redirection est immédiate même sur expiration de session.
+- Qualité :
+  - `bun run lint` (Frontend) → 0 erreur ✓
+  - `bunx tsc --noEmit` → 0 erreur sur auth-store.ts / api-client.ts ✓ (14 erreurs pré-existantes hors périmètre, déjà signalées : login-form Framer Motion Variants, view-impayes toast, view-parametres Record<Role>, etc.).
+- Commit + push vers `main` (identité ftechnologies18) → Vercel redéploie le frontend automatiquement.
+
+Stage Summary:
+- Cause racine : `await apiPost("/api/auth/logout")` bloquait la purge du store jusqu'à résolution réseau (Render cold start = gel 30-60 s) → ni `router.push` du composant, ni la garde du layout ne s'exécutaient à temps.
+- Fix : purge locale synchrone + notification backend fire-and-forget. La déconnexion est désormais instantanée côté UI, pour les 3 chemins : bouton staff, bouton SaaS, auto-logout 401.
+- 1 fichier modifié (auth-store.ts, +44/-23). Aucun changement backend, DB, ou schema — Neon inchangé.
