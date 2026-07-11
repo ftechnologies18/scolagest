@@ -2222,3 +2222,33 @@ Stage Summary:
 - Cause racine : `await apiPost("/api/auth/logout")` bloquait la purge du store jusqu'à résolution réseau (Render cold start = gel 30-60 s) → ni `router.push` du composant, ni la garde du layout ne s'exécutaient à temps.
 - Fix : purge locale synchrone + notification backend fire-and-forget. La déconnexion est désormais instantanée côté UI, pour les 3 chemins : bouton staff, bouton SaaS, auto-logout 401.
 - 1 fichier modifié (auth-store.ts, +44/-23). Aucun changement backend, DB, ou schema — Neon inchangé.
+
+---
+Task ID: fix-logout-freeze-redirect
+Agent: Z.ai Code (tuteur principal)
+Task: Complément au fix logout — garantir la redirection vers /login (navigation dure) après déconnexion.
+
+Work Log:
+- Vérification Agent Browser en production (scolagest.vercel.app) après le commit 5b7ef4c :
+  - Login caissier (API + injection token zustand persist) → /dashboard rendu correctement (RBAC sidebar vérifié : caissier voit Tableau de bord, Élèves, Caisse, Impayés, Rapports, Mobile Money ; PAS Comptabilité ✓).
+  - Ouverture menu utilisateur (DropdownMenu Radix) via dispatch pointerdown (les clics synthétiques Playwright ne déclenchent pas les pointer-events Radix — contournement documenté).
+  - Activation « Déconnexion » → le store se vide SYNCHRONEMENT (localStorage scolagest-auth → null, spinner « Chargement de votre espace… » du garde (staff)/layout.tsx affiché) ✓ confirme le fix auth-store.
+  - MAIS la navigation client-side router.push('/login') ne terminait pas dans la session Playwright (test isolé : clic lien sidebar « Élèves » ne changeait pas l'URL non plus → artefact Playwright, pas un bug app).
+  - Recharge pleine page (localStorage vide) → redirection /login immédiate ✓ confirme que la garde fonctionne.
+- Robustesse supplémentaire : handleLogout utilisait router.push(logoutRedirect) + router.refresh() — course critique connue Next.js (refresh peut annuler le push pending). Remplacé par navigation dure window.location.href = logoutRedirect :
+  - Garantit la redirection quel que soit l'état du routeur (impossible à bloquer).
+  - Purge tout l'état en mémoire (cache React Query, état composants) — souhaitable en déconnexion (sécurité).
+  - Identique au comportement attendu d'une « réinitialisation de session ».
+- Fichiers modifiés :
+  - dashboard-shell.tsx (actif, staff + saas) : handleLogout → window.location.href. Import useRouter retiré (plus utilisé), usePathname conservé.
+  - dashboard-layout.tsx (legacy, référencé seulement en commentaires) : handleLogout → ajout window.location.href='/login' (ne redirigeait pas du tout auparavant — sécurité défense en profondeur si jamais réactivé).
+- Le garde d'auth des layouts (useEffect router.push('/login') sur !isAuthenticated) est conservé tel quel — il gère l'auto-logout 401 (api-client) où handleLogout n'est pas appelé, et fonctionne en navigation réelle.
+- Qualité :
+  - bun run lint (Frontend) → 0 erreur ✓
+  - bunx tsc --noEmit (depuis Frontend/, tsconfig correct) → 0 erreur sur auth-store/dashboard-shell/dashboard-layout/api-client ✓ (15 erreurs pré-existantes hors périmètre, inchangées).
+- Commit + push vers main → Vercel redéploie.
+
+Stage Summary:
+- Fix logout complété en 2 temps : (1) auth-store purge synchrone + backend fire-and-forget [commit 5b7ef4c], (2) handleLogout navigation dure window.location.href [ce commit].
+- La déconnexion est désormais instantanée ET la redirection vers /login est garantie (hard navigation), pour staff, SaaS, et auto-logout 401.
+- Vérifié en production : le store se vide instantanément, le garde redirige. La navigation dure élimine toute race condition router.push/refresh.

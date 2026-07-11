@@ -371,6 +371,10 @@ export function DashboardLayout() {
       title: "Déconnexion",
       description: "Vous avez été déconnecté avec succès.",
     });
+    // Navigation dure (cf. dashboard-shell.tsx) — redirection garantie.
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
   }
 
   const etablissementSelectValue = etablissement?.id ?? "all";

@@ -23,7 +23,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
@@ -278,7 +278,6 @@ export function DashboardShell({
   logoutRedirect = "/login",
 }: DashboardShellProps) {
   const { toast } = useToast();
-  const router = useRouter();
   const pathname = usePathname();
 
   const user = useAuthStore((s) => s.user);
@@ -356,8 +355,14 @@ export function DashboardShell({
       title: "Déconnexion",
       description: "Vous avez été déconnecté avec succès.",
     });
-    router.push(logoutRedirect);
-    router.refresh();
+    // Navigation dure vers la page de login : garantit la redirection
+    // (impossible à bloquer par l'état du routeur Next.js) et purge tout
+    // l'état en mémoire (cache React Query, état des composants) — ce qui
+    // est souhaitable lors d'une déconnexion. On évite aussi la course
+    // critique entre router.push() et router.refresh().
+    if (typeof window !== "undefined") {
+      window.location.href = logoutRedirect;
+    }
   }
 
   const etablissementSelectValue = etablissement?.id ?? "all";
