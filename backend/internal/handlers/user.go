@@ -39,10 +39,9 @@ func (h *UserHandler) Create(c *gin.Context) {
         }
 
         // ── Gouvernance SaaS : chaîne hiérarchique stricte ──
-        // SUPER_ADMIN → crée DIRECTEUR_SUPERVISEUR (lié abonnement)
-        // DIRECTEUR_SUPERVISEUR → crée DIRECTEUR_ETUDES
-        // DIRECTEUR_ETUDES → crée CAISSIER, COMPTABLE, SECRETARIAT
-        // SUPER_ADMIN aussi peut créer DIRECTEUR_ETUDES et staff (rôle plateforme)
+        // SUPER_ADMIN → crée UNIQUEMENT DIRECTEUR_SUPERVISEUR (lié abonnement)
+        // DIRECTEUR_SUPERVISEUR → crée DIRECTEUR_ETUDES, CAISSIER, COMPTABLE, SECRETARIAT
+        // DIRECTEUR_ETUDES → voit les utilisateurs mais NE crée personne
         requesterRole, _ := c.Get("user_role")
         requesterRoleTyped, _ := requesterRole.(models.RoleUtilisateur)
         requestedRole := dto.RoleGlobal
@@ -53,27 +52,22 @@ func (h *UserHandler) Create(c *gin.Context) {
                         c.JSON(http.StatusForbidden, gin.H{"error": "création de SUPER_ADMIN interdite — contactez le support SaaS"})
                         return
                 case models.RoleDirecteurSuperviseur, models.RoleDirection:
-                        // Seul SUPER_ADMIN crée le Directeur Superviseur (lié abonnement)
+                        // Seul SUPER_ADMIN crée le Directeur Superviseur
                         if requesterRoleTyped != models.RoleSuperAdmin {
                                 c.JSON(http.StatusForbidden, gin.H{"error": "seul le SUPER_ADMIN peut créer un Directeur Superviseur (lié à la souscription d'abonnement)"})
                                 return
                         }
                 case models.RoleDirecteurEtudes:
-                        // Directeur Superviseur crée le Directeur des Études
-                        // SUPER_ADMIN aussi (rôle plateforme)
-                        if requesterRoleTyped != models.RoleDirecteurSuperviseur &&
-                                requesterRoleTyped != models.RoleSuperAdmin {
+                        // Seul DIRECTEUR_SUPERVISEUR crée le Directeur des Études
+                        if requesterRoleTyped != models.RoleDirecteurSuperviseur {
                                 c.JSON(http.StatusForbidden, gin.H{"error": "seul le Directeur Superviseur peut créer un Directeur des Études"})
                                 return
                         }
                 default:
                         // CAISSIER, COMPTABLE, SECRETARIAT
-                        // Directeur des Études crée le staff
-                        // Directeur Superviseur et SUPER_ADMIN aussi
-                        if requesterRoleTyped != models.RoleDirecteurEtudes &&
-                                requesterRoleTyped != models.RoleDirecteurSuperviseur &&
-                                requesterRoleTyped != models.RoleSuperAdmin {
-                                c.JSON(http.StatusForbidden, gin.H{"error": "seul le Directeur des Études peut créer des utilisateurs staff (Caissier, Comptable, Secrétariat)"})
+                        // Seul DIRECTEUR_SUPERVISEUR crée le staff (pas DIRECTEUR_ETUDES)
+                        if requesterRoleTyped != models.RoleDirecteurSuperviseur {
+                                c.JSON(http.StatusForbidden, gin.H{"error": "seul le Directeur Superviseur peut créer des utilisateurs staff (Caissier, Comptable, Secrétariat)"})
                                 return
                         }
                 }
