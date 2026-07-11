@@ -104,6 +104,7 @@ export type DashboardViewId =
   | "saas-dashboard"
   | "saas-establishments"
   | "saas-audit"
+  | "saas-billing"
   | "saas-support";
 
 interface DashboardHomeProps {
@@ -321,6 +322,7 @@ export function DashboardHome({ onNavigate }: DashboardHomeProps) {
             v as
               | "saas-establishments"
               | "saas-audit"
+              | "saas-billing"
               | "saas-support",
           )
         }

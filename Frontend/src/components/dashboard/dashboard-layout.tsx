@@ -37,6 +37,7 @@ import {
   CheckCircle2,
   LifeBuoy,
   ScrollText,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -85,6 +86,7 @@ import SaasDashboardView from "./views/view-saas-dashboard";
 import SaasEstablishmentsView from "./views/view-saas-establishments";
 import SaasAuditView from "./views/view-saas-audit";
 import SaasSupportView from "./views/view-saas-support";
+import SaasBillingView from "./views/view-saas-billing";
 
 /** Identifiants de vues gérées par la coquille. */
 export type ViewId = DashboardViewId;
@@ -216,6 +218,12 @@ const SAAS_NAV_GROUPS: NavGroup[] = [
         id: "saas-audit",
         label: "Audit",
         icon: ScrollText,
+        roles: ["SUPER_ADMIN"],
+      },
+      {
+        id: "saas-billing",
+        label: "Facturation",
+        icon: CreditCard,
         roles: ["SUPER_ADMIN"],
       },
       {
@@ -632,6 +640,7 @@ export function DashboardLayout() {
                       v as
                         | "saas-establishments"
                         | "saas-audit"
+                        | "saas-billing"
                         | "saas-support",
                     )
                   }
@@ -643,6 +652,7 @@ export function DashboardLayout() {
                 />
               )}
               {activeView === "saas-audit" && <SaasAuditView />}
+              {activeView === "saas-billing" && <SaasBillingView />}
               {activeView === "saas-support" && <SaasSupportView />}
             </div>
 

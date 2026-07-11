@@ -33,6 +33,10 @@ import {
   LifeBuoy,
   ShieldCheck,
   XCircle,
+  CreditCard,
+  TrendingUp,
+  Hourglass,
+  ArrowRight,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -42,6 +46,10 @@ import {
   fetchSaasEstablishments,
   type SaasEstablishment,
 } from "@/lib/api-saas";
+import {
+  billingKeys,
+  fetchBillingStats,
+} from "@/lib/api-saas-billing";
 import { formatFCFA, formatDateTime } from "@/lib/format";
 
 import {
@@ -62,7 +70,13 @@ import {
 
 interface SaasDashboardViewProps {
   /** Callback pour naviguer vers une autre vue SaaS. */
-  onNavigate?: (view: "saas-establishments" | "saas-audit" | "saas-support") => void;
+  onNavigate?: (
+    view:
+      | "saas-establishments"
+      | "saas-audit"
+      | "saas-billing"
+      | "saas-support",
+  ) => void;
 }
 
 export default function SaasDashboardView({
@@ -90,6 +104,17 @@ export default function SaasDashboardView({
   } = useQuery({
     queryKey: saasKeys.establishments(),
     queryFn: fetchSaasEstablishments,
+    retry: 1,
+    retryDelay: 1500,
+  });
+
+  const {
+    data: billingStats,
+    isLoading: billingLoading,
+    isError: billingError,
+  } = useQuery({
+    queryKey: billingKeys.stats(),
+    queryFn: fetchBillingStats,
     retry: 1,
     retryDelay: 1500,
   });
@@ -295,6 +320,62 @@ export default function SaasDashboardView({
         )}
       </div>
 
+      {/* Revenus SaaS — raccourci vers la vue Facturation */}
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Revenus SaaS
+          </h2>
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-emerald-700 dark:text-emerald-300"
+            onClick={() => onNavigate?.("saas-billing")}
+          >
+            Voir la facturation
+            <ArrowRight className="size-3" />
+          </Button>
+        </div>
+        {billingLoading ? (
+          <div className="grid gap-4 sm:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
+          </div>
+        ) : billingError ? (
+          <Card className="border-amber-200 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/20">
+            <CardContent className="flex items-center gap-2 py-4 text-xs text-amber-800 dark:text-amber-300">
+              <AlertCircle className="size-4 shrink-0" />
+              Statistiques de facturation indisponibles pour le moment.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <RevenueCard
+              label="Revenu mensuel"
+              value={formatFCFA(billingStats?.revenu_mensuel ?? 0)}
+              subtitle="MRR"
+              icon={TrendingUp}
+              accent="emerald"
+            />
+            <RevenueCard
+              label="Revenu annuel"
+              value={formatFCFA(billingStats?.revenu_annuel ?? 0)}
+              subtitle="ARR"
+              icon={Wallet}
+              accent="emerald"
+            />
+            <RevenueCard
+              label="Revenu en attente"
+              value={formatFCFA(billingStats?.revenu_en_attente ?? 0)}
+              subtitle="Factures impayées"
+              icon={Hourglass}
+              accent="amber"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Table des établissements */}
       <div>
         <div className="mb-3 flex items-center justify-between">
@@ -390,6 +471,50 @@ function KpiCard({
             )}
           >
             <Icon className="size-5" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RevenueCard({
+  label,
+  value,
+  subtitle,
+  icon: Icon,
+  accent,
+}: {
+  label: string;
+  value: string;
+  subtitle?: string;
+  icon: typeof Building2;
+  accent: "emerald" | "amber";
+}) {
+  return (
+    <Card className="overflow-hidden border-l-4 border-emerald-200 dark:border-emerald-900/50">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "flex size-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm",
+              accent === "emerald" ? "bg-emerald-600" : "bg-amber-500",
+            )}
+          >
+            <Icon className="size-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {label}
+            </p>
+            <p className="mt-0.5 truncate text-xl font-bold tracking-tight">
+              {value}
+            </p>
+            {subtitle ? (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {subtitle}
+              </p>
+            ) : null}
           </div>
         </div>
       </CardContent>

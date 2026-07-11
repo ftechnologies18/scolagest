@@ -1468,3 +1468,169 @@ Stage Summary:
 - Module de facturation SaaS complet : plans, abonnements, factures, stats
 - 3 plans démo (Basic/Pro/Enterprise), 2 abonnements démo, 1 facture payée
 - Commit : 49ca461
+
+---
+Task ID: 2
+Agent: frontend-styling-expert
+Task: Créer les vues frontend de facturation SaaS (plans, abonnements, factures, stats) pour le SUPER_ADMIN et les brancher dans la navigation SaaS.
+
+Work Log:
+- Lu `worklog.md` (notamment Task ID saas-billing : backend Go déployé avec
+  endpoints `/api/saas/billing/*` + Task ID 3 : frontend SaaS précédent
+  avec saas-dashboard / saas-establishments / saas-audit / saas-support).
+- Inspecté les patterns existants : `lib/api-saas.ts` (clés React Query +
+  wrappers apiGet/apiPost/apiPut), `views/view-saas-dashboard.tsx`,
+  `views/view-saas-support.tsx`, `views/view-saas-establishments.tsx`,
+  `frais/frais-form-dialog.tsx` (pattern formulaire en dialog), `lib/format.ts`
+  (formatFCFA, formatDateShort, formatDateTime), `dashboard-layout.tsx`
+  (NAV_GROUPS scindé en STAFF + SAAS), `dashboard-home.tsx` (safety net
+  SUPER_ADMIN → SaasDashboardView).
+
+Nouveau client API facturation SaaS :
+- `src/lib/api-saas-billing.ts` (NOUVEAU) :
+  - Types : `SaaPlan`, `PlanDTO`, `SaaSubscription`, `SubscriptionDTO`,
+    `SaaInvoice`, `BillingStats`, `SubscriptionStatut`, `InvoiceStatut`,
+    `CycleFacturation`, `InvoiceQueryParams`.
+  - `billingKeys` : clés React Query (all, stats, plans, subscriptions,
+    invoices(filters)).
+  - Wrappers : `fetchPlans`, `createPlan`, `updatePlan`,
+    `fetchSubscriptions`, `createSubscription`, `cancelSubscription`,
+    `fetchInvoices(params)`, `generateInvoice(subId)`, `payInvoice(id, body)`,
+    `fetchBillingStats`. Tous basés sur `apiGet/apiPost/apiPut` de
+    `@/lib/api-client`.
+
+Dialogues de formulaire (NOUVEAU, dans `src/components/saas-billing/`) :
+- `plan-form-dialog.tsx` : création / édition d'un plan (code, nom,
+  description, prix_mensuel/annuel, nb_eleves_max, nb_users_max, actif).
+  Mode édition si `plan` fourni. `useMutation` → `createPlan`/`updatePlan`,
+  invalidation `billingKeys.plans()` + `billingKeys.stats()`, toast succès.
+- `subscription-form-dialog.tsx` : création d'un abonnement
+  (établissement Select via `fetchSaasEstablishments`, plan Select via
+  `fetchPlans` filtré `actif`, cycle MONTHLY/YEARLY, durée_essai_jours).
+  Affiche dynamiquement le prix (mensuel/annuel) du plan sélectionné.
+  Invalide subscriptions + stats + invoices.
+- `invoice-generate-dialog.tsx` : génération d'une facture (Select des
+  abonnements actifs/essai/past_due). Récap du sub sélectionné. Invalide
+  invoices + stats.
+- `invoice-pay-dialog.tsx` : paiement d'une facture (mode_paiement Select :
+  Mobile Money / Virement / Espèces, reference_paiement Input obligatoire).
+  Invalide invoices + stats.
+
+Vue principale Facturation SaaS :
+- `src/components/dashboard/views/view-saas-billing.tsx` (NOUVEAU) :
+  - 4 onglets (Tabs shadcn) : Vue d'ensemble / Plans / Abonnements /
+    Factures. Le `TabsList` est scrollable horizontalement sur mobile
+    (wrapper `overflow-x-auto`).
+  - Onglet Vue d'ensemble : 4 KPI cards (Revenu mensuel emerald, Revenu
+    annuel emerald, Revenu en attente amber, Abonnements actifs emerald) +
+    3 secondary cards (Abonnements en essai amber, Factures impayées
+    amber, Factures payées emerald). Source : `fetchBillingStats`.
+  - Onglet Plans : grille responsive (1/2/3 colonnes) de `PlanCard`
+    (prix mensuel en gros + prix annuel sous-titre, limites élèves/users
+    avec icônes Users/UserCog, badge Actif/Inactif, bouton Modifier).
+    Carte « PRO » mise en avant avec `ring-emerald` + badge « Populaire ».
+    Bouton « Nouveau plan » → `PlanFormDialog` en mode création.
+    Bouton « Modifier » → `PlanFormDialog` en mode édition.
+  - Onglet Abonnements : table (établissement avec icône Building2, plan +
+    code, cycle, statut badge, date début, prochaine facture,
+    auto-renouvellement Check/X, actions). Bouton « Nouvel abonnement » →
+    `SubscriptionFormDialog`. Bouton « Annuler » par ligne →
+    `AlertDialog` de confirmation (rose) → `cancelSubscription`.
+    SubStatutBadge : ACTIVE=emerald, TRIALING=amber, PAST_DUE/SUSPENDED=
+    rose, CANCELLED=muted.
+  - Onglet Factures : filtres (statut Tous/Payées/Envoyées/En retard/
+    Brouillons/Annulées + établissement Select) + bouton Actualiser +
+    bouton « Générer facture » → `InvoiceGenerateDialog`. Table (numéro
+    mono, établissement, période, montant TTC, statut badge, émission,
+    échéance, paiement, actions). Bouton « Marquer payée » pour les
+    factures SENT/OVERDUE → `InvoicePayDialog`. InvoiceStatutBadge :
+    PAID=emerald, SENT=amber, OVERDUE=rose, DRAFT/CANCELLED=muted.
+  - Tous les `useQuery` avec `retry: 1, retryDelay: 1500` (charte projet).
+  - États loading (Skeleton), erreur (Card rose avec bouton Réessayer),
+    vide (Card dashed avec icône grise).
+  - FCFA : `formatFCFA` (ex : « 25 000 FCFA »).
+
+Branchement dans la navigation SaaS :
+- `src/components/dashboard/dashboard-layout.tsx` :
+  - Import `CreditCard` (lucide-react) + `SaasBillingView`.
+  - `SAAS_NAV_GROUPS` : nouvel item `saas-billing` (label « Facturation »,
+    icône CreditCard, roles `["SUPER_ADMIN"]`), inséré entre Audit et
+    Mode Support.
+  - View switcher : `activeView === "saas-billing"` → `<SaasBillingView />`.
+- `src/components/dashboard/dashboard-home.tsx` :
+  - `DashboardViewId` étendu avec `"saas-billing"`.
+  - Cast `onNavigate` du safety net SUPER_ADMIN étendu pour inclure
+    `"saas-billing"`.
+
+Section « Revenus SaaS » sur le tableau de bord SaaS :
+- `src/components/dashboard/views/view-saas-dashboard.tsx` :
+  - Nouveaux imports : `CreditCard`, `TrendingUp`, `Hourglass`,
+    `ArrowRight` (lucide-react) + `billingKeys`, `fetchBillingStats`
+    depuis `@/lib/api-saas-billing`.
+  - `SaasDashboardViewProps.onNavigate` étendu avec `"saas-billing"`.
+  - Nouveau `useQuery` `billingKeys.stats()` → `fetchBillingStats`.
+  - Nouvelle section « Revenus SaaS » insérée entre les KPIs globaux et la
+    table des établissements : 3 `RevenueCard` (Revenu mensuel emerald
+    TrendingUp, Revenu annuel emerald Wallet, Revenu en attente amber
+    Hourglass) + lien « Voir la facturation → » qui appelle
+    `onNavigate("saas-billing")`. États loading (Skeleton x3) et erreur
+    (Card amber « Statistiques de facturation indisponibles »).
+  - Nouveau sous-composant `RevenueCard` (border-l-4 emerald, icône ronde
+    colorée, label / value / subtitle).
+
+Lint & types :
+- `bun run lint` → EXIT=0 (0 erreur, 0 warning).
+- `bunx tsc --noEmit` → uniquement l'erreur préexistante dans
+  `src/instrumentation.ts:132` (non touchée par cette tâche, déjà
+  documentée dans le worklog Task ID 3). Aucune nouvelle erreur TS dans
+  les fichiers créés / modifiés.
+
+Stage Summary:
+- Fichiers créés :
+  - `src/lib/api-saas-billing.ts` (types + billingKeys + 10 wrappers API)
+  - `src/components/saas-billing/plan-form-dialog.tsx` (création/édition
+    plan, mode create/edit via prop `plan`)
+  - `src/components/saas-billing/subscription-form-dialog.tsx` (sélecteurs
+    établissement + plan + cycle + essai)
+  - `src/components/saas-billing/invoice-generate-dialog.tsx` (sélecteur
+    d'abonnement éligible)
+  - `src/components/saas-billing/invoice-pay-dialog.tsx` (mode + référence
+    de paiement)
+  - `src/components/dashboard/views/view-saas-billing.tsx` (vue 4 onglets :
+    vue d'ensemble, plans, abonnements, factures)
+- Fichiers modifiés :
+  - `src/components/dashboard/dashboard-layout.tsx` (nav item saas-billing
+    + view switcher + import CreditCard/SaasBillingView)
+  - `src/components/dashboard/dashboard-home.tsx` (DashboardViewId étendu
+    + cast onNavigate)
+  - `src/components/dashboard/views/view-saas-dashboard.tsx` (section
+    « Revenus SaaS » avec 3 RevenueCard + lien vers saas-billing +
+    sous-composant RevenueCard + useQuery billing stats)
+- Décisions :
+  - Charte respectée : emerald primary pour actions/payé/actif, amber
+    pour essai/impayées/en attente, rose pour retard/annulation, muted
+    pour brouillon/annulé. Aucun indigo/blue. FCFA via formatFCFA.
+  - Toutes les mutations invalident les clés React Query cohérentes
+    (plans/subscriptions/invoices/stats) pour garder le cache à jour.
+  - Plan « PRO » mis en avant visuellement (ring emerald + badge
+    « Populaire ») — conventionnel pour la grille tarifaire.
+  - Sélecteur de plans dans `subscription-form-dialog` filtré sur
+    `actif === true` uniquement (les plans inactifs ne sont plus proposés
+    aux nouveaux abonnements).
+  - Sélecteur d'abonnements dans `invoice-generate-dialog` filtré sur
+    ACTIVE/TRIALING/PAST_DUE (pas de facturation des abonnements annulés
+    ou suspendus).
+  - Paiement autorisé uniquement pour les factures SENT et OVERDUE (pas
+    DRAFT/PAID/CANCELLED).
+  - `cancelSubscription` via `AlertDialog` de confirmation rose (évite les
+    clics accidentels — irréversible côté renouvellement).
+  - Le tableau de bord SaaS gagne une section « Revenus SaaS » qui
+    récapitule MRR/ARR/en attente avec un raccourci vers la vue
+    Facturation complète. Cohérent avec l'enrichissement progressif du
+    tableau de bord SUPER_ADMIN.
+- Aucune régression : les 4 vues SaaS précédentes (dashboard,
+  establishments, audit, support) et le flux parent téléphone+PIN ne
+  sont pas touchés.
+- À valider côté UI : navigation SUPER_ADMIN → « Facturation » → 4 onglets
+  fonctionnels (stats live, CRUD plans, create/cancel abonnements,
+  generate/pay factures).
