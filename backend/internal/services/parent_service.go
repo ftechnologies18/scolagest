@@ -371,7 +371,7 @@ func (s *ParentService) GetRecapCaisse(eleveID, tuteurID uuid.UUID) (*RecapCaiss
 		database.DB.First(&tuteur, "id = ?", *eleve.TuteurID)
 	}
 
-	solde, _ := s.GetSoldeEleve(eleveID)
+	solde, _ := s.soldeSvc.GetSoldeEleve(eleveID)
 
 	recap := &RecapCaisseData{}
 	recap.Date = time.Now().Format("02/01/2006")
