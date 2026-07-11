@@ -1634,3 +1634,24 @@ Stage Summary:
 - À valider côté UI : navigation SUPER_ADMIN → « Facturation » → 4 onglets
   fonctionnels (stats live, CRUD plans, create/cancel abonnements,
   generate/pay factures).
+
+---
+Task ID: saas-billing-frontend
+Agent: Z.ai Code (tuteur principal)
+Task: Vues frontend facturation SaaS
+
+Work Log:
+- Sous-agent frontend a créé 6 nouveaux fichiers + modifié 3 fichiers
+- lib/api-saas-billing.ts : types + billingKeys + 10 wrappers (fetchPlans, createPlan, updatePlan, fetchSubscriptions, createSubscription, cancelSubscription, fetchInvoices, generateInvoice, payInvoice, fetchBillingStats)
+- 4 dialogs : plan-form, subscription-form, invoice-generate, invoice-pay
+- view-saas-billing.tsx : vue principale avec 4 onglets (Vue d'ensemble, Plans, Abonnements, Factures)
+- dashboard-layout.tsx : nav 'Facturation' (CreditCard icon, SUPER_ADMIN only)
+- view-saas-dashboard.tsx : section 'Revenus SaaS' avec RevenueCard + lien vers facturation
+- Lint : 0 erreur
+- Commit + push : b5f8345
+
+Stage Summary:
+- Vues frontend facturation SaaS complètes : plans (CRUD), abonnements (CRUD + cancel), factures (générer + payer), stats de revenus
+- Intégrée dans le dashboard SUPER_ADMIN (nav Facturation)
+- Section Revenus SaaS ajoutée au dashboard SaaS principal
+- Vercel déploie automatiquement (commit Frontend-only)
