@@ -30,6 +30,7 @@ func Seed() {
         SeedFrais()
         SeedPaiements()
         SeedParent()
+        SeedCompta()
         SeedSaasBilling()
 
         log.Println("✓ Seed terminé")
