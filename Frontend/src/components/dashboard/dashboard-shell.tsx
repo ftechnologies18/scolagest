@@ -131,7 +131,7 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/rapports",
         label: "Rapports",
         icon: FileBarChart,
-        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "COMPTABLE", "SECRETARIAT"],
+        roles: ["CAISSIER", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "COMPTABLE", "SECRETARIAT"],
       },
     ],
   },
@@ -162,16 +162,17 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
     label: "Modules avancés",
     items: [
       {
+        // Comptabilité : réservé au COMPTABLE seul (séparation des responsabilités).
         href: "/comptabilite",
         label: "Comptabilité",
         icon: BookOpen,
-        roles: ["COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
+        roles: ["COMPTABLE"],
       },
       {
         href: "/mobile-money",
         label: "Mobile Money",
         icon: Smartphone,
-        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
+        roles: ["CAISSIER", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
       {
         href: "/parametres",

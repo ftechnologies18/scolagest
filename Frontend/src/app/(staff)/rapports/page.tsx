@@ -2,10 +2,27 @@
 
 /**
  * ScolaGest — Page rapports (route `/rapports`).
+ *
+ * Accessible au personnel de caisse et de pilotage : CAISSIER, COMPTABLE,
+ * DIRECTION/DIRECTEUR_ETUDES/DIRECTEUR_SUPERVISEUR, SECRETARIAT.
  */
 
+import { RoleGuard } from "@/components/auth/role-guard";
 import RapportsView from "@/components/dashboard/views/view-rapports";
 
 export default function RapportsPage() {
-  return <RapportsView />;
+  return (
+    <RoleGuard
+      allow={[
+        "CAISSIER",
+        "COMPTABLE",
+        "DIRECTION",
+        "DIRECTEUR_ETUDES",
+        "DIRECTEUR_SUPERVISEUR",
+        "SECRETARIAT",
+      ]}
+    >
+      <RapportsView />
+    </RoleGuard>
+  );
 }
