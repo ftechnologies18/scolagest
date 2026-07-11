@@ -2287,3 +2287,26 @@ Stage Summary:
 - Cause racine : le formulaire de login exigeait un établissement pour tous les utilisateurs, mais le backend refuse qu'un SUPER_ADMIN en sélectionne un (rôle plateforme multi-tenant) → cercle bloquant.
 - Fix : ajout d'une option « Aucun — Super Admin (plateforme) » dans le selecteur + adaptation de la validation handleSubmit pour autoriser la soumission sans établissement (etabId=null).
 - 1 fichier modifié (login-form.tsx). SUPER_ADMIN peut désormais se connecter et est redirigé vers /saas/dashboard.
+
+---
+Task ID: remove-parent-link-from-login
+Agent: Z.ai Code (tuteur principal)
+Task: Supprimer le lien/bouton « Espace Parent » de la page de login staff (/login).
+
+Work Log:
+- Cible : src/app/(auth)/login/page.tsx — bloc `<div>` flottant fixed bottom contenant un `<Link href="/parent">` « Espace Parent » avec icônes Phone + ArrowLeft.
+- Suppression du bloc JSX + nettoyage des imports devenus inutiles :
+  - Retrait `import Link from "next/link"`
+  - Retrait `import { ArrowLeft, Phone } from "lucide-react"`
+  - Mise à jour du commentaire d'en-tête (retrait de la ligne « Lien Espace Parent → /parent »)
+- Vérification de l'impact :
+  - La page d'accueil `/` (src/app/page.tsx) propose déjà l'accès à l'espace parent (bouton + liens multiples vers /parent). Le bouton « Retour » du formulaire de login pointe vers `/`, donc les parents conservent un chemin d'accès via la page d'accueil.
+  - La route /parent et le portail /portal restent intacts et fonctionnels.
+- Qualité :
+  - bun run lint → 0 erreur ✓
+  - bunx tsc --noEmit → 0 erreur sur login/page.tsx ✓ (15 erreurs pré-existantes Framer Motion, inchangées).
+- Aucun changement backend, DB, ou schema Neon.
+
+Stage Summary:
+- Lien « Espace Parent » supprimé de la page /login (staff). La page de login est désormais strictement réservée à la connexion du personnel.
+- 1 fichier modifié (login/page.tsx, -14 lignes). Accès parent conservé via la page d'accueil `/`.
