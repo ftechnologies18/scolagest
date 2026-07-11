@@ -1892,3 +1892,35 @@ Stage Summary:
 - Auth guards par route group (staff, saas, parent)
 - Active link detection via usePathname()
 - Code splitting par route (plus rapide)
+
+---
+Task ID: annees-scolaires
+Agent: Z.ai Code (tuteur principal)
+Task: Module années scolaires complet (audit + implémentation)
+
+Work Log:
+- Audit : module existant = placeholder frontend + 2 endpoints GET (lecture seule)
+- Backend : services/annee_scolaire_service.go (CRUD complet)
+  - Create avec reprise des frais (copy frais + échéances de l'année source)
+  - Activate (désactive les autres années, passe en EN_COURS)
+  - Close (archivage, bloqué si année active)
+  - PromoteStudents (passage classe supérieure par cycle+niveau, diplôme pour classes d'examen)
+  - GetStats (élèves, inscriptions, frais par année)
+  - buildPromotionMap (map classe→classe supérieure)
+- Backend : handlers/annee_scolaire.go (5 nouveaux endpoints)
+- Frontend : view-annees.tsx REWRITE complet
+  - Cartes d'années avec badges statut (Active/Préparation/Clôturée)
+  - Stats par année (élèves, inscriptions, frais)
+  - Boutons Activer/Clôturer
+  - Dialog création avec option 'Reprendre les frais'
+  - Dialog passage/réinscription avec résultat (promus, diplômés, ignorés, erreurs)
+- Lint : 0 erreur ✓
+- Commit : 6101ea7
+
+Stage Summary:
+- Module années scolaires complet selon §5.8 du cahier des charges
+- Création avec reprise des frais ✓
+- Activation/clôture ✓
+- Passage des élèves (réinscription massive) ✓
+- Diplôme automatique pour classes d'examen ✓
+- Vue frontend complète avec stats et dialogs ✓
