@@ -41,6 +41,7 @@ import type {
   UtilisateurDTO,
 } from "@/lib/types";
 import type { Etablissement } from "@/lib/auth-store";
+import { useAuthStore } from "@/lib/auth-store";
 
 import {
   Dialog,
@@ -63,13 +64,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const ROLE_OPTIONS: { value: RoleGlobal; label: string }[] = [
-  { value: "SUPER_ADMIN", label: "Super Admin (SaaS)" },
+const ALL_ROLE_OPTIONS: { value: RoleGlobal; label: string }[] = [
+  { value: "DIRECTION", label: "Direction" },
   { value: "CAISSIER", label: "Caissier(ère)" },
   { value: "COMPTABLE", label: "Comptable" },
-  { value: "DIRECTION", label: "Direction" },
   { value: "SECRETARIAT", label: "Secrétariat" },
-  { value: "PARENT", label: "Parent / Tuteur" },
 ];
 
 const ROLE_LABEL: Record<RoleGlobal, string> = {
@@ -96,6 +95,18 @@ export function UtilisateurFormDialog({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isEdit = !!utilisateur;
+  const currentUserRole = useAuthStore((s) => s.role);
+
+  // ── Gouvernance SaaS : filtrer les rôles créables ──
+  // SUPER_ADMIN → peut créer DIRECTION (lié à l'abonnement) + CAISSIER/COMPTABLE/SECRETARIAT
+  // DIRECTION → peut créer CAISSIER, COMPTABLE, SECRETARIAT uniquement
+  const ROLE_OPTIONS = React.useMemo(() => {
+    if (currentUserRole === "SUPER_ADMIN") {
+      return ALL_ROLE_OPTIONS; // tous les rôles sauf SUPER_ADMIN et PARENT
+    }
+    // DIRECTION et autres : pas DIRECTION
+    return ALL_ROLE_OPTIONS.filter((r) => r.value !== "DIRECTION");
+  }, [currentUserRole]);
 
   const [nom, setNom] = React.useState("");
   const [prenoms, setPrenoms] = React.useState("");
