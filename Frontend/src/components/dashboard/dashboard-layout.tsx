@@ -605,10 +605,10 @@ export function DashboardLayout() {
   );
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted/30">
+    <div className="flex h-screen flex-col overflow-hidden bg-muted/30">
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar desktop */}
-        <aside className="hidden w-64 shrink-0 border-r bg-background lg:flex lg:flex-col">
+        {/* Sidebar desktop — fixe, ne défile pas avec le contenu */}
+        <aside className="hidden w-64 shrink-0 border-r bg-background lg:flex lg:flex-col lg:overflow-y-auto">
           {sidebarContent}
         </aside>
 
