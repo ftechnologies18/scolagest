@@ -11,9 +11,12 @@ type ReferentielService struct{}
 
 func NewReferentielService() *ReferentielService { return &ReferentielService{} }
 
-// ListCycles retourne les cycles d'un établissement, avec leurs classes.
+// ListCycles retourne les cycles d'un établissement.
+// Note : on ne Preload pas les classes ici (le modèle Cycle n'a pas de
+// relation Classes déclarée). Le frontend récupère les classes séparément
+// via ListClasses pour la logique de cascade Cycle → Niveau → Classe.
 func (s *ReferentielService) ListCycles(etablissementID *uuid.UUID) ([]models.Cycle, error) {
-        q := database.Current().Model(&models.Cycle{}).Preload("Classes")
+        q := database.Current().Model(&models.Cycle{})
         if etablissementID != nil {
                 q = q.Where("etablissement_id = ?", *etablissementID)
         }
