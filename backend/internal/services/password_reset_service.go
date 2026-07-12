@@ -67,7 +67,7 @@ func (s *PasswordResetService) RequestPasswordReset(email string) (*RequestReset
                 Where("user_id = ? AND used_at IS NULL", user.ID).
                 Update("used_at", time.Now())
 
-        token, err := generateToken(20)
+        token, err := generateResetToken(20)
         if err != nil {
                 return nil, err
         }
@@ -218,7 +218,7 @@ func (s *PasswordResetService) ResetParentPIN(dto PINResetRequestDTO) (*PINReset
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-func generateToken(bytes int) (string, error) {
+func generateResetToken(bytes int) (string, error) {
         b := make([]byte, bytes)
         if _, err := rand.Read(b); err != nil {
                 return "", err
