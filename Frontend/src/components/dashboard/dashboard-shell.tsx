@@ -255,6 +255,15 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         icon: Wallet,
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
+      {
+        // Emploi du temps (Phase A étendue) : planning hebdomadaire des
+        // créneaux (Lundi → Samedi) et génération des sessions de pointage.
+        // Accessible à la direction, aux directeurs et au secrétariat.
+        href: "/emploi-du-temps",
+        label: "Emploi du temps",
+        icon: CalendarDays,
+        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
+      },
     ],
   },
   {

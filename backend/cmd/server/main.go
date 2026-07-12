@@ -131,6 +131,9 @@ func main() {
         // Paie enseignants (Phase C)
         paieSvc := services.NewPaieService()
         paieHandler := handlers.NewPaieHandler(paieSvc)
+        // Emploi du temps (Phase A étendue)
+        edtSvc := services.NewEmploiTempsService()
+        edtHandler := handlers.NewEmploiTempsHandler(edtSvc)
 
         // 6. Router Gin
         r := gin.Default()
@@ -193,6 +196,8 @@ func main() {
         incidentHandler.RegisterRoutes(api, authMW)
         // Paie enseignants (Phase C)
         paieHandler.RegisterRoutes(api, authMW)
+        // Emploi du temps (Phase A étendue)
+        edtHandler.RegisterRoutes(api, authMW)
 
         // Route de bienvenue
         r.GET("/", func(c *gin.Context) {

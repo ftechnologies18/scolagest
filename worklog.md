@@ -3527,3 +3527,171 @@ Stage Summary:
 - Tableau de bord prof étendu : 2e bouton d'accès rapide vers /prof/paie.
 - 8 fichiers au total (3 créés + 5 modifiés). Frontend uniquement, aucun
   changement backend, DB, schema, ou .env.
+
+---
+Task ID: emploi-temps-frontend
+Agent: Z.ai Code (tuteur principal)
+Task: Coder le frontend de l'emploi du temps (page staff `/emploi-du-temps` +
+sidebar nav). Frontend uniquement, réutilisation des clients API existants
+`api-emploi-temps.ts` (types `CreneauEmploiTemps`, `CreneauDTO`,
+`ConflitResult`, `CalendrierSemaine`, `JOUR_LABELS`, `JOURS`,
+`SEMAINE_TYPE_LABELS`, fonctions `fetchCalendrier`, `createCreneau`,
+`deleteCreneau`, `generateSessionsFromDate`, `generateSemaine`),
+`fetchAffectations` (de `@/lib/api-enseignant`) et `fetchClasses` (de
+`@/lib/api-students`).
+
+Work Log:
+- Contexte : backend Phase A étendue en place (routes `/api/emploi-temps`,
+  `/calendrier`, `/:id`, `/generate-sessions`, `/generate-semaine`). Client
+  API `Frontend/src/lib/api-emploi-temps.ts` fourni. Le dashboard-shell.tsx
+  + dashboard-layout.tsx (legacy) ont déjà un groupe « Pédagogie » existant
+  avec enseignants/matières/affectations/pointage-ecran/discipline/paie — à
+  étendre avec une entrée « Emploi du temps ».
+
+- 6 fichiers créés / modifiés (frontend uniquement) :
+
+  1) Frontend/src/components/emploi-temps/emploi-temps-dashboard.tsx
+     (NOUVEAU, ~1370 lignes) :
+     • "use client". Composant `EmploiTempsDashboard` rendu dans `EmploiTempsShell`.
+     • En-tête : titre « Emploi du temps » + 2 boutons d'action « Sessions du
+       jour » (`generateSessionsFromDate(todayISO())`) et « Générer la
+       semaine » (`generateSemaine()`), tous deux désactivés si
+       `totalCreneaux === 0` (pas de créneaux à générer). Toast succès
+       standard avec le nombre de sessions générées + la date / semaine du.
+       Toast erreur en cas d'échec (variant: destructive).
+     • Filtre classe : `<Select>` shadcn (Toutes les classes / liste depuis
+       `fetchClasses(etablissement.id)`) + bouton refresh (icône
+       `RefreshCw`) qui `refetch()` le calendrier. La valeur `"all"`
+       désactive le filtre `classe_id` côté API.
+     • Vue calendrier desktop (md+) : grille CSS
+       `grid-template-columns: 56px repeat(6, 1fr)` (gutter heures + 6
+       colonnes Lundi → Samedi). Chaque colonne a une hauteur fixe de
+       `GRID_HEIGHT_PX = (19-7) * 56 = 672px` (07:00 → 19:00, 1h = 56px).
+       Marqueurs d'heure en pointillés (`border-t border-dashed border-border/40`)
+       toutes les heures. Créneaux positionnés en absolu (`top` =
+       minutes depuis 07:00, `height` = durée en minutes, min 36px).
+       Gutter heures affiche `07:00, 08:00, …, 19:00` alignés sur les
+       marqueurs. Scroll horizontal `overflow-x-auto` avec `min-w-[860px]`
+       pour les petits écrans.
+     • Vue calendrier mobile (< md) : liste verticale de 6 cartes (une par
+       jour), en-tête (libellé jour + badge compte), créneaux triés par
+       heure de début et rendus en cartes horizontales avec bordure gauche
+       colorée (couleur matière), matière + classe en gras, horaires /
+       enseignant / salle / badge semaine type en wrap flex.
+     • Carte créneau (desktop + mobile) : bordure gauche 4px en
+       `matiere.couleur` (validée via regex hex, fallback emerald-500),
+       fond tinté `rgba(couleur, 0.08)` (desktop) / `0.05` (mobile).
+       Couleur utilisée comme donnée (pas comme couleur de design — la
+       palette UI reste emerald/amber/rose/sky/slate). Matière (libellé +
+       couleur), classe, prof (prenoms + nom), salle (MapPin), horaires
+       (`HH:MM – HH:MM` mono tabular-nums), badge semaine type (P/I sur
+       desktop, Paire/Impaire sur mobile, masqué si TOUTES).
+     • Bouton « Nouveau créneau » (emerald) → `<NewCreneauDialog>` :
+       - `<Select>` affectation (prof/matière/classe — depuis
+         `fetchAffectations(activeAnnee.id)`, filtré `actif !== false`).
+         Libellé via `<AffectationLabel>` (matière en gras + ens + classe
+         en muted).
+       - `<Select>` jour (LUNDI à SAMEDI via `JOURS` / `JOUR_LABELS`).
+       - 2 `<Input type="time">` heure début / heure fin (validation :
+         fin > début).
+       - `<Input type="text">` salle (maxLength 80, optionnel).
+       - `<Select>` semaine type (TOUTES/PAIRE/IMPAIRE via
+         `SEMAINE_TYPE_LABELS`).
+       - Bouton « Créer » (mutation `createCreneau`).
+       - **Si conflits retournés** → bannière amber (border-amber-300
+         bg-amber-50) listant chaque conflit avec son type
+         (`PROF_CONFLIT` → « Conflit enseignant », `CLASSE_CONFLIT` →
+         « Conflit classe » via `CONFLIT_LABEL`) + son `message`. Le
+         créneau est quand même créé (warning, pas blocage) : on invalide
+         les queries, on garde le dialog ouvert pour afficher la bannière,
+         et on change le libellé du bouton Annuler en « Fermer ». Toast
+         warning « Créneau créé avec conflits ».
+       - Sinon → toast succès + fermeture dialog.
+     • Bouton supprimer sur chaque créneau (icône `Trash2`) →
+       `<AlertDialog>` de confirmation avec description détaillée
+       (matière, classe, jour, horaires). Mutation `deleteCreneau` →
+       invalidate `emploiTempsKeys.all` + toast succès/erreur.
+     • États : pas d'établissement (EmptyState amber), chargement (Card +
+       6 skeletons h-20), erreur (EmptyState rose + bouton Réessayer),
+       vide (EmptyState emerald avec CTA « Nouveau créneau »).
+     • Clés React Query dédiées `emploiTempsKeys` (all / calendrier /
+       affectations) exportées pour invalidation croisée.
+     • Helpers : `timeToMinutes`, `creneauTopPx`, `creneauHeightPx`,
+       `matiereCouleurSafe` (regex hex 3/6/8 digits, fallback emerald),
+       `hexToRgba` (conversion hex → rgba avec alpha pour les fonds
+       tintés), `formatHourLabel`.
+
+  2) Frontend/src/app/(staff)/emploi-du-temps/page.tsx (NOUVEAU, ~26 lignes) :
+     • Page wrapper avec RoleGuard allow=[DIRECTION, DIRECTEUR_ETUDES,
+       DIRECTEUR_SUPERVISEUR, SECRETARIAT]. Rend `<EmploiTempsDashboard />`.
+
+  3) Frontend/src/components/dashboard/dashboard-shell.tsx (MODIFIÉ) :
+     • Ajout de l'entrée `/emploi-du-temps` « Emploi du temps » (icône
+       `CalendarDays`, déjà importé) dans le groupe « Pédagogie » de
+       STAFF_NAV_GROUPS. Rôles autorisés : DIRECTION, DIRECTEUR_ETUDES,
+       DIRECTEUR_SUPERVISEUR, SECRETARIAT.
+
+  4) Frontend/src/components/dashboard/dashboard-layout.tsx (MODIFIÉ,
+     legacy) :
+     • Ajout de l'entrée `id: "emploi-du-temps"` « Emploi du temps »
+       (icône `CalendarDays`, déjà importé) dans le groupe « Pédagogie »
+       de STAFF_NAV_GROUPS interne (mêmes rôles).
+
+  5) Frontend/src/components/dashboard/dashboard-home.tsx (MODIFIÉ) :
+     • Ajout de `"emploi-du-temps"` au type `DashboardViewId` (section
+       « Pédagogie — Phase A étendue (emploi du temps) »).
+
+  6) Frontend/src/app/(staff)/dashboard/page.tsx (MODIFIÉ) :
+     • Ajout au mapping `VIEW_TO_PATH` :
+       `"emploi-du-temps": "/emploi-du-temps"`.
+
+- Conventions respectées :
+  • "use client" sur tous les composants interactifs (2 fichiers nouveaux).
+  • Imports `@/lib/...` et `@/components/ui/...` (alias `@/`).
+  • Couleurs UI : emerald (primaire / succès / fallback matière), amber
+    (warning / conflits / IMPAIRE), rose (erreur / suppression), sky
+    (PAIRE), slate (neutre / TOUTES). Aucun indigo/blue.
+  • La `matiere.couleur` (donnée utilisateur) est utilisée uniquement
+    comme bordure gauche 4px + fond tinté rgba(alpha faible) — pas comme
+    couleur de design.
+  • shadcn/ui : Card, Button, Badge, Input, Label, Select, Dialog,
+    AlertDialog, Skeleton + lucide-react (CalendarDays, CalendarRange,
+    Plus, Trash2, AlertCircle, AlertTriangle, Loader2, RefreshCw, X,
+    MapPin, User, Clock, Sparkles, CalendarCheck).
+  • TanStack Query : useQuery (3 : classes, calendrier, année active +
+    affectations dans le dialog) + useMutation (4 : genJour, genSemaine,
+    createCreneau, deleteCreneau) avec
+    `invalidateQueries({ queryKey: emploiTempsKeys.all })` après chaque
+    mutation modifiant les données.
+  • `useAuthStore` pour l'établissement. Si `!etablissement` → EmptyState
+    amber qui invite à sélectionner un établissement.
+  • Mobile-first : grille desktop cachée sur mobile (`hidden md:block`),
+    liste mobile cachée sur desktop (`md:hidden`). Boutons d'action
+    adaptatifs (label court sur mobile : « Jour » / « Semaine »).
+  • RoleGuard sur la page staff (sécurité en profondeur en plus du
+    filtrage sidebar).
+  • Footer / sticky : non pertinent (page staff rendue dans
+    DashboardShell qui a son footer sticky mt-auto).
+
+- Qualité :
+  - cd Frontend && bun run lint → 0 erreur, 3 warnings pré-existants dans
+    step-scolarite.tsx (hors périmètre) ✓.
+  - cd Frontend && bunx tsc --noEmit → 15 erreurs pré-existantes (login-form
+    ×8 Framer Motion, view-impayes ×2 toast, view-parametres ×1 Record,
+    view-utilisateurs ×1, etablissement-form-dialog ×1 quota_classe,
+    utilisateur-form-dialog ×1 Record, instrumentation ×1). 0 erreur sur
+    les 6 fichiers créés/modifiés par cette tâche ✓.
+  - Aucune modification backend, .env, schema, ou DB.
+
+Stage Summary:
+- 1 page staff livrée : /emploi-du-temps (calendrier hebdomadaire Lundi →
+  Samedi en grille desktop / liste mobile, filtre classe, création de
+  créneaux avec gestion des conflits en warning, suppression avec
+  confirmation, génération sessions du jour + de la semaine).
+- Sidebar staff étendue (dashboard-shell + dashboard-layout legacy) : 1
+  nouvelle entrée « Emploi du temps » dans le groupe « Pédagogie » avec
+  icône CalendarDays.
+- Type DashboardViewId + mapping VIEW_TO_PATH étendus pour la navigation
+  rapide depuis le dashboard.
+- 6 fichiers au total (2 créés + 4 modifiés). Frontend uniquement, aucun
+  changement backend, DB, schema, ou .env.

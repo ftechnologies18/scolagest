@@ -133,6 +133,8 @@ func migrate(db *gorm.DB) error {
                 // Paie enseignants (Phase C)
                 &models.BulletinPaie{},
                 &models.AvanceSalaire{},
+                // Emploi du temps (Phase A étendue)
+                &models.CreneauEmploiTemps{},
         }
 
         return db.AutoMigrate(modelsList...)

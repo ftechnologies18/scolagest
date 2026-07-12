@@ -34,6 +34,7 @@ const VIEW_TO_PATH: Record<DashboardViewId, string> = {
   "pointage-ecran": "/pointage-ecran",
   discipline: "/discipline",
   paie: "/paie",
+  "emploi-du-temps": "/emploi-du-temps",
   "saas-dashboard": "/saas/dashboard",
   "saas-establishments": "/saas/establishments",
   "saas-audit": "/saas/audit",
