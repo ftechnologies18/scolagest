@@ -5,6 +5,8 @@ import (
         "encoding/hex"
         "errors"
         "fmt"
+        "log"
+        "os"
         "strings"
         "time"
 
@@ -17,13 +19,48 @@ import (
 // PasswordResetService gère la réinitialisation du mot de passe staff et du
 // code PIN parent (fonctionnalité "mot de passe oublié" / "code oublié").
 //
-// Contexte : le projet n'a pas encore d'infrastructure SMTP/SMS en production
-// (roadmap V1). Les tokens/PIN sont donc affichés directement à l'écran en
-// mode démo. Quand l'infra sera en place, il suffira de remplacer le retour
-// "reset_url"/"new_pin" par un envoi email/SMS.
-type PasswordResetService struct{}
+// Comportement selon la configuration email :
+//   - Resend OU SMTP configuré (notifSvc.IsResendConfigured() ||
+//     notifSvc.IsConfigured()) : le lien de reset est envoyé par email au
+//     parent/utilisateur ; l'API ne retourne PAS le reset_url (sécurité — on
+//     ne divulgue pas le token à l'écran).
+//   - Sinon (mode dev, ni Resend ni SMTP) : le reset_url est retourné dans la
+//     réponse pour affichage direct à l'écran (utile pour démo / dev locale).
+//
+// Configuration supplémentaire :
+//
+//      FRONTEND_URL : base URL du frontend pour construire le lien absolu envoyé
+//                     par email (défaut : http://localhost:3000).
+type PasswordResetService struct {
+        notifSvc *NotificationService
+}
 
-func NewPasswordResetService() *PasswordResetService { return &PasswordResetService{} }
+func NewPasswordResetService(notifSvc *NotificationService) *PasswordResetService {
+        return &PasswordResetService{notifSvc: notifSvc}
+}
+
+// frontendBaseURL renvoie la base URL du frontend (pour construire des liens
+// absolus dans les emails). Defaut : http://localhost:3000 (dev local).
+func frontendBaseURL() string {
+        u := strings.TrimRight(strings.TrimSpace(os.Getenv("FRONTEND_URL")), "/")
+        if u == "" {
+                u = "http://localhost:3000"
+        }
+        return u
+}
+
+// userDisplayNom construit le nom affichable d'un utilisateur (Nom + Prénoms).
+func userDisplayNom(u models.Utilisateur) string {
+        nom := strings.TrimSpace(u.Nom)
+        prenoms := strings.TrimSpace(u.Prenoms)
+        if nom == "" && prenoms == "" {
+                return "utilisateur"
+        }
+        if prenoms != "" {
+                return nom + " " + prenoms
+        }
+        return nom
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Staff — Mot de passe oublié
@@ -81,8 +118,30 @@ func (s *PasswordResetService) RequestPasswordReset(email string) (*RequestReset
                 return nil, fmt.Errorf("création token reset: %w", err)
         }
 
-        // Mode démo : on retourne le reset_url (en prod : envoi email + return sans URL)
-        // TODO(prod) : remplacer par smtp.Send(user.Email, ...) et ne pas retourner ResetURL
+        // Construction du lien de reset absolu (pour l'email) ou relatif (démo).
+        resetURLAbs := frontendBaseURL() + "/reset-password?token=" + token
+
+        // Si un transport email est configuré (Resend ou SMTP) → envoyer le lien
+        // par email et NE PAS retourner reset_url (sécurité : le token ne doit
+        // pas transiter par l'API/écran en production).
+        if s.notifSvc != nil && (s.notifSvc.IsResendConfigured() || s.notifSvc.IsConfigured()) {
+                userNom := userDisplayNom(user)
+                subject, text, html := TemplatePasswordReset(userNom, resetURLAbs)
+                if err := s.notifSvc.SendEmailHTML(user.Email, subject, text, html); err != nil {
+                        // On logge l'erreur côté serveur mais on ne la révèle pas au
+                        // client (sécurité : on ne veut pas que l'attaquant sache si
+                        // l'email existe / a été envoyé). On renvoie Sent: true.
+                        log.Printf("⚠ Échec envoi email reset à %s: %v", user.Email, err)
+                }
+                return &RequestResetResult{
+                        ResetURL: "",
+                        Email:    maskEmail(user.Email),
+                        Sent:     true,
+                }, nil
+        }
+
+        // Mode dev (aucun transport configuré) : on retourne le reset_url pour
+        // affichage direct à l'écran (utile pour démo / dev locale sans email).
         return &RequestResetResult{
                 ResetURL: "/reset-password?token=" + token,
                 Email:    maskEmail(user.Email),

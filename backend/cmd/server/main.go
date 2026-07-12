@@ -118,7 +118,9 @@ func main() {
         preInscriptionSvc := services.NewPreInscriptionService(inscriptionWorkflowSvc, notifSvc)
         preInscriptionHandler := handlers.NewPreInscriptionHandler(preInscriptionSvc)
         // Récupération mot de passe staff / PIN parent
-        passwordResetSvc := services.NewPasswordResetService()
+        // (notifSvc injecté pour envoyer le lien de reset par email si Resend/SMTP
+        // est configuré — sinon mode démo : reset_url retourné à l'écran.)
+        passwordResetSvc := services.NewPasswordResetService(notifSvc)
         passwordResetHandler := handlers.NewPasswordResetHandler(passwordResetSvc)
         // Module enseignant (Phase A)
         enseignantSvc := services.NewEnseignantService()
@@ -139,6 +141,8 @@ func main() {
         // Caisse avancée (file d'attente + dashboard)
         caisseAvanceeSvc := services.NewCaisseService()
         caisseAvanceeHandler := handlers.NewCaisseHandler(caisseAvanceeSvc)
+        // Notifications (test email — SUPER_ADMIN)
+        notifHandler := handlers.NewNotificationHandler(notifSvc)
 
         // 6. Router Gin
         r := gin.Default()
@@ -205,6 +209,8 @@ func main() {
         edtHandler.RegisterRoutes(api, authMW)
         // Caisse avancée (file d'attente + dashboard)
         caisseAvanceeHandler.RegisterRoutes(api, authMW)
+        // Notifications (test email — SUPER_ADMIN)
+        notifHandler.RegisterRoutes(api, authMW)
 
         // Route de bienvenue
         r.GET("/", func(c *gin.Context) {
