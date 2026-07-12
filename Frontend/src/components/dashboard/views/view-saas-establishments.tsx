@@ -47,7 +47,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -56,6 +55,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { GlassCard } from "@/components/ds/glass-card";
+import { StatCard } from "@/components/ds/stat-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 interface SaasEstablishmentsViewProps {
   /** Callback pour naviguer vers la vue Mode Support. */
@@ -143,6 +145,7 @@ export default function SaasEstablishmentsView({
 
   return (
     <div className="space-y-4">
+      <KentePattern variant="strip" position="top" />
       {/* En-tête */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
@@ -150,7 +153,7 @@ export default function SaasEstablishmentsView({
             <Building2 className="size-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Établissements</h1>
+            <h1 className="font-display text-xl font-bold tracking-tight">Établissements</h1>
             <p className="text-sm text-muted-foreground">
               {establishments?.length ?? 0} établissement(s) inscrit(s) sur la
               plateforme ScolaGest.
@@ -168,6 +171,51 @@ export default function SaasEstablishmentsView({
         </Button>
       </div>
 
+      {/* KPIs synthèse */}
+      {isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard
+            label="Établissements"
+            value={String(establishments?.length ?? 0)}
+            hint="Inscrits sur la plateforme"
+            icon={Building2}
+            tone="emerald"
+            delay={0}
+          />
+          <StatCard
+            label="Élèves (total)"
+            value={String(
+              (establishments ?? []).reduce((acc, e) => acc + e.nb_eleves, 0),
+            )}
+            hint="Tous tenants confondus"
+            icon={Users}
+            tone="amber"
+            delay={0.05}
+          />
+          <StatCard
+            label="Utilisateurs (total)"
+            value={String(
+              (establishments ?? []).reduce(
+                (acc, e) => acc + e.nb_utilisateurs,
+                0,
+              ),
+            )}
+            hint="Comptes staff"
+            icon={UserCog}
+            tone="emerald"
+            delay={0.1}
+          />
+        </div>
+      )}
+
+      <KentePattern variant="separator" className="my-2" />
+
       {/* Recherche */}
       <div className="relative max-w-md">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -181,35 +229,34 @@ export default function SaasEstablishmentsView({
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-14 w-full" />
-              ))}
-            </div>
-          ) : isError ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-muted-foreground">
-              <AlertCircle className="size-5 text-rose-600" />
-              <p>Impossible de charger les établissements.</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refetch()}
-                disabled={isFetching}
-              >
-                <RotateCw className="size-3.5" />
-                Réessayer
-              </Button>
-            </div>
-          ) : filtered.length === 0 ? (
-            <p className="py-10 text-center text-xs text-muted-foreground">
-              {search.trim()
-                ? "Aucun établissement ne correspond à votre recherche."
-                : "Aucun établissement enregistré sur la plateforme."}
-            </p>
-          ) : (
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        {isLoading ? (
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full" />
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-muted-foreground">
+            <AlertCircle className="size-5 text-rose-600" />
+            <p>Impossible de charger les établissements.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isFetching}
+            >
+              <RotateCw className="size-3.5" />
+              Réessayer
+            </Button>
+          </div>
+        ) : filtered.length === 0 ? (
+          <p className="py-10 text-center text-xs text-muted-foreground">
+            {search.trim()
+              ? "Aucun établissement ne correspond à votre recherche."
+              : "Aucun établissement enregistré sur la plateforme."}
+          </p>
+        ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -301,11 +348,10 @@ export default function SaasEstablishmentsView({
                             </Button>
                           ) : (
                             <Button
-                              variant="outline"
+                              variant="premium"
                               size="sm"
                               onClick={() => handleActivate(e.id)}
                               disabled={disabled}
-                              className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/40"
                             >
                               {activateMutation.isPending &&
                               activateMutation.variables === e.id ? (
@@ -324,8 +370,7 @@ export default function SaasEstablishmentsView({
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+      </GlassCard>
 
       {/* Note */}
       <p className="text-[11px] text-muted-foreground">

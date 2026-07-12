@@ -23,7 +23,6 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   Building2,
-  CheckCircle2,
   Users,
   UserCog,
   Banknote,
@@ -33,7 +32,6 @@ import {
   LifeBuoy,
   ShieldCheck,
   XCircle,
-  CreditCard,
   TrendingUp,
   Hourglass,
   ArrowRight,
@@ -67,6 +65,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { GlassCard } from "@/components/ds/glass-card";
+import { StatCard } from "@/components/ds/stat-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
+import { ProgressCircle } from "@/components/ds/progress-circle";
 
 interface SaasDashboardViewProps {
   /** Callback pour naviguer vers une autre vue SaaS. */
@@ -129,6 +131,7 @@ export default function SaasDashboardView({
 
   return (
     <div className="space-y-6">
+      <KentePattern variant="strip" position="top" />
       {/* En-tête */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
@@ -136,7 +139,7 @@ export default function SaasDashboardView({
             <Building2 className="size-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">
+            <h1 className="font-display text-xl font-bold tracking-tight">
               Tableau de bord SaaS
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -162,15 +165,17 @@ export default function SaasDashboardView({
       </div>
 
       {/* Bandeau mode support */}
-      <Card
+      <GlassCard
+        variant="adaptive"
+        noHover
         className={cn(
-          "border-l-4",
+          "border-l-4 p-4",
           supportActif
             ? "border-amber-300 bg-amber-50/40 dark:border-amber-800 dark:bg-amber-950/20"
             : "border-emerald-300 bg-emerald-50/30 dark:border-emerald-800 dark:bg-emerald-950/10",
         )}
       >
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <div
               className={cn(
@@ -222,24 +227,19 @@ export default function SaasDashboardView({
             </div>
           </div>
           <Button
-            variant={supportActif ? "outline" : "default"}
+            variant={supportActif ? "outline" : "success"}
             size="sm"
             onClick={() => onNavigate?.("saas-support")}
-            className={
-              supportActif
-                ? ""
-                : "bg-emerald-600 text-white hover:bg-emerald-700"
-            }
           >
             <ShieldCheck className="size-3.5" />
             {supportActif ? "Gérer le support" : "Activer le support"}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {/* KPIs */}
       <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Indicateurs globaux
         </h2>
         {statsLoading ? (
@@ -272,58 +272,88 @@ export default function SaasDashboardView({
           </Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <KpiCard
+            <StatCard
               label="Établissements"
               value={String(stats?.nb_etablissements ?? 0)}
-              subtitle={`${
-                stats?.nb_etablissements_actifs ?? 0
-              } actif(s)`}
+              hint={`${stats?.nb_etablissements_actifs ?? 0} actif(s)`}
               icon={Building2}
-              accent="emerald"
+              tone="emerald"
+              delay={0}
             />
-            <KpiCard
-              label="Établissements actifs"
-              value={String(stats?.nb_etablissements_actifs ?? 0)}
-              subtitle={`sur ${stats?.nb_etablissements ?? 0} au total`}
-              icon={CheckCircle2}
-              accent="emerald"
-            />
-            <KpiCard
+            <GlassCard
+              variant="premium"
+              premiumBorder
+              noHover
+              className="flex items-center justify-between gap-4 p-5"
+            >
+              <div className="flex flex-col gap-1 min-w-0">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Taux d&apos;activité
+                </span>
+                <span className="text-2xl font-bold font-display text-foreground">
+                  {stats?.nb_etablissements_actifs ?? 0}
+                  <span className="ml-1 text-sm font-normal text-muted-foreground">
+                    / {stats?.nb_etablissements ?? 0}
+                  </span>
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Établissements actifs
+                </span>
+              </div>
+              <ProgressCircle
+                value={
+                  stats && stats.nb_etablissements > 0
+                    ? (stats.nb_etablissements_actifs /
+                        stats.nb_etablissements) *
+                      100
+                    : 0
+                }
+                size={88}
+                strokeWidth={8}
+              />
+            </GlassCard>
+            <StatCard
               label="Élèves (total)"
               value={String(stats?.nb_eleves_total ?? 0)}
-              subtitle="Tous établissements confondus"
+              hint="Tous établissements confondus"
               icon={Users}
-              accent="amber"
+              tone="amber"
+              delay={0.1}
             />
-            <KpiCard
+            <StatCard
               label="Utilisateurs (total)"
               value={String(stats?.nb_utilisateurs_total ?? 0)}
-              subtitle="Comptes staff actifs"
+              hint="Comptes staff actifs"
               icon={UserCog}
-              accent="emerald"
+              tone="emerald"
+              delay={0.15}
             />
-            <KpiCard
+            <StatCard
               label="Paiements (total)"
               value={String(stats?.nb_paiements_total ?? 0)}
-              subtitle="Encaissements historisés"
+              hint="Encaissements historisés"
               icon={Banknote}
-              accent="amber"
+              tone="amber"
+              delay={0.2}
             />
-            <KpiCard
+            <StatCard
               label="Montant total encaissé"
               value={formatFCFA(stats?.montant_total_encaisse ?? 0)}
-              subtitle="Tous tenants cumulés"
+              hint="Tous tenants cumulés"
               icon={Wallet}
-              accent="emerald"
+              tone="emerald"
+              delay={0.25}
             />
           </div>
         )}
       </div>
 
+      <KentePattern variant="separator" className="my-2" />
+
       {/* Revenus SaaS — raccourci vers la vue Facturation */}
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Revenus SaaS
           </h2>
           <Button
@@ -351,26 +381,45 @@ export default function SaasDashboardView({
           </Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-3">
-            <RevenueCard
-              label="Revenu mensuel"
-              value={formatFCFA(billingStats?.revenu_mensuel ?? 0)}
-              subtitle="MRR"
-              icon={TrendingUp}
-              accent="emerald"
-            />
-            <RevenueCard
-              label="Revenu annuel"
-              value={formatFCFA(billingStats?.revenu_annuel ?? 0)}
-              subtitle="ARR"
-              icon={Wallet}
-              accent="emerald"
-            />
-            <RevenueCard
+            <GlassCard variant="premium" premiumBorder noHover className="p-5">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gold/20 text-gold-dark">
+                  <TrendingUp className="size-5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Revenu mensuel
+                  </p>
+                  <p className="mt-0.5 truncate font-display text-xl font-bold tracking-tight text-foreground">
+                    {formatFCFA(billingStats?.revenu_mensuel ?? 0)}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">MRR</p>
+                </div>
+              </div>
+            </GlassCard>
+            <GlassCard variant="premium" premiumBorder noHover className="p-5">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gold/20 text-gold-dark">
+                  <Wallet className="size-5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Revenu annuel
+                  </p>
+                  <p className="mt-0.5 truncate font-display text-xl font-bold tracking-tight text-foreground">
+                    {formatFCFA(billingStats?.revenu_annuel ?? 0)}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">ARR</p>
+                </div>
+              </div>
+            </GlassCard>
+            <StatCard
               label="Revenu en attente"
               value={formatFCFA(billingStats?.revenu_en_attente ?? 0)}
-              subtitle="Factures impayées"
+              hint="Factures impayées"
               icon={Hourglass}
-              accent="amber"
+              tone="amber"
+              delay={0.1}
             />
           </div>
         )}
@@ -379,7 +428,7 @@ export default function SaasDashboardView({
       {/* Table des établissements */}
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Établissements
           </h2>
           <Button
@@ -391,40 +440,38 @@ export default function SaasDashboardView({
             Voir tout
           </Button>
         </div>
-        <Card className="overflow-hidden">
-          <CardContent className="p-0">
-            {etabsLoading ? (
-              <div className="space-y-2 p-4">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-14 w-full" />
-                ))}
-              </div>
-            ) : etabsError ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-muted-foreground">
-                <AlertCircle className="size-5 text-rose-600" />
-                <p>Impossible de charger les établissements.</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => refetchEtabs()}
-                  disabled={etabsFetching}
-                >
-                  <RotateCw className="size-3.5" />
-                  Réessayer
-                </Button>
-              </div>
-            ) : (establishments ?? []).length === 0 ? (
-              <p className="py-10 text-center text-xs text-muted-foreground">
-                Aucun établissement enregistré sur la plateforme.
-              </p>
-            ) : (
-              <EstablishmentsTable
-                establishments={establishments ?? []}
-                limit={5}
-              />
-            )}
-          </CardContent>
-        </Card>
+        <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+          {etabsLoading ? (
+            <div className="space-y-2 p-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
+            </div>
+          ) : etabsError ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-muted-foreground">
+              <AlertCircle className="size-5 text-rose-600" />
+              <p>Impossible de charger les établissements.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetchEtabs()}
+                disabled={etabsFetching}
+              >
+                <RotateCw className="size-3.5" />
+                Réessayer
+              </Button>
+            </div>
+          ) : (establishments ?? []).length === 0 ? (
+            <p className="py-10 text-center text-xs text-muted-foreground">
+              Aucun établissement enregistré sur la plateforme.
+            </p>
+          ) : (
+            <EstablishmentsTable
+              establishments={establishments ?? []}
+              limit={5}
+            />
+          )}
+        </GlassCard>
       </div>
     </div>
   );
@@ -433,94 +480,6 @@ export default function SaasDashboardView({
 // ─────────────────────────────────────────────────────────────────────────────
 // Sous-composants
 // ─────────────────────────────────────────────────────────────────────────────
-
-function KpiCard({
-  label,
-  value,
-  subtitle,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: string;
-  subtitle?: string;
-  icon: typeof Building2;
-  accent: "emerald" | "amber";
-}) {
-  return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {label}
-            </p>
-            <p className="mt-1 truncate text-2xl font-bold tracking-tight">
-              {value}
-            </p>
-            {subtitle ? (
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {subtitle}
-              </p>
-            ) : null}
-          </div>
-          <div
-            className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-lg text-white shadow-sm",
-              accent === "emerald" ? "bg-emerald-600" : "bg-amber-500",
-            )}
-          >
-            <Icon className="size-5" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function RevenueCard({
-  label,
-  value,
-  subtitle,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: string;
-  subtitle?: string;
-  icon: typeof Building2;
-  accent: "emerald" | "amber";
-}) {
-  return (
-    <Card className="overflow-hidden border-l-4 border-emerald-200 dark:border-emerald-900/50">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div
-            className={cn(
-              "flex size-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm",
-              accent === "emerald" ? "bg-emerald-600" : "bg-amber-500",
-            )}
-          >
-            <Icon className="size-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {label}
-            </p>
-            <p className="mt-0.5 truncate text-xl font-bold tracking-tight">
-              {value}
-            </p>
-            {subtitle ? (
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {subtitle}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 function EstablishmentsTable({
   establishments,

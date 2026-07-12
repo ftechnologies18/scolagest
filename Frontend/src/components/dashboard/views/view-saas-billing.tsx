@@ -74,9 +74,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -113,6 +110,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+import { GlassCard } from "@/components/ds/glass-card";
+import { StatCard } from "@/components/ds/stat-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
+import { ProgressCircle } from "@/components/ds/progress-circle";
 
 import { PlanFormDialog } from "@/components/saas-billing/plan-form-dialog";
 import { SubscriptionFormDialog } from "@/components/saas-billing/subscription-form-dialog";
@@ -219,6 +221,7 @@ export default function SaasBillingView() {
 
   return (
     <div className="space-y-6">
+      <KentePattern variant="strip" position="top" />
       {/* En-tête */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
@@ -226,7 +229,7 @@ export default function SaasBillingView() {
             <CreditCard className="size-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Facturation SaaS</h1>
+            <h1 className="font-display text-xl font-bold tracking-tight">Facturation SaaS</h1>
             <p className="text-sm text-muted-foreground">
               Plans, abonnements et factures de la plateforme ScolaGest.
             </p>
@@ -253,13 +256,13 @@ export default function SaasBillingView() {
         {/* ─── Plans ───────────────────────────────────────────────────── */}
         <TabsContent value="plans" className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Plans tarifaires
             </h2>
             <Button
+              variant="success"
               size="sm"
               onClick={openCreatePlan}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
               <Plus className="size-3.5" />
               Nouveau plan
@@ -271,13 +274,13 @@ export default function SaasBillingView() {
         {/* ─── Abonnements ─────────────────────────────────────────────── */}
         <TabsContent value="subs" className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Abonnements
             </h2>
             <Button
+              variant="success"
               size="sm"
               onClick={() => setSubDialogOpen(true)}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
               <Plus className="size-3.5" />
               Nouvel abonnement
@@ -289,13 +292,13 @@ export default function SaasBillingView() {
         {/* ─── Factures ────────────────────────────────────────────────── */}
         <TabsContent value="invoices" className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Factures
             </h2>
             <Button
+              variant="premium"
               size="sm"
               onClick={() => setInvGenDialogOpen(true)}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
               <Plus className="size-3.5" />
               Générer facture
@@ -390,135 +393,123 @@ function OverviewTab() {
     <div className="space-y-4">
       {/* KPIs principaux */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          label="Revenu mensuel"
-          value={formatFCFA(stats?.revenu_mensuel ?? 0)}
-          subtitle="MRR — abonnements actifs"
-          icon={TrendingUp}
-          accent="emerald"
-        />
-        <KpiCard
-          label="Revenu annuel"
-          value={formatFCFA(stats?.revenu_annuel ?? 0)}
-          subtitle="ARR — engagement annuel"
-          icon={Wallet}
-          accent="emerald"
-        />
-        <KpiCard
+        <GlassCard variant="premium" premiumBorder noHover className="p-5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Revenu mensuel
+              </p>
+              <p className="mt-1 truncate font-display text-2xl font-bold tracking-tight text-foreground">
+                {formatFCFA(stats?.revenu_mensuel ?? 0)}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                MRR — abonnements actifs
+              </p>
+            </div>
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gold/20 text-gold-dark">
+              <TrendingUp className="size-5" aria-hidden="true" />
+            </div>
+          </div>
+        </GlassCard>
+        <GlassCard variant="premium" premiumBorder noHover className="p-5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Revenu annuel
+              </p>
+              <p className="mt-1 truncate font-display text-2xl font-bold tracking-tight text-foreground">
+                {formatFCFA(stats?.revenu_annuel ?? 0)}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                ARR — engagement annuel
+              </p>
+            </div>
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gold/20 text-gold-dark">
+              <Wallet className="size-5" aria-hidden="true" />
+            </div>
+          </div>
+        </GlassCard>
+        <StatCard
           label="Revenu en attente"
           value={formatFCFA(stats?.revenu_en_attente ?? 0)}
-          subtitle="Factures émises non réglées"
+          hint="Factures émises non réglées"
           icon={Hourglass}
-          accent="amber"
+          tone="amber"
+          delay={0.1}
         />
-        <KpiCard
+        <StatCard
           label="Abonnements actifs"
           value={String(stats?.nb_abonnements_actifs ?? 0)}
-          subtitle="Établissements souscrits"
+          hint="Établissements souscrits"
           icon={CreditCard}
-          accent="emerald"
+          tone="gold"
+          delay={0.15}
         />
       </div>
 
-      {/* KPIs secondaires */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <SecondaryKpi
+      <KentePattern variant="separator" className="my-2" />
+
+      {/* KPIs secondaires + taux de paiement */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
           label="Abonnements en essai"
           value={String(stats?.nb_abonnements_essai ?? 0)}
+          hint="Période d'essai"
           icon={CalendarClock}
-          accent="amber"
+          tone="amber"
+          delay={0}
         />
-        <SecondaryKpi
+        <StatCard
           label="Factures impayées"
           value={String(stats?.nb_factures_impayees ?? 0)}
+          hint="À relancer"
           icon={AlertCircle}
-          accent="amber"
+          tone="terracotta"
+          delay={0.05}
         />
-        <SecondaryKpi
+        <StatCard
           label="Factures payées"
           value={String(stats?.nb_factures_payees ?? 0)}
+          hint="Encaissées"
           icon={Check}
-          accent="emerald"
+          tone="emerald"
+          delay={0.1}
         />
+        <GlassCard
+          variant="premium"
+          premiumBorder
+          noHover
+          className="flex items-center justify-between gap-4 p-5"
+        >
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Taux de paiement
+            </span>
+            <span className="font-display text-2xl font-bold text-foreground">
+              {(() => {
+                const paid = stats?.nb_factures_payees ?? 0;
+                const unpaid = stats?.nb_factures_impayees ?? 0;
+                const total = paid + unpaid;
+                return total > 0 ? `${((paid / total) * 100).toFixed(1)} %` : "—";
+              })()}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Payées / (Payées + Impayées)
+            </span>
+          </div>
+          <ProgressCircle
+            value={(() => {
+              const paid = stats?.nb_factures_payees ?? 0;
+              const unpaid = stats?.nb_factures_impayees ?? 0;
+              const total = paid + unpaid;
+              return total > 0 ? (paid / total) * 100 : 0;
+            })()}
+            size={88}
+            strokeWidth={8}
+          />
+        </GlassCard>
       </div>
     </div>
-  );
-}
-
-function KpiCard({
-  label,
-  value,
-  subtitle,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: string;
-  subtitle?: string;
-  icon: typeof Building2;
-  accent: "emerald" | "amber";
-}) {
-  return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {label}
-            </p>
-            <p className="mt-1 truncate text-2xl font-bold tracking-tight">
-              {value}
-            </p>
-            {subtitle ? (
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {subtitle}
-              </p>
-            ) : null}
-          </div>
-          <div
-            className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-lg text-white shadow-sm",
-              accent === "emerald" ? "bg-emerald-600" : "bg-amber-500",
-            )}
-          >
-            <Icon className="size-5" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function SecondaryKpi({
-  label,
-  value,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: string;
-  icon: typeof Building2;
-  accent: "emerald" | "amber";
-}) {
-  return (
-    <Card className="overflow-hidden">
-      <CardContent className="flex items-center gap-3 p-4">
-        <div
-          className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-lg text-white shadow-sm",
-            accent === "emerald" ? "bg-emerald-600" : "bg-amber-500",
-          )}
-        >
-          <Icon className="size-5" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {label}
-          </p>
-          <p className="text-xl font-bold tracking-tight">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -598,38 +589,38 @@ function PlanCard({
   const highlight =
     plan.code === "PRO" || plan.code === "PROFESSIONNEL";
   return (
-    <Card
+    <GlassCard
+      variant={highlight ? "premium" : "adaptive"}
+      premiumBorder={highlight}
+      noHover
       className={cn(
-        "relative overflow-hidden",
-        highlight
-          ? "border-emerald-300 ring-1 ring-emerald-200 dark:border-emerald-800 dark:ring-emerald-900/40"
-          : "",
+        "relative p-5",
         !plan.actif ? "opacity-70" : "",
       )}
     >
       {highlight ? (
         <div className="absolute right-3 top-3">
-          <Badge className="bg-emerald-600 text-white">Populaire</Badge>
+          <Badge className="bg-gold text-white">Populaire</Badge>
         </div>
       ) : null}
-      <CardHeader className="pb-2">
+      <div className="pb-2">
         <div className="flex items-center gap-2">
           <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-            <CreditCard className="size-5" />
+            <CreditCard className="size-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <CardTitle className="text-base leading-tight">
+            <p className="font-display text-base font-semibold leading-tight text-foreground">
               {plan.nom}
-            </CardTitle>
+            </p>
             <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
               {plan.code}
             </p>
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
+      </div>
+      <div className="space-y-3">
         <div>
-          <p className="text-2xl font-bold tracking-tight">
+          <p className="font-display text-2xl font-bold tracking-tight text-foreground">
             {formatFCFA(plan.prix_mensuel)}
             <span className="ml-1 text-xs font-normal text-muted-foreground">
               / mois
@@ -648,7 +639,7 @@ function PlanCard({
 
         <div className="grid grid-cols-2 gap-2 border-t pt-3 text-xs">
           <div className="flex items-center gap-1.5">
-            <Users className="size-3.5 text-emerald-600" />
+            <Users className="size-3.5 text-emerald-600" aria-hidden="true" />
             <div>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
                 Élèves
@@ -659,7 +650,7 @@ function PlanCard({
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            <UserCog className="size-3.5 text-emerald-600" />
+            <UserCog className="size-3.5 text-emerald-600" aria-hidden="true" />
             <div>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
                 Utilisateurs
@@ -699,8 +690,8 @@ function PlanCard({
             Modifier
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }
 
@@ -753,13 +744,11 @@ function SubscriptionsTab() {
 
   if (isLoading) {
     return (
-      <Card className="overflow-hidden">
-        <CardContent className="space-y-2 p-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full" />
-          ))}
-        </CardContent>
-      </Card>
+      <GlassCard variant="adaptive" noHover className="space-y-2 p-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-14 w-full" />
+        ))}
+      </GlassCard>
     );
   }
   if (isError) {
@@ -793,9 +782,8 @@ function SubscriptionsTab() {
   }
 
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-0">
-        <div className="overflow-x-auto">
+    <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+      <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40">
@@ -909,8 +897,7 @@ function SubscriptionsTab() {
             </TableBody>
           </Table>
         </div>
-      </CardContent>
-    </Card>
+    </GlassCard>
   );
 }
 
@@ -964,156 +951,156 @@ function InvoicesTab({
   return (
     <div className="space-y-4">
       {/* Filtres */}
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1.5">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            Statut
-          </p>
-          <Select value={statutFilter} onValueChange={setStatutFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Tous</SelectItem>
-              <SelectItem value="PAID">Payées</SelectItem>
-              <SelectItem value="SENT">Impayées (envoyées)</SelectItem>
-              <SelectItem value="OVERDUE">En retard</SelectItem>
-              <SelectItem value="DRAFT">Brouillons</SelectItem>
-              <SelectItem value="CANCELLED">Annulées</SelectItem>
-            </SelectContent>
-          </Select>
+      <GlassCard variant="adaptive" noHover className="p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Statut
+            </p>
+            <Select value={statutFilter} onValueChange={setStatutFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Tous</SelectItem>
+                <SelectItem value="PAID">Payées</SelectItem>
+                <SelectItem value="SENT">Impayées (envoyées)</SelectItem>
+                <SelectItem value="OVERDUE">En retard</SelectItem>
+                <SelectItem value="DRAFT">Brouillons</SelectItem>
+                <SelectItem value="CANCELLED">Annulées</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Établissement
+            </p>
+            <Select value={etabFilter} onValueChange={setEtabFilter}>
+              <SelectTrigger className="w-[260px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Tous établissements</SelectItem>
+                {(establishments ?? []).map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.nom}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="h-9"
+          >
+            <RotateCw className={cn("size-3.5", isFetching && "animate-spin")} />
+            Actualiser
+          </Button>
         </div>
-        <div className="space-y-1.5">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            Établissement
-          </p>
-          <Select value={etabFilter} onValueChange={setEtabFilter}>
-            <SelectTrigger className="w-[260px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Tous établissements</SelectItem>
-              {(establishments ?? []).map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.nom}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="h-9"
-        >
-          <RotateCw className={cn("size-3.5", isFetching && "animate-spin")} />
-          Actualiser
-        </Button>
-      </div>
+      </GlassCard>
 
       {/* Table */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-14 w-full" />
-              ))}
-            </div>
-          ) : isError ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-muted-foreground">
-              <AlertCircle className="size-5 text-rose-600" />
-              <p>Impossible de charger les factures.</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refetch()}
-                disabled={isFetching}
-              >
-                <RotateCw className="size-3.5" />
-                Réessayer
-              </Button>
-            </div>
-          ) : (invoices ?? []).length === 0 ? (
-            <p className="py-10 text-center text-xs text-muted-foreground">
-              Aucune facture ne correspond aux filtres sélectionnés.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/40">
-                    <TableHead className="pl-4">Numéro</TableHead>
-                    <TableHead>Établissement</TableHead>
-                    <TableHead>Période</TableHead>
-                    <TableHead className="text-right">Montant TTC</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Émission</TableHead>
-                    <TableHead>Échéance</TableHead>
-                    <TableHead>Paiement</TableHead>
-                    <TableHead className="pr-4 text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(invoices ?? []).map((inv) => {
-                    const canPay =
-                      inv.statut === "SENT" || inv.statut === "OVERDUE";
-                    return (
-                      <TableRow key={inv.id}>
-                        <TableCell className="pl-4 font-mono text-xs font-medium">
-                          {inv.numero}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {inv.etablissement?.nom ?? "—"}
-                        </TableCell>
-                        <TableCell className="text-[11px] text-muted-foreground">
-                          {formatDateShort(inv.periode_debut)} →{" "}
-                          {formatDateShort(inv.periode_fin)}
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-xs font-medium">
-                          {formatFCFA(inv.montant_ttc)}
-                        </TableCell>
-                        <TableCell>
-                          <InvoiceStatutBadge statut={inv.statut} />
-                        </TableCell>
-                        <TableCell className="text-[11px] text-muted-foreground">
-                          {formatDateShort(inv.date_emission)}
-                        </TableCell>
-                        <TableCell className="text-[11px] text-muted-foreground">
-                          {formatDateShort(inv.date_echeance)}
-                        </TableCell>
-                        <TableCell className="text-[11px] text-muted-foreground">
-                          {inv.date_paiement
-                            ? formatDateTime(inv.date_paiement)
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="pr-4 text-right">
-                          {canPay ? (
-                            <Button
-                              size="sm"
-                              onClick={() => onPay(inv)}
-                              className="bg-emerald-600 text-white hover:bg-emerald-700"
-                            >
-                              <Banknote className="size-3.5" />
-                              Marquer payée
-                            </Button>
-                          ) : (
-                            <span className="text-[11px] text-muted-foreground">
-                              —
-                            </span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        {isLoading ? (
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full" />
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-muted-foreground">
+            <AlertCircle className="size-5 text-rose-600" />
+            <p>Impossible de charger les factures.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isFetching}
+            >
+              <RotateCw className="size-3.5" />
+              Réessayer
+            </Button>
+          </div>
+        ) : (invoices ?? []).length === 0 ? (
+          <p className="py-10 text-center text-xs text-muted-foreground">
+            Aucune facture ne correspond aux filtres sélectionnés.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead className="pl-4">Numéro</TableHead>
+                  <TableHead>Établissement</TableHead>
+                  <TableHead>Période</TableHead>
+                  <TableHead className="text-right">Montant TTC</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Émission</TableHead>
+                  <TableHead>Échéance</TableHead>
+                  <TableHead>Paiement</TableHead>
+                  <TableHead className="pr-4 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(invoices ?? []).map((inv) => {
+                  const canPay =
+                    inv.statut === "SENT" || inv.statut === "OVERDUE";
+                  return (
+                    <TableRow key={inv.id}>
+                      <TableCell className="pl-4 font-mono text-xs font-medium">
+                        {inv.numero}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {inv.etablissement?.nom ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-[11px] text-muted-foreground">
+                        {formatDateShort(inv.periode_debut)} →{" "}
+                        {formatDateShort(inv.periode_fin)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-xs font-medium">
+                        {formatFCFA(inv.montant_ttc)}
+                      </TableCell>
+                      <TableCell>
+                        <InvoiceStatutBadge statut={inv.statut} />
+                      </TableCell>
+                      <TableCell className="text-[11px] text-muted-foreground">
+                        {formatDateShort(inv.date_emission)}
+                      </TableCell>
+                      <TableCell className="text-[11px] text-muted-foreground">
+                        {formatDateShort(inv.date_echeance)}
+                      </TableCell>
+                      <TableCell className="text-[11px] text-muted-foreground">
+                        {inv.date_paiement
+                          ? formatDateTime(inv.date_paiement)
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="pr-4 text-right">
+                        {canPay ? (
+                          <Button
+                            variant="success"
+                            size="sm"
+                            onClick={() => onPay(inv)}
+                          >
+                            <Banknote className="size-3.5" />
+                            Marquer payée
+                          </Button>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">
+                            —
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </GlassCard>
     </div>
   );
 }

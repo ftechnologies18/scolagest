@@ -56,13 +56,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -81,6 +74,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 export default function SaasSupportView() {
   const { toast } = useToast();
@@ -200,6 +195,7 @@ export default function SaasSupportView() {
 
   return (
     <div className="space-y-6">
+      <KentePattern variant="strip" position="top" />
       {/* En-tête */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
@@ -212,7 +208,7 @@ export default function SaasSupportView() {
             <LifeBuoy className="size-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Mode Support</h1>
+            <h1 className="font-display text-xl font-bold tracking-tight">Mode Support</h1>
             <p className="text-sm text-muted-foreground">
               Activez l&apos;accès aux données d&apos;un établissement pour
               assister son équipe. Tous les accès sont tracés et limités dans
@@ -237,30 +233,32 @@ export default function SaasSupportView() {
       </div>
 
       {/* Statut courant */}
-      <Card
+      <GlassCard
+        variant="adaptive"
+        noHover
         className={cn(
-          "border-l-4",
+          "border-l-4 p-6",
           supportActif
             ? "border-amber-300 dark:border-amber-800"
             : "border-emerald-300 dark:border-emerald-800",
         )}
       >
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
+        <div className="pb-3">
+          <p className="flex items-center gap-2 font-display text-base font-semibold text-foreground">
             {supportActif ? (
-              <ShieldAlert className="size-4 text-amber-600" />
+              <ShieldAlert className="size-4 text-amber-600" aria-hidden="true" />
             ) : (
-              <ShieldCheck className="size-4 text-emerald-600" />
+              <ShieldCheck className="size-4 text-emerald-600" aria-hidden="true" />
             )}
             Statut du mode support
-          </CardTitle>
-          <CardDescription>
+          </p>
+          <p className="text-sm text-muted-foreground">
             {supportActif
               ? "Le mode support est actuellement actif. Vos consultations et actions sont journalisées."
               : "Aucun accès aux données d'établissement n'est actuellement actif."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+          </p>
+        </div>
+        <div className="space-y-3">
           {statsLoading ? (
             <Skeleton className="h-20 w-full" />
           ) : statsError ? (
@@ -351,14 +349,16 @@ export default function SaasSupportView() {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
+
+      <KentePattern variant="separator" className="my-2" />
 
       {/* Sélecteur d'établissement (uniquement si support inactif) */}
       {!supportActif && (
         <div className="space-y-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Établissements
             </h2>
             <div className="relative max-w-md w-full">
@@ -373,113 +373,110 @@ export default function SaasSupportView() {
             </div>
           </div>
 
-          <Card className="overflow-hidden">
-            <CardContent className="p-0">
-              {etabsLoading ? (
-                <div className="space-y-2 p-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-14 w-full" />
-                  ))}
-                </div>
-              ) : etabsError ? (
-                <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-muted-foreground">
-                  <AlertCircle className="size-5 text-rose-600" />
-                  <p>Impossible de charger les établissements.</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => refetchEtabs()}
-                    disabled={etabsFetching}
-                  >
-                    <RotateCw className="size-3.5" />
-                    Réessayer
-                  </Button>
-                </div>
-              ) : filtered.length === 0 ? (
-                <p className="py-10 text-center text-xs text-muted-foreground">
-                  {search.trim()
-                    ? "Aucun établissement ne correspond à votre recherche."
-                    : "Aucun établissement enregistré sur la plateforme."}
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/40">
-                        <TableHead className="pl-4">Établissement</TableHead>
-                        <TableHead>Code</TableHead>
-                        <TableHead>Ville</TableHead>
-                        <TableHead className="text-right">Élèves</TableHead>
-                        <TableHead>État</TableHead>
-                        <TableHead className="pr-4 text-right">Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filtered.map((e) => (
-                        <TableRow key={e.id}>
-                          <TableCell className="pl-4">
-                            <div className="flex items-center gap-2">
-                              <div className="flex size-8 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                                <Building2 className="size-4" />
-                              </div>
-                              <span className="text-sm font-medium">
-                                {e.nom}
-                              </span>
+          <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+            {etabsLoading ? (
+              <div className="space-y-2 p-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 w-full" />
+                ))}
+              </div>
+            ) : etabsError ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-muted-foreground">
+                <AlertCircle className="size-5 text-rose-600" />
+                <p>Impossible de charger les établissements.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refetchEtabs()}
+                  disabled={etabsFetching}
+                >
+                  <RotateCw className="size-3.5" />
+                  Réessayer
+                </Button>
+              </div>
+            ) : filtered.length === 0 ? (
+              <p className="py-10 text-center text-xs text-muted-foreground">
+                {search.trim()
+                  ? "Aucun établissement ne correspond à votre recherche."
+                  : "Aucun établissement enregistré sur la plateforme."}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40">
+                      <TableHead className="pl-4">Établissement</TableHead>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Ville</TableHead>
+                      <TableHead className="text-right">Élèves</TableHead>
+                      <TableHead>État</TableHead>
+                      <TableHead className="pr-4 text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((e) => (
+                      <TableRow key={e.id}>
+                        <TableCell className="pl-4">
+                          <div className="flex items-center gap-2">
+                            <div className="flex size-8 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                              <Building2 className="size-4" />
                             </div>
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">
-                            {e.code_officiel || "—"}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {e.ville || "—"}
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-xs">
-                            {e.nb_eleves}
-                          </TableCell>
-                          <TableCell>
-                            {e.actif ? (
-                              <Badge
-                                variant="outline"
-                                className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
-                              >
-                                Actif
-                              </Badge>
-                            ) : (
-                              <Badge
-                                variant="outline"
-                                className="border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300"
-                              >
-                                Inactif
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="pr-4 text-right">
-                            <Button
+                            <span className="text-sm font-medium">
+                              {e.nom}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {e.code_officiel || "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {e.ville || "—"}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-xs">
+                          {e.nb_eleves}
+                        </TableCell>
+                        <TableCell>
+                          {e.actif ? (
+                            <Badge
                               variant="outline"
-                              size="sm"
-                              onClick={() => handleActivate(e.id)}
-                              disabled={
-                                activateMutation.isPending || !e.actif
-                              }
-                              className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/40"
+                              className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
                             >
-                              {activateMutation.isPending &&
-                              activateMutation.variables === e.id ? (
-                                <Loader2 className="size-3.5 animate-spin" />
-                              ) : (
-                                <LifeBuoy className="size-3.5" />
-                              )}
-                              Activer le support
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                              Actif
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300"
+                            >
+                              Inactif
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="pr-4 text-right">
+                          <Button
+                            variant="premium"
+                            size="sm"
+                            onClick={() => handleActivate(e.id)}
+                            disabled={
+                              activateMutation.isPending || !e.actif
+                            }
+                          >
+                            {activateMutation.isPending &&
+                            activateMutation.variables === e.id ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <LifeBuoy className="size-3.5" />
+                            )}
+                            Activer le support
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </GlassCard>
 
           {!supportActif && (
             <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground">

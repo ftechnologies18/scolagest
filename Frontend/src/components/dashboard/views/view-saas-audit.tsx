@@ -41,7 +41,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -57,6 +56,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { GlassCard } from "@/components/ds/glass-card";
+import { StatCard } from "@/components/ds/stat-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 const PAGE_SIZE = 20;
 
@@ -124,13 +126,14 @@ export default function SaasAuditView() {
 
   return (
     <div className="space-y-4">
+      <KentePattern variant="strip" position="top" />
       {/* En-tête */}
       <div className="flex items-start gap-3">
         <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
           <ScrollText className="size-6" />
         </div>
         <div>
-          <h1 className="text-xl font-bold tracking-tight">
+          <h1 className="font-display text-xl font-bold tracking-tight">
             Journal d&apos;audit global
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -141,9 +144,45 @@ export default function SaasAuditView() {
         </div>
       </div>
 
+      {/* KPIs synthèse */}
+      {isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard
+            label="Entrées totales"
+            value={String(total)}
+            hint="Tous filtres confondus"
+            icon={ScrollText}
+            tone="emerald"
+            delay={0}
+          />
+          <StatCard
+            label="Entrées sur cette page"
+            value={String(result?.data?.length ?? 0)}
+            hint={`Page ${page} / ${totalPages}`}
+            icon={Filter}
+            tone="amber"
+            delay={0.05}
+          />
+          <StatCard
+            label="Pages totales"
+            value={String(totalPages)}
+            hint={`${PAGE_SIZE} entrées / page`}
+            icon={CheckCircle2}
+            tone="gold"
+            delay={0.1}
+          />
+        </div>
+      )}
+
       {/* Filtres */}
-      <Card>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <GlassCard variant="adaptive" noHover className="p-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1.5">
             <Label className="text-xs">Entité</Label>
             <Select value={entite} onValueChange={setEntite}>
@@ -219,8 +258,10 @@ export default function SaasAuditView() {
               Réinitialiser
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
+
+      <KentePattern variant="separator" className="my-2" />
 
       {/* Compteur + actualiser */}
       <div className="flex items-center justify-between gap-2">
@@ -249,23 +290,22 @@ export default function SaasAuditView() {
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : isError ? (
-            <ErrorState onRetry={() => refetch()} />
-          ) : (result?.data ?? []).length === 0 ? (
-            <EmptyState
-              title="Journal d'audit vide"
-              message="Aucune entrée ne correspond à vos filtres. Les actions sensibles (création, modification, suppression) sont journalisées automatiquement."
-            />
-          ) : (
-            <div className="overflow-x-auto">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        {isLoading ? (
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : isError ? (
+          <ErrorState onRetry={() => refetch()} />
+        ) : (result?.data ?? []).length === 0 ? (
+          <EmptyState
+            title="Journal d'audit vide"
+            message="Aucune entrée ne correspond à vos filtres. Les actions sensibles (création, modification, suppression) sont journalisées automatiquement."
+          />
+        ) : (
+          <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40">
@@ -328,8 +368,7 @@ export default function SaasAuditView() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+      </GlassCard>
 
       {/* Pagination */}
       {totalPages > 1 && (
