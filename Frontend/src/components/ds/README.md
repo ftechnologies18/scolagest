@@ -41,13 +41,13 @@ Palette africaine "Forêt EdTech" — déclarée dans `globals.css` sous `:root`
 
 ## 🪡 Motif Kente
 
-Motif décoratif africain (diamants + chevrons + lignes verticales) implémenté en **data URIs SVG** dans `globals.css` (zéro requête réseau, scalable). Usage strict via le composant `<KentePattern>` :
+Motif décoratif africain **riche et fidèle** (4 sections verticales : losanges + triangles + zigzags, couleurs emerald/amber/gold/terracotta/noir) implémenté en **data URIs SVG** dans `globals.css` (zéro requête réseau, scalable). Usage strict via le composant `<KentePattern>` :
 
-- **Header strip** : `<KentePattern variant="strip" position="top" />` (h-1, gradient forest + overlay)
-- **Footer strip** : `<KentePattern variant="strip" position="bottom" />` (h-1.5, gradient premium gold→amber)
-- **Background subtil** : `<KentePattern variant="bg" />` (opacity 10%, `pointer-events-none`, `absolute inset-0`)
-- **Séparateur de section** : `<KentePattern variant="separator" />` (ligne or horizontale dégradée)
-- **Bordure premium** : `<GlassCard premiumBorder>` (border-image gold→amber via `.kente-border-premium`)
+- **Header strip** : `<KentePattern variant="strip" position="top" />` (h-2 = 8px, fond emerald + motif riche opaque 80×40)
+- **Footer strip** : `<KentePattern variant="strip" position="bottom" />` (h-2 = 8px, fond emerald + motif riche opaque 80×40)
+- **Background subtil** : `<KentePattern variant="bg" />` (opacity 10%, `pointer-events-none`, `absolute inset-0`, motif riche complet 80×40)
+- **Séparateur de section** : `<KentePattern variant="separator" />` (3px, mini-bande kente 80×3 avec 4 sections colorées + accents gold)
+- **Bordure premium** : `<GlassCard premiumBorder>` (or + double bordure outer gold / inner emerald via `.kente-border-premium`)
 
 ⚠️ **Règles strictes** :
 - **Jamais** en fond de texte (lisibilité).
@@ -111,7 +111,7 @@ Respecte `prefers-reduced-motion` via `usePrefersReducedMotion` + `getMotion()`.
 
 #### `<KentePattern>` — 4 variants × 3 positions
 - `variant` : `strip` (défaut) · `bg` · `border` · `separator`
-- `position` : `top` (h-1) · `bottom` (h-1.5) · `custom`
+- `position` : `top` (h-2 = 8px) · `bottom` (h-2 = 8px) · `custom`
 - Toujours `aria-hidden="true"` (décoratif)
 
 #### `<ProgressCircle>` — SVG animé gradient emerald→amber
