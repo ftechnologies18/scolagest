@@ -3976,3 +3976,406 @@ Stage Summary:
   -> dev server persistant -> Preview Panel fonctionnel.
 - Fichiers locaux modifiés (non commités): .zscripts/dev.sh (bootstrap Go, +9 lignes).
   .env et .local-tools/ sont gitignorés. .zscripts/dev.sh à valider/pousser avec l'user.
+
+---
+Task ID: fe-0
+Agent: Z.ai Code (tuteur principal)
+Task: Phase 0 — Initialisation du Design System "Forêt EdTech". Création de
+l'arborescence, validation des décisions (thème Hybride, périmètre dashboard
+home + caisse/eleves/rapports, commit par sous-tâche), et extraction des
+couleurs/motifs de référence via VLM.
+
+Work Log:
+- Décisions validées avec l'utilisateur :
+  • Thème : Option 2 (Hybride) — sidebar/topbar dark "Forêt" + contenu light +
+    accents kente/gold. Landing page (/) et login ((auth)/*) intacts.
+  • Périmètre Phase 5 : dashboard home + 3 vues prioritaires (caisse, eleves,
+    rapports) puis extension modulaire.
+  • Rythme : un commit par sous-tâche fe-X-y (déploiements Vercel incrémentaux).
+  • Vérif visuelle : acceptée via Agent Browser dans appels Bash longs (dev
+    server éphémère cette session).
+- Image de référence analysée via VLM (z-ai vision) : upload/1783849122.png.
+  Palette extraite :
+  • Forest green #064E3B (fond sombre)
+  • Emerald #047857 (primaire)
+  • Amber #F59E0B (secondaire)
+  • Gold #D4AF37 (premium)
+  • Terracotta #C2410C (danger warm)
+  • + secondaires kente : #0B7B5A, #E67E22, #A0201A
+  Motifs : kente (diamants, chevrons, lignes verticales, zigzags) répétés
+  horizontalement. Bandes 40px, bordures gold 3px, fonds subtils 10% opacity.
+- Arborescence DS créée :
+  • src/components/ds/ (primitives : GlassCard, KentePattern, ProgressCircle,
+    StatCard, README)
+  • src/hooks/ (existant — ajout use-media-query.ts, use-prefers-reduced-motion.ts)
+  • src/lib/animations.ts (transitions Framer Motion)
+
+Stage Summary:
+- Fondations posées pour le Design System "Forêt EdTech".
+- 17 sous-tâches planifiées (fe-0 à fe-6b), chacune = 1 commit poussé vers
+  origin/main (déclenche Vercel, pas Render car hors backend/).
+- Décisions de design figées : thème Hybride, palette Forêt EdTech (5 couleurs
+  principales + 3 secondaires kente), motif kente en accent strict.
+- Prochaine étape : fe-1a (globals.css tokens), fe-1b (hooks + animations),
+  fe-1c (next-themes + fonts) en parallèle.
+
+---
+Task ID: fe-1a
+Agent: frontend-styling-expert
+Task: Étendre `Frontend/src/app/globals.css` avec les tokens du Design System
+"Forêt EdTech" (palette, dégradés, shadows, glassmorphism adaptatif hybride,
+motifs kente SVG, utilitaires décoratifs) sans toucher à l'existant (oklch
+vars, @theme inline, @layer base, @media print).
+
+Work Log:
+- Lu worklog (Task fe-0 = cadrage DS), `globals.css` (228 lignes, 4 blocs
+  `@media print` pour receipts/bordereaux/recus/recap), `tailwind.config.ts`
+  (config legacy hsl + animate plugin, le projet utilise Tailwind 4 via
+  `@import "tailwindcss"` et `@theme inline`).
+- Étendu `@theme inline` (lignes 44-59 nouvelles) : 11 tokens `--color-*`
+  mappant les nouvelles vars CSS. Suffixe `-fe` sur `emerald-fe` et
+  `amber-fe` pour éviter la collision avec les palettes Tailwind par défaut
+  (emerald-500, amber-500…). `forest`, `gold`, `terracotta`, `sand` n'ont
+  pas de collision → pas de suffixe.
+- Étendu `:root` (lignes 95-125 nouvelles) : 11 couleurs Forêt EdTech
+  (forest/deep, emerald, amber, gold/light/dark, terracotta/light/dark,
+  sand) en hex (cohérent avec les valeurs kente/gold qui viennent de
+  l'analyse VLM de l'image de référence) ; 4 dégradés
+  (emerald-amber, forest, warm, premium) ; 5 shadows (glass, glass-lg,
+  emerald, amber, gold).
+- Ajouté en fin de fichier (lignes 276-412, +137 lignes) après les 4 blocs
+  `@media print` préservés :
+  • 5 classes glassmorphism : `.glass-mobile` (blur 20, alpha 0.70),
+    `.glass-tablet` (blur 16, alpha 0.80), `.glass-desktop` (blur 12,
+    alpha 0.85 — contraste WCAG AA sur contenu light), `.glass-premium`
+    (glass sombre forest + bordure gold 2px + shadow gold), `.glass-dark`
+    (chrome sidebar/topbar forest 0.95 + bordure blanche 10%).
+  • `.glass-adaptive` : classe responsive unique (mobile-first) avec 2
+    breakpoints `@media (min-width: 768px)` et `@media (min-width: 1024px)`
+    qui reprend les valeurs tablet/desktop des classes dédiées.
+  • 2 motifs kente SVG data URI : `.bg-kente-pattern` (diamants 40×40,
+    or #D4AF37, fill-opacity 0.5 — motif subtil pour fonds larges) et
+    `.bg-kente-strip` (variante dense : lignes verticales + diamants +
+    chevrons, fill-opacity 0.55 — pour bandes horizontales).
+  • 4 utilitaires décoratifs : `.kente-strip-top` (h-1, gradient forest
+    + kente overlay opacity 0.9), `.kente-strip-bottom` (h-1.5, gradient
+    premium + kente overlay opacity 0.6), `.kente-separator` (1px, gold
+    gradient 90deg transparent→gold→transparent, opacity 0.7),
+    `.kente-border-premium` (border-image gold→amber 135deg).
+- Vérifications :
+  • `wc -l` : 412 lignes (228 → 412, +184 lignes).
+  • Braces balance : 42 open / 42 close → équilibré OK.
+  • `url()` bien formés : 4/4 (bg-kente-pattern, bg-kente-strip,
+    kente-strip-top::after, kente-strip-bottom::after).
+  • `@media print` préservés : 4 (receipt-print l.176, bordereau-print
+    l.207, recu-print l.232, recap-print l.256) — aucun touché.
+  • `@theme inline` : 1, `@layer base` : 1 — intacts.
+  • Aucune référence à `indigo` ou `blue` (règle projet respectée).
+  • Max nesting depth : 2 (normal — `@media { .class { … } }`).
+  • Final depth : 0 — pas de bloc orphelin.
+
+Stage Summary:
+- `Frontend/src/app/globals.css` étendu : +184 lignes (228 → 412), 0 ligne
+  existante supprimée. Aucun @media print touché. Aucune var oklch ou
+  token Tailwind 4 existant modifié.
+- Tokens Forêt EdTech disponibles côté Tailwind 4 : `bg-forest`,
+  `bg-forest-deep`, `bg-emerald-fe`, `bg-amber-fe`, `bg-gold`,
+  `bg-gold-light`, `bg-gold-dark`, `bg-terracotta`,
+  `bg-terracotta-light`, `bg-terracotta-dark`, `bg-sand` (+ variants
+  text-/border-) via `@theme inline`.
+- 11 classes utilitaires prêtes à l'emploi : 5 glassmorphism
+  (`glass-mobile`/`-tablet`/`-desktop`/`-premium`/`-dark`), 1 responsive
+  unifiée (`glass-adaptive`), 2 motifs kente (`bg-kente-pattern`,
+  `bg-kente-strip`), 4 décoratifs (`kente-strip-top`,
+  `kente-strip-bottom`, `kente-separator`, `kente-border-premium`).
+- Thème Hybride respecté : `.glass-dark`/`.glass-premium` pour sidebar/
+  topbar/cards premium sombres ; `.glass-desktop` (blanc 85%) garantit
+  un contraste WCAG AA sur le contenu light.
+- Fichier modifié : `Frontend/src/app/globals.css` uniquement. Aucun
+  backend, DB, schema, ou .env touché. Pas de build/lint déclenché (dev
+  server éphémère cette session).
+- Prochaine étape : fe-1b (hooks `use-media-query`, `use-prefers-reduced-
+  motion` + `lib/animations.ts`), fe-1c (next-themes + fonts) — branches
+  parallèles, puis fe-2a (GlassCard/KentePattern primitives).
+
+---
+Task ID: fe-1b
+Agent: frontend-styling-expert
+Task: Phase 1b — Créer 3 fichiers pour le DS "Forêt EdTech" : hook
+`useMediaQuery` générique (+ presets `useIsMobile`/`useIsTablet`/`useIsDesktop`)
+dans `use-media-query.ts`, hook `usePrefersReducedMotion` dans
+`use-prefers-reduced-motion.ts`, et `lib/animations.ts` centralisant les
+variants Framer Motion du DS avec utilitaire `getMotion()` respectant
+`prefers-reduced-motion`. Sans modifier `use-mobile.ts` (compatibilité).
+
+Work Log:
+- Lu worklog (fin, sections fe-0 + fe-1a) : fe-1a a étendu `globals.css`
+  (+184 lignes, 11 couleurs Forêt EdTech, 11 classes utilitaires
+  glassmorphism/kente) sans toucher aux @media print ni aux tokens oklch
+  Tailwind 4 existants. fe-0 a posé l'arborescence DS et la palette
+  (forest #064E3B, emerald #047857, amber #F59E0B, gold #D4AF37,
+  terracotta #C2410C + 3 secondaires kente).
+- Lu `use-mobile.ts` (19 lignes) : hook shadcn legacy avec
+  `MOBILE_BREAKPOINT = 768`, `useState<boolean | undefined>(undefined)`,
+  useEffect écoutant `matchMedia("(max-width: 767px)")` via
+  `window.innerWidth < 768`, retour `!!isMobile`. Pas de `"use client"`.
+  Décision : NE PAS modifier ce fichier (règle projet), créer le nouveau
+  hook plus riche à côté.
+- Vérifié `package.json` : `"framer-motion": "^12.23.2"` présent.
+  Vérifié `node_modules/framer-motion/package.json` : v12.26.2 installée,
+  `types: dist/types/index.d.ts`.
+- Vérifié que `Variants` et `Transition` sont bien exportés depuis
+  `framer-motion` via un test tsc inline (`import type { Variants,
+  Transition } from "framer-motion"` → 0 erreur). Note : ces types ne
+  sont pas visibles par grep dans `dist/types/index.d.ts` car ré-exportés
+  via `motion-dom` mais l'export fonctionne.
+- Créé `Frontend/src/hooks/use-media-query.ts` (52 lignes) :
+  • `"use client"` directive.
+  • `useMediaQuery(query: string): boolean` — SSR-safe (`useState(false)`
+    initial), useEffect mount écoute `window.matchMedia(query)`,
+    appelle `onChange()` immédiatement pour synchro initiale, listener
+    `change` ajouté/supprimé proprement, cleanup au unmount. Dépendance
+    `[query]` pour se ré-abonner si la query change.
+  • `useIsMobile()` → `useMediaQuery("(max-width: 767px)")` —
+    sémantique identique à l'ancien `use-mobile.ts` (`innerWidth < 768`).
+  • `useIsTablet()` → `useMediaQuery("(min-width: 768px) and (max-width: 1023px)")`.
+  • `useIsDesktop()` → `useMediaQuery("(min-width: 1024px)")`.
+  • JSDoc sur chaque export (4 fonctions).
+- Créé `Frontend/src/hooks/use-prefers-reduced-motion.ts` (31 lignes) :
+  • `"use client"` directive.
+  • `usePrefersReducedMotion(): boolean` — SSR-safe (`useState(false)`),
+    écoute `matchMedia("(prefers-reduced-motion: reduce)")`, synchro
+    initiale + listener change + cleanup. Aucune dépendance (query
+    constante).
+  • JSDoc détaillé (rappelle l'usage combiné avec `getMotion()`).
+- Créé `Frontend/src/lib/animations.ts` (137 lignes) — pas de
+  `"use client"` (uniquement types et consts, donc side-effect-free et
+  SSR-compatible) :
+  • `import type { Variants, Transition } from "framer-motion"`.
+  • `pageTransition: Variants` — initial `{ opacity: 0, y: 20 }`,
+    animate `{ opacity: 1, y: 0 }`, exit `{ opacity: 0, y: -20 }`.
+  • `pageTransitionEase: Transition["ease"] = [0.22, 1, 0.36, 1]` —
+    cubic-bezier DS (sortie nette, entrée douce).
+  • `staggerContainer: Variants` — `{ animate: { transition: { staggerChildren: 0.08 } } }`.
+  • `staggerItem: Variants` — initial `{ opacity: 0, y: 16 }`, animate
+    `{ opacity: 1, y: 0 }` (transition héritée du parent).
+  • `cardHover` — `{ y: -2, transition: { duration: 0.2 } }` (jamais
+    > 4px selon DS).
+  • `buttonHover` — `{ scale: 1.02, transition: { duration: 0.2 } }`.
+  • `buttonTap` — `{ scale: 0.98 }`.
+  • `fadeInUp: Variants` — opacity 0→1, y 16→0, duration 0.4.
+  • `scaleIn: Variants` — opacity 0→1, scale 0.95→1, duration 0.3.
+  • `slideInLeft: Variants` — opacity 0→1, x -20→0, duration 0.4.
+  • `slideInRight: Variants` — opacity 0→1, x 20→0, duration 0.4.
+  • `getMotion(prefersReducedMotion: boolean)` — si `true` retourne un
+    objet avec tous les variants "désactivés" (initial `{}`, animate
+    `{ opacity: 1, y/x/scale: 0/1 }`, exit `{}`, hover/tap `{}`), sinon
+    retourne les variants complets. Typique :
+    `const m = getMotion(usePrefersReducedMotion())`.
+  • JSDoc sur chaque export (12 exports : 11 consts + 1 fonction).
+- Vérifications :
+  • `wc -l` : 52 + 31 + 137 = 220 lignes total pour les 3 fichiers.
+  • `git status --short` : 3 nouveaux fichiers `??` (use-media-query.ts,
+    use-prefers-reduced-motion.ts, animations.ts), AUCUN fichier
+    existant modifié par cette tâche (les `M src/app/globals.css` et
+    `M worklog.md` sont issus de fe-1a et de cet append respectivement).
+    `use-mobile.ts` INTACT (n'apparaît pas dans git status).
+  • `npx tsc --noEmit --skipLibCheck` sur les 3 fichiers isolés : 0
+    erreur. Sur le projet complet filtré sur nos 3 fichiers : 0 erreur
+    (pas de régression type).
+
+Stage Summary:
+- 3 fichiers créés (220 lignes total), 0 fichier existant modifié.
+  `use-mobile.ts` préservé intact (compat ascendante).
+- Hooks disponibles : `useMediaQuery(query)` générique + presets
+  `useIsMobile`/`useIsTablet`/`useIsDesktop` (matches les breakpoints
+  Tailwind md=768 / lg=1024) + `usePrefersReducedMotion` pour l'a11y.
+  Tous SSR-safe (init `false`, maj au mount, cleanup listener).
+- Variants Framer Motion centralisés dans `lib/animations.ts` :
+  `pageTransition` (+ `pageTransitionEase` cubic-bezier 0.22,1,0.36,1),
+  `staggerContainer`/`staggerItem` (cascade 0.08s), `cardHover` (y -2,
+  jamais > 4px), `buttonHover`/`buttonTap` (scale 1.02/0.98),
+  `fadeInUp`/`scaleIn`/`slideInLeft`/`slideInRight`. Utilitaire
+  `getMotion(reduced)` pour servir automatiquement des variants
+  "off" quand l'utilisateur préfère réduire les animations.
+- TypeScript strict respecté : `Variants` typés sur les variants nommés,
+  `Transition["ease"]` sur la courbe, exports nommés uniquement, JSDoc
+  sur les 16 exports (4 + 1 + 11 + 1).
+- Prochaine étape : fe-1c (next-themes + fonts) en parallèle, puis
+  fe-2a (primitives GlassCard/KentePattern qui consommeront ces
+  variants via `getMotion(usePrefersReducedMotion())`).
+
+---
+Task ID: fe-1c
+Agent: frontend-styling-expert
+Task: Phase 1c — Brancher next-themes (ThemeProvider sur `<html>` avec
+`attribute="class"`, `defaultTheme="light"`, `enableSystem={false}`,
+`disableTransitionOnChange`) en wrapper externe de QueryClientProvider dans
+`providers.tsx` ; charger Poppins (titres, `--font-display`) et Inter (corps,
+`--font-body`) via `next/font/google` dans `layout.tsx` (variables CSS
+seulement, pas de classe globale) ; ajouter tokens `--font-display`/`--font-body`
++ classes utilitaires `.font-display`/`.font-body` dans `globals.css`. Sans
+impacter landing/login (Geist reste la police par défaut via `--font-sans`).
+
+Work Log:
+- Lu worklog (fin, sections fe-0 + fe-1a + fe-1b) :
+  • fe-0 : cadrage DS "Forêt EdTech" — thème Hybride (sidebar/topbar dark
+    "Forêt" + contenu light + accents kente/gold), landing/login intacts.
+  • fe-1a : `globals.css` étendu (+184 lignes, 11 couleurs Forêt EdTech dans
+    `@theme inline` + `:root`, 11 classes utilitaires glassmorphism/kente).
+  • fe-1b : 3 fichiers créés (220 lignes) — `use-media-query.ts`,
+    `use-prefers-reduced-motion.ts`, `lib/animations.ts` (variants Framer
+    Motion + `getMotion(reduced)`).
+- Lu `providers.tsx` (43 lignes) : `QueryClientProvider` seul, `defaultOptions`
+  (staleTime 30s, retry 1, refetchOnWindowFocus false), `queryClient` via
+  `useState`. Pas de ThemeProvider.
+- Lu `layout.tsx` (71 lignes) : Geist + Geist_Mono via `next/font/google`,
+  `metadata` + `viewport` (themeColor #059669), `<html lang="fr"
+  suppressHydrationWarning>`, `<body>` avec classes `${geistSans.variable}
+  ${geistMono.variable} antialiased bg-background text-foreground`. Toaster +
+  Providers wrappent `{children}`.
+- Lu `globals.css` (413 lignes) : `@theme inline` existant définit déjà
+  `--font-sans: var(--font-geist-sans)` et `--font-mono: var(--font-geist-mono)`
+  (pattern Tailwind 4 + next/font). Pas de `--font-display`/`--font-body`.
+- Vérifié `package.json` : `"next-themes": "^0.4.6"` présent. Vérifié
+  `node_modules/next-themes/package.json` : v0.4.6 installée, peerDeps React
+  16-19 OK. `ThemeProvider` et `useTheme` exportés depuis `dist/index.d.ts`.
+- Vérifié usage préexistant de `next-themes` : `src/components/ui/sonner.tsx`
+  importait déjà `useTheme` (l.3) mais sans ThemeProvider wrappé → `theme`
+  aurait été `undefined`. L'ajout du ThemeProvider dans `providers.tsx` corrige
+  implicitement ce cas (effet de bord positif).
+
+- **Modifié `providers.tsx`** (43 → 57 lignes, +14) :
+  • Ajouté `import { ThemeProvider } from "next-themes";` (l.25).
+  • Wrappé `<QueryClientProvider>` avec `<ThemeProvider attribute="class"
+    defaultTheme="light" enableSystem={false} disableTransitionOnChange>`
+    (l.47-56). ThemeProvider est le wrapper externe (donc QueryClient peut
+    théoriquement consommer le thème si besoin via `useTheme` dans un hook
+    custom, et inversement le thème persiste même si QueryClientProvider
+    remount).
+  • Mis à jour le JSDoc d'en-tête (l.3-17) : décrit les 2 providers
+    (ThemeProvider + QueryClientProvider) et la rationale du thème `light`
+    par défaut (cohérent avec landing/login ; dark "Forêt" appliqué via
+    classes CSS dédiées sur le chrome, pas via next-themes).
+  • `defaultOptions` (staleTime 30s, retry 1, refetchOnWindowFocus false,
+    mutations retry 0) et `queryClient` via `useState` INTACTS.
+  • Note : la prop `clientClient={queryClient}` du brief était une typo —
+    j'ai conservé `client={queryClient}` (l'API correcte de
+    QueryClientProvider, qui était déjà en place). Aucune régression.
+
+- **Modifié `layout.tsx`** (71 → 90 lignes, +19) :
+  • Étendu l'import `next/font/google` : `import { Geist, Geist_Mono, Poppins,
+    Inter } from "next/font/google";` (l.2).
+  • Ajouté `const poppins = Poppins({ variable: "--font-display", subsets:
+    ["latin"], weight: ["500", "600", "700", "800"], display: "swap" });`
+    (l.22-27) — 4 poids pour titres (semi-bold à extra-bold), `display: swap`
+    pour éviter FOIT.
+  • Ajouté `const inter = Inter({ variable: "--font-body", subsets: ["latin"],
+    weight: ["400", "500", "600", "700"], display: "swap" });` (l.29-34) — 4
+    poids pour corps (regular à bold).
+  • Commentaire de rationale (l.17-21) : précise que les variables sont
+    injectées sur `<body>` mais ne s'appliquent que scoped via les classes
+    utilitaires `font-display`/`font-body` (Phase 3c), landing/login intacts.
+  • `<body className>` étendu (l.81) : ajouté `${poppins.variable}
+    ${inter.variable}` à côté de `${geistSans.variable} ${geistMono.variable}`.
+    Les 4 variables CSS sont présentes sur `<body>` mais seules `--font-geist-
+    sans` et `--font-geist-mono` sont consommées globalement (via `--font-sans`
+    et `--font-mono` dans `@theme inline`). `--font-display` et `--font-body`
+    ne s'activent que si un composant utilise la classe `.font-display` ou
+    `.font-body`.
+  • `metadata` (title, description, keywords, authors, manifest, appleWebApp,
+    icons) INTACTE.
+  • `viewport` (themeColor #059669, width, initialScale, maximumScale)
+    INTACT.
+  • `<html lang="fr" suppressHydrationWarning>` INTACT — `suppressHydration
+    Warning` est essentiel car next-themes modifie `class` sur `<html>` côté
+    client après hydration.
+  • `<Providers>` + `<Toaster>` INTACTS.
+
+- **Modifié `globals.css`** (413 → 434 lignes, +21) :
+  • Étendu `@theme inline` (l.11-16) : ajouté `--font-display:
+    var(--font-display, "Poppins", sans-serif);` et `--font-body:
+    var(--font-body, "Inter", sans-serif);`. Pattern Tailwind 4 + next/font :
+    la valeur est inlinée dans l'utilitaire généré, donc `.font-display` →
+    `font-family: var(--font-display, "Poppins", sans-serif)`. Le fallback
+    `"Poppins", sans-serif` protège le cas où next/font ne chargerait pas
+    (SSR dégradé). Le nom de token `--font-display` est volontairement le
+    même que la variable next/font : cascade naturelle depuis `<body>`.
+  • Ajouté en fin de fichier (l.420-434, +15 lignes) un bloc documenté
+    "Forêt EdTech — Polices DS" avec 2 classes utilitaires explicites :
+    `.font-display { font-family: var(--font-display); }` et `.font-body
+    { font-family: var(--font-body); }`. Ces classes sont unlayered (plus
+    haute priorité que les utilities Tailwind générées) et référencent la
+    même variable CSS → comportement identique au runtime. Elles serviront
+    de point d'application explicite pour les layouts dashboard (Phase 3c).
+  • Aucune ligne existante modifiée dans `@theme inline` ou ailleurs —
+    insertions pures.
+
+- Vérifications :
+  • `head -30 providers.tsx` : JSDoc + imports + début de `defaultOptions`
+    OK. ThemeProvider visible (l.25 import, l.48-56 usage).
+  • `head -35 layout.tsx` : imports `next/font/google` (Geist, Geist_Mono,
+    Poppins, Inter) OK. Consts `geistSans`, `geistMono`, `poppins`, `inter`
+    avec variables CSS `--font-geist-sans`, `--font-geist-mono`,
+    `--font-display`, `--font-body`. Commentaire de rationale présent.
+  • `rg "font-display|font-body" globals.css` : 8 matches dans 4 zones —
+    (1) commentaire `@theme inline` l.13, (2) tokens l.15-16, (3)
+    commentaire utilitaires l.422-423, (4) classes l.428-433. Aucun dans
+    `:root`, `.dark`, ou `@layer base` (pas de collision).
+  • `rg "font-display|font-body" src --glob "*.tsx"` : 0 match dans les
+    composants .tsx (uniquement dans layout.tsx en commentaires/strings).
+    → Aucun composant existant n'utilise ces classes, donc landing/login
+    et toutes vues dashboard actuelles restent strictement intacts.
+  • `rg "useTheme|next-themes" src` : 4 matches — providers.tsx (3, doc +
+    import), sonner.tsx (l.3 `import { useTheme } from "next-themes"` et
+    l.7 `const { theme = "system" } = useTheme()`). Le ThemeProvider
+    nouvellement ajouté valide rétroactivement l'usage de `useTheme` dans
+    sonner.tsx (auparavant `theme` aurait été `undefined`).
+  • `npx tsc --noEmit --skipLibCheck` : 0 erreur sur `providers.tsx`,
+    `layout.tsx`, `globals.css`. 15 erreurs préexistantes dans
+    `login-form.tsx` (8, framer-motion `Variants` typing), `view-impayes.tsx`
+    (2), `instrumentation.ts` (1), et 3 autres (1 chacune) — toutes
+    préexistantes, aucune introduite par cette tâche.
+  • `wc -l` : globals.css 413 → 434 (+21), layout.tsx 71 → 90 (+19),
+    providers.tsx 43 → 57 (+14). Total +54 lignes.
+  • `git status --short` : 3 fichiers `M` (globals.css, layout.tsx,
+    providers.tsx) + worklog.md. Les 3 fichiers fe-1b (`use-media-query.ts`,
+    `use-prefers-reduced-motion.ts`, `animations.ts`) restent `??` (non
+    concernés par cette tâche).
+
+Stage Summary:
+- 3 fichiers modifiés (+54 lignes total), 0 fichier créé, 0 ligne
+  existante supprimée. TypeScript strict respecté (0 régression).
+- next-themes branché : `ThemeProvider` wrappe `QueryClientProvider` dans
+  `providers.tsx`. Config : `attribute="class"` (ajoute `class="light"` ou
+  `class="dark"` sur `<html>`), `defaultTheme="light"` (cohérent landing/
+  login), `enableSystem={false}` (pas de suivi OS), `disableTransition
+  OnChange` (pas de flash). Persistance + sync inter-onglets automatiques.
+  Prépare le bascule future sans impacter le thème Hybride actuel (dark
+  "Forêt" appliqué via classes CSS dédiées sur sidebar/topbar, pas via
+  next-themes).
+- Polices DS chargées via `next/font/google` dans `layout.tsx` : Poppins
+  (poids 500/600/700/800 → `--font-display`) pour les titres, Inter (poids
+  400/500/600/700 → `--font-body`) pour le corps. `display: "swap"` anti-
+  FOIT. Variables CSS injectées sur `<body>` mais NON appliquées globalement
+  (pas de classe sur `<body>`).
+- Classes utilitaires `.font-display` et `.font-body` disponibles dans
+  `globals.css` (tokens `@theme inline` + classes explicites en bas de
+  fichier). Prêtes pour application scoped sur les layouts dashboard
+  (Phase 3c).
+- Landing (`/`) et login (`(auth)/*`) NON impactés : ils consomment
+  `--font-geist-sans` via le token `--font-sans` (inchangé), n'utilisent
+  jamais `.font-display`/`.font-body` (vérifié par grep), et le
+  `defaultTheme="light"` de next-themes ne change rien à leur rendu visuel
+  (la classe `light` était déjà implicitement absente — `<html>` n'avait
+  pas de classe `dark`).
+- Effet de bord positif : `sonner.tsx` (toaster sonore) appelait déjà
+  `useTheme()` sans ThemeProvider wrappé → `theme` aurait été `undefined`.
+  Désormais `useTheme()` retourne `"light"` correctement.
+- Fichiers modifiés : `Frontend/src/components/providers.tsx` (+14),
+  `Frontend/src/app/layout.tsx` (+19), `Frontend/src/app/globals.css`
+  (+21). Aucun backend, DB, schema, ou .env touché.
+- Prochaine étape : fe-2a (primitives DS `GlassCard` + `KentePattern` qui
+  consommeront les tokens glassmorphism/kente de fe-1a, les animations de
+  fe-1b via `getMotion(usePrefersReducedMotion())`, et pourront utiliser
+  `.font-display`/`.font-body` pour leur typographie).
