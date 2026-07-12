@@ -22,6 +22,8 @@ func NewEleveService() *EleveService { return &EleveService{} }
 type EleveFilter struct {
         Search         string // nom, prénoms ou matricule (recherche partielle)
         ClasseID       *uuid.UUID
+        CycleID        *uuid.UUID // filtre par cycle (via inscriptions → classes)
+        Niveau         *int       // filtre par niveau (via inscriptions → classes)
         Categorie      *models.CategorieEleve
         Statut         *models.StatutEleve
         EtablissementID *uuid.UUID
@@ -37,19 +39,23 @@ type EleveResult struct {
         PageSize int            `json:"page_size"`
 }
 
-// List retourne une liste paginée d'élèves selon les filtres.
-func (s *EleveService) List(filter EleveFilter) (*EleveResult, error) {
-        db := database.Current()
+// EleveStats contient des statistiques agrégées sur un ensemble d'élèves
+// (contextualisées aux filtres appliqués).
+type EleveStats struct {
+        Total       int64 `json:"total"`
+        Garcons    int64 `json:"garcons"`
+        Filles     int64 `json:"filles"`
+        Redoublants int64 `json:"redoublants"`
+}
 
-        if filter.Page < 1 {
-                filter.Page = 1
-        }
-        if filter.PageSize < 1 || filter.PageSize > 100 {
-                filter.PageSize = 20
-        }
-
-        q := db.Model(&models.Eleve{})
-
+// applyFilter applique tous les critères de filtrage sur une requête GORM
+// et retourne la requête modifiée. Utilisé par List, Export et Stats pour
+// garantir une logique de filtrage unique et cohérente.
+//
+// Les filtres ClasseID, CycleID et Niveau utilisent des sous-requêtes IN
+// (plutôt que des JOIN) pour éviter le double-comptage des redoublants
+// (un élève ayant deux inscriptions dans la même classe).
+func applyFilter(q *gorm.DB, filter EleveFilter) *gorm.DB {
         if filter.EtablissementID != nil {
                 q = q.Where("etablissement_id = ?", *filter.EtablissementID)
         }
@@ -68,11 +74,37 @@ func (s *EleveService) List(filter EleveFilter) (*EleveResult, error) {
                 q = q.Where("statut = ?", *filter.Statut)
         }
 
-        // Filtre par classe : nécessite une jointure sur la dernière inscription
+        // Filtre par classe : sous-requête sur inscriptions (évite les
+        // doublons liés aux redoublants qui ont plusieurs inscriptions).
         if filter.ClasseID != nil {
-                q = q.Joins("JOIN inscriptions ON inscriptions.eleve_id = eleves.id").
-                        Where("inscriptions.classe_id = ?", *filter.ClasseID)
+                q = q.Where("eleves.id IN (SELECT eleve_id FROM inscriptions WHERE classe_id = ?)", *filter.ClasseID)
         }
+
+        // Filtre par cycle : sous-requête inscriptions → classes.
+        if filter.CycleID != nil {
+                q = q.Where("eleves.id IN (SELECT i.eleve_id FROM inscriptions i JOIN classes c ON c.id = i.classe_id WHERE c.cycle_id = ?)", *filter.CycleID)
+        }
+
+        // Filtre par niveau : sous-requête inscriptions → classes.
+        if filter.Niveau != nil {
+                q = q.Where("eleves.id IN (SELECT i.eleve_id FROM inscriptions i JOIN classes c ON c.id = i.classe_id WHERE c.niveau = ?)", *filter.Niveau)
+        }
+
+        return q
+}
+
+// List retourne une liste paginée d'élèves selon les filtres.
+func (s *EleveService) List(filter EleveFilter) (*EleveResult, error) {
+        db := database.Current()
+
+        if filter.Page < 1 {
+                filter.Page = 1
+        }
+        if filter.PageSize < 1 || filter.PageSize > 100 {
+                filter.PageSize = 20
+        }
+
+        q := applyFilter(db.Model(&models.Eleve{}), filter)
 
         var total int64
         if err := q.Count(&total).Error; err != nil {
@@ -91,6 +123,64 @@ func (s *EleveService) List(filter EleveFilter) (*EleveResult, error) {
         }
 
         return &EleveResult{Data: eleves, Total: total, Page: filter.Page, PageSize: filter.PageSize}, nil
+}
+
+// Export retourne TOUS les élèves correspondant aux filtres (sans pagination).
+// Utilisé pour les exports PDF/Excel/CSV côté frontend. Inclut les relations
+// nécessaires (tuteur, inscriptions avec classe/cycle/année) pour un export
+// complet.
+func (s *EleveService) Export(filter EleveFilter) ([]models.Eleve, error) {
+        db := database.Current()
+
+        q := applyFilter(db.Model(&models.Eleve{}), filter)
+
+        var eleves []models.Eleve
+        if err := q.Preload("Etablissement").
+                Preload("Tuteur").
+                Preload("Inscriptions.Classe").
+                Preload("Inscriptions.Classe.Cycle").
+                Preload("Inscriptions.AnneeScolaire").
+                Order("nom ASC, prenoms ASC").
+                Find(&eleves).Error; err != nil {
+                return nil, err
+        }
+
+        return eleves, nil
+}
+
+// Stats retourne des statistiques agrégées sur les élèves correspondant aux
+// filtres : total, garçons/filles, redoublants. Utilisé pour les mini-stats
+// contextuelles affichées au-dessus de la liste.
+func (s *EleveService) Stats(filter EleveFilter) (*EleveStats, error) {
+        db := database.Current()
+
+        base := func() *gorm.DB {
+                return applyFilter(db.Model(&models.Eleve{}), filter)
+        }
+
+        var total int64
+        if err := base().Count(&total).Error; err != nil {
+                return nil, err
+        }
+
+        var garcons int64
+        if err := base().Where("sexe = ?", models.SexeM).Count(&garcons).Error; err != nil {
+                return nil, err
+        }
+
+        var filles int64
+        if err := base().Where("sexe = ?", models.SexeF).Count(&filles).Error; err != nil {
+                return nil, err
+        }
+
+        var redoublants int64
+        if err := base().
+                Where("eleves.id IN (SELECT eleve_id FROM inscriptions WHERE decision_promotion = ?)", models.DecisionRedoublant).
+                Count(&redoublants).Error; err != nil {
+                return nil, err
+        }
+
+        return &EleveStats{Total: total, Garcons: garcons, Filles: filles, Redoublants: redoublants}, nil
 }
 
 // Get retourne un élève par son ID, avec ses relations.

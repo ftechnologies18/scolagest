@@ -86,10 +86,20 @@ export interface ElevesListResponse {
 export interface ElevesQueryParams {
   search?: string;
   classe_id?: string;
+  cycle_id?: string;
+  niveau?: number;
   categorie?: CategorieEleve;
   statut?: StatutEleve;
   page?: number;
   page_size?: number;
+}
+
+/** Statistiques agrégées sur un ensemble d'élèves (contextualisées aux filtres). */
+export interface EleveStats {
+  total: number;
+  garcons: number;
+  filles: number;
+  redoublants: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

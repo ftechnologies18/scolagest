@@ -26,23 +26,41 @@ import {
   Users,
   UserPlus,
   AlertCircle,
+  Download,
+  FileText,
+  FileSpreadsheet,
+  File as FileIcon,
+  Loader2,
+  GraduationCap,
+  TrendingDown,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth-store";
 import {
   fetchEleves,
+  fetchElevesExport,
+  fetchElevesStats,
   fetchClasses,
+  fetchCycles,
   elevesKeys,
   classesKeys,
+  cyclesKeys,
 } from "@/lib/api-students";
 import type {
   CategorieEleve,
   Classe,
+  Cycle,
   Eleve,
+  EleveStats,
   ElevesQueryParams,
   StatutEleve,
 } from "@/lib/types";
+import {
+  exportElevesCSV,
+  exportElevesExcel,
+  exportElevesPDF,
+} from "@/lib/export-students";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +83,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers partagés (exportés pour réutilisation dans le détail / formulaire)
@@ -148,12 +174,15 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
   // État des filtres
   const [search, setSearch] = React.useState("");
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
+  const [cycleId, setCycleId] = React.useState<string>("all");
+  const [niveau, setNiveau] = React.useState<string>("all"); // string pour le Select, converti en number
   const [classeId, setClasseId] = React.useState<string>("all");
   const [categorie, setCategorie] = React.useState<CategorieEleve | "all">(
     "all",
   );
   const [statut, setStatut] = React.useState<StatutEleve | "all">("all");
   const [page, setPage] = React.useState(1);
+  const [exporting, setExporting] = React.useState(false);
 
   // Debounce de la recherche (300ms)
   React.useEffect(() => {
@@ -167,7 +196,18 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
   // Réinitialise la page quand un filtre change
   React.useEffect(() => {
     setPage(1);
-  }, [classeId, categorie, statut]);
+  }, [cycleId, niveau, classeId, categorie, statut]);
+
+  // Quand le cycle change, on réinitialise le niveau et la classe (cascade)
+  React.useEffect(() => {
+    setNiveau("all");
+    setClasseId("all");
+  }, [cycleId]);
+
+  // Quand le niveau change, on réinitialise la classe (cascade)
+  React.useEffect(() => {
+    setClasseId("all");
+  }, [niveau]);
 
   // L'établissement décide des catégories disponibles
   const appliqueCategorie = !!etablissement?.applique_categorie_affecte;
@@ -176,13 +216,15 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
   const queryParams: ElevesQueryParams = React.useMemo(
     () => ({
       search: debouncedSearch || undefined,
+      cycle_id: cycleId !== "all" ? cycleId : undefined,
+      niveau: niveau !== "all" ? Number(niveau) : undefined,
       classe_id: classeId !== "all" ? classeId : undefined,
       categorie: categorie !== "all" ? categorie : undefined,
       statut: statut !== "all" ? statut : undefined,
       page,
       page_size: PAGE_SIZE,
     }),
-    [debouncedSearch, classeId, categorie, statut, page],
+    [debouncedSearch, cycleId, niveau, classeId, categorie, statut, page],
   );
 
   const { data, isLoading, isError, error, isFetching } = useQuery({
@@ -197,6 +239,73 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
     queryFn: () => fetchClasses(etablissement?.id),
     enabled: !!etablissement,
   });
+
+  // Cycles du contexte (pour le filtre "cycle")
+  const { data: cycles } = useQuery<Cycle[]>({
+    queryKey: cyclesKeys.list(etablissement?.id),
+    queryFn: () => fetchCycles(etablissement?.id),
+    enabled: !!etablissement,
+  });
+
+  // Mini-stats contextuelles (total, garçons/filles, redoublants)
+  const { data: stats } = useQuery<EleveStats>({
+    queryKey: [...elevesKeys.lists(), "stats", queryParams],
+    queryFn: () => fetchElevesStats(queryParams),
+    enabled: !!etablissement,
+  });
+
+  // ─── Logique cascade : Cycle → Niveau → Classe ───────────────────────────
+  // Classes filtrées par cycle puis par niveau (dérivation côté client depuis
+  // la liste déjà chargée — aucun appel API supplémentaire).
+  const filteredClasses = React.useMemo(() => {
+    if (!classes) return [];
+    return classes.filter((c) => {
+      if (cycleId !== "all" && c.cycle_id !== cycleId) return false;
+      if (niveau !== "all" && c.niveau !== Number(niveau)) return false;
+      return true;
+    });
+  }, [classes, cycleId, niveau]);
+
+  // Niveaux distincts dérivés des classes du cycle sélectionné.
+  const availableNiveaux = React.useMemo(() => {
+    if (!classes) return [];
+    const filtered = cycleId !== "all"
+      ? classes.filter((c) => c.cycle_id === cycleId)
+      : classes;
+    const niveaux = [...new Set(filtered.map((c) => c.niveau))].sort(
+      (a, b) => a - b,
+    );
+    return niveaux;
+  }, [classes, cycleId]);
+
+  // Libellé de la classe sélectionnée (pour le nom de fichier d'export)
+  const selectedClasseLibelle = React.useMemo(() => {
+    if (classeId === "all") return undefined;
+    return classes?.find((c) => c.id === classeId)?.libelle;
+  }, [classes, classeId]);
+
+  // ─── Export (PDF / Excel / CSV) ──────────────────────────────────────────
+  const handleExport = React.useCallback(
+    async (format: "pdf" | "xlsx" | "csv") => {
+      setExporting(true);
+      try {
+        const allEleves = await fetchElevesExport(queryParams);
+        if (allEleves.length === 0) return;
+        const ctx = {
+          etablissement,
+          classeLibelle: selectedClasseLibelle,
+        };
+        if (format === "pdf") exportElevesPDF(allEleves, ctx);
+        else if (format === "xlsx") exportElevesExcel(allEleves, ctx);
+        else exportElevesCSV(allEleves, ctx);
+      } catch {
+        // silencieux : l'erreur réseau est déjà gérée par le toast du client API
+      } finally {
+        setExporting(false);
+      }
+    },
+    [queryParams, etablissement, selectedClasseLibelle],
+  );
 
   const eleves = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -240,9 +349,10 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
         appliqueCategorie={appliqueCategorie}
       />
 
-      {/* Barre de filtres */}
+      {/* Barre de filtres + mini-stats + export */}
       <Card>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
+          {/* Ligne 1 : recherche + export */}
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -254,77 +364,169 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
                 aria-label="Rechercher un élève"
               />
             </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <Select value={classeId} onValueChange={(v) => setClasseId(v)}>
-                <SelectTrigger className="w-full sm:w-44">
-                  <SelectValue placeholder="Toutes classes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Toutes classes</SelectItem>
-                  {classes?.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.libelle}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={categorie}
-                onValueChange={(v) =>
-                  setCategorie(v as CategorieEleve | "all")
-                }
-                disabled={!appliqueCategorie}
-              >
-                <SelectTrigger className="w-full sm:w-44">
-                  <SelectValue
-                    placeholder={
-                      appliqueCategorie
-                        ? "Toutes catégories"
-                        : "Non applicable"
-                    }
-                  />
-                </SelectTrigger>
-                {appliqueCategorie ? (
-                  <SelectContent>
-                    <SelectItem value="all">Toutes catégories</SelectItem>
-                    <SelectItem value="AFFECTE">Affecté</SelectItem>
-                    <SelectItem value="NON_AFFECTE">Non affecté</SelectItem>
-                  </SelectContent>
-                ) : (
-                  <SelectContent>
-                    <SelectItem value="NON_APPLICABLE">
-                      Non applicable
-                    </SelectItem>
-                  </SelectContent>
-                )}
-              </Select>
-
-              <Select
-                value={statut}
-                onValueChange={(v) => setStatut(v as StatutEleve | "all")}
-              >
-                <SelectTrigger className="w-full sm:w-44">
-                  <SelectValue placeholder="Tous statuts" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous statuts</SelectItem>
-                  <SelectItem value="ACTIF">Actif</SelectItem>
-                  <SelectItem value="INACTIF">Inactif</SelectItem>
-                  <SelectItem value="TRANSFERE">Transféré</SelectItem>
-                  <SelectItem value="DIPLOME">Diplômé</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Menu export */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={exporting || total === 0}
+                  className="shrink-0"
+                >
+                  {exporting ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Download className="size-4" />
+                  )}
+                  Télécharger
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Format d&apos;export</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                  <FileText className="size-4 text-rose-600" />
+                  PDF (liste officielle)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("xlsx")}>
+                  <FileSpreadsheet className="size-4 text-emerald-600" />
+                  Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("csv")}>
+                  <FileIcon className="size-4 text-amber-600" />
+                  CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          {(debouncedSearch ||
-            classeId !== "all" ||
-            categorie !== "all" ||
-            statut !== "all") && (
-            <p className="text-xs text-muted-foreground">
-              {total} élève{total > 1 ? "s" : ""} trouvé{total > 1 ? "s" : ""}
-              {isFetching && !isLoading ? " · mise à jour…" : ""}
-            </p>
+
+          {/* Ligne 2 : filtres en cascade Cycle → Niveau → Classe + catégorie + statut */}
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {/* Cycle */}
+            <Select value={cycleId} onValueChange={setCycleId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Tous cycles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous cycles</SelectItem>
+                {cycles?.map((cy) => (
+                  <SelectItem key={cy.id} value={cy.id}>
+                    {cy.libelle}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Niveau (dépend du cycle) */}
+            <Select value={niveau} onValueChange={setNiveau}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Tous niveaux" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous niveaux</SelectItem>
+                {availableNiveaux.map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    Niveau {n}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Classe (dépend du cycle + niveau) */}
+            <Select value={classeId} onValueChange={setClasseId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Toutes classes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes classes</SelectItem>
+                {filteredClasses.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.libelle}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Catégorie */}
+            <Select
+              value={categorie}
+              onValueChange={(v) =>
+                setCategorie(v as CategorieEleve | "all")
+              }
+              disabled={!appliqueCategorie}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue
+                  placeholder={
+                    appliqueCategorie
+                      ? "Toutes catégories"
+                      : "Non applicable"
+                  }
+                />
+              </SelectTrigger>
+              {appliqueCategorie ? (
+                <SelectContent>
+                  <SelectItem value="all">Toutes catégories</SelectItem>
+                  <SelectItem value="AFFECTE">Affecté</SelectItem>
+                  <SelectItem value="NON_AFFECTE">Non affecté</SelectItem>
+                </SelectContent>
+              ) : (
+                <SelectContent>
+                  <SelectItem value="NON_APPLICABLE">
+                    Non applicable
+                  </SelectItem>
+                </SelectContent>
+              )}
+            </Select>
+
+            {/* Statut */}
+            <Select
+              value={statut}
+              onValueChange={(v) => setStatut(v as StatutEleve | "all")}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Tous statuts" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous statuts</SelectItem>
+                <SelectItem value="ACTIF">Actif</SelectItem>
+                <SelectItem value="INACTIF">Inactif</SelectItem>
+                <SelectItem value="TRANSFERE">Transféré</SelectItem>
+                <SelectItem value="DIPLOME">Diplômé</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Mini-stats contextuelles */}
+          {stats && stats.total > 0 && (
+            <div className="flex flex-wrap items-center gap-4 rounded-lg border bg-muted/30 px-4 py-2.5 text-sm">
+              <span className="flex items-center gap-1.5 font-medium">
+                <Users className="size-4 text-emerald-600" />
+                {stats.total} élève{stats.total > 1 ? "s" : ""}
+              </span>
+              <span className="text-muted-foreground">·</span>
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <GraduationCap className="size-4 text-blue-600" />
+                {stats.garcons} G
+                <span className="text-muted-foreground/60">/</span>
+                <span className="text-pink-600">{stats.filles} F</span>
+              </span>
+              {stats.redoublants > 0 && (
+                <>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="flex items-center gap-1.5 text-amber-600">
+                    <TrendingDown className="size-4" />
+                    {stats.redoublants} redoublant
+                    {stats.redoublants > 1 ? "s" : ""}
+                  </span>
+                </>
+              )}
+              {isFetching && !isLoading && (
+                <span className="ml-auto text-xs text-muted-foreground">
+                  mise à jour…
+                </span>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>

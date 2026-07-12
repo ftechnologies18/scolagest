@@ -22,6 +22,7 @@ import type {
   Cycle,
   Eleve,
   EleveDTO,
+  EleveStats,
   ElevesListResponse,
   ElevesQueryParams,
   Inscription,
@@ -83,6 +84,8 @@ function buildElevesQuery(params: ElevesQueryParams = {}): string {
   const {
     search,
     classe_id,
+    cycle_id,
+    niveau,
     categorie,
     statut,
     page = 1,
@@ -91,6 +94,8 @@ function buildElevesQuery(params: ElevesQueryParams = {}): string {
   const qs = new URLSearchParams();
   if (search) qs.set("search", search);
   if (classe_id) qs.set("classe_id", classe_id);
+  if (cycle_id) qs.set("cycle_id", cycle_id);
+  if (niveau !== undefined) qs.set("niveau", String(niveau));
   if (categorie) qs.set("categorie", categorie);
   if (statut) qs.set("statut", statut);
   qs.set("page", String(page));
@@ -106,6 +111,24 @@ export function fetchEleves(
   params: ElevesQueryParams = {},
 ): Promise<ElevesListResponse> {
   return apiGet<ElevesListResponse>(`/api/eleves?${buildElevesQuery(params)}`);
+}
+
+/** Exporte TOUS les élèves correspondant aux filtres (sans pagination). */
+export function fetchElevesExport(
+  params: ElevesQueryParams = {},
+): Promise<Eleve[]> {
+  // On retire page/page_size (non pertinents pour l'export)
+  const { page: _page, page_size: _ps, ...exportParams } = params;
+  return apiGet<Eleve[]>(`/api/eleves/export?${buildElevesQuery(exportParams)}`);
+}
+
+/** Statistiques agrégées (total, garçons/filles, redoublants) sur les élèves
+ * correspondant aux filtres. */
+export function fetchElevesStats(
+  params: ElevesQueryParams = {},
+): Promise<EleveStats> {
+  const { page: _page, page_size: _ps, ...statsParams } = params;
+  return apiGet<EleveStats>(`/api/eleves/stats?${buildElevesQuery(statsParams)}`);
 }
 
 export function fetchEleve(id: string): Promise<Eleve> {

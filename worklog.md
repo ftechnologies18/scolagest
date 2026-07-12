@@ -2344,3 +2344,45 @@ Stage Summary:
 - Caisse = CAISSIER + COMPTABLE ; Mobile Money = CAISSIER seul.
 - La route /api/eleves/:id/paiements (lecture) reste accessible à tout le personnel (consultation des paiements d'un élève ≠ encaissement).
 - 7 fichiers modifiés (4 frontend, 3 backend). Aucun changement DB/schema Neon (RequireRole est du middleware, pas de migration).
+
+---
+Task ID: phase1-eleves-filtres-exports
+Agent: Z.ai Code (tuteur principal)
+Task: Phase 1 — Module Élèves amélioré : filtres cascade (Cycle/Niveau/Classe) + export PDF/Excel/CSV + mini-stats.
+
+Work Log:
+- Backend (Go) — 2 fichiers modifiés :
+  - services/eleve_service.go :
+    - EleveFilter : ajout CycleID *uuid.UUID et Niveau *int
+    - Refactor : extraction de applyFilter(q, filter) helper (logique de filtrage unique partagée par List/Export/Stats)
+    - Les filtres ClasseID/CycleID/Niveau utilisent désormais des sous-requêtes IN (SELECT...) au lieu de JOIN → évite le double-comptage des redoublants (un élève ayant 2 inscriptions dans la même classe n'est plus compté 2×). Amélioration latente.
+    - Nouvelle méthode Export(filter) → []Eleve : retourne TOUS les élèves sans pagination, avec Preload Inscriptions.Classe.Cycle + AnneeScolaire (pour export complet)
+    - Nouvelle méthode Stats(filter) → *EleveStats {Total, Garcons, Filles, Redoublants} : 4 COUNT agrégés contextualisés aux filtres
+    - Nouveau type EleveStats (struct JSON)
+  - handlers/eleve.go :
+    - List : parse cycle_id et niveau (query params)
+    - Nouveau handler Export : GET /api/eleves/export (mêmes filtres, sans pagination)
+    - Nouveau handler Stats : GET /api/eleves/stats (agrégats)
+    - Routes : /export et /stats enregistrées AVANT /:id (Gin : routes statiques prioritaires)
+- Frontend (TS/React) — 4 fichiers modifiés + 1 créé :
+  - Dépendances : bun add xlsx jspdf jspdf-autotable (génération côté client)
+  - lib/types.ts : ElevesQueryParams + cycle_id/niveau ; nouveau type EleveStats
+  - lib/api-students.ts : buildElevesQuery + cycle_id/niveau ; fetchElevesExport + fetchElevesStats
+  - lib/export-students.ts (NOUVEAU) : exportElevesCSV (Blob UTF-8 BOM), exportElevesExcel (SheetJS, largeurs colonnes), exportElevesPDF (jsPDF + autoTable, en-tête établissement, pied de page, pagination). Colonnes : N°, Identifiant, Matricule, Nom, Sexe, Date/Lieu naiss., Classe, Tuteur, Téléphone, Statut.
+  - components/eleves/eleves-list.tsx :
+    - État : cycleId, niveau, exporting (en plus de classeId/categorie/statut/search)
+    - Cascade : useEffect réinitialise niveau+classe quand cycle change ; réinitialise classe quand niveau change
+    - Queries : fetchCycles (existant), fetchElevesStats (nouveau)
+    - Logique cascade côté client : filteredClasses (cycle+niveau), availableNiveaux (distinct du cycle), selectedClasseLibelle (pour nom fichier export)
+    - handleExport(format) : fetchElevesExport → génération fichier côté client
+    - UI : barre de filtres refondue (5 selects en grille responsive : Cycle/Niveau/Classe/Catégorie/Statut), menu DropdownMenu « Télécharger » (PDF/Excel/CSV), mini-stats contextuelles (total, G/F, redoublants)
+- Qualité :
+  - Frontend : bun run lint → 0 erreur ✓ ; bunx tsc --noEmit → 0 erreur sur les fichiers modifiés ✓ (15 erreurs pré-existantes Framer Motion, inchangées)
+  - Backend : go non disponible dans le sandbox → validation reportée au build Render. Cohérence vérifiée : applyFilter helper, imports models/middleware/uuid/strconv présents, routes ordre correct.
+- Commit + push vers main → déclenche Vercel (frontend) ET Render (backend, backend/** modifié).
+
+Stage Summary:
+- Phase 1 livrée : filtres en cascade Cycle → Niveau → Classe + export 3 formats (PDF/Excel/CSV) + mini-stats contextuelles.
+- Backend : 2 nouvelles routes (/api/eleves/export, /api/eleves/stats) + filtres cycle_id/niveau sur /api/eleves. Sous-requêtes IN au lieu de JOIN (fix latent double-comptage redoublants).
+- Frontend : barre de filtres refondue (5 selects cascade), menu « Télécharger » (PDF officiel / Excel / CSV), bandeau mini-stats (total, genre, redoublants). Génération fichiers 100% côté client (xlsx/jspdf).
+- 7 fichiers (4 frontend modifiés + 1 créé, 2 backend modifiés) + 3 deps installées. Aucun changement schema Neon (RequireRole/filtres = middleware/query, pas de migration).
