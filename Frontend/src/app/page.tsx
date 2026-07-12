@@ -592,13 +592,13 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-12 border-t border-gray-100 pt-8 flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <p className="text-sm text-gray-400">
-              2026 ScolaGest Freelance Technologies Côte d&apos;Ivoire © Tous droits réservés
+            <p className="text-center text-[10px] leading-relaxed text-gray-400 sm:text-xs">
+              © 2026 ScolaGest. Développé par Freelance Technologies Côte d&apos;Ivoire. Tous droits réservés.
             </p>
-            <div className="flex gap-6">
-              <a href="#" className="text-sm text-gray-400 hover:text-emerald-600">Mentions légales</a>
-              <a href="#" className="text-sm text-gray-400 hover:text-emerald-600">Confidentialité</a>
-              <a href="#" className="text-sm text-gray-400 hover:text-emerald-600">CGU</a>
+            <div className="flex gap-4 sm:gap-6">
+              <a href="#" className="text-xs text-gray-400 hover:text-emerald-600 sm:text-sm">Mentions légales</a>
+              <a href="#" className="text-xs text-gray-400 hover:text-emerald-600 sm:text-sm">Confidentialité</a>
+              <a href="#" className="text-xs text-gray-400 hover:text-emerald-600 sm:text-sm">CGU</a>
             </div>
           </div>
         </div>

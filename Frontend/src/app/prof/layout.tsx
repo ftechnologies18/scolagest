@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/auth-store";
 import { useAuthBootstrap } from "@/hooks/use-auth-bootstrap";
 import { KentePattern } from "@/components/ds/kente-pattern";
+import { Footer } from "@/components/ds/footer";
 
 export default function ProfLayout({
   children,
@@ -166,11 +167,7 @@ export default function ProfLayout({
         {children}
       </main>
 
-      <footer className="mt-auto border-t bg-muted/30">
-        <div className="mx-auto w-full max-w-3xl px-4 py-4 text-center text-xs text-muted-foreground sm:px-6">
-          2026 ScolaGest Freelance Technologies Côte d&apos;Ivoire © Tous droits réservés
-        </div>
-      </footer>
+      <Footer className="mt-auto" />
     </div>
   );
 }

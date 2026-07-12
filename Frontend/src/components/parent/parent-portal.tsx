@@ -49,6 +49,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { GlassCard } from "@/components/ds/glass-card";
 import { KentePattern } from "@/components/ds/kente-pattern";
 import { ProgressCircle } from "@/components/ds/progress-circle";
+import { Footer } from "@/components/ds/footer";
 import {
   Select,
   SelectContent,
@@ -619,11 +620,12 @@ export function ParentPortal() {
           <KentePattern variant="separator" className="my-6" />
 
           <div className="flex flex-col items-center justify-between gap-2 text-[11px] text-muted-foreground sm:flex-row">
-            <p>2026 ScolaGest Freelance Technologies Côte d&apos;Ivoire © Tous droits réservés</p>
             <p>Document non contractuel. En cas de litige, le registre de caisse fait foi.</p>
           </div>
         </div>
       </footer>
+
+      <Footer />
 
       {/* Dialogues */}
       <EnfantDetailDialog

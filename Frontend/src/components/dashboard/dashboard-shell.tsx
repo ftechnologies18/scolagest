@@ -92,6 +92,7 @@ import { fetchCountSoumises } from "@/lib/api-pre-inscription";
 import { fetchFileAttente } from "@/lib/api-caisse";
 import { useToast } from "@/hooks/use-toast";
 import { KentePattern } from "@/components/ds/kente-pattern";
+import { Footer } from "@/components/ds/footer";
 
 /** Item de navigation pour la coquille — un `href` App Router (URL réelle). */
 export interface NavItem {
@@ -1019,11 +1020,7 @@ export function DashboardShell({
 
             {/* Pied de page */}
             <KentePattern variant="strip" position="top" />
-            <footer className="mt-auto border-t border-white/10 bg-forest text-emerald-100/80">
-              <div className="mx-auto flex max-w-7xl items-center justify-center px-4 py-4 text-xs text-emerald-100/80 sm:px-6">
-                <p>2026 ScolaGest Freelance Technologies Côte d&apos;Ivoire © Tous droits réservés</p>
-              </div>
-            </footer>
+            <Footer variant="dark" />
           </main>
         </div>
       </div>

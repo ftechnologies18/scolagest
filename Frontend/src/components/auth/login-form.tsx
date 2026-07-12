@@ -452,8 +452,8 @@ export function LoginForm({ onBack }: { onBack?: () => void }) {
             </Collapsible>
           </motion.div>
 
-          <p className="mt-6 text-center text-[11px] text-gray-400">
-            2026 ScolaGest Freelance Technologies Côte d&apos;Ivoire © Tous droits réservés
+          <p className="mt-6 text-center text-[10px] leading-relaxed text-gray-400 sm:text-[11px]">
+            © 2026 ScolaGest. Développé par Freelance Technologies Côte d&apos;Ivoire. Tous droits réservés.
           </p>
         </motion.div>
       </div>
