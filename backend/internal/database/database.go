@@ -117,6 +117,8 @@ func migrate(db *gorm.DB) error {
                 &models.SaaPlan{},
                 &models.SaaSubscription{},
                 &models.SaaInvoice{},
+                // Pré-inscription en ligne (Phase 3)
+                &models.PreInscription{},
         }
 
         return db.AutoMigrate(modelsList...)

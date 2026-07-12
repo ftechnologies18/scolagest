@@ -48,6 +48,9 @@ import {
   LifeBuoy,
   ScrollText,
   CreditCard,
+  BarChart3,
+  ArrowRight,
+  MailOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -146,6 +149,15 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         icon: FileBarChart,
         roles: ["CAISSIER", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "COMPTABLE", "SECRETARIAT"],
       },
+      {
+        // Pré-inscriptions en ligne : demandes soumises par les parents via
+        // le formulaire public /pre-inscription. Le secrétariat et la
+        // direction valident ou rejettent chaque demande.
+        href: "/pre-inscriptions",
+        label: "Pré-inscriptions",
+        icon: MailOpen,
+        roles: ["SECRETARIAT", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
+      },
     ],
   },
   {
@@ -167,6 +179,22 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/utilisateurs",
         label: "Utilisateurs",
         icon: UserCog,
+        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
+      },
+      {
+        // Effectifs : tableau de bord de remplissage des classes (Phase 3,
+        // Innovation 1). Réservé à la direction et aux directeurs (pilotage).
+        href: "/effectifs",
+        label: "Effectifs",
+        icon: BarChart3,
+        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
+      },
+      {
+        // Passage de classe en masse : opération de fin d'année (Phase 3,
+        // Innovation 2). Réservé à la direction et aux directeurs.
+        href: "/passage-masse",
+        label: "Passage de classe",
+        icon: ArrowRight,
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
     ],

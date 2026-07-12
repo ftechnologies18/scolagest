@@ -2418,3 +2418,122 @@ Stage Summary:
 - Frontend : 6 nouveaux fichiers (1 page + 5 composants wizard) + 3 modifiés (sidebar + types). Animations Framer Motion, validations par étape, vue succès avec fiche élève.
 - RBAC : SECRETARIAT + DIRECTION + DIRECTEUR_* (caissier/comptable exclus — ils gèrent la caisse, pas les inscriptions).
 - 10 fichiers (6 créés + 4 modifiés frontend, 3 créés + 1 modifié backend). Aucun changement DB Neon.
+
+---
+Task ID: phase3-innovation1-effectifs-frontend
+Agent: full-stack-developer
+Task: Frontend de l'Innovation 1 (Phase 3) — page « Effectifs » : tableau de bord de remplissage des classes (KPIs + tableau détaillé + carte thermique). Backend déjà livré (GET /api/effectifs).
+
+Work Log:
+- Contexte relu : backend Go expose GET /api/effectifs?annee_scolaire_id=<uuid?> → { kpis: {total_eleves, total_classes, garcons, filles, redoublants, taux_remplissage_global, classes_pleines}, classes: [{classe_id, classe_libelle, cycle_libelle, niveau, effectif, effectif_max, quota_etablissement, taux_remplissage, garcons, filles, redoublants, est_classe_examen}] }. Filtre par l'établissement de la session (middleware.CurrentEtablissementID).
+- Fichiers créés (3) :
+  - Frontend/src/lib/api-effectifs.ts (NOUVEAU) : types EffectifClasse, EffectifsKPIs, EffectifsResult (reflètent exactement le JSON Go). fetchEffectifs(anneeId?) → apiGet<EffectifsResult>("/api/effectifs" + query optionnelle). effectifsKeys = { all, detail(anneeId?) } pour React Query.
+  - Frontend/src/app/(staff)/effectifs/page.tsx (NOUVEAU) : "use client" + RoleGuard allow=[DIRECTION, DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR] → rend <EffectifsDashboard />.
+  - Frontend/src/components/effectifs/effectifs-dashboard.tsx (NOUVEAU) : composant principal.
+    • KPIs en tête (4 cartes) : Total élèves (Users, emerald), Garçons/Filles (GraduationCap, amber, affichage G/F avec code couleur emerald/rose), Redoublants (TrendingDown, rose), Taux de remplissage (BarChart3, slate). Chaque carte a un hint contextuel (nb classes pleines, % G/F, % redoublants, légende moyenne pondérée).
+    • Tableau détaillé par classe (shadcn Table) : colonnes Classe (libellé + niveau + badge "Examen" si est_classe_examen), Cycle, Effectif (X / max), Remplissage (barre de progression custom + badge taux), Genre (badges G·X / F·Y colorés emerald/rose), Redoublants (chiffre en rose si > 0).
+    • Carte thermique : grille responsive (2 cols mobile → 6 cols lg) où chaque classe est une tuile colorée vert/amber/rose selon taux (vert <70%, amber 70-90%, rose >90%+pleine), avec l'effectif en grand, le taux, et une ligne G/F/Red. Badge "Pleine" si effectif >= max. Légende en haut de section.
+    • Barre de progression custom (RemplissageBar) : div avec track coloré + indicateur coloré, role="progressbar" + ARIA valuemin/max/now. Contourne la limitation du composant Progress shadcn (indicator bg-primary non surchargeable sans wrapper).
+    • États : pas d'établissement (carte amber "Sélectionnez un établissement", UX identique à eleves-list.tsx), chargement (skeleton KPIs + sections), erreur (carte rose avec message), vide (carte "Aucune classe configurée").
+    • Couleurs : emerald / amber / rose / slate uniquement — jamais indigo ni bleu (conforme aux conventions).
+    • Responsive mobile-first : KPIs 1→2→4 cols, heatmap 2→3→4→6 cols, table avec overflow-x-auto.
+    • useAuthStore pour etablissement, useQuery avec effectifsKeys.detail() et enabled: !!etablissement.
+- Fichiers modifiés (4) :
+  - Frontend/src/components/dashboard/dashboard-shell.tsx : ajout BarChart3 à l'import lucide-react existant ; ajout entrée nav { href: "/effectifs", label: "Effectifs", icon: BarChart3, roles: [DIRECTION, DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR] } dans STAFF_NAV_GROUPS groupe "Configuration", après "Utilisateurs".
+  - Frontend/src/components/dashboard/dashboard-layout.tsx (legacy, cohérence) : ajout BarChart3 à l'import ; ajout entrée nav { id: "effectifs", label: "Effectifs", icon: BarChart3, roles: [...] } dans STAFF_NAV_GROUPS groupe "Configuration", après "utilisateurs". Pas de case activeView (legacy non utilisé en production — pattern identique à l'entrée "inscription" ajoutée en Phase 2).
+  - Frontend/src/components/dashboard/dashboard-home.tsx : ajout "effectifs" au type DashboardViewId (entre "utilisateurs" et "comptabilite").
+  - Frontend/src/app/(staff)/dashboard/page.tsx : ajout effectifs: "/effectifs" au mapping VIEW_TO_PATH.
+- RBAC : DIRECTION + DIRECTEUR_ETUDES + DIRECTEUR_SUPERVISEUR (pilotage établissement). Caissier, comptable et secrétariat exclus — ils gèrent respectivement la caisse, la comptabilité et l'accueil, pas le pilotage du remplissage.
+- Qualité :
+  - cd Frontend && bun run lint → 0 erreur, 3 warnings (tous dans step-scolarite.tsx — pré-existants, hors périmètre) ✓
+  - cd Frontend && bunx tsc --noEmit → 0 erreur sur mes fichiers (api-effectifs.ts, effectifs/page.tsx, effectifs-dashboard.tsx, dashboard-shell.tsx, dashboard-layout.tsx, dashboard-home.tsx, dashboard/page.tsx) ✓. 15 erreurs pré-existantes (login-form.tsx ×8 Framer Motion Variants, view-impayes.tsx ×2 toast, view-parametres/utilisateur-form-dialog ×2 Record<RoleGlobal>, view-utilisateurs ×1, etablissement-form-dialog ×1, instrumentation ×1) — inchangées, conformes au baseline documenté.
+- Aucun changement backend (déjà livré), DB, schema Neon, ou .env.
+
+Stage Summary:
+- Innovation 1 (Effectifs) frontend livré : page /effectifs avec tableau de bord complet (KPIs globaux + tableau détaillé par classe + carte thermique visuelle), accessible à la direction et aux directeurs.
+- 3 fichiers créés (1 client API + 1 page + 1 composant) + 4 fichiers modifiés (2 sidebars nav + 2 mappings de vue). Pattern identique aux phases précédentes (Phase 2 inscription) pour la cohérence sidebar/types.
+- Couleurs sémantiques (vert/amber/rose) pour le taux de remplissage, responsive mobile-first, états loading/error/empty/no-etablissement gérés. Aucune indigo/bleu.
+- 0 erreur lint, 0 erreur tsc sur les fichiers du périmètre. 15 erreurs pré-existantes inchangées.
+
+---
+Task ID: phase3-innovation2-passage-masse-frontend
+Agent: full-stack-developer
+Task: Frontend de l'Innovation 2 (Phase 3) — page « Passage de classe en masse » : opération de fin d'année, aperçu éditable par élève + validation en une passe. Backend déjà livré (POST /api/annees-scolaires/preview et /promote).
+
+Work Log:
+- Contexte relu : backend Go expose déjà POST /api/annees-scolaires/preview (body {ancienne_annee_id} → [{eleve_id, eleve_nom, eleve_prenoms, classe_actuelle, classe_suivante, est_diplome, decision}], decision="PROMU" par défaut) et POST /api/annees-scolaires/promote (body {ancienne_annee_id, nouvelle_annee_id, decisions:[{eleve_id, decision}]} → {promus, diplomes, redoublants, non_reinscrits, skipped, erreurs}). Années scolaires chargées via fetchAnneesScolaires/fetchActiveAnnee existants dans @/lib/api-students.
+- Fichiers créés (3) :
+  - Frontend/src/lib/api-passage-masse.ts (NOUVEAU) : types DecisionPassage ("PROMU"|"REDOUBLANT"|"NON_REINSCRIT"), PreviewEleve, EleveDecision, PromoteResult. fetchPreview(ancienneAnneeId) → apiPost<PreviewEleve[]>("/api/annees-scolaires/preview", {ancienne_annee_id}). submitPromote(ancienneAnneeId, nouvelleAnneeId, decisions) → apiPost<PromoteResult>("/api/annees-scolaires/promote", {ancienne_annee_id, nouvelle_annee_id, decisions}). Réutilise apiPost de @/lib/api-client (JWT + ?XTransformPort=8080 automatiques).
+  - Frontend/src/app/(staff)/passage-masse/page.tsx (NOUVEAU) : "use client" + RoleGuard allow=[DIRECTION, DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR] → rend <PassageMasseDashboard />.
+  - Frontend/src/components/passage-masse/passage-masse-dashboard.tsx (NOUVEAU) : composant principal.
+    • En-tête : titre "Passage de classe en masse" + description.
+    • Carte de sélection : 2 Select (année source présélectionnée = année active via useEffect sur fetchActiveAnnee ; année cible auto-présélectionnée = année suivante dans la liste, ajustable). Badge "Active" sur l'année est_active. Alerte amber si source === cible. Bouton "Générer l'aperçu" (icône RefreshCw) avec loader Loader2.
+    • Résumé temps réel (4 KPI cards) : Promus (ArrowRight, emerald), Redoublants (RotateCw, amber), Non réinscrits (UserX, rose), Diplômés (Trophy, violet). Compteurs dérivés (useMemo) du preview + de la map de décisions éditables.
+    • Carte d'actions rapides : "Tous promus" (Check, bordure emerald) + "Tous redoublants" (RotateCw, bordure amber). Bouton "Valider le passage" (GraduationCap, bg-emerald-600) — disabled si pas d'aperçu, pas de cible, ou source===cible. S'applique uniquement aux non-diplômés (les diplômés conservent leur statut non éditable).
+    • Tableau d'aperçu (shadcn Table, responsive overflow-x-auto) : une ligne par élève triée par classe_actuelle puis eleve_nom. Colonnes : Élève (nom complet + ID tronqué), Classe actuelle (badge slate), Flèche (ArrowRight), Classe suivante (badge emerald OU badge violet "Diplôme" si est_diplome), Décision (Select éditable PROMU/REDOUBLANT/NON_REINSCRIT avec pastille colorée — disabled avec valeur "Diplôme" pour les diplômés).
+    • Carte de pied (mobile-friendly) : badges résumé colorés + bouton validation dupliqué pour mobile (sm:hidden).
+    • Écran de succès (SuccessCard) : affiché après submitPromote, carte bordure emerald avec icône Check, libellés source→cible, grille 6 compteurs (Promus/Diplômés/Redoublants/Non réinscrits/Ignorés/Erreurs) avec couleurs sémantiques, message contextuel si erreurs > 0, bouton "Nouveau passage" (RefreshCw) qui reset tout l'état local.
+    • États gérés : pas d'établissement (carte amber "Sélectionnez un établissement"), chargement années (skeleton), chargement aperçu (skeleton), erreur aperçu (carte rose avec message), erreur soumission (inline + toast), aperçu vide (carte "Aucun élève à traiter").
+    • useAuthStore pour etablissement (filtré côté backend par middleware.CurrentEtablissementID). useQuery (React Query) pour fetchAnneesScolaires + fetchActiveAnnee (enabled: !!etablissement). useState local pour sourceAnneeId, cibleAnneeId, preview, decisions (Record<eleve_id, DecisionPassage>), loading/error states.
+    • Toasts (useToast) : génération aperçu, aperçu vide, validation réussie, erreurs de sélection.
+    • Couleurs : emerald / amber / rose / slate / violet uniquement — jamais indigo ni bleu (conforme aux conventions). Diplômés en violet pour les distinguer visuellement des promus (emerald).
+    • Responsive mobile-first : KPIs 2→4 cols, sélecteurs 1→2 cols, table overflow-x-auto, cartes empilées sur mobile.
+- Fichiers modifiés (4) :
+  - Frontend/src/components/dashboard/dashboard-shell.tsx : ajout ArrowRight à l'import lucide-react existant ; ajout entrée nav { href: "/passage-masse", label: "Passage de classe", icon: ArrowRight, roles: [DIRECTION, DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR] } dans STAFF_NAV_GROUPS groupe "Configuration", après "effectifs".
+  - Frontend/src/components/dashboard/dashboard-layout.tsx (legacy, cohérence) : ajout ArrowRight à l'import ; ajout entrée nav { id: "passage-masse", label: "Passage de classe", icon: ArrowRight, roles: [...] } dans STAFF_NAV_GROUPS groupe "Configuration", après "effectifs". Pas de case activeView (legacy non utilisé en production — pattern identique à l'entrée "effectifs" de l'Innovation 1).
+  - Frontend/src/components/dashboard/dashboard-home.tsx : ajout "passage-masse" au type DashboardViewId (entre "effectifs" et "comptabilite").
+  - Frontend/src/app/(staff)/dashboard/page.tsx : ajout "passage-masse": "/passage-masse" au mapping VIEW_TO_PATH.
+- RBAC : DIRECTION + DIRECTEUR_ETUDES + DIRECTEUR_SUPERVISEUR (pilotage établissement, opération de fin d'année). Caissier, comptable et secrétariat exclus — ils n'ont pas la responsabilité du passage de classe.
+- Qualité :
+  - cd Frontend && bun run lint → 0 erreur, 3 warnings (tous dans step-scolarite.tsx — pré-existants Phase 2, hors périmètre) ✓
+  - cd Frontend && bunx tsc --noEmit → 0 erreur sur mes fichiers (api-passage-masse.ts, passage-masse/page.tsx, passage-masse-dashboard.tsx, dashboard-shell.tsx, dashboard-layout.tsx, dashboard-home.tsx, dashboard/page.tsx) ✓. 15 erreurs pré-existantes (login-form.tsx ×8 Framer Motion Variants, view-impayes.tsx ×2 toast, view-parametres/utilisateur-form-dialog ×2 Record<RoleGlobal>, view-utilisateurs ×1, etablissement-form-dialog ×1, instrumentation ×1) — inchangées, conformes au baseline documenté par les phases précédentes.
+- Aucun changement backend (déjà livré), DB, schema Neon, ou .env.
+
+Stage Summary:
+- Innovation 2 (Passage de classe en masse) frontend livré : page /passage-masse avec workflow complet (sélection années → aperçu éditable → validation en une passe → carte de succès), accessible à la direction et aux directeurs.
+- 3 fichiers créés (1 client API + 1 page + 1 composant dashboard) + 4 fichiers modifiés (2 sidebars nav + 2 mappings de vue). Pattern identique à l'Innovation 1 (Effectifs) pour la cohérence sidebar/types.
+- Décisions éditables par élève (PROMU/REDOUBLANT/NON_REINSCRIT) avec actions rapides globales (Tous promus / Tous redoublants), résumé temps réel (4 KPI), et carte de succès détaillée (6 compteurs du PromoteResult). Diplômés non éditables (badge violet "Diplôme").
+- Couleurs sémantiques (emerald/amber/rose/slate/violet), responsive mobile-first, états loading/error/empty/no-etablissement gérés. Aucune indigo/bleu.
+- 0 erreur lint, 0 erreur tsc sur les fichiers du périmètre. 15 erreurs pré-existantes inchangées.
+
+---
+Task ID: phase3-innovation3-pre-inscription-frontend
+Agent: full-stack-developer (Z.ai Code)
+Task: Frontend de l'Innovation 3 (Phase 3) — pré-inscription en ligne par les parents (page publique) + page de validation par le staff. Backend déjà livré.
+
+Work Log:
+- Contexte relu : backend Go expose déjà les routes publiques (POST /api/public/pre-inscriptions, GET /api/public/pre-inscriptions/:token) et staff (GET /api/pre-inscriptions?statut=, GET /:id, POST /:id/valider, POST /:id/rejeter). Le handler pre_inscription.go retourne { pre_inscription, token_suivi, suivi_url } sur Submit, et un WorkflowResult (élève + inscription) sur Valider. Le middleware AuthMiddleware n'est pas appliqué sur /api/etablissements (route publique — utilisée par le login) ni sur /api/public/* (pré-inscription).
+- Fichiers créés (6) :
+  - Frontend/src/lib/api-pre-inscription.ts (NOUVEAU) : types StatutPreInscription, PreInscription (tous les champs du modèle Go + relations optionnelles etablissement?/classe?), PreInscriptionDTO (payload parent), SubmitResult ({ pre_inscription, token_suivi, suivi_url }), ValiderBody, ValiderResult, preInscriptionsKeys (clés React Query). Routes publiques avec skipAuth: true : submitPreInscription(dto) → apiPost<SubmitResult>("/api/public/pre-inscriptions", dto, { skipAuth: true }), fetchPreInscriptionByToken(token) → apiGet<PreInscription>("/api/public/pre-inscriptions/" + token, { skipAuth: true }). Routes staff : fetchPreInscriptions(statut?) → apiGet<PreInscription[]>("/api/pre-inscriptions" + qs), fetchPreInscription(id), validerPreInscription(id, body) → apiPost<ValiderResult>, rejeterPreInscription(id, motif) → apiPost<{success, date}>.
+  - Frontend/src/app/pre-inscription/page.tsx (NOUVEAU) : "use client", page publique (groupe racine, hors (staff)). PAS de RoleGuard, PAS de sidebar. Rend <PreInscriptionForm />. Le composant gère son propre layout plein écran.
+  - Frontend/src/app/pre-inscription/suivi/page.tsx (NOUVEAU) : "use client", page publique de suivi. Lit ?token=... via useSearchParams (next/navigation). fetchPreInscriptionByToken avec retry: false. Affiche : carte de statut (badge coloré + date soumission + établissement + messages contextuels selon statut REJETEE/VALIDEE), timeline SOUMISE→EN_REVUE→VALIDEE/REJETEE avec icônes et dates, 3 cartes détails (élève, tuteur, classe souhaitée + notes). Layout public plein écran (dégradé emerald + orbes glassmorphism + header logo + footer sticky). États : pas de token (carte amber), chargement (spinner), erreur (carte rose + lien retour), succès.
+  - Frontend/src/components/pre-inscription/pre-inscription-form.tsx (NOUVEAU) : formulaire PUBLIC complet. Sections : (1) En-tête hero (icône GraduationCap emerald + titre + description), (2) Sélecteur d'établissement (apiGet<Etablissement[]>("/api/etablissements", { skipAuth: true }) — route publique côté backend), avec notice si applique_categorie_affecte, (3) Élève (nom*, prénoms, date/lieu naissance, sexe*, catégorie si applique_categorie_affecte), (4) Tuteur (nom*, prénoms, téléphone* avec icône, email avec icône, lien parenté), (5) Classe souhaitée (cascade Cycle→Niveau→Classe, "Non précisée" comme option par défaut), (6) Notes parent (textarea). Bouton "Soumettre la pré-inscription" → submitPreInscription via useMutation. Écran de succès : carte avec icône CheckCircle2, récap (date soumission + badges), token de suivi (mono select-all), lien de suivi (Button asChild Link href=suivi_url), bouton "Copier le lien" (navigator.clipboard.writeText), URL complète affichée. Toasts succès/erreur via useToast. Design : dégradé emerald via-background-amber-50, orbes glassmorphism blur-3xl, header logo, footer sticky, responsive mobile-first. N'utilise PAS useAuthStore (page publique). Note technique : pour la cascade, on appelle /api/cycles et /api/classes avec skipAuth: true via apiGet direct (pas via fetchCycles/fetchClasses qui ne passent pas skipAuth) afin d'éviter l'effet de bord "401 → refresh → logout()" du client API générique qui viderait la session parent. Les clés de cache React Query (cyclesKeys, classesKeys) sont partagées avec le reste de l'app.
+  - Frontend/src/app/(staff)/pre-inscriptions/page.tsx (NOUVEAU) : "use client" + RoleGuard allow=["SECRETARIAT","DIRECTION","DIRECTEUR_ETUDES","DIRECTEUR_SUPERVISEUR"]. Rend <PreInscriptionsList />.
+  - Frontend/src/components/pre-inscription/pre-inscriptions-list.tsx (NOUVEAU) : liste staff complète.
+    • Onglets de filtre par statut (Toutes/SOUMISE/EN_REVUE/VALIDEE/REJETEE) avec compteurs en badges (chargés via 2e query sans filtre pour les compteurs). Style : pills arrondies, active en bg-emerald-600 text-white, inactives en border bg-background.
+    • Tableau (shadcn Table, responsive overflow-x-auto) : date soumission, élève (avatar emerald + nom complet + méta sexe/catégorie/date naiss.), tuteur (avatar slate + nom + téléphone avec icône), classe souhaitée (badge outline), statut (badge coloré sémantique), actions (boutons ghost/outline).
+    • Actions : "Détail" (Eye, dialog avec toutes les infos — élève/tuteur/classe/notes parent/notes staff/eleve_cree_id), "Valider" (CheckCircle2 emerald, dialog avec cascade Cycle→Niveau→Classe + année active présélectionnée via useEffect sur fetchActiveAnnee + notes staff textarea + bouton confirmer → validerPreInscription qui crée l'élève via le workflow d'inscription existant), "Rejeter" (XCircle rose, dialog avec textarea motif obligatoire ≥5 caractères + bouton confirmer → rejeterPreInscription). Actions Valider/Rejeter masquées si statut est déjà VALIDEE ou REJETEE.
+    • useMutation pour valider/rejeter avec onSuccess : toast + queryClient.invalidateQueries({ queryKey: preInscriptionsKeys.all }) (rafraîchit listes filtrées + compteurs + détail). onError : toast destructif avec message ApiError.
+    • États : pas d'établissement (carte amber "Sélectionnez un établissement"), chargement (skeletons), erreur (carte rose + bouton Réessayer), vide (carte "Aucune pré-inscription [statut] pour le moment"). Bouton "Actualiser" dans l'en-tête (icône RefreshCw, désactivé si isFetching).
+    • Couleurs sémantiques : SOUMISE=amber, EN_REVUE=sky, VALIDEE=emerald, REJETEE=rose. Pas d'indigo/bleu.
+    • Cascade Cycle→Niveau→Classe réutilisée (fetchCycles + fetchClasses avec auth staff — OK car la page staff est derrière RoleGuard). Auto-présélection de l'année active. Reset niveau+classe quand cycle change (refs pour éviter les boucles).
+- Fichiers modifiés (4 — sidebar nav + mappings de vue, pattern identique aux innovations 1 et 2) :
+  - Frontend/src/components/dashboard/dashboard-shell.tsx : ajout MailOpen à l'import lucide-react existant ; ajout entrée nav { href: "/pre-inscriptions", label: "Pré-inscriptions", icon: MailOpen, roles: ["SECRETARIAT","DIRECTION","DIRECTEUR_ETUDES","DIRECTEUR_SUPERVISEUR"] } dans STAFF_NAV_GROUPS groupe "Pilotage", après "Rapports".
+  - Frontend/src/components/dashboard/dashboard-layout.tsx (legacy, cohérence) : ajout MailOpen à l'import ; ajout entrée nav { id: "pre-inscriptions", label: "Pré-inscriptions", icon: MailOpen, roles: [...] } dans le groupe "Pilotage", après "rapports". Pas de case activeView (legacy non utilisé en production — pattern identique aux innovations précédentes).
+  - Frontend/src/components/dashboard/dashboard-home.tsx : ajout "pre-inscriptions" au type DashboardViewId (entre "parametres" et les vues SaaS).
+  - Frontend/src/app/(staff)/dashboard/page.tsx : ajout "pre-inscriptions": "/pre-inscriptions" au mapping VIEW_TO_PATH.
+- RBAC :
+  - Page publique /pre-inscription + /pre-inscription/suivi : AUCUNE auth requise (pas de RoleGuard, pas de layout staff, skipAuth: true sur tous les appels API publics). Le formulaire n'utilise PAS useAuthStore.
+  - Page staff /pre-inscriptions : SECRETARIAT + DIRECTION + DIRECTEUR_ETUDES + DIRECTEUR_SUPERVISEUR. Caissier, comptable exclus (ils gèrent la caisse, pas les admissions).
+- Décision technique (cascade sur page publique) : fetchCycles et fetchClasses dans @/lib/api-students ne passent pas skipAuth. Sur la page publique, appeler ces fonctions déclencherait l'effet de bord "401 → refresh → logout()" du client API générique (qui viderait la session parent si le visiteur est connecté par ailleurs, par exemple s'il a ouvert /parent dans un autre onglet). Solution : apiGet direct avec { skipAuth: true, retry: false } sur /api/cycles et /api/classes, en partageant les clés de cache cyclesKeys/classesKeys avec le reste de l'app. Si le backend 401 (routes actuellement protégées par authMW), la cascade reste vide et le champ classe_id reste facultatif (option "Non précisée"). Le formulaire reste 100% submittable sans la cascade.
+- Qualité :
+  - cd Frontend && bun run lint → 0 erreur, 3 warnings (tous dans step-scolarite.tsx — pré-existants Phase 2, hors périmètre) ✓
+  - cd Frontend && bunx tsc --noEmit → 0 erreur sur mes fichiers (api-pre-inscription.ts, pre-inscription/page.tsx, pre-inscription/suivi/page.tsx, pre-inscription-form.tsx, pre-inscriptions-list.tsx, (staff)/pre-inscriptions/page.tsx, dashboard-shell.tsx, dashboard-layout.tsx, dashboard-home.tsx, dashboard/page.tsx) ✓. 15 erreurs pré-existantes (login-form.tsx ×8 Framer Motion Variants, view-impayes.tsx ×2 toast, view-parametres/utilisateur-form-dialog ×2 Record<RoleGlobal>, view-utilisateurs ×1, etablissement-form-dialog ×1, instrumentation ×1) — inchangées, conformes au baseline documenté par les phases précédentes.
+- Aucun changement backend (déjà livré), DB, schema Neon, ou .env.
+
+Stage Summary:
+- Innovation 3 (Pré-inscription en ligne) frontend livré : page publique /pre-inscription (formulaire parent sans auth) + page publique /pre-inscription/suivi (suivi par token) + page staff /pre-inscriptions (liste avec filtres par statut + dialogs valider/rejeter/détail).
+- 6 fichiers créés (1 client API + 2 pages publiques + 1 page staff + 2 composants) + 4 fichiers modifiés (2 sidebars nav + 2 mappings de vue). Pattern identique aux innovations 1 et 2 pour la cohérence sidebar/types.
+- Workflow complet : parent soumet → token de suivi généré → parent suit sa demande via le lien → staff voit la demande dans /pre-inscriptions → staff valide (crée l'élève via le workflow d'inscription existant) ou rejette avec motif → parent voit le statut mis à jour sur la page de suivi.
+- Couleurs sémantiques (emerald/amber/sky/rose), responsive mobile-first, états loading/error/empty/no-etablissement gérés. Aucune indigo/bleu.
+- 0 erreur lint, 0 erreur tsc sur les fichiers du périmètre. 15 erreurs pré-existantes inchangées.

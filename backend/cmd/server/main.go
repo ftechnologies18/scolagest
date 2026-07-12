@@ -111,6 +111,11 @@ func main() {
         parentHandler := handlers.NewParentHandler(parentSvc, parentAccessSvc, momoSvc)
         saasHandler := handlers.NewSaasHandler(saasSvc)
         saasBillingHandler := handlers.NewSaasBillingHandler(saasBillingSvc)
+        // Phase 3 : effectifs, pré-inscription en ligne
+        effectifsSvc := services.NewEffectifsService()
+        effectifsHandler := handlers.NewEffectifsHandler(effectifsSvc)
+        preInscriptionSvc := services.NewPreInscriptionService(inscriptionWorkflowSvc)
+        preInscriptionHandler := handlers.NewPreInscriptionHandler(preInscriptionSvc)
 
         // 6. Router Gin
         r := gin.Default()
@@ -124,6 +129,7 @@ func main() {
         // Routes publiques
         healthHandler.RegisterRoutes(api)
         etbHandler.RegisterRoutes(api)
+        preInscriptionHandler.RegisterPublicRoutes(api) // pré-inscription parent
 
         // Routes d'authentification (login/refresh publiques, logout/me protégés)
         authMW := middleware.AuthMiddleware(jwtSvc)
@@ -160,6 +166,10 @@ func main() {
         // Routes SaaS : gestion plateforme (SUPER_ADMIN uniquement)
         saasHandler.RegisterRoutes(api, authMW)
         saasBillingHandler.RegisterRoutes(api, authMW)
+
+        // Routes Phase 3 : effectifs, pré-inscription (staff)
+        effectifsHandler.RegisterRoutes(api, authMW)
+        preInscriptionHandler.RegisterRoutes(api, authMW)
 
         // Route de bienvenue
         r.GET("/", func(c *gin.Context) {

@@ -98,9 +98,12 @@ export type DashboardViewId =
   | "frais"
   | "annees"
   | "utilisateurs"
+  | "effectifs"
+  | "passage-masse"
   | "comptabilite"
   | "mobile-money"
   | "parametres"
+  | "pre-inscriptions"
   // Vues SaaS (SUPER_ADMIN uniquement)
   | "saas-dashboard"
   | "saas-establishments"

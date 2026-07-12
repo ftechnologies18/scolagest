@@ -87,3 +87,4 @@ local-*
 .z-ai-config
 prompt
 test
+agent-ctx/
