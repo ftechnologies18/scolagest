@@ -1020,15 +1020,8 @@ export function DashboardShell({
             {/* Pied de page */}
             <KentePattern variant="strip" position="top" />
             <footer className="mt-auto border-t border-white/10 bg-forest text-emerald-100/80">
-              <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-emerald-100/80 sm:flex-row sm:px-6">
-                <p>
-                  ScolaGest · Application de Gestion &amp; Caisse Scolaire —
-                  Freelance Technologies Côte d&apos;Ivoire
-                </p>
-                <p className="text-[11px]">
-                  Phase 1 — Socle technique · Collège Privé Le Chandelier,
-                  Dabou
-                </p>
+              <div className="mx-auto flex max-w-7xl items-center justify-center px-4 py-4 text-xs text-emerald-100/80 sm:px-6">
+                <p>© 2026 ScolaGest · Freelance Technologies Côte d&apos;Ivoire</p>
               </div>
             </footer>
           </main>
