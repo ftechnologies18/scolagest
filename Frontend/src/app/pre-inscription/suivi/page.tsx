@@ -107,6 +107,28 @@ function lienParenteLabel(l: PreInscription["tuteur_lien_parente"]): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SuiviPreInscriptionPage() {
+  // useSearchParams() nécessite un boundary <Suspense> pour le prerendering
+  // statique Next.js (sinon erreur build "useSearchParams should be wrapped
+  // in a suspense boundary at page").
+  return (
+    <React.Suspense
+      fallback={
+        <PublicShell>
+          <Card className="mx-auto max-w-2xl">
+            <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
+              <Loader2 className="size-8 animate-spin text-emerald-600" />
+              <p className="text-sm text-muted-foreground">Chargement…</p>
+            </CardContent>
+          </Card>
+        </PublicShell>
+      }
+    >
+      <SuiviPreInscriptionContent />
+    </React.Suspense>
+  );
+}
+
+function SuiviPreInscriptionContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
 
