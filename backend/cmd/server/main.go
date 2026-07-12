@@ -116,6 +116,9 @@ func main() {
         effectifsHandler := handlers.NewEffectifsHandler(effectifsSvc)
         preInscriptionSvc := services.NewPreInscriptionService(inscriptionWorkflowSvc)
         preInscriptionHandler := handlers.NewPreInscriptionHandler(preInscriptionSvc)
+        // Récupération mot de passe staff / PIN parent
+        passwordResetSvc := services.NewPasswordResetService()
+        passwordResetHandler := handlers.NewPasswordResetHandler(passwordResetSvc)
 
         // 6. Router Gin
         r := gin.Default()
@@ -130,6 +133,7 @@ func main() {
         healthHandler.RegisterRoutes(api)
         etbHandler.RegisterRoutes(api)
         preInscriptionHandler.RegisterPublicRoutes(api) // pré-inscription parent
+        passwordResetHandler.RegisterRoutes(api)        // reset password staff + PIN parent
 
         // Routes d'authentification (login/refresh publiques, logout/me protégés)
         authMW := middleware.AuthMiddleware(jwtSvc)

@@ -2537,3 +2537,66 @@ Stage Summary:
 - Workflow complet : parent soumet → token de suivi généré → parent suit sa demande via le lien → staff voit la demande dans /pre-inscriptions → staff valide (crée l'élève via le workflow d'inscription existant) ou rejette avec motif → parent voit le statut mis à jour sur la page de suivi.
 - Couleurs sémantiques (emerald/amber/sky/rose), responsive mobile-first, états loading/error/empty/no-etablissement gérés. Aucune indigo/bleu.
 - 0 erreur lint, 0 erreur tsc sur les fichiers du périmètre. 15 erreurs pré-existantes inchangées.
+
+---
+Task ID: forgot-password-and-pin
+Agent: Z.ai Code (tuteur principal)
+Task: Ajouter "Mot de passe oublié" (page staff) et "Code oublié" (page parent).
+
+Work Log:
+- Contexte : pas d'infra SMTP/SMS en production (roadmap V1). Workflow adapté :
+  mode démo = token/PIN affichés à l'écran. En prod, remplacer par envoi
+  email/SMS (TODO signalés dans le code).
+- Backend (Go) — 3 fichiers créés + 2 modifiés :
+  - models/password_reset.go (NOUVEAU) : PasswordResetToken (user_id, token,
+    expires_at 1h, used_at). AutoMigrate Neon.
+  - services/password_reset_service.go (NOUVEAU) :
+    - RequestPasswordReset(email) : génère token 20 bytes hex, expiration 1h,
+      invalide tokens précédents. Sécurité : ne révèle pas si email existe
+      (retour factice si non trouvé → évite l'énumération). Mode démo :
+      retourne reset_url. maskEmail() masque partiellement.
+    - ResetPassword(token, newPassword) : valide token (non utilisé, non
+      expiré), hash bcrypt nouveau mdp, transaction update+mark used.
+    - ResetParentPIN(dto) : vérif identité (téléphone + nom/prénoms d'un
+      enfant du tuteur), génère PIN 4 chiffres, hash bcrypt, update pin_hash.
+      Mode démo : retourne new_pin. maskPhone().
+  - handlers/password_reset.go (NOUVEAU) : 3 routes publiques (sans auth) :
+    POST /api/auth/password-reset/request, POST /api/auth/password-reset/confirm,
+    POST /api/parent/reset-pin
+  - main.go : instanciation + RegisterRoutes (routes publiques, avant authMW)
+  - database.go : AutoMigrate PasswordResetToken
+- Frontend (TS/React) — 1 client API + 3 pages + 2 liens :
+  - lib/api-password-reset.ts (NOUVEAU) : types + 3 fonctions (skipAuth:true)
+  - app/(auth)/mot-de-passe-oublie/page.tsx (NOUVEAU) : formulaire email →
+    succès avec lien reset (mode démo affiché dans bandeau amber)
+  - app/(auth)/reset-password/page.tsx (NOUVEAU) : lit ?token=XXX, formulaire
+    nouveau mdp + confirm (validation 6+ chars + match), Suspense pour
+    useSearchParams. États : pas de token, succès, formulaire.
+  - app/(auth)/code-oublie/page.tsx (NOUVEAU) : formulaire téléphone + nom +
+    prénoms élève → succès avec nouveau PIN affiché (4 chiffres gros,
+    bouton copier). Mode démo signalé.
+  - login-form.tsx : ajout lien "Mot de passe oublié ?" → /mot-de-passe-oublie
+    (import Link ajouté)
+  - parent-access-form.tsx : ajout lien "Code PIN oublié ?" → /code-oublie
+    (import Link ajouté)
+- Qualité :
+  - bun run lint → 0 erreur (3 warnings pré-existants step-scolarite) ✓
+  - bunx tsc --noEmit → 0 erreur sur nouveaux fichiers ✓ (15 erreurs
+    pré-existantes login-form Framer Motion, inchangées)
+  - bun run build → ✓ Compiled successfully, 3 nouvelles pages prérendues
+    (Suspense boundary sur reset-password pour useSearchParams)
+- Sécurité :
+  - Staff : token 20 bytes hex (crypto/rand), expiration 1h, usage unique,
+    ne révèle pas l'existence du compte
+  - Parent : vérif d'identité croisée (téléphone + nom élève) pour éviter
+    quiconque connaissant juste le téléphone puisse reset le PIN
+  - Mots de passe/PIN hashés bcrypt (jamais en clair en DB)
+
+Stage Summary:
+- 2 fonctionnalités de récupération livrées : "Mot de passe oublié" (staff,
+  workflow token email) et "Code oublié" (parent, vérif identité + régén PIN).
+- Mode démo (affichage écran) car pas d'infra SMTP/SMS. Migration prod =
+  remplacer le retour reset_url/new_pin par smtp.Send()/sms.Send() (TODO
+  documentés dans password_reset_service.go).
+- 8 fichiers (3 backend créés + 2 modifiés, 1 client + 3 pages + 2 liens
+  frontend). Nouvelle table Neon password_reset_tokens (AutoMigrate).

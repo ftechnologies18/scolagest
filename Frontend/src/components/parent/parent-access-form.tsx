@@ -31,6 +31,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   Loader2,
@@ -332,6 +333,16 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
                   </>
                 )}
               </motion.button>
+
+              {/* Lien "Code oublié" */}
+              <div className="text-center">
+                <Link
+                  href="/code-oublie"
+                  className="text-xs text-gray-500 transition-colors hover:text-amber-700 hover:underline"
+                >
+                  Code PIN oublié ?
+                </Link>
+              </div>
 
               {/* Lien retour (discret, en bas du formulaire) */}
               <button

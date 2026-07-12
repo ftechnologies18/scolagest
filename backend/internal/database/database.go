@@ -119,6 +119,8 @@ func migrate(db *gorm.DB) error {
                 &models.SaaInvoice{},
                 // Pré-inscription en ligne (Phase 3)
                 &models.PreInscription{},
+                // Réinitialisation mot de passe staff
+                &models.PasswordResetToken{},
         }
 
         return db.AutoMigrate(modelsList...)

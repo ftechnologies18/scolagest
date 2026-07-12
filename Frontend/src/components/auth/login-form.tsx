@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2,
@@ -385,6 +386,16 @@ export function LoginForm({ onBack }: { onBack?: () => void }) {
                   </>
                 )}
               </motion.button>
+
+              {/* Lien "Mot de passe oublié" */}
+              <div className="text-center">
+                <Link
+                  href="/mot-de-passe-oublie"
+                  className="text-xs text-gray-500 transition-colors hover:text-emerald-600 hover:underline"
+                >
+                  Mot de passe oublié ?
+                </Link>
+              </div>
 
               {onBack ? (
                 <button
