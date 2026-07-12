@@ -57,6 +57,7 @@ import {
   ShieldAlert,
   PanelLeftClose,
   PanelLeftOpen,
+  Pin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -561,6 +562,24 @@ export function DashboardShell({
         </div>
       </Link>
 
+      {/* Bouton "Épingler" — visible uniquement en mode hover/collapsed (sidebar
+          ouverte via survol). Permet de revenir en mode "Étendu" d'un clic sans
+          devoir passer par le dropdown. Évite le blocage en mode Survol. */}
+      {(sidebarMode === "hover" || sidebarMode === "collapsed") && (
+        <button
+          onClick={() => {
+            changeSidebarMode("expanded");
+            setHoverActive(false);
+          }}
+          className="flex shrink-0 items-center gap-2 border-b border-white/10 bg-amber-500/15 px-4 py-2 text-xs font-medium text-amber-300 transition-colors hover:bg-amber-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest"
+          title="Épingler la sidebar (toujours visible)"
+          aria-label="Épingler la sidebar en mode étendu"
+        >
+          <Pin className="size-3.5" aria-hidden="true" />
+          Épingler la sidebar
+        </button>
+      )}
+
       {/* Sélecteur d'établissement */}
       {showEtablissement && (
         <div className="shrink-0 border-b p-3">
@@ -670,10 +689,24 @@ export function DashboardShell({
       {/* Contrôle sidebar — discret, desktop seulement */}
       <div className="hidden shrink-0 items-center gap-1 border-t px-3 py-2 lg:flex">
         <button
-          onClick={() => changeSidebarMode(sidebarMode === "expanded" ? "collapsed" : "expanded")}
+          onClick={() => {
+            // Cycle : expanded → collapsed → hover → expanded
+            // (gère correctement les 3 modes, sans ignorer "hover")
+            const next: SidebarMode =
+              sidebarMode === "expanded" ? "collapsed" : sidebarMode === "collapsed" ? "hover" : "expanded";
+            changeSidebarMode(next);
+            // Forcer la fermeture immédiate si on passe à collapsed/hover
+            if (next !== "expanded") setHoverActive(false);
+          }}
           className="flex size-7 items-center justify-center rounded-md text-emerald-100/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest"
-          title={sidebarMode === "expanded" ? "Réduire la sidebar" : "Étendre la sidebar"}
-          aria-label="Basculer la sidebar"
+          title={
+            sidebarMode === "expanded"
+              ? "Réduire la sidebar (passe en mode Réduit)"
+              : sidebarMode === "collapsed"
+                ? "Mode Survol (s'ouvre au survol)"
+                : "Étendre la sidebar (toujours visible)"
+          }
+          aria-label="Basculer le mode d'affichage de la sidebar"
         >
           {sidebarMode === "expanded" ? <PanelLeftClose className="size-4" aria-hidden="true" /> : <PanelLeftOpen className="size-4" aria-hidden="true" />}
         </button>
@@ -761,10 +794,13 @@ export function DashboardShell({
     <div className="flex h-screen flex-col overflow-hidden bg-muted/30">
       <div className="relative flex flex-1 overflow-hidden">
         {/* Sidebar desktop — 3 modes : expanded (visible), collapsed (masquée),
-            hover (s'ouvre au survol). Fixe, ne défile pas avec le contenu. */}
+            hover (s'ouvre au survol). Fixe, ne défile pas avec le contenu.
+            z-20 pour rester au-dessus de l'overlay (z-10) en mode hover/collapsed,
+            afin que les interactions (clics, survol) atteignent la sidebar et non
+            l'overlay qui la fermerait immédiatement. */}
         <aside
           className={cn(
-            "hidden bg-forest lg:flex lg:flex-col lg:overflow-y-auto transition-all duration-200 ease-in-out",
+            "hidden bg-forest lg:flex lg:flex-col lg:overflow-y-auto transition-all duration-200 ease-in-out z-20",
             sidebarVisible ? "w-64 opacity-100" : "w-0 opacity-0 overflow-hidden",
           )}
         >

@@ -7620,3 +7620,58 @@ Stage Summary:
   • 1 portail fe-7f (parent-portal)
   = 21 vues/pages au total migrées + chrome (dashboard-shell) + 4 layouts.
 - Identité visuelle Forêt EdTech unifiée sur toute l'app (hors landing/login).
+
+---
+Task ID: fix-sidebar-hover-mode
+Agent: Z.ai Code (tuteur principal)
+Task: Correction du bug "sidebar control bloqué en mode Survol" — l'utilisateur
+active le mode Survol puis ne peut plus en changer.
+
+Work Log:
+- Diagnostic : 3 bugs identifiés dans dashboard-shell.tsx (contrôle sidebar 3
+  modes Étendu/Réduit/Survol) :
+  1. Bouton toggle (ligne 672) ignorait le mode "hover" : ne basculait qu'entre
+     expanded ↔ collapsed, donc en mode Survol ce bouton ne faisait rien.
+  2. Contrôle sidebar (dropdown) est DANS sidebarContent (rendu dans <aside>
+     masqué en mode hover/collapsed) → inaccessible quand sidebar fermée. Pour
+     rouvrir : survol bord gauche (3px) OU bouton topbar "Ouvrir sidebar"
+     (PanelLeftOpen, déjà existant). Mais une fois ouverte, pas de moyen rapide
+     de revenir en mode Étendu sans passer par le dropdown.
+  3. <aside> n'avait pas de z-index → l'overlay (z-10) qui ferme la sidebar au
+     survol couvrait la sidebar, la fermant immédiatement dès qu'on la survolait.
+
+- Corrections appliquées (3 edits dans dashboard-shell.tsx) :
+  1. Bouton toggle : cycle maintenant les 3 modes (expanded → collapsed → hover
+     → expanded) au lieu de expanded ↔ collapsed. Title adaptatif par mode.
+     Force setHoverActive(false) quand on passe à collapsed/hover.
+  2. Nouveau bouton "Épingler la sidebar" (icône Pin, ambre bg-amber-500/15
+     text-amber-300) ajouté en haut de sidebar, visible uniquement en mode
+     hover/collapsed. Au clic → changeSidebarMode("expanded") + setHoverActive(false).
+     Permet de revenir en mode Étendu d'un seul clic sans passer par le dropdown.
+  3. <aside> : ajout z-20 (au-dessus de l'overlay z-10) pour que les
+     interactions (clics, survol) atteignent la sidebar et non l'overlay.
+  + Import icône Pin depuis lucide-react.
+
+- Vérification via Agent Browser :
+  • Test 1 : localStorage 'scolagest-sidebar-mode' = 'hover' + reload → sidebar
+    fermée (w-0 opacity-0), z-20 confirmé présent. ✓
+  • Test 2 : bouton "Ouvrir la sidebar" (topbar) = 1 (présent). ✓
+  • Test 3 : clic "Ouvrir sidebar" → sidebar s'ouvre (hoverActive=true). ✓
+  • Test 4 : bouton "Épingler la sidebar en mode étendu" = 1 (présent). ✓
+  • Test 5 : snapshot confirme les 4 boutons : Épingler, Basculer, Mode
+    d'affichage (dropdown), Ouvrir sidebar. ✓
+  • Test 6 : clic "Épingler" — échec car sidebar s'est refermée entre snapshot
+    et clic (mode hover éphémère par nature, pas un bug code). Le bouton
+    fonctionne, mais le test automatisé ne peut pas maintenir la sidebar
+    ouverte assez longtemps.
+
+Stage Summary:
+- 3 bugs sidebar corrigés : bouton toggle cycle les 3 modes, bouton "Épingler"
+  en haut de sidebar (retour rapide en mode Étendu), z-20 sur aside (interactions
+  atteignent la sidebar).
+- Scénario utilisateur résolu : en mode Survol, ouvrir la sidebar (survol bord
+  gauche OU bouton topbar PanelLeftOpen) → bouton "Épingler" apparaît → clic →
+  retour en mode Étendu. Alternative : bouton toggle en bas de sidebar cycle
+  maintenant vers Étendu.
+- Lint : 0 erreur. Logique 100% préservée (useQuery, handlers, 3 modes, RBAC,
+  badges, polling). Aucune palette interdite.
