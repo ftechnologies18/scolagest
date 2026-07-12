@@ -544,7 +544,7 @@ export function DashboardShell({
       <Link
         href={role === "SUPER_ADMIN" ? "/saas/dashboard" : "/dashboard"}
         onClick={handleNavClick}
-        className="flex h-16 shrink-0 items-center gap-2.5 border-b px-4 transition-colors hover:bg-accent/40"
+        className="flex h-16 shrink-0 items-center gap-2.5 border-b px-4 transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest"
       >
         <Image
           src="/logo.png"
@@ -555,7 +555,7 @@ export function DashboardShell({
         />
         <div className="min-w-0">
           <p className="text-sm font-bold font-display leading-tight text-white">ScolaGest</p>
-          <p className="truncate text-[10px] leading-tight text-emerald-100/70">
+          <p className="truncate text-[10px] leading-tight text-emerald-100/80">
             Groupe Le Chandelier — Dabou
           </p>
         </div>
@@ -564,8 +564,8 @@ export function DashboardShell({
       {/* Sélecteur d'établissement */}
       {showEtablissement && (
         <div className="shrink-0 border-b p-3">
-          <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-emerald-100/60">
-            <Building2 className="size-3 text-emerald-100/60" />
+          <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-emerald-100/80">
+            <Building2 className="size-3 text-emerald-100/80" aria-hidden="true" />
             Établissement actif
           </p>
           <Select
@@ -597,7 +597,7 @@ export function DashboardShell({
         <nav className="space-y-5 p-3">
           {visibleGroups.map((group) => (
             <div key={group.label}>
-              <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-100/50">
+              <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-100/70">
                 {group.label}
               </p>
               <ul className="space-y-0.5">
@@ -610,7 +610,7 @@ export function DashboardShell({
                         href={item.href}
                         onClick={handleNavClick}
                         className={cn(
-                          "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
+                          "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest",
                           active
                             ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-900/30"
                             : "text-emerald-100/80 hover:bg-white/10 hover:text-white",
@@ -621,8 +621,9 @@ export function DashboardShell({
                             "size-4 shrink-0",
                             active
                               ? "text-white"
-                              : "text-emerald-100/60 group-hover:text-amber-300",
+                              : "text-emerald-100/80 group-hover:text-amber-300",
                           )}
+                          aria-hidden="true"
                         />
                         <span className="truncate">{item.label}</span>
                         {/* Badge notifications pré-inscriptions */}
@@ -670,22 +671,23 @@ export function DashboardShell({
       <div className="hidden shrink-0 items-center gap-1 border-t px-3 py-2 lg:flex">
         <button
           onClick={() => changeSidebarMode(sidebarMode === "expanded" ? "collapsed" : "expanded")}
-          className="flex size-7 items-center justify-center rounded-md text-emerald-100/60 transition-colors hover:bg-white/10 hover:text-white"
+          className="flex size-7 items-center justify-center rounded-md text-emerald-100/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest"
           title={sidebarMode === "expanded" ? "Réduire la sidebar" : "Étendre la sidebar"}
           aria-label="Basculer la sidebar"
         >
-          {sidebarMode === "expanded" ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
+          {sidebarMode === "expanded" ? <PanelLeftClose className="size-4" aria-hidden="true" /> : <PanelLeftOpen className="size-4" aria-hidden="true" />}
         </button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-emerald-100/60 transition-colors hover:bg-white/10 hover:text-white"
+              className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-emerald-100/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest"
               title="Mode d'affichage de la sidebar"
+              aria-label="Mode d'affichage de la sidebar"
             >
               {sidebarMode === "expanded" && "Étendu"}
               {sidebarMode === "collapsed" && "Réduit"}
               {sidebarMode === "hover" && "Survol"}
-              <ChevronDown className="size-3" />
+              <ChevronDown className="size-3" aria-hidden="true" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" className="w-52">
@@ -746,7 +748,7 @@ export function DashboardShell({
                 ? `${user.prenoms ?? ""} ${user.nom ?? ""}`.trim() || user.email
                 : "Utilisateur"}
             </p>
-            <p className="truncate text-[10px] text-emerald-100/60 leading-tight">
+            <p className="truncate text-[10px] text-emerald-100/80 leading-tight">
               {roleLabel(role)}
             </p>
           </div>
@@ -806,22 +808,22 @@ export function DashboardShell({
             <Button
               variant="ghost"
               size="icon"
-              className="text-white hover:bg-white/10 lg:hidden"
+              className="text-white hover:bg-white/10 focus-visible:ring-amber-400/50 focus-visible:ring-offset-forest lg:hidden"
               onClick={() => setMobileOpen(true)}
               aria-label="Ouvrir le menu"
             >
-              <Menu className="size-5" />
+              <Menu className="size-5" aria-hidden="true" />
             </Button>
             {/* Bouton ouvrir sidebar desktop (visible si sidebar masquée) */}
             {sidebarMode !== "expanded" && !sidebarVisible && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="hidden lg:flex"
+                className="hidden text-white hover:bg-white/10 focus-visible:ring-amber-400/50 focus-visible:ring-offset-forest lg:flex"
                 onClick={() => setHoverActive(true)}
                 aria-label="Ouvrir la sidebar"
               >
-                <PanelLeftOpen className="size-5" />
+                <PanelLeftOpen className="size-5" aria-hidden="true" />
               </Button>
             )}
 
@@ -829,7 +831,7 @@ export function DashboardShell({
               <h1 className="text-base font-semibold font-display leading-tight text-white">
                 {pageTitle}
               </h1>
-              <p className="hidden text-[11px] text-emerald-100/60 leading-tight sm:block">
+              <p className="hidden text-[11px] text-emerald-100/80 leading-tight sm:block">
                 ScolaGest · Gestion &amp; Caisse Scolaire
               </p>
             </div>
@@ -837,10 +839,10 @@ export function DashboardShell({
             <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
               {/* Recherche (placeholder non fonctionnel) */}
               <div className="relative hidden md:block">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-emerald-100/60" />
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-emerald-100/80" aria-hidden="true" />
                 <Input
                   placeholder="Rechercher un élève, un reçu…"
-                  className="h-9 w-56 border-white/10 bg-white/5 pl-8 text-white placeholder:text-emerald-100/40 focus:border-amber-400/50 lg:w-72"
+                  className="h-9 w-56 border-white/10 bg-white/5 pl-8 text-white placeholder:text-emerald-100/60 focus:border-amber-400/50 focus-visible:ring-amber-400/50 lg:w-72"
                   aria-label="Recherche"
                 />
               </div>
@@ -850,10 +852,10 @@ export function DashboardShell({
                 variant="ghost"
                 size="icon"
                 aria-label="Notifications"
-                className="relative text-white hover:bg-white/10"
+                className="relative text-white hover:bg-white/10 focus-visible:ring-amber-400/50 focus-visible:ring-offset-forest"
               >
-                <Bell className="size-5" />
-                <span className="absolute right-1.5 top-1.5 size-1.5 animate-pulse rounded-full bg-terracotta" />
+                <Bell className="size-5" aria-hidden="true" />
+                <span className="absolute right-1.5 top-1.5 size-1.5 animate-pulse rounded-full bg-terracotta" aria-hidden="true" />
               </Button>
 
               <Separator orientation="vertical" className="h-6 bg-white/10" />
@@ -863,7 +865,8 @@ export function DashboardShell({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-white/10 transition-colors"
+                    className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest"
+                    aria-label="Menu utilisateur"
                   >
                     <Avatar className="size-8 border-2 border-gold/40">
                       <AvatarFallback className="bg-emerald-600 text-white text-[11px] font-semibold">
@@ -877,11 +880,11 @@ export function DashboardShell({
                             user.email
                           : "Utilisateur"}
                       </span>
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-[10px] text-emerald-100/80">
                         {roleLabel(role)}
                       </span>
                     </span>
-                    <ChevronDown className="hidden size-3.5 text-muted-foreground sm:block" />
+                    <ChevronDown className="hidden size-3.5 text-emerald-100/80 sm:block" aria-hidden="true" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -924,8 +927,8 @@ export function DashboardShell({
 
             {/* Pied de page */}
             <KentePattern variant="strip" position="top" />
-            <footer className="mt-auto border-t border-white/10 bg-forest text-emerald-100/70">
-              <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-emerald-100/70 sm:flex-row sm:px-6">
+            <footer className="mt-auto border-t border-white/10 bg-forest text-emerald-100/80">
+              <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-emerald-100/80 sm:flex-row sm:px-6">
                 <p>
                   ScolaGest · Application de Gestion &amp; Caisse Scolaire —
                   Freelance Technologies Côte d&apos;Ivoire

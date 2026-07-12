@@ -101,6 +101,8 @@ export function GlassCard({
   noAnimation = false,
   noHover = false,
   delay = 0,
+  onClick,
+  onKeyDown,
   ...props
 }: GlassCardProps) {
   // NB : la variable locale est nommée `motionVariants` (et non `motion`)
@@ -109,6 +111,22 @@ export function GlassCard({
   // `lib/animations.ts` (alias `m` dans la docstring de `getMotion`).
   const prefersReducedMotion = usePrefersReducedMotion();
   const motionVariants = getMotion(prefersReducedMotion);
+
+  // Accessibilité : si la carte est cliqueable (onClick), on la rend
+  // focusable au clavier (tabindex=0, role=button) avec un handler clavier
+  // (Entrée / Espace) et un anneau de focus visible. Le `cursor-pointer`
+  // est également ajouté automatiquement pour ne pas avoir à le passer dans
+  // chaque consommateur (ex: StatCard).
+  const interactive = Boolean(onClick);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    onKeyDown?.(e);
+    if (e.defaultPrevented) return;
+    if (interactive && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      (e.currentTarget as HTMLElement).click();
+    }
+  };
 
   const animationProps = noAnimation
     ? {}
@@ -126,8 +144,14 @@ export function GlassCard({
         "rounded-2xl p-5",
         variantClass[variant],
         premiumBorder && "kente-border-premium",
+        interactive &&
+          "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className
       )}
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={interactive ? handleKeyDown : onKeyDown}
       {...animationProps}
       {...hoverProps}
       {...props}

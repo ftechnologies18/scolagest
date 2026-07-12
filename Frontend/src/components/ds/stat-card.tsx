@@ -71,6 +71,7 @@ export function StatCard({
         className
       )}
       onClick={onClick}
+      aria-label={onClick ? label : undefined}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1 min-w-0 flex-1">

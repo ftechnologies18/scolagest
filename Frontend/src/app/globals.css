@@ -432,3 +432,33 @@
 .font-body {
   font-family: var(--font-body);
 }
+
+/* ───────────────────────────────────────────────────────────────────────────── */
+/* Forêt EdTech — Accessibilité : respect global de prefers-reduced-motion       */
+/* Désactive toutes les animations CSS utilitaires (animate-pulse/spin/bounce/    */
+/* ping) ainsi que les transitions/animations when l'utilisateur a activé         */
+/* "reduce motion" au niveau OS. Complète le hook usePrefersReducedMotion qui     */
+/* gère les animations Framer Motion (GlassCard, ProgressCircle, StatCard).       */
+/* ───────────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  /* Désactive explicitement les animations utilitaires Tailwind les plus
+     utilisées (pastille notif animate-pulse, Loader2 animate-spin, etc.). */
+  .animate-pulse,
+  .animate-spin,
+  .animate-bounce,
+  .animate-ping {
+    animation: none !important;
+  }
+
+  /* Réduit à quasi-instantanée toutes les autres animations/transitions
+     (skeleton, drawers, modales, dropdowns, etc.) sans les supprimer
+     brutalement — l'effet visuel reste perceptible mais instant. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
