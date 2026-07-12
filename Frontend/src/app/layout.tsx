@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -26,6 +26,13 @@ export const metadata: Metadata = {
     "Côte d'Ivoire",
   ],
   authors: [{ name: "Freelance Technologies Côte d'Ivoire" }],
+  // PWA — manifeste pour l'installation sur smartphone (portail prof).
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "ScolaGest",
+    statusBarStyle: "default",
+  },
   icons: {
     icon: [
       { url: "/favicon.png", type: "image/png" },
@@ -33,6 +40,15 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: "/icon.png", type: "image/png" }],
   },
+};
+
+// PWA — couleur de thème (barre d'état mobile). Next.js 14+ attend ce champ
+// dans l'export `viewport`, pas dans `metadata`.
+export const viewport: Viewport = {
+  themeColor: "#059669",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({

@@ -43,6 +43,8 @@ import {
   ArrowRight,
   MailOpen,
   GraduationCap,
+  Clock,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -229,6 +231,24 @@ const STAFF_NAV_GROUPS: NavGroup[] = [
         id: "affectations",
         label: "Affectations",
         icon: CalendarDays,
+        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
+      },
+      {
+        // Écran de pointage temps réel (Phase B) : suivi des pointages
+        // enseignants avec statut couleur (VERT / JAUNE / ROUGE / ORANGE) et
+        // régularisation manuelle. Réservé à la direction et au secrétariat.
+        id: "pointage-ecran",
+        label: "Pointage (temps réel)",
+        icon: Clock,
+        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
+      },
+      {
+        // Discipline (Phase B) : tableau de bord des tickets d'incident
+        // disciplinaire et identification des élèves à risque. Réservé à la
+        // direction, aux directeurs et au secrétariat.
+        id: "discipline",
+        label: "Discipline",
+        icon: ShieldAlert,
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
       },
     ],

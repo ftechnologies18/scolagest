@@ -26,6 +26,12 @@ type Etablissement struct {
         // Quand le quota est atteint, une nouvelle classe est créée automatiquement
         // (ex: 6e A rempli → 6e B créée). Configurable dans les réglages.
         QuotaClasse             int    `gorm:"not null;default:45" json:"quota_classe"`
+        // Geofencing : coordonnées GPS de l'établissement pour la validation
+        // des pointages enseignants (anti-fraude). Le rayon (mètres) définit
+        // la zone dans laquelle un pointage est considéré comme valide.
+        GeoLat                  float64 `json:"geo_lat"`
+        GeoLng                  float64 `json:"geo_lng"`
+        GeoRayon                int     `gorm:"default:200" json:"geo_rayon"` // rayon en mètres
 }
 
 func (Etablissement) TableName() string { return "etablissements" }

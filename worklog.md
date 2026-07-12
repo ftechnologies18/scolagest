@@ -2993,3 +2993,354 @@ Stage Summary:
 - 9 fichiers créés/modifiés (4 modifiés : dashboard-shell.tsx,
   dashboard-layout.tsx, dashboard-home.tsx, dashboard/page.tsx ; 6 créés :
   3 composants + 3 pages). Aucun changement backend, DB, schema, ou .env.
+
+---
+Task ID: phaseb-portail-prof-pwa
+Agent: Z.ai Code (tuteur principal)
+Task: Portail enseignant (pointage + signalement incidents) + setup PWA
+offline-first minimal pour ScolaGest.
+
+Work Log:
+- Contexte : backend Phase B déjà en place (routes /api/prof/sessions,
+  /api/prof/pointage, /api/prof/incidents, rôle ENSEIGNANT). Clients API
+  existants (api-pointage.ts, api-incident.ts). Aucune route prof côté
+  frontend. Le portail prof doit être un layout plein écran SANS sidebar
+  staff (le prof accède à /prof directement, pas via le dashboard).
+
+- 7 fichiers créés / 3 fichiers modifiés (frontend uniquement) :
+
+  1) Frontend/src/lib/geolocation.ts (NOUVEAU, ~210 lignes) :
+     • getCurrentPosition(): Promise<GeoPosition> — wrap
+       navigator.geolocation.getCurrentPosition avec timeout 10 s.
+       Résout TOUJOURS (jamais reject) : en cas d'échec (permission refusée,
+       timeout, position indispo), renvoie {0,0,0}. Le backend marquera le
+       pointage en VALIDATION_REQUISE.
+     • getCurrentPositionWithStatus(): Promise<{position, error}> — variante
+       qui expose aussi l'erreur (PERMISSION_DENIED / TIMEOUT /
+       POSITION_UNAVAILABLE / UNAVAILABLE / UNKNOWN) pour permettre à l'UI
+       d'afficher un message informatif.
+     • Fallback timer de sécurité (10,5 s) si le navigateur n'appelle ni
+       succès ni erreur.
+     • isGeolocationAvailable() pour check avant le clic.
+     • DEFAULT_GEO_POSITION exporté (constante {0,0,0}).
+
+  2) Frontend/src/lib/api-prof.ts (NOUVEAU, ~15 lignes) :
+     • profKeys = { all, sessions(date), incidents() } pour les clés React
+       Query des routes /api/prof/*. Évite d'importer les clés depuis un
+       page.tsx (problème de couplage).
+
+  3) Frontend/src/app/prof/layout.tsx (NOUVEAU, ~210 lignes) :
+     • Layout plein écran (min-h-screen flex flex-col) SANS sidebar staff.
+     • Vérifie auth + rôle ENSEIGNANT côté client (pas de RoleGuard) :
+       - Non authentifié/en chargement → spinner plein écran (gradient
+         emerald/amber) + redirection /login.
+       - Authentifié mais rôle ≠ ENSEIGNANT → écran « Accès refusé » (rose,
+         icône ShieldX) + lien retour /dashboard.
+     • En-tête sticky emerald-600 « Mon espace enseignant » + logo + nom
+       utilisateur + bouton déconnexion (logout() puis /login).
+     • Main centré max-w-3xl (mobile-first). Footer sticky (mt-auto) :
+       « ScolaGest — Portail enseignant · Pointage & signalements ».
+
+  4) Frontend/src/app/prof/page.tsx (NOUVEAU, ~320 lignes) — Dashboard :
+     • useQuery(profKeys.sessions(today), fetchMesSessions(today)) pour
+       charger les cours du jour.
+     • Bandeau date du jour (formatDate long) + gros bouton ambre
+       « Signaler un incident » (h-12) → /prof/incidents.
+     • Pour chaque session : Card avec barre latérale emerald, matière +
+       pastille couleur, classe (icône GraduationCap), badge statut
+       (À pointer / En cours / Terminé), horaire (Clock), salle (MapPin),
+       dernière heure d'entrée/sortie pointée si dispo, gros bouton CTA
+       (h-12) → /prof/pointage?session=ID.
+     • États : chargement (3 skeletons), erreur (carte rose + retry), vide
+       (carte ambre « Aucun cours aujourd'hui »).
+
+  5) Frontend/src/app/prof/pointage/page.tsx (NOUVEAU, ~570 lignes) :
+     • useSearchParams() pour ?session=ID, encapsulé dans <Suspense> (exigence
+       Next.js 16 pour le rendu statique).
+     • Détails du cours (matière, classe, horaire, salle) + badge statut.
+     • Bouton « Pointer mon entrée » (emerald) / « Pointer ma sortie »
+       (slate) selon nextType(session) — gros bouton tactile h-16.
+     • Au clic :
+       1. getCurrentPositionWithStatus() (timeout 10 s, résout toujours).
+       2. createPointage({ session_cours_id, type, date_heure_client: ISO
+          now, geo_lat, geo_lng, geo_precision, methode: "GPS_ONLINE" }).
+       3. Affiche le résultat dans ResultCard :
+          - SUCCESS (VALIDE/VALIDE_MANUEL) → carte emerald + CheckCircle2.
+          - VALIDATION_REQUISE/SYNC_EN_ATTENTE → carte ambre + AlertTriangle.
+          - FRAUDE_SUSPECTEE → carte rose + ShieldAlert + motif_rejet.
+       4. Invalide profKeys.sessions(today) pour rafraîchir le dashboard.
+       5. Toast (variant default/destructive selon statut).
+     • Si GPS indispo : bandeau ambre d'avertissement + le pointage reste
+       possible (le backend marquera VALIDATION_REQUISE).
+     • Bouton « Retour à mon espace » (BackButton) + « Effectuer un autre
+       pointage » après succès.
+     • États : session manquante (pas d'ID dans URL), session introuvable,
+       chargement (skeleton), erreur (carte rose + retry).
+
+  6) Frontend/src/app/prof/incidents/page.tsx (NOUVEAU, ~590 lignes) :
+     • Formulaire mobile-first avec :
+       - Combobox élève (Popover + Input) avec debounce 250 ms + appel
+         direct apiGet<ElevesListResponse>("/api/eleves?search=...") (le
+         prof a le même token staff, on évite fetchEleves qui pourrait être
+         restreint). Affiche l'élève sélectionné en lecture seule avec
+         bouton X pour changer.
+       - Select catégorie (ABSENTEISME/IMPOLITESSE/COMPORTEMENT/TRAVAIL/
+         RETARD) avec labels français.
+       - Select gravité (MINEUR/MODERE/SEVERE/CRITIQUE) + pastille couleur
+         (emerald/sky/amber/rose) + badge synthèse.
+       - Textarea description (5 à 1000 caractères, compteur).
+       - Input date incident (défaut aujourd'hui, max aujourd'hui).
+       - Switch « Signalement anonyme » (card ambre dédiée) — si coché,
+         l'admin ne verra pas quel prof a signalé.
+     • Validation : élève requis, catégorie requise, gravité requise,
+       description ≥ 5 caractères, date requise. Toast destructif si
+       incomplet.
+     • Soumission : createIncident(dto) → setSuccess(ticket) + toast succès.
+     • Écran de confirmation : carte emerald + CheckCircle2 + référence
+       #ID (8 premiers caractères majuscules) + récap (catégorie, gravité,
+       date, badge anonyme si coché). Boutons « Nouveau signalement »
+       (resetForm) / « Retour à mon espace ».
+     • Toast destructif sur erreur (ApiError → message backend, sinon
+       message générique).
+
+  7) Frontend/public/manifest.json (NOUVEAU) :
+     • name « ScolaGest Prof », short_name « ScolaGest », display standalone,
+       orientation portrait, theme_color #059669 (emerald),
+       background_color #ffffff.
+     • start_url /prof, scope /prof (PWA dédiée prof).
+     • 4 icônes /logo.png (192/512, any + maskable).
+     • 2 shortcuts : « Mes cours du jour » (/prof) + « Signaler un
+       incident » (/prof/incidents).
+     • lang fr, categories [education, productivity].
+
+  8) Frontend/src/app/layout.tsx (MODIFIÉ) :
+     • Ajout `manifest: "/manifest.json"` dans metadata (génère
+       <link rel="manifest">).
+     • Ajout `appleWebApp: { capable: true, title: "ScolaGest",
+       statusBarStyle: "default" }` (génère <meta name="mobile-web-app-
+       capable"> + <meta name="apple-mobile-web-app-*">).
+     • Ajout `export const viewport: Viewport = { themeColor: "#059669",
+       width: "device-width", initialScale: 1, maximumScale: 5 }` — Next.js
+       14+ attend themeColor dans l'export viewport, pas metadata (génère
+       <meta name="theme-color"> + <meta name="viewport">).
+     • Vérifié via curl : toutes les balises PWA sont rendues dans le HTML
+       de /prof (theme-color, manifest, mobile-web-app-capable,
+       apple-mobile-web-app-title, apple-mobile-web-app-status-bar-style).
+
+  9) Frontend/src/lib/api-pointage.ts + Frontend/src/lib/api-incident.ts
+     (MODIFIÉS — fix mineur de commentaire) :
+     • Le commentaire JSDoc `Routes staff (auth DIRECTION/DIRECTEUR_*/
+       SECRETARIAT)` contenait `*/` qui fermait prématurément le bloc
+       commentaire et provoquait une erreur de parsing ESLint
+       (Parsing error: Unexpected keyword or identifier).
+     • Reformulé en `Routes staff (auth DIRECTION, DIRECTEUR_ETUDES,
+       DIRECTEUR_SUPERVISEUR, SECRETARIAT)` — pas de `*/` dans le commentaire.
+     • Aucune modification de code, juste du commentaire. Lint désormais
+       propre (0 erreur).
+
+- Conventions respectées :
+  • `"use client"` sur tous les composants interactifs (layout + 3 pages).
+  • Imports `@/lib/...` et `@/components/ui/...` (alias `@/`).
+  • Couleurs : emerald (primaire), amber (warning/anonyme/incident), rose
+    (destructif/fraude), slate (neutre/sortie), sky (gravité MODERE). Pas
+    d'indigo/blue.
+  • shadcn/ui : Card, Button, Badge, Input, Label, Textarea, Switch,
+    Select, Popover, Skeleton + lucide-react icons.
+  • useQuery (TanStack Query) + invalidation via useQueryClient.
+  • useAuthStore pour l'auth + useAuthBootstrap pour la reprise de session.
+  • Mobile-first : max-w-3xl centré, gros boutons tactiles (h-11 à h-16),
+    grid-cols-2 pour les détails, footer sticky.
+  • Footer sticky (mt-auto sur flex-col min-h-screen) — respecte la
+    contrainte layout.
+  • Accessibilité : aria-label, sr-only implicite via labels associés,
+    alt text sur images, semantic HTML (header/main/footer).
+
+- Qualité :
+  - cd Frontend && bun run lint → 0 erreur ✓ (3 warnings pré-existants
+    dans step-scolarite.tsx, hors périmètre).
+  - cd Frontend && bunx tsc --noEmit → 15 erreurs pré-existantes (login-form
+    ×8 Framer Motion, view-impayes ×2 toast, view-parametres ×1
+    Record<RoleGlobal>, view-utilisateurs ×1, etablissement-form-dialog ×1
+    quota_classe, utilisateur-form-dialog ×1 Record<RoleGlobal>,
+    instrumentation ×1). Aucune erreur sur les fichiers créés/modifiés
+    par cette tâche ✓.
+  - Dev server : démarrage manuel pour vérification runtime (le dev server
+    système ne tournait pas pendant la session). GET /prof → 200 (compile
+    1395 ms), GET /prof/pointage?session=test → 200 (compile 626 ms),
+    GET /prof/incidents → 200 (compile 1083 ms). Aucune erreur de
+    compilation ou runtime. Toutes les balises PWA bien rendues dans le
+    HTML (theme-color, manifest, apple-mobile-web-app-*).
+  - Aucune modification backend, .env, schema, ou DB.
+
+Stage Summary:
+- 3 pages prof livrées : /prof (dashboard cours du jour), /prof/pointage
+  (pointage GPS entrée/sortie), /prof/incidents (signalement disciplinaire
+  avec combobox élève + anonymat).
+- 1 layout plein écran /prof/layout.tsx avec garde rôle ENSEIGNANT (sans
+  RoleGuard, sans sidebar staff). En-tête emerald « Mon espace enseignant »
+  + déconnexion. Footer sticky.
+- 1 lib geolocation.ts (wrap GPS tolérant aux pannes — toujours résolu,
+  coordonnées 0,0,0 si échec → backend gère le rejet via
+  VALIDATION_REQUISE).
+- 1 lib api-prof.ts (clés React Query profKeys).
+- PWA minimal : manifest.json + balises theme-color/manifest/apple-* dans
+  layout.tsx (via metadata + viewport export). Installable sur smartphone,
+  start_url /prof, scope /prof. Pas de next-pwa (trop complexe pour cette
+  étape).
+- Fix mineur de commentaires JSDoc dans api-pointage.ts et api-incident.ts
+  (le pattern `*/` fermait prématurément le bloc commentaire → parse error
+  ESLint).
+- 10 fichiers au total (7 créés + 3 modifiés). Aucun changement backend,
+  DB, schema, ou .env.
+
+---
+Task ID: phaseb-staff-pointage-discipline
+Agent: Z.ai Code (tuteur principal)
+Task: Coder 2 pages staff — écran de pointage temps réel + tableau de bord
+discipline (Phase B). Frontend uniquement.
+
+Work Log:
+- Contexte : backend Phase B en place (routes /api/pointage/ecran, /:id/valider,
+  /generate-sessions, /api/incidents, /:id/traiter, /api/discipline/eleves-risque,
+  /api/eleves/:id/incidents). Clients API existants (api-pointage.ts,
+  api-incident.ts) avec types SessionAvecStatut, StatutAffichage (VERT/JAUNE/
+  ROUGE/ORANGE), TicketIncident, EleveRisque, TraiterBody et labels
+  CATEGORIE/GRAVITE/STATUT_TICKET. Le dashboard-shell.tsx (sidebar principale)
+  et le dashboard-layout.tsx (legacy, basé sur ViewId) ont un groupe
+  « Pédagogie » existant (Enseignants/Matières/Affectations) à étendre.
+
+- 4 fichiers créés / 4 fichiers modifiés (frontend uniquement) :
+
+  1) Frontend/src/app/(staff)/pointage-ecran/page.tsx (NOUVEAU, ~26 lignes) :
+     • Page wrapper avec RoleGuard allow=[DIRECTION, DIRECTEUR_ETUDES,
+       DIRECTEUR_SUPERVISEUR, SECRETARIAT]. Rend <EcranPointage />.
+
+  2) Frontend/src/components/pointage/ecran-pointage.tsx (NOUVEAU, ~530 lignes) :
+     • "use client". Composant EcranPointage avec :
+       - Boutons d'action : « Générer les sessions du jour » (mutation
+         generateSessions → toast + invalidateQueries(pointageKeys.all)) et
+         « Actualiser » (refetch()).
+       - useQuery(pointageKeys.ecran(today), fetchSessionsEcran, {
+         refetchInterval: 30_000, refetchOnWindowFocus: true }) — polling
+         30 s exigé par le cahier des charges.
+       - Filtre par statut via chips cliquables (Tous/Présents/À valider/
+         Absents/En attente) avec compteurs live + <Select> mobile dédié.
+       - Grille responsive (1 col mobile, 2 sm, 3 lg, 4 xl).
+       - Carte session : bordure gauche colorée selon statut_affichage
+         (emerald/amber/rose/orange), en-tête (heure début-fin + salle +
+         badge statut + icône), corps (matière + pastille couleur +
+         classe + enseignant), pied :
+           · ORANGE → bouton « Valider manuellement » (mutation
+             validePointageManuel + loader + toast).
+           · ROUGE + coursCommence() → badge « ABSENT » animate-pulse rose.
+           · Sinon → texte contextuel (cours en cours / terminé / à venir).
+       - Helpers : coursCommence(session) parse date_cours + heure_debut
+         pour déterminer si now ∈ [début, fin]. eleveOuEnseignantNom()
+         lecture défensive (le type SessionCours ne porte pas encore les
+         champs enseignant côté frontend, mais le backend les renvoie).
+       - États : pas d'établissement (amber), chargement (8 skeletons),
+         erreur (carte rose + retry), vide sans session (CTA « Générer »),
+         vide avec filtre (msg neutre).
+
+  3) Frontend/src/app/(staff)/discipline/page.tsx (NOUVEAU, ~26 lignes) :
+     • Page wrapper avec RoleGuard (mêmes rôles). Rend <DisciplineDashboard />.
+
+  4) Frontend/src/components/discipline/discipline-dashboard.tsx (NOUVEAU,
+     ~1066 lignes) :
+     • "use client". Composant DisciplineDashboard avec 2 onglets (<Tabs>
+       shadcn).
+     • Onglet 1 « Élèves à risque » : useQuery(elevesRisque(periode)) avec
+       periode sélectable (7/30/90 j). Tableau shadcn : élève (nom + prénoms
+       + ID tronqué mono), classe, nb tickets (badge), **nb profs différents**
+       (badge escaladant slate < 2 / amber ≥ 2 / rose ≥ 3 — signaux venant
+       de plusieurs enseignants), nb critiques (badge rose + Flame si > 0),
+       dernier ticket (formatDateShort), statut « À convoquer » (badge rose
+       UserX si a_convoquer, sinon emerald « Suivi normal »), bouton « Voir
+       détails ». Ligne en surbrillance bg-rose-50/60 si a_convoquer.
+       Dialog détails élève : useQuery(incidentsEleve(id)) → liste compacte
+       via TicketLine.
+     • Onglet 2 « Tickets » : useQuery(incidents({statut})) avec filtre
+       <Select> (Tous/OUVERT/EN_COURS/TRAITE/CLOTURE/REJETE). Tableau : date,
+       élève (+ classe), catégorie (badge slate neutre), gravité (badge
+       couleur : emerald Mineur, sky Modéré, amber Sévère, rose Critique +
+       Flame), enseignant (ou « Anonyme » italique), statut (badge couleur),
+       bouton « Traiter ». **Ligne en surbrillance rose si gravite ===
+       CRITIQUE && statut === OUVERT** (alerte visuelle).
+       Dialog traiter ticket : <form> avec <Select> statut (défaut EN_COURS
+       si OUVERT) + <Textarea> action_prise (min 3, max 1000, compteur) +
+       bouton « Enregistrer » (mutation traiterIncident → toast + invalidate
+       disciplineKeys.all + fermeture dialog). Récap élève + description en
+       lecture seule en haut. canSubmit = action ≥ 3 chars ET (changement
+       statut OU changement action).
+     • Composant TicketLine partagé pour les détails élève (badges + desc +
+       action prise + signalé par).
+     • États : pas d'établissement, chargement (6 skeletons), erreur (carte
+       rose + retry), vide (emerald).
+
+  5) Frontend/src/components/dashboard/dashboard-shell.tsx (MODIFIÉ) :
+     • Ajout imports `Clock` et `ShieldAlert` depuis lucide-react.
+     • Ajout de 2 items dans le groupe « Pédagogie » de STAFF_NAV_GROUPS :
+       /pointage-ecran (label « Pointage (temps réel) », icône Clock) et
+       /discipline (label « Discipline », icône ShieldAlert). Mêmes rôles
+       que les autres items Pédagogie (DIRECTION, DIRECTEUR_ETUDES,
+       DIRECTEUR_SUPERVISEUR, SECRETARIAT).
+
+  6) Frontend/src/components/dashboard/dashboard-layout.tsx (MODIFIÉ,
+     legacy) :
+     • Ajout imports `Clock` et `ShieldAlert`.
+     • Ajout de 2 items avec id: "pointage-ecran" et id: "discipline" dans
+       le groupe « Pédagogie » de STAFF_NAV_GROUPS interne (mêmes rôles).
+
+  7) Frontend/src/components/dashboard/dashboard-home.tsx (MODIFIÉ) :
+     • Ajout de "pointage-ecran" et "discipline" au type DashboardViewId
+       (section « Pédagogie — Phase B »).
+
+  8) Frontend/src/app/(staff)/dashboard/page.tsx (MODIFIÉ) :
+     • Ajout au mapping VIEW_TO_PATH : "pointage-ecran": "/pointage-ecran"
+       et "discipline": "/discipline".
+
+- Conventions respectées :
+  • "use client" sur tous les composants interactifs (4 fichiers).
+  • Imports @/lib/... et @/components/ui/... (alias @/).
+  • Couleurs : emerald (primaire), amber (warning), rose (critique), orange
+    (validation requise), sky (gravité MODERE), slate (neutre). Aucun
+    indigo/blue.
+  • shadcn/ui : Card, Button, Badge, Input, Label, Textarea, Select, Tabs,
+    Table, Dialog, Skeleton + lucide-react icons (Clock, ShieldAlert,
+    RefreshCw, Sparkles, AlertCircle, AlertTriangle, CheckCircle2, XCircle,
+    Hourglass, Loader2, CalendarDays, CalendarClock, MapPin, GraduationCap,
+    User, Users, UserX, Ticket, Hand, Eye, Flame, MessageSquare).
+  • TanStack Query : useQuery avec refetchInterval 30_000 pour le polling
+    pointage, useMutation avec invalidateQueries pour les 3 actions
+    (générer, valider, traiter).
+  • useAuthStore pour l'établissement (pas de hook custom).
+  • Mobile-first : grilles responsive, <Select> mobile dédié pour le filtre
+    pointage, libellés courts sur mobile (sm:hidden), overflow-x-auto sur
+    les tables, line-clamp-1/2/3 pour éviter le débordement.
+  • RoleGuard sur les 2 pages (sécurité en profondeur en plus du filtrage
+    sidebar).
+  • Footer / sticky : non pertinent ici (les pages sont rendues dans le
+    DashboardShell qui a déjà son footer sticky mt-auto).
+
+- Qualité :
+  - cd Frontend && bun run lint → 0 erreur, 3 warnings pré-existants dans
+    step-scolarite.tsx (hors périmètre) ✓.
+  - cd Frontend && bunx tsc --noEmit → 15 erreurs pré-existantes (login-form
+    ×8 Framer Motion, view-impayes ×2 toast, view-parametres ×1 Record,
+    view-utilisateurs ×1, etablissement-form-dialog ×1 quota_classe,
+    utilisateur-form-dialog ×1 Record, instrumentation ×1). 0 erreur sur
+    les 8 fichiers créés/modifiés par cette tâche ✓.
+  - Aucune modification backend, .env, schema, ou DB.
+
+Stage Summary:
+- 2 pages staff livrées : /pointage-ecran (écran temps réel avec polling
+  30 s, grille couleur VERT/JAUNE/ROUGE/ORANGE, régularisation manuelle,
+  génération sessions) et /discipline (dashboard 2 onglets : élèves à risque
+  avec badge « À convoquer » + dialog détails, tickets avec surbrillance
+  rose pour CRITIQUE+OUVERT + dialog traiter).
+- Sidebar staff étendue (dashboard-shell + dashboard-layout) : 2 nouvelles
+  entrées dans le groupe « Pédagogie » avec icônes Clock et ShieldAlert.
+- Type DashboardViewId + mapping VIEW_TO_PATH étendus pour la navigation
+  rapide depuis le dashboard.
+- 8 fichiers au total (4 créés + 4 modifiés). Frontend uniquement, aucun
+  changement backend, DB, schema, ou .env.

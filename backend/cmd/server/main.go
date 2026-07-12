@@ -123,6 +123,11 @@ func main() {
         // Module enseignant (Phase A)
         enseignantSvc := services.NewEnseignantService()
         enseignantHandler := handlers.NewEnseignantHandler(enseignantSvc)
+        // Pointage & discipline (Phase B)
+        pointageSvc := services.NewPointageService()
+        pointageHandler := handlers.NewPointageHandler(pointageSvc)
+        incidentSvc := services.NewIncidentService()
+        incidentHandler := handlers.NewIncidentHandler(incidentSvc)
 
         // 6. Router Gin
         r := gin.Default()
@@ -180,6 +185,9 @@ func main() {
         preInscriptionHandler.RegisterRoutes(api, authMW)
         // Module enseignant (Phase A)
         enseignantHandler.RegisterRoutes(api, authMW)
+        // Pointage & discipline (Phase B)
+        pointageHandler.RegisterRoutes(api, authMW)
+        incidentHandler.RegisterRoutes(api, authMW)
 
         // Route de bienvenue
         r.GET("/", func(c *gin.Context) {
