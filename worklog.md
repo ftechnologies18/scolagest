@@ -2757,3 +2757,52 @@ Stage Summary:
   auto-transition EN_REVUE (24h lazy), champs santé/transfert.
 - Mode démo SMTP : logge les emails en console (prod = ajouter SMTP_HOST etc).
 - Aucune migration manuelle Neon (AutoMigrate gère les 3 nouvelles colonnes).
+
+---
+Task ID: regle-metier-pre-inscrit-paiement
+Agent: Z.ai Code (tuteur principal)
+Task: Règle métier — une inscription n'est validée (INSCRIT) qu'après paiement des frais d'inscription à la caisse. Avant cela, l'élève est PRE_INSCRIT.
+
+Work Log:
+- Diagnostic : le workflow d'inscription (wizard + validation pré-inscription) créait
+  l'inscription avec statut INSCRIT immédiatement, sans attendre le paiement.
+  Règle métier : l'inscription n'est définitive qu'après paiement des frais
+  d'inscription à la caisse.
+- Backend (Go) — 4 fichiers modifiés :
+  - models/enums.go : ajout StatutPreInscrit = "PRE_INSCRIT" (avec commentaire
+    documentant la règle métier). Statuts : PRE_INSCRIT < INSCRIT < REINSCRIT...
+  - services/inscription_workflow_service.go : statut par défaut PRE_INSCRIT
+    (au lieu de INSCRIT) quand dto.Inscription.Statut est vide.
+  - services/pre_inscription_service.go : Valider() force StatutPreInscrit
+    dans le WorkflowDTO (au lieu de StatutInscrit).
+  - services/paiement_service.go : après création d'un paiement, si FraisID
+    pointe vers un frais de type INSCRIPTION et que l'inscription est
+    PRE_INSCRIT → promotion automatique à INSCRIT (update + log console).
+    C'est ici que l'inscription est définitivement validée.
+- Frontend (TS/React) — 5 fichiers modifiés :
+  - lib/types.ts + lib/api-inscription.ts : ajout "PRE_INSCRIT" au type
+    StatutInscription.
+  - components/inscription/step-scolarite.tsx : remplacement du Select de
+    statut par un bandeau ambre informatif "Pré-inscrit (en attente de
+    paiement)" + texte explicatif. Le statut n'est plus choisi manuellement
+    (géré automatiquement par la règle métier).
+  - components/inscription/inscription-wizard.tsx : SuccessView modifié —
+    titre "Pré-inscription réussie !", bandeau ambre "Paiement des frais
+    d'inscription requis" avec explication. Toast mis à jour.
+  - components/eleves/eleve-detail.tsx : STATUT_INSCRIPTION_LABEL +
+    StatutInscriptionBadge mis à jour avec PRE_INSCRIT (label "Pré-inscrit
+    (paiement requis)", couleur ambre).
+  - components/eleves/inscription-dialog.tsx : ajout option PRE_INSCRIT
+    au Select de statut (pour réinscriptions manuelles).
+- Qualité :
+  - Backend : go build ✓, go vet ✓ (Go 1.25 local).
+  - Frontend : bun run lint → 0 erreur ✓ ; bunx tsc → 0 erreur sur fichiers
+    modifiés ✓ (15 pré-existantes) ; bun run build ✓.
+- Aucune migration Neon (nouveau statut = valeur enum string, pas de colonne).
+
+Stage Summary:
+- Règle métier corrigée : PRE_INSCRIT (défaut après inscription/pré-inscription)
+  → INSCRIT (auto après paiement frais d'inscription à la caisse).
+- Workflow complet : parent pré-inscrit → staff valide → élève PRE_INSCRIT →
+  caissier encaisse frais inscription → élève INSCRIT (définitif).
+- 9 fichiers modifiés (4 backend, 5 frontend). Aucun changement schema Neon.

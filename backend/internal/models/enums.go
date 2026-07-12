@@ -47,6 +47,12 @@ const (
 type StatutInscription string
 
 const (
+        // StatutPreInscrit : élève créé + inscription enregistrée, MAIS les frais
+        // d'inscription n'ont pas encore été payés à la caisse. L'inscription
+        // n'est définitivement validée (→ INSCRIT) qu'après le paiement des
+        // frais d'inscription. C'est le statut par défaut après le workflow
+        // d'inscription ou la validation d'une pré-inscription.
+        StatutPreInscrit StatutInscription = "PRE_INSCRIT"
         StatutInscrit    StatutInscription = "INSCRIT"
         StatutReinscrit  StatutInscription = "REINSCRIT"
         StatutTransfere  StatutInscription = "TRANSFERE"
@@ -253,7 +259,7 @@ const (
 // IsDirectorRole vérifie si un rôle est un rôle de direction
 // (DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR, ou DIRECTION legacy).
 func IsDirectorRole(role RoleUtilisateur) bool {
-	return role == RoleDirecteurEtudes ||
-		role == RoleDirecteurSuperviseur ||
-		role == RoleDirection
+        return role == RoleDirecteurEtudes ||
+                role == RoleDirecteurSuperviseur ||
+                role == RoleDirection
 }

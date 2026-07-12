@@ -101,6 +101,7 @@ const LIEN_PARENTE_LABEL: Record<LienParente, string> = {
 };
 
 const STATUT_INSCRIPTION_LABEL: Record<StatutInscription, string> = {
+  PRE_INSCRIT: "Pré-inscrit (paiement requis)",
   INSCRIT: "Inscrit",
   REINSCRIT: "Réinscrit",
   TRANSFERE: "Transféré",
@@ -126,6 +127,8 @@ function formatSexe(sexe: string): string {
 
 function StatutInscriptionBadge({ statut }: { statut: StatutInscription }) {
   const cls: Record<StatutInscription, string> = {
+    PRE_INSCRIT:
+      "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
     INSCRIT:
       "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300",
     REINSCRIT:

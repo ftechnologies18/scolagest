@@ -201,6 +201,24 @@ func (s *PaiementService) Create(dto PaiementDTO, caissierID uuid.UUID, etabliss
                 }
         }
 
+        // ── Règle métier : promotion PRE_INSCRIT → INSCRIT ──
+        // Si ce paiement concerne un frais d'INSCRIPTION et que l'inscription
+        // associée est PRE_INSCRIT, on la promeut automatiquement à INSCRIT.
+        // C'est ici que l'inscription est définitivement validée.
+        if p.FraisID != nil {
+                var frais models.Frais
+                if err := database.Current().First(&frais, "id = ?", *p.FraisID).Error; err == nil {
+                        if frais.TypeFrais == models.TypeFraisInscription &&
+                                inscription.Statut == models.StatutPreInscrit {
+                                database.Current().Model(&models.Inscription{}).
+                                        Where("id = ?", inscription.ID).
+                                        Update("statut", models.StatutInscrit)
+                                fmt.Printf("✓ Inscription %s promue PRE_INSCRIT → INSCRIT (paiement frais inscription %s)\n",
+                                        inscription.ID, p.ID)
+                        }
+                }
+        }
+
         // Recharger avec relations
         return s.Get(p.ID)
 }

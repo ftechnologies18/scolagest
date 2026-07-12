@@ -19,7 +19,7 @@ import type { Eleve, Inscription, Tuteur } from "@/lib/types";
 export type LienParente = "PERE" | "MERE" | "TUTEUR_LEGAL" | "AUTRE";
 export type SexeEleve = "M" | "F" | "";
 export type CategorieEleve = "AFFECTE" | "NON_AFFECTE" | "NON_APPLICABLE";
-export type StatutInscription = "INSCRIT" | "REINSCRIT" | "TRANSFERE" | "ABANDON";
+export type StatutInscription = "PRE_INSCRIT" | "INSCRIT" | "REINSCRIT" | "TRANSFERE" | "ABANDON";
 
 /** Tuteur du workflow : existant (tuteur_id) ou nouveau (champs). */
 export interface WorkflowTuteur {

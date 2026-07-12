@@ -141,8 +141,8 @@ export function InscriptionWizard() {
     onSuccess: (data) => {
       setResult(data);
       toast({
-        title: "Inscription réussie",
-        description: `${data.eleve.prenoms} ${data.eleve.nom} a été inscrit(e) avec succès.`,
+        title: "Pré-inscription réussie",
+        description: `${data.eleve.prenoms} ${data.eleve.nom} a été pré-inscrit(e). Paiement des frais d'inscription requis pour validation définitive.`,
       });
     },
     onError: (err) => {
@@ -438,9 +438,9 @@ function SuccessView({
             >
               <PartyPopper className="size-8" />
             </motion.div>
-            <h2 className="text-2xl font-bold">Inscription réussie !</h2>
+            <h2 className="text-2xl font-bold">Pré-inscription réussie !</h2>
             <p className="mt-1 text-emerald-50">
-              {eleve.prenoms} {eleve.nom} a été inscrit(e) avec succès.
+              {eleve.prenoms} {eleve.nom} a été pré-inscrit(e) avec succès.
             </p>
           </div>
 
@@ -465,6 +465,21 @@ function SuccessView({
                 }
               />
               <InfoRow label="Téléphone tuteur" value={eleve.tuteur?.telephone ?? "—"} />
+            </div>
+
+            {/* Alerte paiement requis */}
+            <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-900/50 dark:bg-amber-950/20">
+              <AlertCircle className="mt-0.5 size-5 shrink-0 text-amber-600" />
+              <div className="text-sm">
+                <p className="font-semibold text-amber-900 dark:text-amber-200">
+                  Paiement des frais d&apos;inscription requis
+                </p>
+                <p className="mt-0.5 text-amber-800 dark:text-amber-300">
+                  L&apos;élève est actuellement <strong>pré-inscrit</strong>. Son
+                  inscription sera définitivement validée après le paiement des
+                  frais d&apos;inscription à la caisse.
+                </p>
+              </div>
             </div>
 
             {/* Actions */}

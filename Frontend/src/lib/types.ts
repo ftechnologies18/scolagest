@@ -145,6 +145,7 @@ export interface TuteurDTO {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type StatutInscription =
+  | "PRE_INSCRIT"
   | "INSCRIT"
   | "REINSCRIT"
   | "TRANSFERE"

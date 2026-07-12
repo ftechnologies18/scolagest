@@ -80,6 +80,7 @@ const inscriptionSchema = z
 type InscriptionFormValues = z.infer<typeof inscriptionSchema>;
 
 const STATUT_OPTIONS: { value: StatutInscription; label: string }[] = [
+  { value: "PRE_INSCRIT", label: "Pré-inscrit (paiement requis)" },
   { value: "INSCRIT", label: "Inscrit" },
   { value: "REINSCRIT", label: "Réinscrit" },
   { value: "TRANSFERE", label: "Transféré" },

@@ -271,19 +271,16 @@ export function StepScolarite({
         </Field>
 
         <Field label="Statut de l&apos;inscription">
-          <Select
-            value={data.statut || "INSCRIT"}
-            onValueChange={(v) => update({ statut: v as StatutInscription })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="INSCRIT">Inscrit</SelectItem>
-              <SelectItem value="REINSCRIT">Réinscrit</SelectItem>
-              <SelectItem value="TRANSFERE">Transféré</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50/50 px-3 py-2 text-sm dark:border-amber-900/50 dark:bg-amber-950/20">
+            <Info className="size-4 shrink-0 text-amber-600" />
+            <span className="text-amber-800 dark:text-amber-300">
+              <strong>Pré-inscrit</strong> (en attente de paiement)
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            L&apos;inscription sera définitivement validée (« Inscrit ») après
+            le paiement des frais d&apos;inscription à la caisse.
+          </p>
         </Field>
       </div>
 

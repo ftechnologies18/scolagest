@@ -306,7 +306,9 @@ func (s *PreInscriptionService) Valider(id uuid.UUID, classeID uuid.UUID, anneeI
                 Inscription: WorkflowInscriptionDTO{
                         ClasseID:        classeID,
                         AnneeScolaireID: anneeID,
-                        Statut:          models.StatutInscrit,
+                        // PRE_INSCRIT : l'inscription ne devient INSCRIT qu'après
+                        // le paiement des frais d'inscription à la caisse.
+                        Statut:          models.StatutPreInscrit,
                 },
         }
 
