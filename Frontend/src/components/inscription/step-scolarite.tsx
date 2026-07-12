@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ScolaGest — Wizard Inscription, Étape 3 : Scolarité.
+ * ScolaGest — Wizard Inscription, Étape 3 : Scolarité (Refonte).
  *
  * Champs : cycle → niveau → classe (cascade, réutilise la logique de la liste
  * élèves), année scolaire (défaut = année active), statut, dérogation.
@@ -10,11 +10,37 @@
  * (catégorie État), on suggère la classe avec le moins d'élèves (via
  * mini-stats de remplissage). La dérogation n'est proposée que pour les
  * AFFECTE.
+ *
+ * Refonte Forêt EdTech :
+ *  - Section header numéroté (badge rond gradient emerald "3" + icône
+ *    GraduationCap).
+ *  - Cascade Cycle → Niveau → Classe : grid 3 colonnes desktop, 1 colonne
+ *    mobile, icônes contextuelles devant chaque Select (Layers / BarChart3 /
+ *    School), focus ring emerald.
+ *  - Suggestion de classe : card avec icône Info dans badge rond emerald +
+ *    bouton "Choisir cette classe" en `variant="success" size="sm"`.
+ *  - Année scolaire + Statut : grid 2 colonnes desktop, hint "Année active
+ *    présélectionnée", card Statut amber-toned raffinée.
+ *  - Dérogation (uniquement AFFECTE) : card amber-toned avec header Switch à
+ *    droite, Textarea du motif avec focus ring amber.
+ *  - Notes : Textarea avec hint "Optionnel — remarques sur l'inscription".
+ *
+ * LOGIQUE MÉTIER INTACTE : hooks, query keys, DTOs, types, endpoints API,
+ * signatures de fonctions, logique cascade Cycle → Niveau → Classe avec les
+ * refs prevCycle / prevNiveau / didPresetAnnee.
  */
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { GraduationCap, Loader2, ShieldAlert, Info } from "lucide-react";
+import {
+  BarChart3,
+  GraduationCap,
+  Info,
+  Layers,
+  School,
+  ShieldAlert,
+  type LucideIcon,
+} from "lucide-react";
 
 import { useAuthStore } from "@/lib/auth-store";
 import {
@@ -26,13 +52,12 @@ import {
   anneesKeys,
 } from "@/lib/api-students";
 import type { Cycle, Classe, AnneeScolaire, CategorieEleve } from "@/lib/types";
-import type { WorkflowInscription, StatutInscription } from "@/lib/api-inscription";
+import type { WorkflowInscription } from "@/lib/api-inscription";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -40,7 +65,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface StepScolariteProps {
   data: WorkflowInscription;
@@ -90,8 +115,7 @@ export function StepScolarite({
       didPresetAnnee.current = true;
       onChange({ ...data, annee_scolaire_id: activeAnnee.id });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeAnnee]);
+  }, [activeAnnee, data, onChange]);
 
   // Cascade : reset niveau + classe quand cycle change.
   // On ne déclenche l'effet QUE quand cycleId change (pas à chaque render).
@@ -105,8 +129,7 @@ export function StepScolarite({
         onChange({ ...data, classe_id: "" });
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cycleId]);
+  }, [cycleId, data, onChange]);
 
   const prevNiveau = React.useRef(niveau);
   React.useEffect(() => {
@@ -116,8 +139,7 @@ export function StepScolarite({
         onChange({ ...data, classe_id: "" });
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [niveau]);
+  }, [niveau, data, onChange]);
 
   // Classes filtrées par cycle + niveau
   const filteredClasses = React.useMemo(() => {
@@ -163,18 +185,18 @@ export function StepScolarite({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">Scolarité</h2>
-        <p className="text-sm text-muted-foreground">
-          Choisissez la classe et l&apos;année scolaire d&apos;inscription.
-        </p>
-      </div>
+      <SectionHeader
+        num={3}
+        icon={GraduationCap}
+        title="Scolarité"
+        subtitle="Choisissez la classe et l'année scolaire d'inscription."
+      />
 
       {/* Cascade Cycle → Niveau → Classe */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Field label="Cycle">
+        <Field label="Cycle" icon={Layers}>
           <Select value={cycleId} onValueChange={setCycleId}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full focus-visible:ring-emerald-500/40">
               <SelectValue placeholder="Tous cycles" />
             </SelectTrigger>
             <SelectContent>
@@ -188,9 +210,9 @@ export function StepScolarite({
           </Select>
         </Field>
 
-        <Field label="Niveau">
+        <Field label="Niveau" icon={BarChart3}>
           <Select value={niveau} onValueChange={setNiveau}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full focus-visible:ring-emerald-500/40">
               <SelectValue placeholder="Tous niveaux" />
             </SelectTrigger>
             <SelectContent>
@@ -204,12 +226,12 @@ export function StepScolarite({
           </Select>
         </Field>
 
-        <Field label="Classe" required>
+        <Field label="Classe" required icon={School}>
           <Select
             value={data.classe_id || "none"}
             onValueChange={(v) => update({ classe_id: v === "none" ? "" : v })}
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-full focus-visible:ring-emerald-500/40">
               <SelectValue placeholder="Sélectionnez…" />
             </SelectTrigger>
             <SelectContent>
@@ -227,30 +249,36 @@ export function StepScolarite({
 
       {/* Suggestion de classe */}
       {suggestedClasse && !data.classe_id && (
-        <Card className="border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-          <CardContent className="flex items-center gap-3 py-3">
-            <Info className="size-4 text-emerald-600" />
-            <p className="flex-1 text-sm text-emerald-800 dark:text-emerald-300">
-              Suggestion : <strong>{suggestedClasse.libelle}</strong>
-            </p>
-            <button
-              onClick={() => update({ classe_id: suggestedClasse.id })}
-              className="text-xs font-medium text-emerald-700 underline hover:text-emerald-900 dark:text-emerald-400"
-            >
-              Choisir cette classe
-            </button>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col items-start gap-3 rounded-lg border border-emerald-300 bg-emerald-50/80 p-3.5 dark:border-emerald-900/50 dark:bg-emerald-950/20 sm:flex-row sm:items-center">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+            <Info className="size-5" aria-hidden="true" />
+          </div>
+          <p className="min-w-0 flex-1 text-sm text-emerald-800 dark:text-emerald-300">
+            Suggestion : <strong className="font-semibold">{suggestedClasse.libelle}</strong>
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="success"
+            onClick={() => update({ classe_id: suggestedClasse.id })}
+          >
+            Choisir cette classe
+          </Button>
+        </div>
       )}
 
       {/* Année scolaire + Statut */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Année scolaire" required>
+        <Field
+          label="Année scolaire"
+          required
+          hint="Année active présélectionnée automatiquement."
+        >
           <Select
             value={data.annee_scolaire_id || "none"}
             onValueChange={(v) => update({ annee_scolaire_id: v === "none" ? "" : v })}
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-full focus-visible:ring-emerald-500/40">
               <SelectValue placeholder="Sélectionnez…" />
             </SelectTrigger>
             <SelectContent>
@@ -263,77 +291,114 @@ export function StepScolarite({
               )}
             </SelectContent>
           </Select>
-          {activeAnnee && (
-            <p className="text-xs text-muted-foreground">
-              Année active présélectionnée : {activeAnnee.libelle}
-            </p>
-          )}
         </Field>
 
-        <Field label="Statut de l&apos;inscription">
-          <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50/50 px-3 py-2 text-sm dark:border-amber-900/50 dark:bg-amber-950/20">
-            <Info className="size-4 shrink-0 text-amber-600" />
+        <Field label="Statut de l'inscription">
+          <div className="flex items-center gap-2.5 rounded-md border border-amber-300 bg-amber-50/80 px-3.5 py-2.5 text-sm dark:border-amber-900/50 dark:bg-amber-950/20">
+            <Info className="size-4 shrink-0 text-amber-600" aria-hidden="true" />
             <span className="text-amber-800 dark:text-amber-300">
-              <strong>Pré-inscrit</strong> (en attente de paiement)
+              <strong className="font-semibold">Pré-inscrit</strong> (en attente de paiement)
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            L&apos;inscription sera définitivement validée (« Inscrit ») après
-            le paiement des frais d&apos;inscription à la caisse.
+            L&apos;inscription sera définitivement validée (« Inscrit ») après le
+            paiement des frais d&apos;inscription à la caisse.
           </p>
         </Field>
       </div>
 
       {/* Dérogation (uniquement pour AFFECTE) */}
       {canDerogation && (
-        <Card className="border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-950/20">
-          <CardContent className="space-y-3 py-4">
+        <div className="rounded-lg border border-amber-300 bg-amber-50/60 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
+          <div className="space-y-3">
             <div className="flex items-start gap-3">
-              <ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-600" />
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Dérogation 3 tranches</p>
-                    <p className="text-xs text-muted-foreground">
+              <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                <ShieldAlert className="size-5" aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                      Dérogation 3 tranches
+                    </p>
+                    <p className="text-xs text-amber-800 dark:text-amber-300">
                       L&apos;élève est affecté (exonéré scolarité). Activez la dérogation
                       s&apos;il bénéficie d&apos;un échelonnement spécial.
                     </p>
                   </div>
                   <Switch
                     checked={data.derogation_inscription}
-                    onCheckedChange={(v) =>
-                      update({ derogation_inscription: v })
-                    }
+                    onCheckedChange={(v) => update({ derogation_inscription: v })}
+                    aria-label="Activer la dérogation 3 tranches"
                   />
                 </div>
                 {data.derogation_inscription && (
                   <div className="mt-3 space-y-1.5">
-                    <Label className="text-sm font-medium">
+                    <Label htmlFor="motif-derogation" className="text-sm font-medium">
                       Motif de la dérogation <span className="text-rose-500">*</span>
                     </Label>
                     <Textarea
+                      id="motif-derogation"
                       value={data.motif_derogation ?? ""}
                       onChange={(e) => update({ motif_derogation: e.target.value })}
                       placeholder="Justifiez la dérogation (ex: difficultés sociales, accord direction…)"
                       rows={2}
+                      className="focus-visible:ring-amber-500/40"
                     />
                   </div>
                 )}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Notes */}
-      <Field label="Notes (optionnel)">
+      <Field
+        label="Notes (optionnel)"
+        hint="Optionnel — remarques sur l'inscription."
+      >
         <Textarea
           value={data.notes ?? ""}
           onChange={(e) => update({ notes: e.target.value })}
           placeholder="Remarques sur l'inscription…"
           rows={2}
+          className="focus-visible:ring-emerald-500/40"
         />
       </Field>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sous-composants
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SectionHeader({
+  num,
+  icon: Icon,
+  title,
+  subtitle,
+}: {
+  num: number;
+  icon: LucideIcon;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 text-sm font-bold text-white shadow-sm">
+        {num}
+      </div>
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <div className="flex items-center gap-2">
+          <Icon className="size-4 text-emerald-600" aria-hidden="true" />
+          <h2 className="font-display text-lg font-semibold leading-tight text-forest">
+            {title}
+          </h2>
+        </div>
+        <p className="text-sm text-muted-foreground">{subtitle}</p>
+      </div>
     </div>
   );
 }
@@ -341,19 +406,25 @@ export function StepScolarite({
 function Field({
   label,
   required,
+  hint,
+  icon: Icon,
   children,
 }: {
   label: string;
   required?: boolean;
+  hint?: string;
+  icon?: LucideIcon;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium">
+      <Label className="flex items-center gap-1.5 text-sm font-medium">
+        {Icon ? <Icon className="size-3.5 text-emerald-600" aria-hidden="true" /> : null}
         {label}
-        {required && <span className="ml-0.5 text-rose-500">*</span>}
+        {required ? <span className="ml-0.5 text-rose-500">*</span> : null}
       </Label>
       {children}
+      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }
