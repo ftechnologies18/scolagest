@@ -111,6 +111,8 @@ export type DashboardViewId =
   // Pédagogie — Phase B (pointage temps réel + discipline)
   | "pointage-ecran"
   | "discipline"
+  // Pédagogie — Phase C (paie enseignants)
+  | "paie"
   // Vues SaaS (SUPER_ADMIN uniquement)
   | "saas-dashboard"
   | "saas-establishments"

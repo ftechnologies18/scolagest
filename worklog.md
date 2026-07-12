@@ -3344,3 +3344,186 @@ Stage Summary:
   rapide depuis le dashboard.
 - 8 fichiers au total (4 créés + 4 modifiés). Frontend uniquement, aucun
   changement backend, DB, schema, ou .env.
+
+---
+Task ID: phasec-paie-frontend
+Agent: Z.ai Code (tuteur principal)
+Task: Coder le frontend de la paie enseignants (Phase C). Page staff `/paie`
++ page prof `/prof/paie` + sidebar nav. Frontend uniquement.
+
+Work Log:
+- Contexte : backend Phase C en place (routes `/api/paie/bulletins`,
+  `/api/paie/bulletins/:id`, `/generate`, `/:id/valider`, `/:id/payer`,
+  `/api/paie/avances`, `/:id/traiter`, `/api/prof/bulletins`). Client API
+  `Frontend/src/lib/api-paie.ts` fourni (types `BulletinPaie`,
+  `AvanceSalaire`, `StatutBulletin` {BROUILLON/VALIDE/PAYE}, `StatutAvance`
+  {DEMANDEE/APPROUVEE/REJETEE/DEDUITE}, labels `STATUT_BULLETIN_LABEL`,
+  `STATUT_AVANCE_LABEL`, `MOIS_LABELS`, `moisLabel`, fonctions
+  `fetchBulletins`, `fetchBulletin`, `generateBulletin`, `validerBulletin`,
+  `payerBulletin`, `fetchAvances`, `createAvance`, `traiterAvance`,
+  `fetchMesBulletins`). `fetchEnseignants` réutilisé depuis
+  `@/lib/api-enseignant` pour les selects d'enseignant (génération bulletin
+  + création avance). Le dashboard-shell.tsx + dashboard-layout.tsx (legacy)
+  ont déjà un groupe « Pédagogie » existant avec enseignants/matières/
+  affectations/pointage-ecran/discipline — à étendre avec une entrée Paie.
+
+- 8 fichiers créés / modifiés (frontend uniquement) :
+
+  1) Frontend/src/components/paie/paie-dashboard.tsx (NOUVEAU, ~1180 lignes) :
+     • "use client". Composant `PaieDashboard` avec 2 onglets <Tabs> shadcn.
+     • Onglet 1 « Bulletins de paie » :
+       - Filtre mois + année (2 <Select>, défaut = mois/année courante via
+         `currentMonthYear()`).
+       - Bouton « Générer un bulletin » → <GenerateBulletinDialog> avec
+         <EnseignantSelect> (via `useEnseignantsActifs` = useQuery sur
+         `fetchEnseignants({})`) + 2 selects mois/année. Submit →
+         `generateBulletin` (mutation React Query). Si `alerte_ecart`
+         retournée → toast warning (titre « Bulletin généré — écart détecté »
+         + description = alerte), sinon toast succès standard.
+         Invalidate `paieKeys.all` puis fermeture dialog.
+       - Tableau <Table> shadcn : enseignant (nom + matricule mono), mois/
+         année (label `moisLabel`), heures pointées, heures planifiées,
+         taux moyen, salaire brut, avances (-), cotisations (-), salaire net
+         (gras), statut (badge couleur : BROUILLON=slate, VALIDE=amber,
+         PAYE=emerald) + date de paiement si PAYE.
+       - Actions par statut :
+         · BROUILLON → bouton « Valider » (outline amber) →
+           <ValiderBulletinDialog> avec champ cotisations (number, min 0) +
+           aperçu live du net à payer (brut - avances - cotisations) →
+           `validerBulletin`.
+         · VALIDE → bouton « Marquer payé » (emerald) →
+           <PayerBulletinDialog> avec champ référence (min 2 chars) →
+           `payerBulletin`.
+         · PAYE → badge + date (pas d'action).
+       - Bouton « Voir détail » (Eye) → <BulletinDetailDialog> qui
+         `useQuery(paieKeys.bulletin(id), fetchBulletin)` pour récupérer la
+         version fraîche. Affiche : enseignant + statut, période + sessions,
+         calcul détaillé du salaire (taux moyen / brut / avances / cotisations
+         / net), métadonnées validation/paiement, notes.
+       - États : pas d'établissement (amber), chargement (5 skeletons),
+         erreur (carte rose + retry), vide (emerald avec message
+         contextuel « aucun bulletin pour cette période »).
+     • Onglet 2 « Avances sur salaire » :
+       - Filtre par statut (<Select> Tous/DEMANDEE/APPROUVEE/REJETEE/DEDUITE).
+       - Bouton « Nouvelle avance » → <CreateAvanceDialog> avec
+         <EnseignantSelect> + montant (number > 0) + motif (textarea
+         optionnel, max 500) → `createAvance`.
+       - Tableau : enseignant (nom + matricule), montant (gras), date demande,
+         motif (line-clamp-2), statut (badge : DEMANDEE=amber,
+         APPROUVEE=sky, REJETEE=rose, DEDUITE=emerald) + date approbation.
+       - Actions pour DEMANDEE : bouton « Approuver » (emerald, mutation
+         directe `traiterAvance({approuver: true})`) + bouton « Rejeter »
+         (rose) → <RejeterAvanceDialog> avec motif rejet (textarea min 3
+         chars, max 500) → `traiterAvance({approuver: false, motif_rejet})`.
+       - États : chargement / erreur / vide (emerald).
+     • Hook partagé `useEnseignantsActifs(enabled)` (clé React Query dédiée
+       `["enseignants", "list", { all: true, paie: true }]` pour ne pas
+       polluer le cache enseignants existant).
+     • Composant <EnseignantSelect> réutilisable (value/onChange/enseignants/
+       loading/disabled/id) avec placeholder « Chargement… » et fallback
+       « Aucun enseignant » si liste vide.
+     • `paieKeys` exporté (all/bulletins/bulletin/avances) pour permettre
+       l'invalidation croisée depuis d'autres composants.
+
+  2) Frontend/src/app/(staff)/paie/page.tsx (NOUVEAU, ~26 lignes) :
+     • Page wrapper avec RoleGuard allow=[DIRECTION, DIRECTEUR_ETUDES,
+       DIRECTEUR_SUPERVISEUR]. Rend <PaieDashboard />.
+
+  3) Frontend/src/app/prof/paie/page.tsx (NOUVEAU, ~440 lignes) :
+     • "use client" (pas de RoleGuard — le layout prof vérifie déjà le rôle
+       ENSEIGNANT).
+     • Liste `fetchMesBulletins` triée par période décroissante
+       (année desc, puis mois desc).
+     • 2 vues responsive :
+       - Desktop (sm+) : <Table> avec colonnes période / brut / net payé /
+         statut / détail.
+       - Mobile (< sm) : cartes <BulletinMobileCard> avec bordure gauche
+         emerald, en-tête (mois/année + badge statut), heures pointées,
+         grille 2 cols (brut / net), bouton « Voir le détail » plein largeur
+         h-11.
+     • Bouton « Voir le détail » → <BulletinDetailDialog> qui
+       `useQuery(profBulletinsKeys.detail(id), fetchBulletin)`. Affiche :
+       en-tête période + statut, sessions + taux moyen, calcul détaillé du
+       salaire, métadonnées validation/paiement, notes.
+     • États : chargement (4 skeletons en cartes), erreur (carte rose avec
+       retry), vide (carte emerald « Aucun bulletin pour le moment »).
+     • Clés React Query dédiées `profBulletinsKeys` (extension de
+       `profKeys.all`).
+
+  4) Frontend/src/app/prof/page.tsx (MODIFIÉ) :
+     • Ajout import `Wallet` depuis lucide-react.
+     • Remplacement du bouton unique « Signaler un incident » par une grille
+       `grid-cols-1 sm:grid-cols-2` de 2 boutons :
+       - « Signaler un incident » (amber, existant) → /prof/incidents.
+       - « Mes bulletins de paie » (outline emerald, nouveau) → /prof/paie.
+
+  5) Frontend/src/components/dashboard/dashboard-shell.tsx (MODIFIÉ) :
+     • Ajout de l'entrée `/paie` « Paie enseignants » (icône Wallet, déjà
+       importé) dans le groupe « Pédagogie » de STAFF_NAV_GROUPS. Rôles
+       autorisés : DIRECTION, DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR.
+
+  6) Frontend/src/components/dashboard/dashboard-layout.tsx (MODIFIÉ,
+     legacy) :
+     • Ajout de l'entrée `id: "paie"` « Paie enseignants » (icône Wallet,
+       déjà importé) dans le groupe « Pédagogie » de STAFF_NAV_GROUPS
+       interne (mêmes rôles).
+
+  7) Frontend/src/components/dashboard/dashboard-home.tsx (MODIFIÉ) :
+     • Ajout de `"paie"` au type `DashboardViewId` (section « Pédagogie —
+       Phase C (paie enseignants) »).
+
+  8) Frontend/src/app/(staff)/dashboard/page.tsx (MODIFIÉ) :
+     • Ajout au mapping `VIEW_TO_PATH` : `paie: "/paie"`.
+
+- Conventions respectées :
+  • "use client" sur tous les composants interactifs (3 fichiers
+    nouveaux + aucun composant serveur ajouté).
+  • Imports `@/lib/...` et `@/components/ui/...` (alias `@/`).
+  • Couleurs : emerald (primaire/succès/PAYE/DEDUITE), amber (VALIDE/
+    DEMANDEE/warning écart), rose (erreur/REJETEE/rejeter), sky (APPROUVEE),
+    slate (BROUILLON/neutre). Aucun indigo/blue.
+  • shadcn/ui : Card, Button, Badge, Input, Label, Textarea, Select, Table,
+    Tabs, Dialog, Skeleton + lucide-react (Wallet, RefreshCw, AlertCircle,
+    Plus, Loader2, Eye, CheckCircle2, Banknote, ThumbsUp, ThumbsDown,
+    HandCoins, CalendarDays, GraduationCap, TriangleAlert).
+  • TanStack Query : useQuery (3) + useMutation (5 : generateBulletin,
+    validerBulletin, payerBulletin, createAvance, traiterAvance) avec
+    `invalidateQueries({ queryKey: paieKeys.all })` après chaque mutation.
+  • `useAuthStore` pour l'établissement (pas de hook custom). Si
+    `!etablissement` → EmptyState amber qui invite à sélectionner un
+    établissement.
+  • Montants en FCFA via `formatFCFA()` de `@/lib/format`
+    (Intl.NumberFormat("fr-FR") + " FCFA"). Dates via formatDateShort /
+    formatDateTime du même module.
+  • Mobile-first : tables avec `overflow-x-auto`, libellés courts sur mobile
+    (`hidden sm:inline`), grille responsive sm:grid-cols-2 pour les boutons
+    d'action prof, carte mobile dédiée pour les bulletins prof.
+  • RoleGuard sur la page staff (sécurité en profondeur en plus du filtrage
+    sidebar). Pas de RoleGuard sur la page prof (le layout prof vérifie déjà
+    le rôle ENSEIGNANT).
+  • Footer / sticky : non pertinent (pages staff rendues dans DashboardShell
+    qui a son footer sticky mt-auto ; page prof rendue dans le layout prof
+    qui a aussi son footer sticky).
+
+- Qualité :
+  - cd Frontend && bun run lint → 0 erreur, 3 warnings pré-existants dans
+    step-scolarite.tsx (hors périmètre) ✓.
+  - cd Frontend && bunx tsc --noEmit → 15 erreurs pré-existantes (login-form
+    ×8 Framer Motion, view-impayes ×2 toast, view-parametres ×1 Record,
+    view-utilisateurs ×1, etablissement-form-dialog ×1 quota_classe,
+    utilisateur-form-dialog ×1 Record, instrumentation ×1). 0 erreur sur
+    les 8 fichiers créés/modifiés par cette tâche ✓.
+  - Aucune modification backend, .env, schema, ou DB.
+
+Stage Summary:
+- 2 pages livrées : /paie (staff, 2 onglets : bulletins + avances, 5
+  mutations) et /prof/paie (prof, liste + détail, mobile-first avec cartes
+  dédiées).
+- Sidebar staff étendue (dashboard-shell + dashboard-layout legacy) : 1
+  nouvelle entrée « Paie enseignants » dans le groupe « Pédagogie » avec
+  icône Wallet.
+- Type DashboardViewId + mapping VIEW_TO_PATH étendus pour la navigation
+  rapide depuis le dashboard.
+- Tableau de bord prof étendu : 2e bouton d'accès rapide vers /prof/paie.
+- 8 fichiers au total (3 créés + 5 modifiés). Frontend uniquement, aucun
+  changement backend, DB, schema, ou .env.

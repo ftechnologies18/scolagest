@@ -34,6 +34,7 @@ import {
   RefreshCw,
   GraduationCap,
   Flag,
+  Wallet,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -223,7 +224,7 @@ export default function ProfDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Bandeau date du jour + action principale */}
+      {/* Bandeau date du jour + actions principales */}
       <section className="space-y-3">
         <div>
           <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight sm:text-2xl">
@@ -235,12 +236,20 @@ export default function ProfDashboardPage() {
           </p>
         </div>
 
-        <Button asChild size="lg" className="h-12 w-full gap-2 bg-amber-600 text-base hover:bg-amber-700">
-          <Link href="/prof/incidents">
-            <Flag className="size-5" />
-            Signaler un incident
-          </Link>
-        </Button>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <Button asChild size="lg" className="h-12 w-full gap-2 bg-amber-600 text-base hover:bg-amber-700">
+            <Link href="/prof/incidents">
+              <Flag className="size-5" />
+              Signaler un incident
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="h-12 w-full gap-2 border-emerald-300 text-base text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/50 dark:text-emerald-300">
+            <Link href="/prof/paie">
+              <Wallet className="size-5" />
+              Mes bulletins de paie
+            </Link>
+          </Button>
+        </div>
       </section>
 
       {/* Liste des sessions */}

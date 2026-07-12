@@ -128,6 +128,9 @@ func main() {
         pointageHandler := handlers.NewPointageHandler(pointageSvc)
         incidentSvc := services.NewIncidentService()
         incidentHandler := handlers.NewIncidentHandler(incidentSvc)
+        // Paie enseignants (Phase C)
+        paieSvc := services.NewPaieService()
+        paieHandler := handlers.NewPaieHandler(paieSvc)
 
         // 6. Router Gin
         r := gin.Default()
@@ -188,6 +191,8 @@ func main() {
         // Pointage & discipline (Phase B)
         pointageHandler.RegisterRoutes(api, authMW)
         incidentHandler.RegisterRoutes(api, authMW)
+        // Paie enseignants (Phase C)
+        paieHandler.RegisterRoutes(api, authMW)
 
         // Route de bienvenue
         r.GET("/", func(c *gin.Context) {

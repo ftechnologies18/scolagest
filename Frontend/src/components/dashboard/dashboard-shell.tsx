@@ -246,6 +246,15 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         icon: ShieldAlert,
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
       },
+      {
+        // Paie enseignants (Phase C) : génération des bulletins mensuels,
+        // validation/paiement et suivi des avances sur salaire. Réservé à la
+        // direction et aux directeurs (études / superviseur).
+        href: "/paie",
+        label: "Paie enseignants",
+        icon: Wallet,
+        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
+      },
     ],
   },
   {

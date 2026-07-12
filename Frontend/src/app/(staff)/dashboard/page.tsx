@@ -33,6 +33,7 @@ const VIEW_TO_PATH: Record<DashboardViewId, string> = {
   affectations: "/affectations",
   "pointage-ecran": "/pointage-ecran",
   discipline: "/discipline",
+  paie: "/paie",
   "saas-dashboard": "/saas/dashboard",
   "saas-establishments": "/saas/establishments",
   "saas-audit": "/saas/audit",

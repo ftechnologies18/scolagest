@@ -130,6 +130,9 @@ func migrate(db *gorm.DB) error {
                 &models.SessionCours{},
                 &models.Pointage{},
                 &models.TicketIncident{},
+                // Paie enseignants (Phase C)
+                &models.BulletinPaie{},
+                &models.AvanceSalaire{},
         }
 
         return db.AutoMigrate(modelsList...)
