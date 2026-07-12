@@ -7568,3 +7568,55 @@ Stage Summary:
   = données async + spacing mobile mineurs, hors DS).
 - 8 screenshots archivés dans tool-results/final-*.png.
 - Aucune modification code (vérif seule). DS complet et validé.
+
+---
+Task ID: fe-7 (consolidé)
+Agent: Z.ai Code (tuteur principal) + 6 subagents full-stack-developer parallèles
+Task: Extension de la migration Forêt EdTech aux vues restantes : impayes, frais,
+annees, utilisateurs, comptabilite, mobile-money, parametres, saas-* (5 vues),
+prof/* (5 pages), parent/portal. 18 fichiers au total.
+
+Work Log:
+- 6 sous-tâches lancées en parallèle (subagents full-stack-developer) :
+  • fe-7a : impayes + frais + annees (3 vues staff, ~23 edits)
+  • fe-7b : utilisateurs + comptabilite (2 vues staff, ~19 edits, suppression
+    helper BilanCard 39 lignes + BilanCard/SummaryStat morts)
+  • fe-7c : mobile-money + parametres (2 vues staff, ~21 edits)
+  • fe-7d : saas-* (5 vues SUPER_ADMIN, ~29 edits, tone premium SaaS avec
+    GlassCard variant="premium" + 2 ProgressCircle + suppression helpers
+    KpiCard/RevenueCard/SecondaryKpi)
+  • fe-7e : prof/* (5 pages enseignant, ~25 edits, 4 StatCard sur avances)
+  • fe-7f : parent/portal (1 composant parent-portal.tsx, 9 edits, 1
+    ProgressCircle taux de paiement global parent)
+- Pattern cohérent avec fe-5 (caisse/eleves/rapports) :
+  • KentePattern strip top + separators
+  • GlassCard variant="adaptive" noHover pour content cards
+  • StatCard pour KPIs (tones emerald/amber/terracotta/gold/forest)
+  • ProgressCircle pour taux (saas-dashboard taux activité, saas-billing taux
+    paiement, parent-portal taux paiement global)
+  • Button variant="success" (CTA principaux) / "premium" (SaaS gold) /
+    "outline" (exports) / "ghost" (secondaires)
+  • font-display (Poppins) sur tous les titres
+  • Card shadcn conservée pour dashed empty-states + Dialogs (règle strict)
+- Logique 100% préservée sur les 18 fichiers :
+  • ~40 useQuery cumulés (fetch handlers, polling, retry, enabled)
+  • ~10 useMutation (create/delete/update + invalidateQueries + toasts)
+  • Tous handlers/états/pagination/filtres/debounce intacts
+  • Tous Dialogs NON touchés (formulaires, reçus, momo, audit, billing, etc.)
+- Palette : 0 indigo/blue (vérifié grep). Forêt EdTech uniquement.
+- Lint global : 0 erreur, 3 warnings préexistants (step-scolarite.tsx non touché).
+
+Stage Summary:
+- Migration Forêt EdTech étendue à TOUTES les vues restantes : 18 fichiers migrés.
+- 6 commits poussés (fe-7a à fe-7f) : 1b360f6, aa49bfe, fedf1bb, 5a8fe51,
+  f8e8e91, 9d2659d.
+- DS Forêt EdTech désormais appliqué sur l'ensemble de l'application :
+  • 3 vues Phase 5 (caisse/eleves/rapports)
+  • 3 vues fe-7a (impayes/frais/annees)
+  • 2 vues fe-7b (utilisateurs/comptabilite)
+  • 2 vues fe-7c (mobile-money/parametres)
+  • 5 vues fe-7d (saas-dashboard/establishments/audit/billing/support)
+  • 5 pages fe-7e (prof accueil/pointage/paie/avances/incidents)
+  • 1 portail fe-7f (parent-portal)
+  = 21 vues/pages au total migrées + chrome (dashboard-shell) + 4 layouts.
+- Identité visuelle Forêt EdTech unifiée sur toute l'app (hors landing/login).
