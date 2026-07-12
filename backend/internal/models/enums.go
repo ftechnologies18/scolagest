@@ -92,6 +92,7 @@ const (
         RoleDirecteurEtudes  RoleUtilisateur = "DIRECTEUR_ETUDES"
         RoleDirecteurSuperviseur RoleUtilisateur = "DIRECTEUR_SUPERVISEUR"
         RoleSecretariat      RoleUtilisateur = "SECRETARIAT"
+        RoleEnseignant       RoleUtilisateur = "ENSEIGNANT"
         // RoleDirection : legacy (migré vers DIRECTEUR_ETUDES / DIRECTEUR_SUPERVISEUR)
         RoleDirection        RoleUtilisateur = "DIRECTION"
 )

@@ -120,6 +120,9 @@ func main() {
         // Récupération mot de passe staff / PIN parent
         passwordResetSvc := services.NewPasswordResetService()
         passwordResetHandler := handlers.NewPasswordResetHandler(passwordResetSvc)
+        // Module enseignant (Phase A)
+        enseignantSvc := services.NewEnseignantService()
+        enseignantHandler := handlers.NewEnseignantHandler(enseignantSvc)
 
         // 6. Router Gin
         r := gin.Default()
@@ -175,6 +178,8 @@ func main() {
         // Routes Phase 3 : effectifs, pré-inscription (staff)
         effectifsHandler.RegisterRoutes(api, authMW)
         preInscriptionHandler.RegisterRoutes(api, authMW)
+        // Module enseignant (Phase A)
+        enseignantHandler.RegisterRoutes(api, authMW)
 
         // Route de bienvenue
         r.GET("/", func(c *gin.Context) {

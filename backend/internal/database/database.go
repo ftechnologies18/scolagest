@@ -121,6 +121,11 @@ func migrate(db *gorm.DB) error {
                 &models.PreInscription{},
                 // Réinitialisation mot de passe staff
                 &models.PasswordResetToken{},
+                // Enseignants & pédagogie (Phase A)
+                &models.Enseignant{},
+                &models.Matiere{},
+                &models.EnseignantMatiere{},
+                &models.AffectationCours{},
         }
 
         return db.AutoMigrate(modelsList...)

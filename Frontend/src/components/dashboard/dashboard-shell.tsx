@@ -52,6 +52,7 @@ import {
   BarChart3,
   ArrowRight,
   MailOpen,
+  GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -198,6 +199,32 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         label: "Passage de classe",
         icon: ArrowRight,
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
+      },
+    ],
+  },
+  {
+    // Pédagogie (module Enseignant — Phase A) : enseignants, matières et
+    // affectations prof/matière/classe. Accessible à la direction, aux
+    // directeurs (études / superviseur) et au secrétariat.
+    label: "Pédagogie",
+    items: [
+      {
+        href: "/enseignants",
+        label: "Enseignants",
+        icon: GraduationCap,
+        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
+      },
+      {
+        href: "/matieres",
+        label: "Matières",
+        icon: BookOpen,
+        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
+      },
+      {
+        href: "/affectations",
+        label: "Affectations",
+        icon: CalendarDays,
+        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
       },
     ],
   },

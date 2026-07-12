@@ -2843,3 +2843,153 @@ Stage Summary:
 - Option B implémentée : classe masquée au parent (portail + suivi) tant que
   PRE_INSCRIT, révélée après paiement frais inscription. Staff voit tout.
 - 5 fichiers modifiés (1 backend, 4 frontend). Aucun changement schema Neon.
+
+---
+Task ID: enseignant-phase-a-frontend
+Agent: Z.ai Code (tuteur principal)
+Task: Frontend du module Enseignant Phase A — 3 pages (Enseignants, Matières,
+Affectations) + entrées de navigation sidebar (groupe « Pédagogie »).
+
+Work Log:
+- Contexte : le backend expose déjà les routes /api/enseignants (CRUD +
+  association matières), /api/matieres (CRUD) et /api/affectations (liste +
+  création + suppression, avec retour charge_totale_hebdo +
+  alerte_surcharge). Le client API existe dans
+  Frontend/src/lib/api-enseignant.ts avec tous les types (Enseignant,
+  EnseignantDTO, Matiere, MatiereDTO, EnseignantMatiere, AffectationCours,
+  AffectationDTO, AffectationResult, etc.). Réutilisation des hooks
+  fetchCycles, fetchClasses, fetchActiveAnnee (api-students) pour les
+  selects.
+
+- Sidebar / navigation (4 fichiers modifiés) :
+  • dashboard-shell.tsx : ajout import `GraduationCap` (lucide-react).
+    Ajout d'un nouveau groupe « Pédagogie » APRÈS « Configuration » avec 3
+    items (Enseignants → /enseignants, Matières → /matieres, Affectations
+    → /affectations). Rôles autorisés : DIRECTION, DIRECTEUR_ETUDES,
+    DIRECTEUR_SUPERVISEUR, SECRETARIAT. Icônes GraduationCap (déjà ajouté),
+    BookOpen (déjà importé), CalendarDays (déjà importé).
+  • dashboard-layout.tsx (legacy) : même ajout (import GraduationCap + groupe
+    « Pédagogie » avec `id: "enseignants"`, `id: "matieres"`,
+    `id: "affectations"` pour cohérence avec le système de vues interne).
+  • dashboard-home.tsx : ajout des 3 IDs au type `DashboardViewId`
+    (`"enseignants" | "matieres" | "affectations"`) entre
+    "pre-inscriptions" et les vues SaaS.
+  • dashboard/page.tsx : ajout des 3 entrées au mapping `VIEW_TO_PATH`
+    (enseignants → "/enseignants", matieres → "/matieres",
+    affectations → "/affectations") — permet la navigation URL depuis les
+    actions rapides du DashboardHome.
+
+- Page `/enseignants` :
+  • app/(staff)/enseignants/page.tsx (NOUVEAU) : wrapper client avec
+    RoleGuard allow=["DIRECTION","DIRECTEUR_ETUDES","DIRECTEUR_SUPERVISEUR",
+    "SECRETARIAT"] qui rend <EnseignantsList />.
+  • components/enseignants/enseignants-list.tsx (NOUVEAU, ~700 lignes) :
+    - Tableau (shadcn Table) : matricule, nom complet + email, téléphone,
+      statut (badge emerald/amber/slate), type contrat (badge), taux
+      horaire défaut (FCFA), matières (badges emerald, +N si > 3), actions
+      (modifier / gérer matières / supprimer).
+    - Barre de recherche (debounce 300ms via useEffect + setTimeout) +
+      filtre statut (Select shadcn).
+    - Bouton « Nouvel enseignant » (emerald).
+    - Dialog création / édition : nom* + prénoms + sexe (Select) +
+      téléphone + email + diplôme + spécialité + type contrat (Select) +
+      statut (Select) + taux horaire défaut (number). Validation : nom
+      requis + taux numérique ≥ 0. À la soumission → useMutation
+      createEnseignant/updateEnseignant + invalidation
+      enseignantsKeys.all.
+    - Dialog « Gérer matières » : liste les matières associées (libellé +
+      code + taux FCFA/h + bouton retirer) et un bloc d'ajout (select
+      matière + taux + bouton « Ajouter »). useMutation
+      addMatiereToEnseignant / removeMatiereFromEnseignant. Rafraîchit
+      l'enseignant via fetchEnseignants({ search: matricule }) pour avoir
+      la liste à jour (le client API n'a pas de GET /api/enseignants/:id).
+    - Suppression avec AlertDialog de confirmation (irréversible).
+    - États : pas d'établissement (ambre), chargement (skeleton),
+      vide (emerald), erreur (rose, message d'erreur affiché).
+    - Query keys exportées : `enseignantsKeys`, `matieresKeys`.
+
+- Page `/matieres` :
+  • app/(staff)/matieres/page.tsx (NOUVEAU) : wrapper RoleGuard →
+    <MatieresList />.
+  • components/enseignants/matieres-list.tsx (NOUVEAU, ~480 lignes) :
+    - Grille responsive de cartes (sm:2 colonnes, lg:3) : pastille couleur,
+      libellé, badge Actif/Inactif, code (badge mono), cycle (badge si
+      défini), coefficient.
+    - Bouton « Nouvelle matière » (emerald).
+    - Dialog création / édition : code* + coefficient (number, défaut 1) +
+      libellé* + cycle (Select optionnel — « Tous cycles » si non défini)
+      + couleur (palette de 8 pastilles : emerald, ambre, rouge, rose,
+      turquoise, lime, violet, slate — pas d'indigo/blue) + switch actif.
+      Validation : code + libellé requis, coefficient numérique > 0.
+      useMutation createMatiere/updateMatiere + invalidation
+      matieresListKeys.all.
+    - Suppression avec AlertDialog.
+    - États : pas d'établissement, chargement, vide, erreur.
+    - Cycles chargés via fetchCycles(etablissement.id).
+
+- Page `/affectations` :
+  • app/(staff)/affectations/page.tsx (NOUVEAU) : wrapper RoleGuard →
+    <AffectationsList />.
+  • components/enseignants/affectations-list.tsx (NOUVEAU, ~560 lignes) :
+    - Année scolaire présélectionnée via fetchActiveAnnee (anneesKeys).
+      Si aucune année active → état vide ambre.
+    - Tableau : enseignant (nom + matricule), matière (libellé + code),
+      classe (badge), volume hebdo (Clock icon + Xh), titulaire (badge
+      ambre Star si true, sinon « Non »), action supprimer.
+    - Bouton « Nouvelle affectation » (emerald).
+    - Dialog création : enseignant (Select, filtré sur statut=ACTIF) +
+      matière (Select, filtré sur actif=true) + classe (Select) + volume
+      horaire hebdo (number, défaut 2, step 0.5) + titulaire (Switch). Tous
+      requis. Alerte info ambre « surcharge > 25h/semaine ». À la soumission
+      → useMutation createAffectation.
+    - **Alerte surcharge** : si `result.alerte_surcharge === true` →
+      toast warning (variant default mais titre « ⚠️ Affectation créée —
+      surcharge détectée » + description « Charge totale : Xh/semaine
+      (> 25h). »). Sinon toast succès classique avec la charge totale.
+      Le seuil SEUIL_SURCHARGE_H = 25 est défini en constante locale.
+    - Suppression avec AlertDialog.
+    - États : pas d'établissement, pas d'année active, chargement, vide,
+      erreur.
+    - Listes nécessaires chargées en parallèle : enseignants (actifs),
+      matières (actives), classes (fetchClasses).
+
+- Conventions respectées :
+  • `"use client"` sur tous les composants interactifs.
+  • Imports `@/lib/...` et `@/components/ui/...` (alias `@/`).
+  • Couleurs : emerald (succès), amber (warning/intermédiaire), rose
+    (destructif), slate (neutre). Pas d'indigo/blue.
+  • shadcn/ui : Card, Table, Badge, Dialog, Button, Select, Input, Label,
+    Switch, AlertDialog, Skeleton + lucide-react icons.
+  • useMutation + invalidation du cache via useQueryClient.
+  • useAuthStore pour l'établissement courant.
+  • Responsive mobile-first (grid sm:grid-cols-2 lg:grid-cols-3,
+    flex-col sm:flex-row, etc.).
+  • Footer sticky déjà géré par DashboardShell (mt-auto sur footer).
+
+- Qualité :
+  - cd Frontend && bun run lint → 0 erreur, 3 warnings pré-existants
+    dans step-scolarite.tsx (hors périmètre) ✓
+  - cd Frontend && bunx tsc --noEmit → 15 erreurs pré-existantes
+    documentées (login-form.tsx ×8 Framer Motion, view-impayes.tsx ×2
+    toast, view-parametres.tsx ×1 Record<RoleGlobal>,
+    view-utilisateurs ×1, etablissement-form-dialog ×1 quota_classe,
+    utilisateur-form-dialog ×1 Record<RoleGlobal>, instrumentation ×1).
+    Aucune erreur sur les fichiers créés/modifiés par cette tâche ✓
+  - Dév server : aucun log d'erreur sur les nouvelles routes après
+    compilation (cf. /home/z/my-project/dev.log).
+
+Stage Summary:
+- 3 pages livrées sous (staff)/ : /enseignants, /matieres, /affectations,
+  toutes protégées par RoleGuard (DIRECTION, DIRECTEUR_ETUDES,
+  DIRECTEUR_SUPERVISEUR, SECRETARIAT).
+- Sidebar enrichie d'un nouveau groupe « Pédagogie » dans les deux
+  coquilles (dashboard-shell active + dashboard-layout legacy) avec 3
+  entrées. Types DashboardViewId et mapping VIEW_TO_PATH mis à jour pour
+  la navigation URL depuis le tableau de bord.
+- Fonctionnalités clés : recherche debounce 300ms + filtre statut
+  (enseignants), grille cartes avec pastilles couleur (matières), alerte
+  de surcharge automatique > 25h/semaine (affectations), dialog « Gérer
+  matières » avec ajout/retrait par enseignant, présélection année active.
+- 9 fichiers créés/modifiés (4 modifiés : dashboard-shell.tsx,
+  dashboard-layout.tsx, dashboard-home.tsx, dashboard/page.tsx ; 6 créés :
+  3 composants + 3 pages). Aucun changement backend, DB, schema, ou .env.

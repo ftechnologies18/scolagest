@@ -104,6 +104,10 @@ export type DashboardViewId =
   | "mobile-money"
   | "parametres"
   | "pre-inscriptions"
+  // Pédagogie (module Enseignant — Phase A)
+  | "enseignants"
+  | "matieres"
+  | "affectations"
   // Vues SaaS (SUPER_ADMIN uniquement)
   | "saas-dashboard"
   | "saas-establishments"
