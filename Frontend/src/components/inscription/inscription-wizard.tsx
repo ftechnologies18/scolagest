@@ -115,6 +115,23 @@ export function InscriptionWizard() {
     4: true,
   });
 
+  // Callbacks mémorisés (évitent les boucles infinies de useEffect dans les
+  // étapes : si on passait des fonctions inline, elles seraient recréées à
+  // chaque render du wizard, déclenchant les effets de validation à chaque
+  // fois → "Maximum update depth exceeded").
+  const setStep1Valid = React.useCallback(
+    (v: boolean) => setStepValid((s) => ({ ...s, 1: v })),
+    [],
+  );
+  const setStep2Valid = React.useCallback(
+    (v: boolean) => setStepValid((s) => ({ ...s, 2: v })),
+    [],
+  );
+  const setStep3Valid = React.useCallback(
+    (v: boolean) => setStepValid((s) => ({ ...s, 3: v })),
+    [],
+  );
+
   // Résultat du workflow (affiché sur l'étape 4 après succès)
   const [result, setResult] = React.useState<WorkflowResult | null>(null);
 
@@ -250,14 +267,14 @@ export function InscriptionWizard() {
                 <StepEleve
                   data={eleveData}
                   onChange={setEleveData}
-                  onValidChange={(v) => setStepValid((s) => ({ ...s, 1: v }))}
+                  onValidChange={setStep1Valid}
                 />
               )}
               {step === 2 && (
                 <StepTuteur
                   data={tuteurData}
                   onChange={setTuteurData}
-                  onValidChange={(v) => setStepValid((s) => ({ ...s, 2: v }))}
+                  onValidChange={setStep2Valid}
                 />
               )}
               {step === 3 && (
@@ -265,7 +282,7 @@ export function InscriptionWizard() {
                   data={inscriptionData}
                   eleveCategorie={eleveData.categorie}
                   onChange={setInscriptionData}
-                  onValidChange={(v) => setStepValid((s) => ({ ...s, 3: v }))}
+                  onValidChange={setStep3Valid}
                 />
               )}
               {step === 4 && (

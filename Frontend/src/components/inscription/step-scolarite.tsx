@@ -80,21 +80,43 @@ export function StepScolarite({
     enabled: !!etablissement,
   });
 
-  // Auto-présélection de l'année active au chargement
+  // Auto-présélection de l'année active au chargement (une seule fois).
+  // On utilise une ref pour éviter la boucle infinie : sans ref, l'effet
+  // se redéclencherait à chaque changement de `data` (qui change à chaque
+  // appel à onChange), créant un cycle "Maximum update depth exceeded".
+  const didPresetAnnee = React.useRef(false);
   React.useEffect(() => {
-    if (activeAnnee && !data.annee_scolaire_id) {
+    if (activeAnnee && !didPresetAnnee.current && !data.annee_scolaire_id) {
+      didPresetAnnee.current = true;
       onChange({ ...data, annee_scolaire_id: activeAnnee.id });
     }
-  }, [activeAnnee, data, onChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAnnee]);
 
-  // Cascade : reset niveau + classe quand cycle change
+  // Cascade : reset niveau + classe quand cycle change.
+  // On ne déclenche l'effet QUE quand cycleId change (pas à chaque render).
+  // On utilise une ref du cycle précédent pour comparer.
+  const prevCycle = React.useRef(cycleId);
   React.useEffect(() => {
-    setNiveau("all");
-    onChange({ ...data, classe_id: "" });
+    if (prevCycle.current !== cycleId) {
+      prevCycle.current = cycleId;
+      setNiveau("all");
+      if (data.classe_id) {
+        onChange({ ...data, classe_id: "" });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cycleId]);
 
+  const prevNiveau = React.useRef(niveau);
   React.useEffect(() => {
-    onChange({ ...data, classe_id: "" });
+    if (prevNiveau.current !== niveau) {
+      prevNiveau.current = niveau;
+      if (data.classe_id) {
+        onChange({ ...data, classe_id: "" });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [niveau]);
 
   // Classes filtrées par cycle + niveau
