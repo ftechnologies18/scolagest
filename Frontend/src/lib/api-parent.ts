@@ -53,8 +53,11 @@ export interface EnfantParent {
   photo_url: string;
   categorie: string;
   etablissement: EnfantEtablissementParent;
-  /** Libellé de la classe de l'inscription active (null si non inscrit). */
+  /** Libellé de la classe de l'inscription active (null si non inscrit ou PRE_INSCRIT). */
   classe_actuelle: string | null;
+  /** Statut de l'inscription courante. Si PRE_INSCRIT, la classe n'est pas
+   * communiquée au parent (règle métier : révélée après paiement frais). */
+  inscription_statut: string;
   solde: SoldeSyntheseParent;
 }
 

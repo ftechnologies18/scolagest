@@ -417,18 +417,34 @@ function SuiviCard({ pre }: { pre: PreInscription }) {
         <CardContent className="space-y-3 py-5">
           <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
             <School className="size-4" />
-            <h2 className="text-sm font-semibold">Classe souhaitée & notes</h2>
+            <h2 className="text-sm font-semibold">
+              {pre.statut === "VALIDEE" ? "Classe & notes" : "Classe souhaitée & notes"}
+            </h2>
           </div>
           <Separator />
-          <DetailRow
-            label="Classe souhaitée"
-            value={
-              pre.classe
-                ? `${pre.classe.libelle}${pre.classe.cycle ? ` · ${pre.classe.cycle.libelle}` : ""}`
-                : "Non précisée"
-            }
-            icon={<School className="size-3.5" />}
-          />
+          {/* Classe souhaitée / Classe attribuée */}
+          {pre.statut === "VALIDEE" ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-900/50 dark:bg-amber-950/20">
+              <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
+                <School className="size-3.5" />
+                Classe attribuée
+              </p>
+              <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+                La classe de votre enfant sera communiquée après le paiement
+                des frais d&apos;inscription à la caisse de l&apos;établissement.
+              </p>
+            </div>
+          ) : (
+            <DetailRow
+              label="Classe souhaitée"
+              value={
+                pre.classe
+                  ? `${pre.classe.libelle}${pre.classe.cycle ? ` · ${pre.classe.cycle.libelle}` : ""}`
+                  : "Non précisée"
+              }
+              icon={<School className="size-3.5" />}
+            />
+          )}
           {pre.notes_parent && (
             <div>
               <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">

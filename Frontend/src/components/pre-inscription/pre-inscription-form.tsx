@@ -687,8 +687,8 @@ export function PreInscriptionForm() {
             <CardContent className="space-y-4 py-6">
               <SectionHeader
                 icon={GraduationCap}
-                title="Classe souhaitée"
-                description="Indiquez la classe visée (facultatif mais recommandé)."
+                title="Préférence de classe"
+                description="Indiquez votre préférence (facultatif, non engageant — la classe définitive est attribuée par l'établissement et communiquée après paiement)."
               />
               <Separator />
               {!etablissementId ? (

@@ -2806,3 +2806,40 @@ Stage Summary:
 - Workflow complet : parent pré-inscrit → staff valide → élève PRE_INSCRIT →
   caissier encaisse frais inscription → élève INSCRIT (définitif).
 - 9 fichiers modifiés (4 backend, 5 frontend). Aucun changement schema Neon.
+
+---
+Task ID: option-b-masquer-classe-parent
+Agent: Z.ai Code (tuteur principal)
+Task: Option B — masquer la classe au parent tant que l'élève est PRE_INSCRIT (révélée après paiement frais inscription).
+
+Work Log:
+- Règle métier : la classe de l'élève n'est communiquée au parent qu'après le
+  paiement des frais d'inscription. Avant cela (PRE_INSCRIT), le parent voit
+  un message "Classe communiquée après paiement". Le staff voit toujours la
+  classe (pour préparer la rentrée).
+- Backend (Go) — 1 fichier modifié :
+  - services/parent_service.go : ListEnfants() ne renvoie plus classe_actuelle
+    si l'inscription est PRE_INSCRIT. Ajout du champ inscription_statut pour
+    que le frontend sache pourquoi la classe est masquée.
+- Frontend (TS/React) — 4 fichiers modifiés :
+  - lib/api-parent.ts : ajout inscription_statut au type EnfantParent.
+  - components/parent/parent-portal.tsx : si inscription_statut === PRE_INSCRIT,
+    badge ambre "Pré-inscrit·e" + message "Classe communiquée après paiement
+    des frais d'inscription" au lieu du badge classe.
+  - app/pre-inscription/suivi/page.tsx : si statut VALIDEE (élève créé en
+    PRE_INSCRIT), bandeau ambre "La classe sera communiquée après paiement"
+    au lieu d'afficher la classe souhaitée. Titre section ajusté.
+  - components/pre-inscription/pre-inscription-form.tsx : "Classe souhaitée"
+    → "Préférence de classe" avec description "non engageant — la classe
+    définitive est attribuée par l'établissement et communiquée après paiement".
+- Qualité :
+  - Backend : go build ✓, go vet ✓.
+  - Frontend : bun run lint → 0 erreur ✓ ; bunx tsc → 0 erreur sur fichiers
+    modifiés ✓ (15 pré-existantes) ; bun run build ✓.
+- Le staff voit toujours la classe (liste élèves, détail, effectifs,
+  passage de masse) — seul le parent est concerné par le masquage.
+
+Stage Summary:
+- Option B implémentée : classe masquée au parent (portail + suivi) tant que
+  PRE_INSCRIT, révélée après paiement frais inscription. Staff voit tout.
+- 5 fichiers modifiés (1 backend, 4 frontend). Aucun changement schema Neon.

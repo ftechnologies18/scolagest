@@ -803,7 +803,16 @@ function EnfantCard({
               {enfant.prenoms} {enfant.nom}
             </h3>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              {enfant.classe_actuelle ? (
+              {enfant.inscription_statut === "PRE_INSCRIT" ? (
+                <>
+                  <Badge className="border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                    Pré-inscrit·e
+                  </Badge>
+                  <span className="text-[11px] text-amber-700 dark:text-amber-400">
+                    Classe communiquée après paiement des frais d&apos;inscription
+                  </span>
+                </>
+              ) : enfant.classe_actuelle ? (
                 <Badge className="border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
                   {enfant.classe_actuelle}
                 </Badge>
