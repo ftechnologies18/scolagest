@@ -57,6 +57,8 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 import {
   Table,
   TableBody,
@@ -122,13 +124,14 @@ export default function MobileMoneyView() {
 
   return (
     <div className="space-y-4">
+      <KentePattern variant="strip" position="top" />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm">
             <Smartphone className="size-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Mobile Money</h1>
+            <h1 className="font-display text-xl font-bold tracking-tight">Mobile Money</h1>
             <p className="text-sm text-muted-foreground">
               Orange, MTN, Wave — transactions, webhooks et réconciliation.
               {etablissement?.nom ? (
@@ -140,6 +143,8 @@ export default function MobileMoneyView() {
           </div>
         </div>
       </div>
+
+      <KentePattern variant="separator" className="my-4" />
 
       {!etablissement?.id ? (
         <Card className="border-dashed">
@@ -265,8 +270,8 @@ function TransactionsPanel() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <GlassCard variant="adaptive" noHover className="p-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1.5">
             <Label className="text-xs">Statut</Label>
             <Select
@@ -348,8 +353,8 @@ function TransactionsPanel() {
               Réinitialiser
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -376,8 +381,8 @@ function TransactionsPanel() {
         </Button>
       </div>
 
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div>
           {isLoading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -458,8 +463,8 @@ function TransactionsPanel() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between gap-2">
@@ -727,8 +732,8 @@ function WebhooksPanel() {
         </Button>
       </div>
 
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div>
           {isLoading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -795,8 +800,8 @@ function WebhooksPanel() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       <Dialog
         open={!!reconcileTarget}

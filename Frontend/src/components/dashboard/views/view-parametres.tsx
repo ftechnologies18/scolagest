@@ -57,10 +57,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 import {
   Table,
   TableBody,
@@ -139,13 +137,14 @@ export default function ParametresView() {
 
   return (
     <div className="space-y-4">
+      <KentePattern variant="strip" position="top" />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
             <Settings className="size-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Paramètres</h1>
+            <h1 className="font-display text-xl font-bold tracking-tight">Paramètres</h1>
             <p className="text-sm text-muted-foreground">
               Établissements du groupe, utilisateurs & rôles, journal d&apos;audit.
               {etablissement?.nom ? (
@@ -157,6 +156,8 @@ export default function ParametresView() {
           </div>
         </div>
       </div>
+
+      <KentePattern variant="separator" className="my-4" />
 
       <Tabs defaultValue="etablissements" className="w-full">
         <TabsList className="flex w-full justify-start gap-1 overflow-x-auto sm:w-auto">
@@ -239,7 +240,7 @@ function EtablissementsPanel() {
           </Button>
           <Button
             onClick={openCreate}
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
+            variant="success"
             size="sm"
           >
             <Plus className="size-4" />
@@ -248,8 +249,8 @@ function EtablissementsPanel() {
         </div>
       </div>
 
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div>
           {isLoading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -345,8 +346,8 @@ function EtablissementsPanel() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       <EtablissementFormDialog
         open={formOpen}
@@ -408,7 +409,7 @@ function UtilisateursPanel() {
           </Button>
           <Button
             onClick={openCreate}
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
+            variant="success"
             size="sm"
           >
             <Plus className="size-4" />
@@ -417,8 +418,8 @@ function UtilisateursPanel() {
         </div>
       </div>
 
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div>
           {isLoading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -540,8 +541,8 @@ function UtilisateursPanel() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       <UtilisateurFormDialog
         open={formOpen}
@@ -605,8 +606,8 @@ function AuditPanel() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <GlassCard variant="adaptive" noHover className="p-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1.5">
             <Label className="text-xs">Entité</Label>
             <Select value={entite} onValueChange={setEntite}>
@@ -679,8 +680,8 @@ function AuditPanel() {
               Réinitialiser
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -707,8 +708,8 @@ function AuditPanel() {
         </Button>
       </div>
 
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div>
           {isLoading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -780,8 +781,8 @@ function AuditPanel() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between gap-2">
