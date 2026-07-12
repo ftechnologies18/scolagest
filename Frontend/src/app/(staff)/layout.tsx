@@ -49,6 +49,12 @@ export default function StaffLayout({
     }
     if (role === "SUPER_ADMIN") {
       router.push("/saas/dashboard");
+      return;
+    }
+    // Les enseignants n'ont pas accès au tableau de bord staff → /prof
+    if (role === "ENSEIGNANT") {
+      router.push("/prof");
+      return;
     }
   }, [isLoading, isAuthenticated, accessToken, role, router]);
 
@@ -59,7 +65,8 @@ export default function StaffLayout({
     isLoading ||
     !isAuthenticated ||
     !accessToken ||
-    role === "SUPER_ADMIN"
+    role === "SUPER_ADMIN" ||
+    role === "ENSEIGNANT"
   ) {
     return (
       <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-50 via-background to-amber-50">

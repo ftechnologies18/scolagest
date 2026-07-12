@@ -30,7 +30,17 @@ export default function LoginPage() {
   useEffect(() => {
     if (isLoading) return;
     if (isAuthenticated && accessToken) {
-      router.push(role === "SUPER_ADMIN" ? "/saas/dashboard" : "/dashboard");
+      // Redirection selon le rôle :
+      // - SUPER_ADMIN → /saas/dashboard (plateforme SaaS)
+      // - ENSEIGNANT → /prof (portail enseignant, sans sidebar staff)
+      // - autres rôles staff → /dashboard
+      const target =
+        role === "SUPER_ADMIN"
+          ? "/saas/dashboard"
+          : role === "ENSEIGNANT"
+            ? "/prof"
+            : "/dashboard";
+      router.push(target);
     }
   }, [isLoading, isAuthenticated, accessToken, role, router]);
 
