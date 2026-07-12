@@ -7849,3 +7849,26 @@ Stage Summary:
   polling, handlers).
 - VLM valide les 3 modes (Réduit = icônes seules 48px, Survol fermé = masqué +
   bouton topbar).
+
+---
+Task ID: resend-domain-fix
+Agent: Z.ai Code (tuteur principal)
+Task: Correction du domaine expéditeur Resend. L'utilisateur a vérifié un
+domaine sur Resend, mais l'intitulé initial "sect.ftci.fr" était incorrect.
+
+Work Log:
+- Diagnostic via API Resend (GET https://api.resend.com/domains) : le domaine
+  vérifié est "scolagest.ftci.fr" (status=verified, sending=enabled), pas
+  "sect.ftci.fr" ni "scolagest.ci".
+- Test local avec RESEND_FROM=ScolaGest <noreply@scolagest.ftci.fr> :
+  POST /api/notifications/test → {"sent":true,"to":"admin@scolagest.ci",
+  "transport":"resend"} (HTTP 200, Resend id=246d9d2f-...). Email réellement
+  envoyé et reçu.
+- Mise à jour backend/.env (local) : RESEND_FROM=ScolaGest <noreply@scolagest.ftci.fr>.
+- Mise à jour backend/.env.example : domaine commenté = scolagest.ftci.fr.
+
+Stage Summary:
+- Domaine vérifié Resend identifié : scolagest.ftci.fr (pas sect.ftci.fr).
+- Email test envoyé avec succès en local (sent:true, transport:resend).
+- .env et .env.example mis à jour avec le bon domaine.
+- Action Render requise : RESEND_FROM=ScolaGest <noreply@scolagest.ftci.fr>.
