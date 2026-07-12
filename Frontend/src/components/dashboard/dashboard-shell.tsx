@@ -57,7 +57,6 @@ import {
   ShieldAlert,
   PanelLeftClose,
   PanelLeftOpen,
-  Pin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -432,8 +431,17 @@ export function DashboardShell({
   }, []);
 
   // Dérivé : la sidebar est-elle visuellement affichée ?
+  // - expanded : TOUJOURS visible (largeur w-64, labels + icônes)
+  // - collapsed : TOUJOURS visible (largeur w-16, icônes seules, label au survol)
+  // - hover : masquée par défaut, s'ouvre en grand (w-64) au survol du bord gauche
   const sidebarVisible =
-    sidebarMode === "expanded" || (sidebarMode === "hover" && hoverActive) || (sidebarMode === "collapsed" && hoverActive);
+    sidebarMode === "expanded" || sidebarMode === "collapsed" || (sidebarMode === "hover" && hoverActive);
+
+  // Mode réduit : sidebar étroite (icônes uniquement, labels masqués)
+  const sidebarCollapsed = sidebarMode === "collapsed";
+
+  // Mode survol ouvert : sidebar ouverte en grand via survol (overlay sombre actif)
+  const hoverOpen = sidebarMode === "hover" && hoverActive;
 
   // Charge la liste des établissements pour le sélecteur multi-sites.
   useEffect(() => {
@@ -545,7 +553,11 @@ export function DashboardShell({
       <Link
         href={role === "SUPER_ADMIN" ? "/saas/dashboard" : "/dashboard"}
         onClick={handleNavClick}
-        className="flex h-16 shrink-0 items-center gap-2.5 border-b px-4 transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest"
+        title={sidebarCollapsed ? "ScolaGest — Accueil" : undefined}
+        className={cn(
+          "flex h-16 shrink-0 items-center border-b transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest",
+          sidebarCollapsed ? "justify-center px-2" : "gap-2.5 px-4",
+        )}
       >
         <Image
           src="/logo.png"
@@ -554,34 +566,18 @@ export function DashboardShell({
           height={36}
           className="rounded-lg border-2 border-gold/40 shadow-sm"
         />
-        <div className="min-w-0">
-          <p className="text-sm font-bold font-display leading-tight text-white">ScolaGest</p>
-          <p className="truncate text-[10px] leading-tight text-emerald-100/80">
-            Groupe Le Chandelier — Dabou
-          </p>
-        </div>
+        {!sidebarCollapsed && (
+          <div className="min-w-0">
+            <p className="text-sm font-bold font-display leading-tight text-white">ScolaGest</p>
+            <p className="truncate text-[10px] leading-tight text-emerald-100/80">
+              Groupe Le Chandelier — Dabou
+            </p>
+          </div>
+        )}
       </Link>
 
-      {/* Bouton "Épingler" — visible uniquement en mode hover/collapsed (sidebar
-          ouverte via survol). Permet de revenir en mode "Étendu" d'un clic sans
-          devoir passer par le dropdown. Évite le blocage en mode Survol. */}
-      {(sidebarMode === "hover" || sidebarMode === "collapsed") && (
-        <button
-          onClick={() => {
-            changeSidebarMode("expanded");
-            setHoverActive(false);
-          }}
-          className="flex shrink-0 items-center gap-2 border-b border-white/10 bg-amber-500/15 px-4 py-2 text-xs font-medium text-amber-300 transition-colors hover:bg-amber-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest"
-          title="Épingler la sidebar (toujours visible)"
-          aria-label="Épingler la sidebar en mode étendu"
-        >
-          <Pin className="size-3.5" aria-hidden="true" />
-          Épingler la sidebar
-        </button>
-      )}
-
-      {/* Sélecteur d'établissement */}
-      {showEtablissement && (
+      {/* Sélecteur d'établissement (masqué en mode réduit — trop étroit) */}
+      {showEtablissement && !sidebarCollapsed && (
         <div className="shrink-0 border-b p-3">
           <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-emerald-100/80">
             <Building2 className="size-3 text-emerald-100/80" aria-hidden="true" />
@@ -610,26 +606,40 @@ export function DashboardShell({
           </Select>
         </div>
       )}
+      {/* Mode réduit : icône établissement seule (tooltip natif) */}
+      {showEtablissement && sidebarCollapsed && (
+        <div className="flex shrink-0 justify-center border-b py-3" title="Établissement actif">
+          <Building2 className="size-4 text-emerald-100/80" aria-hidden="true" />
+        </div>
+      )}
 
       {/* Navigation */}
       <ScrollArea className="flex-1">
-        <nav className="space-y-5 p-3">
+        <nav className={cn("space-y-5", sidebarCollapsed ? "p-2" : "p-3")}>
           {visibleGroups.map((group) => (
             <div key={group.label}>
-              <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-100/70">
-                {group.label}
-              </p>
+              {!sidebarCollapsed && (
+                <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-100/70">
+                  {group.label}
+                </p>
+              )}
+              {sidebarCollapsed && <div className="mb-1.5 h-px bg-white/10" aria-hidden="true" />}
               <ul className="space-y-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const active = isActivePath(pathname, item.href);
+                  // En mode réduit, badge repositionné en haut à droite de l'icône
+                  const showPreBadge = item.href === "/pre-inscriptions" && pendingCount > 0;
+                  const showCaisseBadge = item.href === "/caisse" && fileAttenteCount > 0;
                   return (
                     <li key={item.href}>
                       <Link
                         href={item.href}
                         onClick={handleNavClick}
+                        title={sidebarCollapsed ? item.label : undefined}
                         className={cn(
-                          "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest",
+                          "group relative flex w-full items-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest",
+                          sidebarCollapsed ? "justify-center px-0 py-2.5" : "gap-2.5 px-2.5 py-2",
                           active
                             ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-900/30"
                             : "text-emerald-100/80 hover:bg-white/10 hover:text-white",
@@ -644,9 +654,9 @@ export function DashboardShell({
                           )}
                           aria-hidden="true"
                         />
-                        <span className="truncate">{item.label}</span>
+                        {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
                         {/* Badge notifications pré-inscriptions */}
-                        {item.href === "/pre-inscriptions" && pendingCount > 0 && (
+                        {showPreBadge && !sidebarCollapsed && (
                           <span
                             className={cn(
                               "ml-auto flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
@@ -659,7 +669,7 @@ export function DashboardShell({
                           </span>
                         )}
                         {/* Badge file d'attente caisse (élèves PRE_INSCRIT) */}
-                        {item.href === "/caisse" && fileAttenteCount > 0 && (
+                        {showCaisseBadge && !sidebarCollapsed && (
                           <span
                             className={cn(
                               "ml-auto flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
@@ -671,11 +681,37 @@ export function DashboardShell({
                             {fileAttenteCount > 99 ? "99+" : fileAttenteCount}
                           </span>
                         )}
+                        {/* Badges en mode réduit : pastille en haut à droite */}
+                        {showPreBadge && sidebarCollapsed && (
+                          <span
+                            className={cn(
+                              "absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold",
+                              active ? "bg-white text-emerald-700" : "bg-emerald-500 text-white",
+                            )}
+                          >
+                            {pendingCount > 99 ? "99+" : pendingCount}
+                          </span>
+                        )}
+                        {showCaisseBadge && sidebarCollapsed && (
+                          <span
+                            className={cn(
+                              "absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold",
+                              active ? "bg-white text-amber-700" : "bg-amber-500 text-white",
+                            )}
+                          >
+                            {fileAttenteCount > 99 ? "99+" : fileAttenteCount}
+                          </span>
+                        )}
                         {active &&
+                          !sidebarCollapsed &&
                           item.href !== "/pre-inscriptions" &&
                           item.href !== "/caisse" && (
                             <CheckCircle2 className="ml-auto size-3.5 text-amber-300" />
                           )}
+                        {/* Indicateur actif en mode réduit : barre verticale à gauche */}
+                        {active && sidebarCollapsed && (
+                          <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-amber-300" aria-hidden="true" />
+                        )}
                       </Link>
                     </li>
                   );
@@ -686,105 +722,118 @@ export function DashboardShell({
         </nav>
       </ScrollArea>
 
-      {/* Contrôle sidebar — discret, desktop seulement */}
-      <div className="hidden shrink-0 items-center gap-1 border-t px-3 py-2 lg:flex">
+      {/* Contrôle sidebar — discret, desktop seulement.
+          En mode réduit : icône toggle centrée uniquement (dropdown masqué,
+          trop étroit). Le dropdown reste accessible en modes Étendu et Survol. */}
+      <div className={cn(
+        "hidden shrink-0 items-center border-t lg:flex",
+        sidebarCollapsed ? "justify-center px-0 py-2" : "gap-1 px-3 py-2",
+      )}>
         <button
           onClick={() => {
             // Cycle : expanded → collapsed → hover → expanded
-            // (gère correctement les 3 modes, sans ignorer "hover")
             const next: SidebarMode =
               sidebarMode === "expanded" ? "collapsed" : sidebarMode === "collapsed" ? "hover" : "expanded";
             changeSidebarMode(next);
-            // Forcer la fermeture immédiate si on passe à collapsed/hover
             if (next !== "expanded") setHoverActive(false);
           }}
           className="flex size-7 items-center justify-center rounded-md text-emerald-100/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest"
           title={
             sidebarMode === "expanded"
-              ? "Réduire la sidebar (passe en mode Réduit)"
+              ? "Passer en mode Réduit (icônes seules)"
               : sidebarMode === "collapsed"
-                ? "Mode Survol (s'ouvre au survol)"
-                : "Étendre la sidebar (toujours visible)"
+                ? "Passer en mode Survol (s'ouvre au survol)"
+                : "Passer en mode Étendu (toujours visible)"
           }
           aria-label="Basculer le mode d'affichage de la sidebar"
         >
           {sidebarMode === "expanded" ? <PanelLeftClose className="size-4" aria-hidden="true" /> : <PanelLeftOpen className="size-4" aria-hidden="true" />}
         </button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-emerald-100/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest"
-              title="Mode d'affichage de la sidebar"
-              aria-label="Mode d'affichage de la sidebar"
-            >
-              {sidebarMode === "expanded" && "Étendu"}
-              {sidebarMode === "collapsed" && "Réduit"}
-              {sidebarMode === "hover" && "Survol"}
-              <ChevronDown className="size-3" aria-hidden="true" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="w-52">
-            <DropdownMenuLabel className="text-xs text-muted-foreground">
-              Affichage de la sidebar
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => changeSidebarMode("expanded")}
-              className={cn("gap-2 text-xs", sidebarMode === "expanded" && "bg-white/10 text-amber-300")}
-            >
-              <PanelLeftOpen className="size-3.5" />
-              <div className="flex flex-col">
-                <span className="font-medium">Étendu</span>
-                <span className="text-[10px] text-muted-foreground">Sidebar toujours visible</span>
-              </div>
-              {sidebarMode === "expanded" && <CheckCircle2 className="ml-auto size-3.5 text-emerald-600" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => changeSidebarMode("collapsed")}
-              className={cn("gap-2 text-xs", sidebarMode === "collapsed" && "bg-emerald-50 text-emerald-700")}
-            >
-              <PanelLeftClose className="size-3.5" />
-              <div className="flex flex-col">
-                <span className="font-medium">Réduit</span>
-                <span className="text-[10px] text-muted-foreground">Sidebar toujours masquée</span>
-              </div>
-              {sidebarMode === "collapsed" && <CheckCircle2 className="ml-auto size-3.5 text-emerald-600" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => changeSidebarMode("hover")}
-              className={cn("gap-2 text-xs", sidebarMode === "hover" && "bg-emerald-50 text-emerald-700")}
-            >
-              <PanelLeftOpen className="size-3.5 opacity-50" />
-              <div className="flex flex-col">
-                <span className="font-medium">Survol</span>
-                <span className="text-[10px] text-muted-foreground">S&apos;ouvre au survol</span>
-              </div>
-              {sidebarMode === "hover" && <CheckCircle2 className="ml-auto size-3.5 text-emerald-600" />}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {!sidebarCollapsed && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-emerald-100/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest"
+                title="Mode d'affichage de la sidebar"
+                aria-label="Mode d'affichage de la sidebar"
+              >
+                {sidebarMode === "expanded" && "Étendu"}
+                {sidebarMode === "collapsed" && "Réduit"}
+                {sidebarMode === "hover" && "Survol"}
+                <ChevronDown className="size-3" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start" className="w-52">
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                Affichage de la sidebar
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => { changeSidebarMode("expanded"); setHoverActive(false); }}
+                className={cn("gap-2 text-xs", sidebarMode === "expanded" && "bg-white/10 text-amber-300")}
+              >
+                <PanelLeftOpen className="size-3.5" />
+                <div className="flex flex-col">
+                  <span className="font-medium">Étendu</span>
+                  <span className="text-[10px] text-muted-foreground">Toujours visible, labels + icônes</span>
+                </div>
+                {sidebarMode === "expanded" && <CheckCircle2 className="ml-auto size-3.5 text-amber-300" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => { changeSidebarMode("collapsed"); setHoverActive(false); }}
+                className={cn("gap-2 text-xs", sidebarMode === "collapsed" && "bg-white/10 text-amber-300")}
+              >
+                <PanelLeftClose className="size-3.5" />
+                <div className="flex flex-col">
+                  <span className="font-medium">Réduit</span>
+                  <span className="text-[10px] text-muted-foreground">Icônes seules, label au survol</span>
+                </div>
+                {sidebarMode === "collapsed" && <CheckCircle2 className="ml-auto size-3.5 text-amber-300" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => { changeSidebarMode("hover"); setHoverActive(false); }}
+                className={cn("gap-2 text-xs", sidebarMode === "hover" && "bg-white/10 text-amber-300")}
+              >
+                <PanelLeftOpen className="size-3.5 opacity-50" />
+                <div className="flex flex-col">
+                  <span className="font-medium">Survol</span>
+                  <span className="text-[10px] text-muted-foreground">Masquée, s'ouvre au survol du bord</span>
+                </div>
+                {sidebarMode === "hover" && <CheckCircle2 className="ml-auto size-3.5 text-amber-300" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
-      {/* Bande kente décorative */}
-      <KentePattern variant="strip" position="bottom" />
+      {/* Bande kente décorative (masquée en mode réduit — trop étroite) */}
+      {!sidebarCollapsed && <KentePattern variant="strip" position="bottom" />}
       {/* Carte utilisateur en bas */}
-      <div className="shrink-0 border-t border-white/10 p-3">
-        <div className="flex items-center gap-2.5 rounded-lg bg-white/5 p-2">
+      <div className={cn("shrink-0 border-t border-white/10", sidebarCollapsed ? "p-2" : "p-3")}>
+        <div
+          className={cn(
+            "flex items-center rounded-lg bg-white/5",
+            sidebarCollapsed ? "justify-center p-1.5" : "gap-2.5 p-2",
+          )}
+          title={sidebarCollapsed ? (user ? `${user.prenoms ?? ""} ${user.nom ?? ""}`.trim() || user.email : "Utilisateur") : undefined}
+        >
           <Avatar className="size-8 border-2 border-gold/40">
             <AvatarFallback className="bg-emerald-600 text-white text-[11px] font-semibold">
               {initials(user?.nom, user?.prenoms)}
             </AvatarFallback>
           </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium leading-tight text-white">
-              {user
-                ? `${user.prenoms ?? ""} ${user.nom ?? ""}`.trim() || user.email
-                : "Utilisateur"}
-            </p>
-            <p className="truncate text-[10px] text-emerald-100/80 leading-tight">
-              {roleLabel(role)}
-            </p>
-          </div>
+          {!sidebarCollapsed && (
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-medium leading-tight text-white">
+                {user
+                  ? `${user.prenoms ?? ""} ${user.nom ?? ""}`.trim() || user.email
+                  : "Utilisateur"}
+              </p>
+              <p className="truncate text-[10px] text-emerald-100/80 leading-tight">
+                {roleLabel(role)}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -793,23 +842,29 @@ export function DashboardShell({
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-muted/30">
       <div className="relative flex flex-1 overflow-hidden">
-        {/* Sidebar desktop — 3 modes : expanded (visible), collapsed (masquée),
-            hover (s'ouvre au survol). Fixe, ne défile pas avec le contenu.
-            z-20 pour rester au-dessus de l'overlay (z-10) en mode hover/collapsed,
-            afin que les interactions (clics, survol) atteignent la sidebar et non
-            l'overlay qui la fermerait immédiatement. */}
+        {/* Sidebar desktop — 3 modes :
+            - expanded : TOUJOURS visible, w-64 (labels + icônes)
+            - collapsed : TOUJOURS visible, w-16 (icônes seules, label au survol)
+            - hover : masquée par défaut (w-0), s'ouvre en grand (w-64) au survol
+              du bord gauche, avec overlay sombre.
+            z-20 pour rester au-dessus de l'overlay (z-10) en mode hover. */}
         <aside
           className={cn(
             "hidden bg-forest lg:flex lg:flex-col lg:overflow-y-auto transition-all duration-200 ease-in-out z-20",
-            sidebarVisible ? "w-64 opacity-100" : "w-0 opacity-0 overflow-hidden",
+            sidebarCollapsed
+              ? "w-16 opacity-100"
+              : sidebarVisible
+                ? "w-64 opacity-100"
+                : "w-0 opacity-0 overflow-hidden",
           )}
         >
           {sidebarContent}
         </aside>
 
-        {/* Zone de survol (pour modes collapsed et hover) — invisible mais
-            détecte la souris sur le bord gauche pour ouvrir la sidebar */}
-        {!sidebarVisible && (
+        {/* Zone de survol (mode hover uniquement) — invisible mais détecte la
+            souris sur le bord gauche pour ouvrir la sidebar.
+            En mode collapsed, la sidebar est déjà visible (étroite), pas besoin. */}
+        {sidebarMode === "hover" && !hoverActive && (
           <div
             className="absolute left-0 top-0 z-10 hidden h-full w-3 lg:block"
             onMouseEnter={() => setHoverActive(true)}
@@ -817,8 +872,8 @@ export function DashboardShell({
           />
         )}
 
-        {/* Overlay sombre quand la sidebar est ouverte en mode hover/collapsed */}
-        {sidebarVisible && (sidebarMode === "hover" || sidebarMode === "collapsed") && (
+        {/* Overlay sombre (mode hover ouvert uniquement) — clique/survole pour fermer */}
+        {hoverOpen && (
           <div
             className="absolute inset-0 z-10 hidden bg-black/20 lg:block"
             onMouseEnter={() => setHoverActive(false)}
@@ -850,8 +905,9 @@ export function DashboardShell({
             >
               <Menu className="size-5" aria-hidden="true" />
             </Button>
-            {/* Bouton ouvrir sidebar desktop (visible si sidebar masquée) */}
-            {sidebarMode !== "expanded" && !sidebarVisible && (
+            {/* Bouton ouvrir sidebar desktop — visible uniquement en mode Survol
+                fermé (collapsed est déjà visible, expanded aussi). */}
+            {sidebarMode === "hover" && !hoverActive && (
               <Button
                 variant="ghost"
                 size="icon"

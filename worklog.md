@@ -7787,3 +7787,65 @@ Stage Summary:
   (`ScolaGest <noreply@scolagest.ci>`, ⚠ vérifier le domaine `scolagest.ci` dans
   le dashboard Resend), `FRONTEND_URL` (URL publique du frontend).
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+Task ID: fix-sidebar-3-modes-v2
+Agent: Z.ai Code (tuteur principal)
+Task: Refonte complète du contrôle sidebar 3 modes. Le mode "Réduit" affichait
+le même effet que "Survol" (les deux masquaient la sidebar). Correction + UX.
+
+Work Log:
+- Diagnostic : sidebarVisible traitait collapsed et hover de la même façon
+  (|| (collapsed && hoverActive) || (hover && hoverActive)). Les 2 modes avaient
+  donc le même comportement (masqué, s'ouvre au survol).
+- Redéfinition claire des 3 modes :
+  • Étendu (expanded) : TOUJOURS visible, w-64, labels + icônes.
+  • Réduit (collapsed) : TOUJOURS visible, w-16, icônes seules, label au survol
+    (title natif = tooltip navigateur).
+  • Survol (hover) : masquée par défaut, s'ouvre en grand (w-64) au survol du
+    bord gauche, overlay sombre pour fermer.
+
+- Corrections appliquées (dashboard-shell.tsx) :
+  1. sidebarVisible : collapsed TOUJOURS visible (|| collapsed sans hoverActive).
+  2. Nouvelle dérivée sidebarCollapsed (mode réduit étroit).
+  3. Nouvelle dérivée hoverOpen (mode survol ouvert).
+  4. <aside> largeur dynamique : w-16 si collapsed, w-64 si visible, w-0 sinon.
+  5. Logo : texte masqué + centré (justify-center px-2) en collapsed.
+  6. Sélecteur établissement : remplacé par icône Building2 seule + tooltip en
+     collapsed (le Select est trop étroit).
+  7. Group labels (Pilotage/Configuration/...) : masqués en collapsed, remplacés
+     par un séparateur fin (h-px bg-white/10).
+  8. Nav items : justify-center px-0 py-2.5 en collapsed, title=item.label
+     (tooltip), badges repositionnés en pastille haut-droite (absolute), indicateur
+     actif = barre verticale gauche (w-0.5 bg-amber-300).
+  9. Contrôle sidebar : dropdown masqué en collapsed (trop étroit), bouton toggle
+     centréré. Dropdown accessible en modes Étendu + Survol.
+  10. Bouton "Épingler la sidebar" SUPPRIMÉ (demande utilisateur).
+  11. Carte utilisateur : avatar centré seul en collapsed, texte masqué, tooltip
+      avec nom + rôle.
+  12. Bande kente bas : masquée en collapsed (trop étroite).
+  13. Zone de survol : uniquement en mode hover (plus en collapsed qui est
+      toujours visible).
+  14. Overlay sombre : uniquement en mode hover ouvert (hoverOpen).
+  15. Bouton "Ouvrir sidebar" topbar : uniquement en mode hover fermé (plus en
+      collapsed qui est visible).
+  16. Descriptions dropdown mises à jour : "Toujours visible, labels + icônes" /
+      "Icônes seules, label au survol" / "Masquée, s'ouvre au survol du bord".
+  17. Import Pin supprimé (bouton Épingler retiré).
+
+- Vérification via Agent Browser + VLM :
+  • Mode Étendu : sidebar w-64, labels + icônes. ✓
+  • Mode Réduit : sidebar ~48px (w-16), icônes seules, labels absents (VLM
+    confirme). ✓
+  • Mode Survol fermé : sidebar masquée, bouton "Ouvrir la sidebar" dans topbar
+    (VLM confirme). ✓
+  • Mode Survol ouvert : sidebar w-64 via bouton topbar. ✓
+
+Stage Summary:
+- 3 bugs corrigés : collapsed ≠ hover (collapsed toujours visible étroit), bouton
+  Épingler supprimé, contrôle sidebar adapté au mode réduit.
+- 17 edits chirurgical dans dashboard-shell.tsx.
+- Lint : 0 erreur. Logique 100% préservée (RBAC, badges, 3 modes, localStorage,
+  polling, handlers).
+- VLM valide les 3 modes (Réduit = icônes seules 48px, Survol fermé = masqué +
+  bouton topbar).
