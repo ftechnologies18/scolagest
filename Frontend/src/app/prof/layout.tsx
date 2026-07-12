@@ -168,7 +168,7 @@ export default function ProfLayout({
 
       <footer className="mt-auto border-t bg-muted/30">
         <div className="mx-auto w-full max-w-3xl px-4 py-4 text-center text-xs text-muted-foreground sm:px-6">
-          2026 ScolaGest Freelance Technologies Côte d&apos;Ivoire
+          2026 ScolaGest Freelance Technologies Côte d&apos;Ivoire © Tous droits réservés
         </div>
       </footer>
     </div>

@@ -593,7 +593,7 @@ export default function LandingPage() {
 
           <div className="mt-12 border-t border-gray-100 pt-8 flex flex-col items-center justify-between gap-4 sm:flex-row">
             <p className="text-sm text-gray-400">
-              2026 ScolaGest Freelance Technologies Côte d&apos;Ivoire
+              2026 ScolaGest Freelance Technologies Côte d&apos;Ivoire © Tous droits réservés
             </p>
             <div className="flex gap-6">
               <a href="#" className="text-sm text-gray-400 hover:text-emerald-600">Mentions légales</a>

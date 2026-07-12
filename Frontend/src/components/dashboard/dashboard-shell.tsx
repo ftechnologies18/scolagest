@@ -1021,7 +1021,7 @@ export function DashboardShell({
             <KentePattern variant="strip" position="top" />
             <footer className="mt-auto border-t border-white/10 bg-forest text-emerald-100/80">
               <div className="mx-auto flex max-w-7xl items-center justify-center px-4 py-4 text-xs text-emerald-100/80 sm:px-6">
-                <p>2026 ScolaGest Freelance Technologies Côte d&apos;Ivoire</p>
+                <p>2026 ScolaGest Freelance Technologies Côte d&apos;Ivoire © Tous droits réservés</p>
               </div>
             </footer>
           </main>
