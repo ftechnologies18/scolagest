@@ -5384,3 +5384,794 @@ Stage Summary:
   fe-2c + `StatCard` fe-2d + tokens fe-1a pour les layouts dashboard
   de Phase 3, puis fe-3b (migration progressive `kpi-card.tsx` →
   `StatCard` dans les vues rapports/caisse existantes — Phase 4/5).
+
+### fe-3a + fe-3b — Chrome "Forêt EdTech" : Sidebar + Topbar dark
+
+Task ID: fe-3a + fe-3b (combinés car même fichier)
+Date: 2025
+Contexte : Phase 3a+3b combinées — implémentation du thème Hybride du DS
+"Forêt EdTech" sur le chrome (sidebar + topbar + footer) du dashboard
+shell. Phases fe-0/fe-1a/fe-1b/fe-1c/fe-2a/fe-2b/fe-2c/fe-2d terminées
+(voir sections précédentes du worklog). Le chrome devient dark "Forêt"
+(fond `bg-forest` #064E3B) avec accents kente/gold, tandis que le
+contenu principal reste light. Landing page et login NON touchés.
+
+Work Log:
+- Lu `worklog.md` (fin, sections fe-0 à fe-2d) pour le contexte complet
+  du DS : palette Forêt EdTech (forest/emerald/amber/gold/terracotta/
+  sand), tokens Tailwind 4 valides (`bg-forest`, `bg-terracotta`,
+  `border-gold`, `text-emerald-100/*` via palette Tailwind native),
+  primitives DS (`GlassCard` fe-2b, `KentePattern` fe-2c, `ProgressCircle`
+  fe-2c, `StatCard` fe-2d, `Button` étendu fe-2a), hooks (usePrefersReduced
+  Motion, useMediaQuery), animations (lib/animations.ts), typographie
+  (Poppins font-display / Inter font-body via fe-1c).
+- Lu `dashboard-layout.tsx` EN ENTIER (790 lignes) : structure complète
+  avec sidebar (`sidebarContent` variable réutilisée pour desktop aside
+  + mobile Sheet), topbar (hamburger + titre + recherche + notifications
+  + menu utilisateur dropdown + separator), main (router conditionnel
+  sur `activeView` pour 18 vues), footer. Logique RBAC : `STAFF_NAV_
+  GROUPS` (4 groupes : Pilotage, Configuration, Pédagogie, Modules
+  avancés) + `SAAS_NAV_GROUPS` (1 groupe : Pilotage SaaS) + `visible
+  Groups` (useMemo filtré par rôle via `isItemAllowed`) + `defaultView
+  ForRole` (super-admin → saas-dashboard, autres → dashboard) + useEffect
+  qui reset `activeView` si le rôle change. Handlers : `handleNavigate`,
+  `handleEtablissementChange`, `handleLogout`. États : `activeView`,
+  `mobileOpen`, `etablissements`, `loadingEtabs`. Aucun mode sidebar
+  "Réduit/Survol" réellement implémenté dans ce fichier — seulement
+  desktop fixe (w-64) + mobile Sheet (w-72). La mention "3 modes" du
+  brief était probablement aspirationale ou référait à `dashboard-shell.
+  tsx` (mentionné l.479 du fichier).
+- Lu `ds/kente-pattern.tsx` (65 lignes) : primitive `KentePattern` avec
+  4 variants (`strip`/`bg`/`border`/`separator`) + 3 positions (`top`
+  h-1, `bottom` h-1.5, `custom`). Pour cette tâche, on utilise
+  `variant="strip" position="bottom"` (bande bas de sidebar, classe
+  `.kente-strip-bottom`) et `variant="strip" position="top"` (séparateur
+  avant footer, classe `.kente-strip-top`). Les deux variants strip
+  utilisent les dégradés `--gradient-forest`/`--gradient-premium` avec
+  `::after` motif diamants or (cf. globals.css l.380-405). Composant
+  `aria-hidden="true"` (décoratif — lecteurs d'écran ignorent).
+- Lu `ds/glass-card.tsx` (140 lignes) pour confirmer le pattern DS à
+  respecter (mais non consommé ici — la sidebar et la topbar ne sont
+  pas des cartes, ce sont des surfaces structurales). `GlassCard` sera
+  consommé dans les vues internes (Phase 4/5).
+- Lu `globals.css` (lignes 40-160 + grep tokens) : confirmé que
+  `bg-forest`, `bg-forest/95` (alpha), `bg-terracotta`, `border-gold`,
+  `border-gold/40` (alpha), `text-forest` sont des classes Tailwind 4
+  valides résolues via les tokens `--color-forest`, `--color-terracotta`,
+  `--color-gold` du `@theme`. `text-emerald-100`, `text-emerald-100/70`,
+  `text-emerald-100/60`, `text-emerald-100/50`, `text-emerald-100/40`,
+  `text-emerald-100/80`, `text-amber-300`, `bg-white/5`, `bg-white/10`,
+  `border-white/10`, `shadow-emerald-900/30`, `focus:border-amber-400/50`,
+  `animate-pulse`, `bg-gradient-to-r from-emerald-600 to-emerald-700`,
+  `backdrop-blur-xl` sont toutes des classes Tailwind 4 natives
+  (palette emerald/amber standard + utilitaires alpha + utilitaires
+  blur). Aucune nouvelle classe custom à déclarer dans `globals.css`.
+
+- **Ajouté import `KentePattern`** (l.80) : `import { KentePattern }
+  from "@/components/ds/kente-pattern";` — inséré après `useToast`
+  et avant `DashboardHome` (groupement logique avec les autres imports
+  externes).
+
+- **Modifications sidebar "Forêt" dark** (fe-3a) — variable `sidebar
+  Content` (l.489-609) :
+  • **Logo** (l.498-505) : `Image` → `rounded-lg border-2 border-gold/40
+    shadow-sm` (bordure dorée premium sur le logo). Texte "ScolaGest"
+    → `text-sm font-bold font-display leading-tight text-white` (Poppins
+    via `font-display` fe-1c). Sous-titre "Groupe Le Chandelier —
+    Dabou" → `truncate text-[10px] leading-tight text-emerald-100/70`
+    (vert très clair pour fond sombre, /70 = hiérarchie secondaire).
+  • **Sélecteur établissement** (l.510-536) : label "Établissement
+    actif" → `text-emerald-100/60` (vert très clair /60 = label
+    secondaire). Icône `Building2` → `size-3 text-emerald-100/60`
+    (cohérent avec le label parent, ajouté explicitement pour clarté).
+    `SelectTrigger` → `w-full border-white/10 bg-white/5 text-white`
+    (fond glass léger /5 + bordure blanche discrète /10 + texte blanc).
+  • **Navigation** (l.540-583) :
+    - Group labels ("Pilotage", "Configuration", "Pédagogie", "Modules
+      avancés", "Pilotage SaaS") → `text-emerald-100/50` (/50 = label
+      de section très estompé).
+    - Items INACTIFS : AVANT `text-foreground/80 hover:bg-emerald-50
+      hover:text-emerald-700` (light theme) → APRÈS `text-emerald-100/80
+      hover:bg-white/10 hover:text-white` (texte vert clair, hover
+      fond blanc /10 + texte blanc pour contraste max).
+    - Items ACTIFS : AVANT `bg-emerald-600 text-white shadow-sm` →
+      APRÈS `bg-gradient-to-r from-emerald-600 to-emerald-700 text-white
+      shadow-lg shadow-emerald-900/30` (dégradé emerald profond +
+      shadow plus marquée teintée emerald-900 pour effet "depth" sur
+      fond sombre).
+    - Icônes INACTIVES : AVANT `text-muted-foreground group-hover:
+      text-emerald-600` → APRÈS `text-emerald-100/60 group-hover:text-
+      amber-300` (vert clair /60 → hover or kente pour rappel
+      identitaire africain).
+    - Icônes ACTIVES : `text-white` (conservé, contraste max sur fond
+      gradient emerald).
+    - `CheckCircle2` ACTIF : AVANT `text-white/90` → APRÈS `text-
+      amber-300` (or kente pour marquer la sélection active, accent
+      premium).
+  • **Carte utilisateur bas** (l.589-607) : conteneur → `bg-white/5`
+    (au lieu de `bg-muted/40`). Avatar → `size-8 border-2 border-gold/40`
+    (bordure dorée premium, cohérent avec le logo). AvatarFallback →
+    `bg-emerald-600 text-white` (conservé). Nom → `text-white`. Rôle →
+    `text-emerald-100/60` (cohérent avec les autres rôles/labels de la
+    sidebar).
+  • **Bande kente bas de sidebar** (l.585-586, insérée) : `<KentePattern
+    variant="strip" position="bottom" />` juste avant la carte
+    utilisateur — bande horizontale `h-1.5 w-full` (classe `.kente-strip-
+    bottom` = `--gradient-premium` gold→amber + motif diamants or
+    opacity 0.6). Séparateur décoratif qui marque la transition entre
+    la navigation scrollable et la zone utilisateur fixe en bas.
+  • **Conteneur sidebar desktop** (l.615) : `<aside className="hidden
+    w-64 shrink-0 bg-forest lg:flex lg:flex-col lg:overflow-y-auto">`
+    — `bg-forest` (token #064E3B), `border-r` supprimé (le fond sombre
+    se suffit comme séparateur, le border clair shadcn par défaut
+    serait trop visible sur le forest).
+  • **Sheet mobile** (l.621) : `<SheetContent side="left" className=
+    "w-72 bg-forest p-0">` — même `bg-forest` pour cohérence mobile/
+    desktop.
+
+- **Modifications topbar "Forêt" dark glass** (fe-3b) — `<header>` (l.
+  632-734) :
+  • **Conteneur** (l.632) : AVANT `bg-background/95 px-4 backdrop-blur
+    supports-[backdrop-filter]:bg-background/70` → APRÈS `border-b
+    border-white/10 bg-forest/95 px-4 backdrop-blur-xl` (fond forest
+    avec alpha /95 + blur renforcé `xl` + bordure basse blanche /10
+    discrète).
+  • **Bouton hamburger mobile** (l.636) : `text-white hover:bg-white/10
+    lg:hidden` (texte blanc + hover blanc translucide, cohérent avec
+    le chrome dark).
+  • **Titre de page** (l.644-650) : `<h1>` → `text-base font-display
+    font-semibold leading-tight text-white` (Poppins pour le titre,
+    blanc). Sous-titre "ScolaGest · Gestion & Caisse Scolaire" →
+    `text-emerald-100/60` (vert clair /60 = sous-titre secondaire).
+  • **Recherche** (l.655-660) : icône `Search` → `text-emerald-100/60`.
+    Input → `h-9 w-56 border-white/10 bg-white/5 pl-8 text-white
+    placeholder:text-emerald-100/40 focus:border-amber-400/50 lg:w-72`
+    (fond glass /5 + bordure /10 + texte blanc + placeholder vert clair
+    /40 + focus bordure or kente /50 pour feedback visuel).
+  • **Notifications** (l.664-672) : bouton → `relative text-white
+    hover:bg-white/10`. Pastille → `absolute right-1.5 top-1.5 size-1.5
+    animate-pulse rounded-full bg-terracotta` (AVANT `bg-amber-500`
+    sans animation → APRÈS `bg-terracotta` token #C2410C + `animate-
+    pulse` pour attirer l'œil sur les notifications non lues, couleur
+    terracotta = danger warm cohérent avec la palette Forêt EdTech).
+  • **Separator vertical** (l.674) : `h-6 bg-white/10` (bordure blanche
+    /10 pour séparer notifications et menu utilisateur sur fond dark).
+  • **Menu utilisateur** (l.681-700) :
+    - Trigger button → `flex items-center gap-2 rounded-md px-1.5 py-1
+      transition-colors hover:bg-white/10` (réordonné pour clarté,
+      hover blanc /10 au lieu de `bg-accent` shadcn).
+    - Avatar → `size-8 border-2 border-gold/40` (bordure dorée premium,
+      cohérent avec le logo et l'avatar sidebar).
+    - AvatarFallback → `bg-emerald-600 text-white` (conservé).
+    - Nom (sm+) → `text-xs font-medium text-white`.
+    - Rôle → `text-[10px] text-emerald-100/60`.
+    - ChevronDown → `hidden size-3.5 text-emerald-100/60 sm:block`.
+
+- **Modifications footer** (l.775-790) :
+  • **Bande kente séparateur** (l.775-776, insérée) : `<KentePattern
+    variant="strip" position="top" />` juste au-dessus du footer — bande
+    horizontale `h-1 w-full` (classe `.kente-strip-top` = `--gradient-
+    forest` emerald→forest + motif diamants or opacity 0.9). Séparateur
+    décoratif or entre le contenu principal (light) et le footer (dark
+    forest), qui marque visuellement la transition de thème.
+  • **Footer** (l.779-780) : `<footer className="mt-auto border-t border-
+    white/10 bg-forest text-emerald-100/70">` (fond forest + bordure
+    haute blanche /10 + texte vert clair /70, cohérent avec le chrome
+    dark sidebar/topbar). Inner div `text-muted-foreground` → `text-
+    emerald-100/70` (pour lisibilité — `text-muted-foreground` shadcn
+    serait illisible sur fond forest ; ce petit ajustement non-spécifié
+    explicitement honore l'intent du spec "Footer bg : bg-forest text-
+    emerald-100/70" qui nécessite que les enfants héritent d'une
+    couleur claire).
+
+- Vérifications :
+  • `wc -l dashboard-layout.tsx` : 796 lignes (AVANT 790, +6 lignes
+    nettes : 1 import + 3 lignes sidebar KentePattern strip bottom +
+    2 lignes footer KentePattern strip top).
+  • `head -20` : `"use client"` directive conservée, header docstring
+    conservé, imports React/next/lucide/cn/Button/Input/Badge/Separator/
+    Avatar/Sheet/Select/DropdownMenu/ScrollArea/useAuthStore/apiGet/
+    useToast tous présents + nouvel import KentePattern l.80.
+  • `grep KentePattern` : 4 occurrences — import (l.80) + usage sidebar
+    (l.586) + usage footer (l.776) + 2 dans les commentaires de docstring
+    (l.585, l.775).
+  • `grep -niE "indigo|blue"` : 0 occurrence. Aucune palette interdite.
+  • `grep` logique RBAC/handlers/états : tous présents — `handleNavigate`
+    (l.456, 555, 740, 755, 767), `handleLogout` (l.474, 724),
+    `handleEtablissementChange` (l.465, 517), `activeView` (l.403, 447,
+    453, 550, 739-772), `mobileOpen` (l.404, 620, 637), `visibleGroups`
+    (l.433, 542), `useState` (l.403-406), `useEffect` (l.410, 446),
+    `useMemo` (l.433), `useAuthStore` (l.397-401), `apiGet` (l.418),
+    `toast`/`logout` (l.476, 475), `SUPER_ADMIN` (l.316-340, 355, 392,
+    410, 435, 509). Aucune logique modifiée.
+  • `grep` features préservées : `Badge` (l.52, 713), `pre-inscriptions`
+    nav item (l.167), `caisse` nav item + view (l.146, 743), sélecteur
+    établissement (l.508-537), 18 vues router (l.739-772). Aucune
+    suppression.
+  • `npx tsc --noEmit --skipLibCheck 2>&1 | grep dashboard-layout` :
+    0 erreur. Total erreurs TS inchangé (15 préexistantes, 0 nouvelle
+    introduite par cette tâche).
+  • `git status --short src/components/ds/ src/components/dashboard/
+    dashboard-layout.tsx src/components/reports/kpi-card.tsx` : 1
+    fichier modifié (`dashboard-layout.tsx`), 0 fichier DS touché, 0
+    fichier `kpi-card.tsx` touché. Migration progressive Phase 4/5
+    préservée.
+
+Stage Summary:
+- 1 fichier modifié (`dashboard-layout.tsx` : 790 → 796 lignes, +6
+  nettes), 0 fichier créé, 0 ligne de logique supprimée, 0 nouvelle
+  erreur TypeScript. 22 edits chirurgicaux appliqués via MultiEdit
+  (atomicité garantie — tous valides ou aucun appliqué).
+- **Chrome "Forêt EdTech"** : sidebar (desktop + mobile Sheet) et
+  topbar passent en dark forest (#064E3B) avec accents kente/gold.
+  Contenu principal reste light (`bg-muted/30` racine conservé).
+  Footer passe en dark forest pour cohérence chrome. 2 bandes
+  `KentePattern` ajoutées (strip bottom en bas de sidebar, strip top
+  au-dessus du footer) — séparateurs décoratifs or qui marquent les
+  transitions de thème et rappellent l'identité africaine du DS.
+- Logique 100% préservée : RBAC (`STAFF_NAV_GROUPS` + `SAAS_NAV_
+  GROUPS` + `visibleGroups` + `isItemAllowed` + `defaultViewForRole`),
+  18 vues router conditionnel sur `activeView`, 4 handlers
+  (`handleNavigate`/`handleLogout`/`handleEtablissementChange`/`setMobile
+  Open`), 4 états (`activeView`/`mobileOpen`/`etablissements`/`loading
+  Etabs`), 2 useEffect (fetch etablissements + reset activeView on
+  role change), 1 useMemo (visibleGroups), sélecteur établissement
+  multi-sites, badge rôle dans le menu utilisateur dropdown, les 16
+  nav items STAFF + 5 nav items SaaS (avec leurs rôles respectifs).
+  Aucun mode sidebar "Réduit/Survol" réellement implémenté dans ce
+  fichier (uniquement desktop w-64 + mobile Sheet w-72) — le brief
+  mentionnait "3 modes" mais le code source n'en contenait que 2 ;
+  aucun mode cassé.
+- Tokens fe-1a consommés : `bg-forest`, `bg-forest/95` (alpha),
+  `bg-terracotta`, `border-gold/40` (alpha) — 4 classes custom DS.
+  Toutes les autres classes (`text-emerald-100/*`, `text-amber-300`,
+  `bg-white/5`, `bg-white/10`, `border-white/10`, `from-emerald-600`,
+  `to-emerald-700`, `shadow-emerald-900/30`, `focus:border-amber-400/
+  50`, `animate-pulse`, `backdrop-blur-xl`, `font-display`) sont des
+  classes Tailwind 4 natives.
+- Composants fe-2c consommés : `KentePattern` (variant `"strip"`,
+  positions `"top"` et `"bottom"`) — 2 instances, 1 par bande
+  décorative. `aria-hidden="true"` déjà géré par la primitive
+  (lecteurs d'écran ignorent le décor).
+- Classes utilitaires fe-1c consommées : `font-display` (Poppins)
+  sur le titre "ScolaGest" sidebar + sur le `<h1>` pageTitle topbar —
+  cohérence typographique DS (titres Poppins, corps Inter).
+- Aucune palette interdite (blue/indigo) — vérifié par `grep`.
+- Fichier `dashboard-layout.tsx` modifié ; aucune primitive DS
+  (`glass-card.tsx`, `kente-pattern.tsx`, `progress-circle.tsx`,
+  `stat-card.tsx`, `button.tsx`) touchée — uniquement consommées en
+  lecture. Aucun `kpi-card.tsx` touché (migration Phase 4/5).
+- Aucun backend, DB, schema, ou .env touché. Landing page et login
+  NON touchés (conformément au brief).
+- Prochaine étape : fe-3c (dashboard vitrine "Forêt EdTech" — page
+  de démonstration qui consomme `StatCard` fe-2d + `GlassCard`
+  variant="premium" fe-2b + `ProgressCircle` fe-2c + `Button` variants
+  fe-2a + `KentePattern` fe-2c pour valider visuellement le DS complet
+  avant migration des vues existantes), puis fe-4 (migration
+  progressive des vues : `kpi-card.tsx` → `StatCard`, cards shadcn →
+  `GlassCard`, boutons shadcn → variants DS — Phase 4/5).
+
+### fe-3c — Layouts scoped : fonts Poppins/Inter + bandes kente
+
+Task ID: fe-3c
+Date: 2025
+Contexte : Phase 3c — application des fonts DS (Poppins `font-display` /
+Inter `font-body`, déjà chargées au root via variables `--font-display`/
+`--font-body` fe-1c, classes `.font-display`/`.font-body` disponibles)
+et des bandes kente (primitive `KentePattern` fe-2c) sur les **4 layouts
+dashboard scoped**. Landing page `/` et login `(auth)/*` NON touchés.
+Phases fe-0/fe-1a/fe-1b/fe-1c/fe-2a/fe-2b/fe-2c/fe-2d/fe-3a/fe-3b
+terminées (chrome dark "Forêt" sidebar+topbar+footer opérationnel).
+
+Work Log:
+- Lu `worklog.md` (fin, sections fe-0 à fe-3a/b) pour le contexte :
+  primitives DS (`KentePattern` fe-2c avec variants `strip`/`bg`/`border`/
+  `separator` + positions `top`/`bottom`/`custom`), typographie fe-1c
+  (`font-display` Poppins pour titres, `font-body` Inter pour corps),
+  tokens fe-1a (`bg-forest`, `border-gold`, etc.), chrome dark "Forêt"
+  fe-3a/b déjà appliqué sur `dashboard-layout.tsx`.
+- Lu les 4 fichiers cibles EN ENTIER :
+  • `(staff)/layout.tsx` (112 lignes) : layout du personnel
+    d'établissement (CAISSIER, COMPTABLE, DIRECTION, etc.). Return
+    principal = `<DashboardShell navGroups={STAFF_NAV_GROUPS}
+    showEtablissement logoutRedirect="/login">{children}</DashboardShell>`
+    SANS wrapper div. Guards : `useAuthBootstrap` + useEffect qui
+    redirige vers `/login` (non-auth), `/saas/dashboard` (SUPER_ADMIN),
+    `/prof` (ENSEIGNANT) ; spinner plein écran pendant les états
+    transitoires. 3 gardes role-based + 1 spinner state = 4 returns.
+  • `(saas)/layout.tsx` (105 lignes) : layout SUPER_ADMIN (plateforme
+    SaaS). Return principal = `<DashboardShell navGroups={SAAS_NAV_
+    GROUPS} showEtablissement={false} logoutRedirect="/login">{children}
+    </DashboardShell>` SANS wrapper div. Guards : `useAuthBootstrap` +
+    useEffect qui redirige vers `/login` (non-auth) ou `/dashboard`
+    (non-SUPER_ADMIN) ; spinner plein écran.
+  • `prof/layout.tsx` (175 lignes) : portail enseignant plein écran
+    SANS sidebar staff. Return principal = `<div className="flex
+    min-h-screen flex-col bg-background">` avec `<header>` (sticky
+    top-0 bg-emerald-600), `<main>` (max-w-3xl), `<footer>` (mt-auto
+    bg-muted/30). Guards : `useAuthBootstrap` + useEffect qui redirige
+    vers `/login` (non-auth) ; 2 retours transitoires (spinner + écran
+    "Accès refusé" si role ≠ ENSEIGNANT). Header contient "Mon espace
+    enseignant" + logo + nom + bouton déconnexion `handleLogout`.
+  • `(parent)/portal/page.tsx` (75 lignes) : PAGE (pas un layout) du
+    portail parent qui rend `<ParentPortal />` directement SANS wrapper.
+    Guards : `useAuthBootstrap` + useEffect qui redirige vers `/parent`
+    (non-auth parent) ; spinner plein écran. La déconnexion interne à
+    `ParentPortal` déclenche la perte du token → redirection auto vers
+    `/parent` via l'effet.
+- Lu `ds/kente-pattern.tsx` (66 lignes) pour confirmer l'API :
+  `variant="strip" position="top"` rend `<div className="kente-strip-top
+  h-1 w-full" aria-hidden="true" />` — bande horizontale `h-1` (4px)
+  avec dégradé `--gradient-forest` emerald→forest + motif diamants or
+  opacity 0.9 (cf. globals.css fe-2c). `aria-hidden="true"` déjà géré
+  par la primitive (lecteurs d'écran ignorent le décor).
+
+- **Modifications (4 fichiers, 1 import + 1 wrapper + 1 strip chacun)** :
+
+  • **`(staff)/layout.tsx`** (112 → 115 lignes, +3) :
+    - Ajouté import l.29 : `import { KentePattern } from
+      "@/components/ds/kente-pattern";` (après import DashboardShell,
+      groupement logique avec les autres imports externes).
+    - Wrapper return principal : AVANT `<DashboardShell ...>` direct →
+      APRÈS `<div className="font-body"><KentePattern variant="strip"
+      position="top" /><DashboardShell ...>...</DashboardShell></div>`.
+      Classe `font-body` sur le wrapper applique Inter (corps) à tout
+      le contenu du layout (sidebar+topbar+main+footer). Les titres
+      utiliseront `font-display` au niveau des composants (déjà fait
+      dans `dashboard-layout.tsx` fe-3a/b sur sidebar logo + topbar
+      `<h1>`).
+
+  • **`(saas)/layout.tsx`** (105 → 108 lignes, +3) :
+    - Même pattern que staff : import l.29 + wrapper `<div className=
+      "font-body">` + `<KentePattern variant="strip" position="top" />`
+      en premier enfant du return principal.
+
+  • **`prof/layout.tsx`** (175 → 176 lignes, +1 nette) :
+    - Ajouté import l.26 : `import { KentePattern } from
+      "@/components/ds/kente-pattern";`.
+    - Wrapper : AVANT `<div className="flex min-h-screen flex-col
+      bg-background">` → APRÈS `<div className="font-body flex
+      min-h-screen flex-col bg-background">` (classe `font-body`
+      AJOUTÉE en tête, classes existantes préservées pour ne pas
+      casser le layout flex column + min-h-screen + bg-background).
+      `<KentePattern variant="strip" position="top" />` inséré en
+      PREMIER ENFANT du div, AVANT le `<header>` sticky — bande or
+      horizontale h-1 en tout début de portail enseignant.
+
+  • **`(parent)/portal/page.tsx`** (75 → 80 lignes, +5) :
+    - Ajouté import l.23 : `import { KentePattern } from
+      "@/components/ds/kente-pattern";`.
+    - Wrapper : AVANT `return <ParentPortal />` → APRÈS `return
+      (<div className="font-body"><KentePattern variant="strip"
+      position="top" /><ParentPortal /></div>)`. Le composant
+      `ParentPortal` existe déjà avec son propre layout interne
+      (header + main + footer) ; le wrapper `font-body` assure la
+      cohérence typographique DS et le strip kente or en haut
+      marque l'identité africaine du portail parent.
+
+- Vérifications :
+  • `wc -l` : staff 115 (+3), saas 108 (+3), prof 176 (+1), parent
+    80 (+5). Total +12 lignes nettes pour 4 fichiers.
+  • `head -30` de chaque fichier : directive `"use client"` conservée,
+    header docstring conservé, imports existants (Image, useEffect,
+    useRouter, Loader2, useAuthStore, useAuthBootstrap, DashboardShell,
+    Button, ParentPortal, etc.) tous présents + nouvel import
+    KentePattern à la fin des imports dans chacun des 4 fichiers.
+  • `grep -nE "KentePattern|font-body"` :
+    - staff : import l.29 + `<div className="font-body">` l.104 +
+      `<KentePattern variant="strip" position="top" />` l.105.
+    - saas : import l.29 + `<div className="font-body">` l.97 +
+      `<KentePattern variant="strip" position="top" />` l.98.
+    - prof : import l.26 + `<div className="font-body flex min-h-screen
+      flex-col bg-background">` l.132 + `<KentePattern variant="strip"
+      position="top" />` l.133.
+    - parent : import l.23 + `<div className="font-body">` l.75 +
+      `<KentePattern variant="strip" position="top" />` l.76.
+  • `grep -nE "useEffect|useRouter|useAuthStore|useAuthBootstrap|
+    router\.push"` : tous les guards d'auth INTACTS dans les 4
+    fichiers. Aucune logique de redirection modifiée :
+    - staff : useEffect l.45 + 3 `router.push` (login l.48, saas/
+      dashboard l.52, prof l.57) + 4 `useAuthStore` selectors l.39-42.
+    - saas : useEffect l.45 + 2 `router.push` (login l.48, dashboard
+      l.52) + 4 `useAuthStore` selectors l.39-42.
+    - prof : useEffect l.44 + 2 `router.push` (login l.47 + login
+      l.128 dans handleLogout) + 6 `useAuthStore` selectors l.36-41
+      (isAuthenticated, isLoading, accessToken, role, user, logout).
+    - parent : useEffect l.34 + 1 `router.push` (/parent l.37) + 3
+      `useAuthStore` selectors l.29-31 (isParentAuthenticated,
+      parentAccessToken, isLoading).
+  • `grep -niE "indigo|blue"` : 0 occurrence dans les 4 fichiers.
+    Aucune palette interdite.
+  • `npx tsc --noEmit --skipLibCheck 2>&1 | grep -E "layout\.tsx|
+    portal/page\.tsx"` : 0 erreur TypeScript introduite dans les 4
+    fichiers modifiés.
+  • `git diff --stat` : 4 fichiers modifiés (1 page + 3 layouts),
+    +32 insertions, -16 deletions (dont -16 = reformattage de
+    DashboardShell indenté d'un niveau supplémentaire dans staff et
+    saas, et -3 = reformattage de ParentPortal indenté d'un niveau
+    dans parent ; aucun contenu fonctionnel supprimé).
+  • `git status --short src/app/` : exactement 4 fichiers modifiés
+    (`(parent)/portal/page.tsx`, `(saas)/layout.tsx`,
+    `(staff)/layout.tsx`, `prof/layout.tsx`). Aucun layout/page
+    tiers touché, aucun composant DS touché, landing page `/` et
+    login `(auth)/*` NON touchés (conformément au brief).
+
+Stage Summary:
+- 4 fichiers modifiés (3 layouts + 1 page), 0 fichier créé, 0 ligne
+  de logique supprimée, 0 nouvelle erreur TypeScript. 6 edits
+  chirurgicaux appliqués via MultiEdit (atomicité garantie — tous
+  valides ou aucun appliqué).
+- **Fonts DS appliquées** : classe `font-body` (Inter, fe-1c) ajoutée
+  sur le conteneur racine de chacun des 4 layouts/page → tous les
+  enfants (sidebar, topbar, main, footer, header prof, portail
+  parent) héritent d'Inter comme police de corps. Les titres utilisent
+  `font-display` (Poppins) au niveau des composants internes (déjà
+  fait dans `dashboard-layout.tsx` fe-3a/b pour sidebar logo + topbar
+  `<h1>` ; les composants StatCard/ProgressCircle/GlassCard/dashboard
+  -layout appliquent eux-mêmes `font-display` sur leurs titres). Pour
+  `prof/layout.tsx` et `parent/portal/page.tsx`, les titres internes
+  pourront être migrés vers `font-display` lors de la phase fe-4
+  (migration progressive des vues) — pas dans le scope de fe-3c.
+- **Bandes kente or appliquées** : `<KentePattern variant="strip"
+  position="top" />` inséré en TOUT HAUT du conteneur racine de
+  chacun des 4 layouts/page. Bande horizontale `h-1` (4px) avec
+  dégradé `--gradient-forest` (emerald→forest) + motif diamants or
+  opacity 0.9 (cf. globals.css fe-2c, classe `.kente-strip-top`).
+  `aria-hidden="true"` géré par la primitive (lecteurs d'écran
+  ignorent le décor). Bande visible en haut de page avant le
+  DashboardShell / header prof / ParentPortal — marque l'identité
+  africaine du DS et la cohérence avec le chrome "Forêt" fe-3a/b.
+- Logique 100% préservée : guards d'auth (4 useEffect + 8 router.push
+  + 17 useAuthStore selectors + 4 useAuthBootstrap) INTACTS dans les
+  4 fichiers. Aucune redirection modifiée, aucun spinner modifié,
+  aucun écran "Accès refusé" modifié, aucun handleLogout modifié.
+  Les 3 returns transitoires de staff, les 2 de saas, les 2 de prof,
+  les 1 de parent (spinners/accès refusé) ne sont PAS touchés — seul
+  le return principal "autorité OK" reçoit le wrapper font-body +
+  KentePattern strip top.
+- Composants fe-2c consommés : `KentePattern` (variant `"strip"`,
+  position `"top"`) — 4 instances (1 par layout/page). `aria-hidden`
+  déjà géré par la primitive.
+- Classes utilitaires fe-1c consommées : `font-body` (Inter) — 4
+  instances (1 par layout/page). Cohérence typographique DS :
+  titres Poppins (via `font-display` au niveau composants internes),
+  corps Inter (via `font-body` sur les wrappers de layout).
+- Aucune palette interdite (blue/indigo) — vérifié par `grep` sur les
+  4 fichiers.
+- Aucun composant DS (`glass-card.tsx`, `kente-pattern.tsx`,
+  `progress-circle.tsx`, `stat-card.tsx`, `button.tsx`) touché —
+  uniquement consommé en lecture. Aucun `dashboard-layout.tsx` touché
+  (déjà migré fe-3a/b). Aucun `kpi-card.tsx` touché (migration Phase
+  4/5).
+- Aucun backend, DB, schema, ou .env touché. Landing page `/` et
+  login `(auth)/*` NON touchés (conformément au brief).
+- Prochaine étape : fe-4 (migration progressive des vues :
+  `kpi-card.tsx` → `StatCard` fe-2d, cards shadcn → `GlassCard`
+  fe-2b, boutons shadcn → variants DS fe-2a, titres → `font-display`
+  Poppins — Phase 4/5), puis éventuellement fe-3d (dashboard vitrine
+  "Forêt EdTech" — page de démonstration qui consomme `StatCard` +
+  `GlassCard` variant="premium" + `ProgressCircle` + `Button`
+  variants + `KentePattern` pour valider visuellement le DS complet
+  avant migration des vues existantes).
+
+---
+
+## Task ID: fe-4
+Date: 2025
+Contexte : Phase 4 — refonte du dashboard home (`src/components/dashboard/
+dashboard-home.tsx`, pièce maîtresse 996 lignes) en vitrine du Design
+System "Forêt EdTech". Application des primitives DS fe-2 (GlassCard,
+StatCard, ProgressCircle, KentePattern) + Button variants fe-2a +
+fonts fe-1c (font-display Poppins) SANS casser la logique métier
+(useQuery/fetchDashboard/guards/handlers). Phases fe-0/fe-1a/fe-1b/
+fe-1c/fe-2a/fe-2b/fe-2c/fe-2d/fe-2e/fe-3a/fe-3b/fe-3c terminées.
+
+Work Log:
+- Lu `worklog.md` (fin, sections fe-0 à fe-3c) pour le contexte :
+  primitives DS disponibles (`GlassCard` fe-2b variants mobile/tablet/
+  desktop/premium/adaptive + props `premiumBorder`/`noAnimation`/
+  `noHover`/`delay` ; `StatCard` fe-2d tones emerald/amber/terracotta/
+  gold/sky/forest + props `trend`/`invertTrend`/`hint`/`delay` ;
+  `ProgressCircle` fe-2e props `value`/`size`/`label`/`trackColor` ;
+  `KentePattern` fe-2c variants strip/bg/border/separator), fonts
+  fe-1c (`font-display` Poppins pour titres, `font-body` Inter pour
+  corps), Button variants DS fe-2a (`success` gradient emerald,
+  `premium` gradient gold/amber, `terracotta`, `gold`, `forest`).
+- Lu `dashboard-home.tsx` EN ENTIER (996 lignes) :
+  • Lignes 1-200 : imports + types `DashboardViewId` (24 valeurs) +
+    `DashboardHomeProps` + `HealthResponse` + `QUICK_ACTIONS` (4
+    actions) + helpers `getGreeting`/`roleLabel`/`initials`.
+  • Lignes 200-330 : `presetRange` (4 presets today/7d/month/year) +
+    `normalizeRepartition` (cycle/classe/categorie → libellé) +
+    `DashboardHome` (useAuthStore 3 selectors, useState preset/dateDebut/
+    dateFin, applyPreset, handleDateDebutChange, handleDateFinChange,
+    useQuery fetchDashboard avec `dashboardKeys.data`, useEffect health
+    via apiGet /api/health).
+  • Lignes 330-390 : guards SUPER_ADMIN → `<SaasDashboardView>`,
+    !etablissement?.id → early return avec Card "Sélectionnez un
+    établissement" + SystemStatusCard.
+  • Lignes 390-553 : return principal — WelcomeCard + Card filtre
+    période (Select preset + Input date_debut + Input date_fin + Button
+    Actualiser refetch) + section KPIs (h2 "Indicateurs clés" + Badge
+    "Phase 4" + 4 KpiCard ou Skeleton × 4 si loading ou Card rose si
+    erreur avec Button "Réessayer").
+  • Lignes 555-640 : 3 charts (Card parCycle BarChart attendu vs
+    encaissé, Card parMode ModePaiementChart, Card evolution BarChart
+    vertical 12 mois).
+  • Lignes 642-780 : grid lg:grid-cols-3 avec Card "Derniers paiements"
+    (lg:col-span-2, table avec 6 colonnes Date/Reçu/Élève/Montant/Mode/
+    Caissier, bouton "Voir l'historique") + Card "Actions rapides"
+    (4 buttons custom emerald/amber avec icône + label + description).
+  • Lignes 782-933 : SystemStatusCard (Card avec Activity + statut
+    API/Version/Environnement).
+  • Lignes 796-866 : WelcomeCard (Card gradient emerald + badge
+    initials + h1 displayName + badges role/etablissement + date).
+  • Lignes 868-995 : SystemStatusCard + ModePaiementChart + helpers
+    modeLabel/modeBarColor.
+- Lu primitives DS EN ENTIER pour vérifier l'API :
+  • `glass-card.tsx` (141 lignes) : `GlassCard` étend `HTMLMotionProps<
+    "div">`, variant `adaptive` par défaut, `p-5 rounded-2xl` par
+    défaut, `cn()` avec twMerge donc `className="p-0"` override `p-5`.
+    `noHover` désactive le lift au survol. `delay` (secondes) pour
+    stagger. Respecte `prefers-reduced-motion` via `usePrefersReduced
+    Motion` + `getMotion`.
+  • `stat-card.tsx` (103 lignes) : `StatCard` wrap un `GlassCard
+    variant="adaptive"`, tones 6 couleurs, `trend` numérique + 
+    `invertTrend` (inverse sémantique vert/rouge), `hint` sous-titre,
+    `delay` passé à GlassCard. `value` en `font-display text-2xl
+    font-bold text-foreground`.
+  • `progress-circle.tsx` (89 lignes) : `ProgressCircle` SVG avec
+    gradient emerald→amber, `motion.circle` animé 1.5s, label central
+    en `font-display text-3xl font-bold text-forest`.
+  • `kente-pattern.tsx` (66 lignes) : `KentePattern variant="separator"`
+    rend `<div className="kente-separator w-full" aria-hidden="true" />`
+    (ligne or horizontale subtile).
+- Lu `animations.ts` (138 lignes) : `staggerContainer`/`staggerItem`
+  pour cascade, `fadeInUp`/`scaleIn`/`slideInLeft`/`slideInRight` pour
+  entrées, `cardHover`/`buttonHover`/`buttonTap` pour interactions,
+  `getMotion()` pour respecter `prefers-reduced-motion`.
+- Lu `kpi-card.tsx` (109 lignes) : ancien composant KpiCard (Card
+  shadcn + accent emerald/amber/rose/sky/orange/slate + subtitle +
+  trend texte + trendUp bool). À remplacer par StatCard.
+
+- **9 edits chirurgicaux appliqués via MultiEdit (atomicité garantie)** :
+
+  1. **Imports** (l.74-78) : Retrait `import { KpiCard } from
+     "@/components/reports/kpi-card";` + ajout 4 imports primitives DS
+     (`GlassCard`, `StatCard`, `ProgressCircle`, `KentePattern`) après
+     l'import `BarChart` pour grouper les imports `@/components`.
+     Décision : NE PAS importer `motion`/`staggerContainer`/
+     `staggerItem` car le brief préconise explicitement de NE PAS
+     wrapper les StatCard dans `motion.div` (StatCard a déjà `delay`).
+     Importer sans utiliser = warnings ESLint unused-vars.
+
+  2. **Filtre période** (l.404-469) : `<Card><CardContent className=
+     "flex flex-col gap-3 p-4 sm:flex-row sm:items-end sm:justify-
+     between">` → `<GlassCard variant="adaptive" className="p-4"><div
+     className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-
+     between">`. `p-4` override le `p-5` par défaut GlassCard via
+     twMerge. Closing tags `</CardContent></Card>` → `</div></GlassCard>`.
+     Select/Input/Label/Button/`applyPreset`/`handleDateDebutChange`/
+     `handleDateFinChange`/`refetch` INTACTS.
+
+  3. **Titre "Indicateurs clés"** (l.474) : `<h2 className="text-sm
+     font-semibold uppercase tracking-wide text-muted-foreground">` →
+     ajout classe `font-display` en tête.
+
+  4. **4 KpiCard → 4 StatCard** (l.515-551) : mapping tones exact du
+     brief :
+     • "Total encaissé" → `tone="emerald"` icon Wallet, `hint` avec
+       montant du jour, `delay={0}`
+     • "Total attendu" → `tone="amber"` icon Target, `hint` nb élèves,
+       `delay={0.05}`
+     • "Taux de recouvrement" → `tone="gold"` icon TrendingUp, `hint`
+       "Objectif annuel : 95 %", `delay={0.1}` — trend RETIRÉ (taux
+       sans comparaison N-1, conformément au brief)
+     • "Impayés" → `tone="terracotta"` icon AlertTriangle, `invertTrend`
+       (brief explicite, sans effet sans `trend` mais préserve
+       l'intention sémantique pour future migration), `hint` paiements
+       du jour, `delay={0.15}`
+     Grille `grid gap-4 sm:grid-cols-2 lg:grid-cols-4` conservée.
+
+  5. **Section ProgressCircle + synthèse** (l.555-613, NOUVELLE
+     section) : Option B du brief (section dédiée après KPIs).
+     Grid `lg:grid-cols-3` :
+     • Gauche : `<GlassCard variant="premium" noHover className="flex
+       flex-col items-center gap-3">` avec `<h3 className="font-display
+       text-sm font-semibold uppercase tracking-wide text-gold-dark">
+       Taux de recouvrement</h3>` + `<ProgressCircle value=
+       {tauxRecouvrement} size={140} label={`${tauxRecouvrement.toFixed
+       (1)}%`} />` + `<p className="text-xs text-muted-foreground">
+       Objectif annuel : 95 %</p>`
+     • Droite (`lg:col-span-2`) : `<GlassCard variant="adaptive"
+       noHover>` avec `<h3 className="font-display ...">Synthèse de la
+       période</h3>` + 3 mini-cartes (Encaissé emerald / Attendu amber
+       / Reste à recouvrer terracotta) avec montants en `font-display
+       text-lg font-bold text-foreground`. Calcul "Reste à recouvrer"
+       = `Math.max(0, total_attendu - total_encaisse)` (évite négatif
+       en cas de sur-encaisse).
+     Conditionnée par `{dashboard ? (...) : null}` (s'affiche si
+     données chargées).
+
+  6. **KentePattern separator #1** (l.615) : `<KentePattern
+     variant="separator" className="my-2" />` inséré entre la section
+     ProgressCircle/synthèse et les Graphiques.
+
+  7. **3 Charts → GlassCard** (l.617-696) :
+     • parCycle (l.621-647) : `<Card><CardHeader><CardTitle>+
+       <CardDescription></CardHeader><CardContent>` → `<GlassCard
+       variant="adaptive" noHover>` avec `<div className="mb-3"><h3
+       className="font-display text-base font-semibold">+<p className=
+       "text-xs text-muted-foreground"></div>`
+     • parMode (l.650-666) : même transformation
+     • Évolution mensuelle (l.672-695) : même transformation
+     `noHover` ajouté sur les 3 (cartes non-interactives). Composants
+     internes BarChart/ModePaiementChart NON touchés.
+
+  8. **KentePattern separator #2** (l.698) : `<KentePattern
+     variant="separator" className="my-2" />` entre Évolution mensuelle
+     et "Derniers paiements + Actions rapides".
+
+  9. **Derniers paiements → GlassCard** (l.702-788) : `<Card className=
+     "lg:col-span-2"><CardHeader>...</CardHeader><CardContent className=
+     "p-0">` → `<GlassCard variant="adaptive" noHover className="flex
+     flex-col p-0 lg:col-span-2">` avec header interne `<div className=
+     "flex items-center justify-between p-5 pb-3">` (préserve le
+     spacing original). Table/TableHeader/TableRow/TableCell + bouton
+     "Voir l'historique" `variant="outline"` INTACTS.
+
+  10. **Actions rapides → GlassCard + Button DS** (l.791-827) :
+      `<Card><CardHeader><CardTitle>Actions rapides</CardTitle>+
+      <CardDescription></CardHeader><CardContent>` → `<GlassCard
+      variant="adaptive" noHover>` avec `<div className="mb-3"><h3
+      className="font-display ...">+<p className="text-xs text-muted-
+      foreground"></div>`. Le `<button>` custom (cn conditionnel emerald/
+      amber + icône carré coloré + label + description + ArrowUpRight)
+      → `<Button variant={isEmerald ? "success" : "premium"} size="lg"
+      onClick={() => onNavigate(action.view)} className="h-auto justify-
+      start gap-3 py-3 text-left">` avec icône + 2 lignes (label
+      font-medium + description opacity-80) + ArrowUpRight opacity-80.
+      `h-auto` override la hauteur fixe du `size="lg"` pour permettre
+      2 lignes.
+
+  11. **WelcomeCard h1** (l.869) : `<h1 className="text-xl font-bold
+      tracking-tight">` → `<h1 className="font-display text-xl font-bold
+      tracking-tight text-foreground">` (ajout `font-display` + 
+      `text-foreground` explicite car contenu light, pas text-white).
+      Reste de la WelcomeCard (Card gradient emerald, badge initials,
+      badges role/etablissement, date) NON touché.
+
+  12. **SystemStatusCard CardTitle** (l.928) : `<CardTitle className=
+      "flex items-center gap-2 text-base">` → ajout classe `font-display`.
+      SystemStatusCard laissée en `<Card>` shadcn (implémentation dédiée
+      préservée, conformément au brief option "laisser tel quel").
+
+- Vérifications :
+  • `wc -l` : 995 → 1043 lignes (+48 nettes, conforme à l'attente
+    brief ~990-1050).
+  • `head -90` : directive `"use client"` conservée, docstring
+    conservé, imports lucide-react conservés, imports shadcn (Card/
+    CardContent/CardDescription/CardHeader/CardTitle/Button/Badge/
+    Separator/Input/Label/Select/Table/Skeleton) conservés (tous
+    encore utilisés), `cn` conservé (utilisé par ModePaiementChart
+    l.1001), imports `useAuthStore`/`apiGet`/`ApiError`/`fetchDashboard`/
+    `dashboardKeys` conservés, `KpiCard` import RETIRÉ, 4 imports
+    primitives DS AJOUTÉS (l.75-78).
+  • `grep KpiCard` : 0 occurrence (retrait confirmé).
+  • `grep StatCard` : 4 occurrences (l.516, 524, 534, 542) — 4 KPIs.
+  • `grep GlassCard` : 8 occurrences (l.405 filtre, 558 ProgressCircle
+    premium, 575 synthèse adaptive, 621 parCycle, 650 parMode, 672
+    evolution, 702 derniers paiements, 791 actions rapides).
+  • `grep ProgressCircle` : 1 occurrence (l.566).
+  • `grep KentePattern` : 2 occurrences (l.615, 698) — 2 séparateurs
+    subtils entre grandes sections.
+  • `grep font-display` : 13+ occurrences (l.474 h2 Indicateurs clés,
+    563 h3 Taux de recouvrement, 576 h3 Synthèse, 584/592/600 montants
+    synthèse, 623 h3 parCycle, 652 h3 parMode, 674 h3 evolution, 709
+    h3 Derniers paiements, 793 h3 Actions rapides, 869 h1 displayName
+    WelcomeCard, 928 CardTitle Statut système).
+  • `grep -E "useQuery|fetchDashboard|dashboardKeys|applyPreset|
+    handleDateDebutChange|handleDateFinChange|QUICK_ACTIONS|getGreeting|
+    roleLabel|initials|presetRange|normalizeRepartition|DashboardViewId"`
+    : TOUS préservés à leurs emplacements d'origine.
+  • `grep -E "SUPER_ADMIN|SaasDashboardView|!etablissement"` : guards
+    d'auth INTACTS (l.334 SUPER_ADMIN → SaasDashboardView, l.351
+    !etablissement → early return).
+  • `grep -E "Skeleton|XCircle|AlertTriangle|Loader2"` : états
+    chargement/erreur/vide INTACTS.
+  • `grep -niE "indigo|blue"` : 0 occurrence (aucune palette interdite).
+  • `bun run lint` : 0 erreur, 0 warning sur `dashboard-home.tsx`
+    (3 warnings résiduels sur `step-scolarite.tsx` — fichier non
+    touché, préexistants).
+  • `dev.log` : `/dashboard` compile en 3.0s, 200 OK, pas d'erreur
+    runtime. Backend Go démarré (PID=7766) sur port 8080.
+  • Tracé agent-ctx : `/agent-ctx/fe-4-frontend.md` créé avec détail
+    complet des 9 edits + table de préservation logique + comptage.
+
+Stage Summary:
+- **1 fichier modifié** (`dashboard-home.tsx`), 0 fichier créé, 0 ligne
+  de logique supprimée, 0 nouvelle erreur TypeScript/ESLint. 9 edits
+  chirurgicaux via MultiEdit (atomicité garantie — tous valides ou
+  aucun appliqué).
+- **KPIs migrés** : 4 `KpiCard` (composant legacy `@/components/reports/
+  kpi-card` basé sur Card shadcn) → 4 `StatCard` (primitive DS fe-2d
+  basée sur GlassCard). Mapping tones exact du brief : emerald (Wallet)
+  / amber (Target) / gold (TrendingUp) / terracotta (AlertTriangle).
+  Trend retiré sur Taux de recouvrement (pas de comparaison N-1).
+  `invertTrend` ajouté sur Impayés (préserve l'intention sémantique
+  pour future migration API). Stagger via `delay` prop (0/0.05/0.1/
+  0.15s) — pas de `motion.div` wrapper conformément au brief.
+- **ProgressCircle ajouté** : nouvelle section dédiée après KPIs
+  (Option B du brief). Grid lg:grid-cols-3 avec carte premium (GlassCard
+  variant="premium" + ProgressCircle size=140 + titre font-display
+  text-gold-dark) à gauche, carte synthèse adaptive (GlassCard variant=
+  "adaptive" + 3 mini-cartes Encaissé/Attendu/Reste à recouvrer avec
+  montants font-display) à droite. Conditionnée par `{dashboard ?
+  (...) : null}`.
+- **Charts migrés** : 4 `<Card>` (parCycle, parMode, evolution, derniers
+  paiements) → 4 `<GlassCard variant="adaptive" noHover>`. CardHeader/
+  CardTitle/CardDescription/CardContent remplacés par `<div className=
+  "mb-3">` + `<h3 className="font-display ...">` + `<p className="text-
+  xs text-muted-foreground">`. `noHover` ajouté (cartes non-
+  interactives). Composants internes BarChart/ModePaiementChart/Table
+  NON touchés.
+- **Filtre période migré** : `<Card><CardContent>` → `<GlassCard
+  variant="adaptive" className="p-4">`. Logique Select/Input/Label/
+  Button/applyPreset/handleDateDebutChange/handleDateFinChange/refetch
+  INTACTE.
+- **Quick actions migrées** : `<button>` custom (cn conditionnel +
+  icône carré coloré) → `<Button variant={isEmerald ? "success" :
+  "premium"} size="lg">` avec icône + 2 lignes (label + description).
+  2 variants DS consommés : `success` (gradient emerald) pour
+  "Nouvel élève" et "Nouvel encaissement", `premium` (gradient gold/
+  amber) pour "Voir impayés" et "Clôturer caisse".
+- **Titres migrés** : 13+ occurrences `font-display` ajoutées sur
+  h1 (displayName WelcomeCard), h2 (Indicateurs clés), h3 (Taux de
+  recouvrement, Synthèse, 5 titres de charts/tables/actions), montants
+  synthèse (3 mini-cartes), CardTitle (Statut système SystemStatusCard).
+- **KentePattern separators ajoutés** : 2 séparateurs subtils
+  (`variant="separator"` → classe `.kente-separator` or horizontale)
+  entre grandes sections : (1) entre ProgressCircle/synthèse et
+  Graphiques, (2) entre Évolution mensuelle et Derniers paiements/
+  Actions rapides. `aria-hidden` géré par la primitive.
+- **Logique 100% préservée** : `useQuery` (l.23/284), `fetchDashboard`
+  (l.73/287), `dashboardKeys.data` (l.285), `applyPreset` (l.259/412),
+  `handleDateDebutChange` (l.268/436), `handleDateFinChange` (l.272/
+  449), `refetch` (l.280/455/503), useEffect health (l.298-324),
+  guards SUPER_ADMIN (l.334-348) et !etablissement (l.351-381),
+  QUICK_ACTIONS (l.138/801), getGreeting (l.177/867), roleLabel
+  (l.184/877), initials (l.199/862), presetRange (l.206/253/256/262),
+  normalizeRepartition (l.237/387), DashboardViewId (l.94/129/142),
+  onNavigate handler — TOUS INTACTS. Aucun handler modifié, aucune
+  redirection modifiée, aucun état modifié, aucun guard modifié.
+- **États préservés** : Skeleton (l.487 × 4 h-32), XCircle (l.494 dans
+  état erreur), AlertTriangle (l.363 dans "pas d'établissement"),
+  Loader2 (l.462 dans bouton refresh), messages "Aucune donnée..." pour
+  parCycle/parMode/evolution/derniersPaiements — TOUS INTACTS.
+- Composants DS consommés (lecture seule) : `GlassCard` × 8 instances
+  (1 filtre + 2 section ProgressCircle + 3 charts + 1 derniers
+  paiements + 1 actions rapides), `StatCard` × 4 instances (4 KPIs),
+  `ProgressCircle` × 1 instance (taux recouvrement), `KentePattern`
+  × 2 instances (2 séparateurs).
+- Tokens/classes consommés : `font-display` (Poppins fe-1c) × 13+,
+  `glass-adaptive` (fe-2b via GlassCard variant="adaptive") × 7,
+  `glass-premium` (fe-2b via GlassCard variant="premium") × 1,
+  `kente-separator` (fe-2c via KentePattern variant="separator") × 2,
+  `text-gold-dark` (fe-1a token gold-dark) × 1, `border-terracotta/40
+  bg-terracotta/5 text-terracotta` (fe-1a token terracotta) × 1,
+  Button variants `success` et `premium` (fe-2a) × 4 (2 success + 2
+  premium).
+- Respect `prefers-reduced-motion` : toutes les animations passent
+  par les primitives DS qui gèrent le hook `usePrefersReducedMotion`
+  en interne. Aucune animation Framer Motion ajoutée manuellement.
+- Aucune palette interdite (indigo/blue) — vérifié par grep.
+- Aucun composant DS modifié (GlassCard/StatCard/ProgressCircle/
+  KentePattern/button.tsx — uniquement consommés en lecture).
+- Aucun `dashboard-layout.tsx` touché (déjà migré fe-3a/b).
+- Aucun backend/DB/schema/.env touché. Landing page `/` et login
+  `(auth)/*` NON touchés (conformément au brief).
+- Prochaine étape suggérée : fe-5 (migration progressive des autres
+  vues dashboard — caisse, élèves, rapports, etc. — vers les primitives
+  DS en suivant le pattern établi dans fe-4), puis audit `kpi-card.tsx`
+  (désormais plus utilisé dans le dashboard home — décider suppression
+  vs conservation comme wrapper legacy pour vues Rapports).

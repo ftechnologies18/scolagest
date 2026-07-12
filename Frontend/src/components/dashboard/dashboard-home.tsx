@@ -71,8 +71,11 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth-store";
 import { apiGet, ApiError } from "@/lib/api-client";
 import { fetchDashboard, dashboardKeys } from "@/lib/api-reports";
-import { KpiCard } from "@/components/reports/kpi-card";
 import { BarChart } from "@/components/reports/bar-chart";
+import { GlassCard } from "@/components/ds/glass-card";
+import { StatCard } from "@/components/ds/stat-card";
+import { ProgressCircle } from "@/components/ds/progress-circle";
+import { KentePattern } from "@/components/ds/kente-pattern";
 import {
   formatFCFA,
   formatDateShort,
@@ -399,8 +402,8 @@ export function DashboardHome({ onNavigate }: DashboardHomeProps) {
       />
 
       {/* Filtre de période + rafraîchir */}
-      <Card>
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-end sm:justify-between">
+      <GlassCard variant="adaptive" className="p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Période</Label>
@@ -462,13 +465,13 @@ export function DashboardHome({ onNavigate }: DashboardHomeProps) {
             )}
             Actualiser
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {/* KPIs */}
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Indicateurs clés
           </h2>
           <Badge
@@ -510,165 +513,221 @@ export function DashboardHome({ onNavigate }: DashboardHomeProps) {
           </Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiCard
+            <StatCard
+              icon={Wallet}
               label="Total encaissé (période)"
               value={formatFCFA(kpis?.total_encaisse ?? 0)}
-              icon={Wallet}
-              accent="emerald"
-              subtitle={`Aujourd'hui : ${formatFCFA(kpis?.montant_jour ?? 0)}`}
+              tone="emerald"
+              hint={`Aujourd'hui : ${formatFCFA(kpis?.montant_jour ?? 0)}`}
+              delay={0}
             />
-            <KpiCard
+            <StatCard
+              icon={Target}
               label="Total attendu (année)"
               value={formatFCFA(kpis?.total_attendu ?? 0)}
-              icon={Target}
-              accent="sky"
-              subtitle={`Sur ${kpis?.nb_eleves ?? 0} élève${
+              tone="amber"
+              hint={`Sur ${kpis?.nb_eleves ?? 0} élève${
                 (kpis?.nb_eleves ?? 0) > 1 ? "s" : ""
               } inscrit(s)`}
+              delay={0.05}
             />
-            <KpiCard
+            <StatCard
+              icon={TrendingUp}
               label="Taux de recouvrement"
               value={`${tauxRecouvrement.toFixed(1)} %`}
-              icon={TrendingUp}
-              accent="emerald"
-              subtitle={`Objectif annuel : 95 %`}
-              trend={
-                tauxRecouvrement >= 80
-                  ? "Bon rythme"
-                  : tauxRecouvrement >= 50
-                    ? "À surveiller"
-                    : "Critique"
-              }
-              trendUp={tauxRecouvrement >= 50}
+              tone="gold"
+              hint="Objectif annuel : 95 %"
+              delay={0.1}
             />
-            <KpiCard
+            <StatCard
+              icon={AlertTriangle}
               label="Impayés (élèves)"
               value={`${kpis?.nb_impayes ?? 0}`}
-              icon={AlertTriangle}
-              accent={kpis && kpis.nb_impayes > 0 ? "amber" : "emerald"}
-              subtitle={`Paiements du jour : ${kpis?.nb_paiements_jour ?? 0}`}
+              tone="terracotta"
+              invertTrend
+              hint={`Paiements du jour : ${kpis?.nb_paiements_jour ?? 0}`}
+              delay={0.15}
             />
           </div>
         )}
       </div>
 
+      {/* Taux de recouvrement — visualisation circulaire Forêt EdTech */}
+      {dashboard ? (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <GlassCard
+            variant="premium"
+            noHover
+            className="flex flex-col items-center gap-3"
+          >
+            <h3 className="font-display text-sm font-semibold uppercase tracking-wide text-gold-dark">
+              Taux de recouvrement
+            </h3>
+            <ProgressCircle
+              value={tauxRecouvrement}
+              size={140}
+              label={`${tauxRecouvrement.toFixed(1)}%`}
+            />
+            <p className="text-xs text-muted-foreground">
+              Objectif annuel : 95 %
+            </p>
+          </GlassCard>
+          <GlassCard variant="adaptive" noHover className="lg:col-span-2">
+            <h3 className="font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Synthèse de la période
+            </h3>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/40 p-3 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                <p className="text-[11px] uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                  Encaissé
+                </p>
+                <p className="mt-1 font-display text-lg font-bold text-foreground">
+                  {formatFCFA(kpis?.total_encaisse ?? 0)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-amber-200/60 bg-amber-50/40 p-3 dark:border-amber-900/40 dark:bg-amber-950/20">
+                <p className="text-[11px] uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                  Attendu
+                </p>
+                <p className="mt-1 font-display text-lg font-bold text-foreground">
+                  {formatFCFA(kpis?.total_attendu ?? 0)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-terracotta/40 bg-terracotta/5 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-terracotta">
+                  Reste à recouvrer
+                </p>
+                <p className="mt-1 font-display text-lg font-bold text-foreground">
+                  {formatFCFA(
+                    Math.max(
+                      0,
+                      (kpis?.total_attendu ?? 0) -
+                        (kpis?.total_encaisse ?? 0),
+                    ),
+                  )}
+                </p>
+              </div>
+            </div>
+          </GlassCard>
+        </div>
+      ) : null}
+
+      <KentePattern variant="separator" className="my-2" />
+
       {/* Graphiques */}
       {dashboard ? (
         <div className="grid gap-4 lg:grid-cols-2">
           {/* Encaissements par cycle */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
+          <GlassCard variant="adaptive" noHover>
+            <div className="mb-3">
+              <h3 className="font-display text-base font-semibold">
                 Encaissements par cycle
-              </CardTitle>
-              <CardDescription>
+              </h3>
+              <p className="text-xs text-muted-foreground">
                 Comparaison du total attendu et encaissé par cycle.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {parCycle.length === 0 ? (
-                <p className="py-8 text-center text-xs text-muted-foreground">
-                  Aucune donnée par cycle sur la période.
-                </p>
-              ) : (
-                <BarChart
-                  data={parCycle.map((c) => ({
-                    label: c.libelle,
-                    value: c.encaisse,
-                    value2: c.attendu,
-                  }))}
-                  formatValue={formatFCFA}
-                  height={Math.max(140, parCycle.length * 36)}
-                  legendLabel="Encaissé"
-                  legendLabel2="Attendu"
-                />
-              )}
-            </CardContent>
-          </Card>
+              </p>
+            </div>
+            {parCycle.length === 0 ? (
+              <p className="py-8 text-center text-xs text-muted-foreground">
+                Aucune donnée par cycle sur la période.
+              </p>
+            ) : (
+              <BarChart
+                data={parCycle.map((c) => ({
+                  label: c.libelle,
+                  value: c.encaisse,
+                  value2: c.attendu,
+                }))}
+                formatValue={formatFCFA}
+                height={Math.max(140, parCycle.length * 36)}
+                legendLabel="Encaissé"
+                legendLabel2="Attendu"
+              />
+            )}
+          </GlassCard>
 
           {/* Répartition par mode de paiement */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
+          <GlassCard variant="adaptive" noHover>
+            <div className="mb-3">
+              <h3 className="font-display text-base font-semibold">
                 Encaissements par mode de paiement
-              </CardTitle>
-              <CardDescription>
+              </h3>
+              <p className="text-xs text-muted-foreground">
                 Part de chaque mode sur le montant total encaissé.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {parMode.length === 0 ? (
-                <p className="py-8 text-center text-xs text-muted-foreground">
-                  Aucun paiement enregistré sur la période.
-                </p>
-              ) : (
-                <ModePaiementChart data={parMode} />
-              )}
-            </CardContent>
-          </Card>
+              </p>
+            </div>
+            {parMode.length === 0 ? (
+              <p className="py-8 text-center text-xs text-muted-foreground">
+                Aucun paiement enregistré sur la période.
+              </p>
+            ) : (
+              <ModePaiementChart data={parMode} />
+            )}
+          </GlassCard>
         </div>
       ) : null}
 
       {/* Évolution mensuelle */}
       {dashboard ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
+        <GlassCard variant="adaptive" noHover>
+          <div className="mb-3">
+            <h3 className="font-display text-base font-semibold">
               Évolution mensuelle des encaissements
-            </CardTitle>
-            <CardDescription>
+            </h3>
+            <p className="text-xs text-muted-foreground">
               12 derniers mois — montants encaissés par mois.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {evolution.length === 0 ? (
-              <p className="py-8 text-center text-xs text-muted-foreground">
-                Pas encore d&apos;historique mensuel disponible.
-              </p>
-            ) : (
-              <BarChart
-                data={evolution.map((e) => ({ label: e.mois, value: e.montant }))}
-                orientation="vertical"
-                formatValue={formatFCFA}
-                height={220}
-                showLegend={false}
-                hideValues
-              />
-            )}
-          </CardContent>
-        </Card>
+            </p>
+          </div>
+          {evolution.length === 0 ? (
+            <p className="py-8 text-center text-xs text-muted-foreground">
+              Pas encore d&apos;historique mensuel disponible.
+            </p>
+          ) : (
+            <BarChart
+              data={evolution.map((e) => ({ label: e.mois, value: e.montant }))}
+              orientation="vertical"
+              formatValue={formatFCFA}
+              height={220}
+              showLegend={false}
+              hideValues
+            />
+          )}
+        </GlassCard>
       ) : null}
+
+      <KentePattern variant="separator" className="my-2" />
 
       {/* Derniers paiements + Actions rapides */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">
-                  Derniers paiements
-                </CardTitle>
-                <CardDescription>
-                  10 derniers encaissements validés.
-                </CardDescription>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onNavigate("caisse")}
-              >
-                Voir l&apos;historique
-                <ArrowUpRight className="size-3.5" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            {derniersPaiements.length === 0 ? (
-              <p className="py-8 text-center text-xs text-muted-foreground">
-                Aucun paiement récent.
+        <GlassCard
+          variant="adaptive"
+          noHover
+          className="flex flex-col p-0 lg:col-span-2"
+        >
+          <div className="flex items-center justify-between p-5 pb-3">
+            <div>
+              <h3 className="font-display text-base font-semibold">
+                Derniers paiements
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                10 derniers encaissements validés.
               </p>
-            ) : (
-              <div className="overflow-x-auto">
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onNavigate("caisse")}
+            >
+              Voir l&apos;historique
+              <ArrowUpRight className="size-3.5" />
+            </Button>
+          </div>
+          {derniersPaiements.length === 0 ? (
+            <p className="py-8 text-center text-xs text-muted-foreground">
+              Aucun paiement récent.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/40">
@@ -726,57 +785,46 @@ export function DashboardHome({ onNavigate }: DashboardHomeProps) {
                 </Table>
               </div>
             )}
-          </CardContent>
-        </Card>
+        </GlassCard>
 
         {/* Actions rapides */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Actions rapides</CardTitle>
-            <CardDescription>
+        <GlassCard variant="adaptive" noHover>
+          <div className="mb-3">
+            <h3 className="font-display text-base font-semibold">
+              Actions rapides
+            </h3>
+            <p className="text-xs text-muted-foreground">
               Raccourcis vers les opérations fréquentes.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              {QUICK_ACTIONS.map((action) => {
-                const Icon = action.icon;
-                const isEmerald = action.accent === "emerald";
-                return (
-                  <button
-                    key={action.label}
-                    type="button"
-                    onClick={() => onNavigate(action.view)}
-                    className={cn(
-                      "group flex items-start gap-3 rounded-xl border p-3 text-left transition-all hover:shadow-sm",
-                      isEmerald
-                        ? "border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50/40 dark:border-emerald-900/40 dark:hover:bg-emerald-950/30"
-                        : "border-amber-200 hover:border-amber-400 hover:bg-amber-50/40 dark:border-amber-900/40 dark:hover:bg-amber-950/30",
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "flex size-9 shrink-0 items-center justify-center rounded-lg text-white shadow-sm",
-                        isEmerald ? "bg-emerald-600" : "bg-amber-500",
-                      )}
-                    >
-                      <Icon className="size-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium leading-tight">
-                        {action.label}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {action.description}
-                      </p>
-                    </div>
-                    <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                  </button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            {QUICK_ACTIONS.map((action) => {
+              const Icon = action.icon;
+              const isEmerald = action.accent === "emerald";
+              return (
+                <Button
+                  key={action.label}
+                  type="button"
+                  variant={isEmerald ? "success" : "premium"}
+                  size="lg"
+                  onClick={() => onNavigate(action.view)}
+                  className="h-auto justify-start gap-3 py-3 text-left"
+                >
+                  <Icon className="size-5 shrink-0" />
+                  <div className="flex flex-1 flex-col items-start gap-0.5">
+                    <span className="text-sm font-medium leading-tight">
+                      {action.label}
+                    </span>
+                    <span className="text-[11px] font-normal opacity-80">
+                      {action.description}
+                    </span>
+                  </div>
+                  <ArrowUpRight className="size-4 shrink-0 opacity-80" />
+                </Button>
+              );
+            })}
+          </div>
+        </GlassCard>
       </div>
 
       {/* Statut du système */}
@@ -818,7 +866,7 @@ function WelcomeCard({
               <p className="text-xs font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
                 {getGreeting()},
               </p>
-              <h1 className="text-xl font-bold tracking-tight">
+              <h1 className="font-display text-xl font-bold tracking-tight text-foreground">
                 {displayName}
               </h1>
               <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -877,7 +925,7 @@ function SystemStatusCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
+        <CardTitle className="flex items-center gap-2 font-display text-base">
           <Activity className="size-4 text-emerald-600" />
           Statut du système
         </CardTitle>
