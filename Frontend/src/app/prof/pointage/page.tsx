@@ -54,6 +54,8 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 import { useToast } from "@/hooks/use-toast";
 import { profKeys } from "@/lib/api-prof";
 import {
@@ -456,41 +458,43 @@ function ProfPointagePageInner() {
       ) : (
         <>
           {/* Bandeau détails cours */}
-          <Card className="border-l-4 border-l-emerald-500">
-            <CardHeader className="gap-2 pb-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    {session.affectation?.matiere?.libelle ?? "Matière inconnue"}
-                    {session.affectation?.matiere?.couleur ? (
-                      <span
-                        aria-hidden
-                        className="inline-block size-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: session.affectation.matiere.couleur }}
-                      />
-                    ) : null}
-                  </CardTitle>
-                  <CardDescription className="flex items-center gap-1.5 text-sm">
-                    <GraduationCap className="size-3.5" />
-                    {session.affectation?.classe?.libelle ?? "Classe inconnue"}
-                  </CardDescription>
-                </div>
-                {isTermine(session) ? (
-                  <Badge variant="outline" className="gap-1 border-slate-300 bg-slate-50 text-slate-600">
-                    <LogOut className="size-3" /> Terminé
-                  </Badge>
-                ) : nextType(session) === "SORTIE" ? (
-                  <Badge variant="outline" className="gap-1 border-emerald-300 bg-emerald-50 text-emerald-700">
-                    <LogIn className="size-3" /> Entrée pointée
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="gap-1 border-amber-300 bg-amber-50 text-amber-700">
-                    <CircleDot className="size-3" /> À pointer
-                  </Badge>
-                )}
+          <GlassCard
+            variant="adaptive"
+            noHover
+            className="border-l-4 border-l-emerald-500"
+          >
+            <div className="mb-3 flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-display flex items-center gap-2 text-base font-semibold">
+                  {session.affectation?.matiere?.libelle ?? "Matière inconnue"}
+                  {session.affectation?.matiere?.couleur ? (
+                    <span
+                      aria-hidden
+                      className="inline-block size-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: session.affectation.matiere.couleur }}
+                    />
+                  ) : null}
+                </h3>
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <GraduationCap className="size-3.5" />
+                  {session.affectation?.classe?.libelle ?? "Classe inconnue"}
+                </p>
               </div>
-            </CardHeader>
-            <CardContent>
+              {isTermine(session) ? (
+                <Badge variant="outline" className="gap-1 border-slate-300 bg-slate-50 text-slate-600">
+                  <LogOut className="size-3" /> Terminé
+                </Badge>
+              ) : nextType(session) === "SORTIE" ? (
+                <Badge variant="outline" className="gap-1 border-emerald-300 bg-emerald-50 text-emerald-700">
+                  <LogIn className="size-3" /> Entrée pointée
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="gap-1 border-amber-300 bg-amber-50 text-amber-700">
+                  <CircleDot className="size-3" /> À pointer
+                </Badge>
+              )}
+            </div>
+            <div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-1.5">
                   <Clock className="size-4 text-muted-foreground" />
@@ -510,28 +514,30 @@ function ProfPointagePageInner() {
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
+
+          <KentePattern variant="separator" />
 
           {/* Bloc action / résultat */}
           {outcome ? (
             <ResultCard outcome={outcome} onReset={handleReset} />
           ) : (
-            <Card>
-              <CardHeader className="gap-2 pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
+            <GlassCard variant="adaptive" noHover>
+              <div className="mb-3 flex flex-col gap-2">
+                <h3 className="font-display flex items-center gap-2 text-base font-semibold">
                   <LocateFixed className="size-5 text-emerald-600" />
                   Pointage
-                </CardTitle>
-                <CardDescription>
+                </h3>
+                <p className="text-sm text-muted-foreground">
                   {isTermine(session)
                     ? "Ce cours est déjà terminé. Vous pouvez tout de même enregistrer un pointage de régularisation."
                     : nextType(session) === "SORTIE"
                       ? "Pointez maintenant votre sortie de cours."
                       : "Pointez maintenant votre entrée en cours."}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
+                </p>
+              </div>
+              <div className="space-y-3">
                 {geoWarning ? (
                   <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
                     <p className="flex items-center gap-1.5 font-medium">
@@ -589,8 +595,8 @@ function ProfPointagePageInner() {
                   serveur. En cas d&apos;échec GPS, le pointage reste possible
                   (validation manuelle requise).
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </GlassCard>
           )}
         </>
       )}

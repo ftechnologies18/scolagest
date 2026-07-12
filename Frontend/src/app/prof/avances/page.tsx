@@ -24,6 +24,8 @@ import {
   XCircle,
   Clock,
   Receipt,
+  Banknote,
+  HandCoins,
 } from "lucide-react";
 
 import {
@@ -44,6 +46,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
+import { StatCard } from "@/components/ds/stat-card";
 import {
   Dialog,
   DialogContent,
@@ -165,55 +170,59 @@ export default function MesAvancesPage() {
             <ArrowLeft className="size-5" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Mes avances sur salaire</h1>
+            <h1 className="font-display text-xl font-bold tracking-tight">Mes avances sur salaire</h1>
             <p className="text-sm text-muted-foreground">
               Demandez une avance et suivez son statut.
             </p>
           </div>
         </div>
-        <Button onClick={() => setDialogOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button variant="success" onClick={() => setDialogOpen(true)}>
           <Plus className="size-4" />
           <span className="hidden sm:inline">Nouvelle demande</span>
         </Button>
       </div>
 
+      <KentePattern variant="separator" className="my-4" />
+
       {/* Carte dû courant */}
       {duCourant && (
-        <Card className="border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-          <CardContent className="grid grid-cols-2 gap-4 py-4 sm:grid-cols-4">
-            <div>
-              <p className="text-xs text-muted-foreground">Heures enseignées</p>
-              <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
-                {duCourant.heures_enseignees.toFixed(1)}h
-              </p>
-              <p className="text-[10px] text-muted-foreground">{duCourant.nb_sessions} session(s)</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Taux moyen</p>
-              <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
-                {formatFCFA(duCourant.taux_moyen)}
-              </p>
-              <p className="text-[10px] text-muted-foreground">/heure</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Salaire gagné</p>
-              <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
-                {formatFCFA(duCourant.salaire_du)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Dû disponible</p>
-              <p className={`text-lg font-bold ${duCourant.du_disponible > 0 ? "text-amber-600" : "text-muted-foreground"}`}>
-                {formatFCFA(duCourant.du_disponible)}
-              </p>
-              {duCourant.avances_en_cours > 0 && (
-                <p className="text-[10px] text-muted-foreground">
-                  - {formatFCFA(duCourant.avances_en_cours)} avances en cours
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatCard
+            icon={Clock}
+            label="Heures enseignées"
+            value={`${duCourant.heures_enseignees.toFixed(1)}h`}
+            hint={`${duCourant.nb_sessions} session(s)`}
+            tone="emerald"
+            delay={0}
+          />
+          <StatCard
+            icon={Banknote}
+            label="Taux moyen"
+            value={formatFCFA(duCourant.taux_moyen)}
+            hint="/heure"
+            tone="forest"
+            delay={0.05}
+          />
+          <StatCard
+            icon={Wallet}
+            label="Salaire gagné"
+            value={formatFCFA(duCourant.salaire_du)}
+            tone="emerald"
+            delay={0.1}
+          />
+          <StatCard
+            icon={HandCoins}
+            label="Dû disponible"
+            value={formatFCFA(duCourant.du_disponible)}
+            hint={
+              duCourant.avances_en_cours > 0
+                ? `- ${formatFCFA(duCourant.avances_en_cours)} avances en cours`
+                : undefined
+            }
+            tone="amber"
+            delay={0.15}
+          />
+        </div>
       )}
 
       {/* Liste */}
@@ -243,8 +252,8 @@ export default function MesAvancesPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
               >
-                <Card>
-                  <CardContent className="flex items-center gap-4 py-4">
+                <GlassCard variant="adaptive" noHover>
+                  <div className="flex items-center gap-4">
                     <div
                       className={cn(
                         "flex size-11 shrink-0 items-center justify-center rounded-full",
@@ -286,8 +295,8 @@ export default function MesAvancesPage() {
                         </p>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </GlassCard>
               </motion.div>
             );
           })}

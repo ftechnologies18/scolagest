@@ -47,6 +47,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 import {
   Select,
   SelectContent,
@@ -418,7 +420,7 @@ export default function ProfIncidentsPage() {
       </Button>
 
       <div>
-        <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight sm:text-2xl">
+        <h1 className="font-display flex items-center gap-2 text-xl font-bold tracking-tight sm:text-2xl">
           <Flag className="size-6 text-amber-600" />
           Signaler un incident
         </h1>
@@ -427,27 +429,29 @@ export default function ProfIncidentsPage() {
         </p>
       </div>
 
+      <KentePattern variant="separator" className="my-4" />
+
       {success ? (
         <ConfirmationScreen ticket={success} onNouveau={resetForm} />
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Card>
-            <CardHeader className="gap-1.5 pb-3">
-              <CardTitle className="text-base">Élève concerné</CardTitle>
-              <CardDescription>
+          <GlassCard variant="adaptive" noHover>
+            <div className="mb-3 flex flex-col gap-1.5">
+              <h3 className="font-display text-base font-semibold">Élève concerné</h3>
+              <p className="text-sm text-muted-foreground">
                 Recherchez l&apos;élève par nom ou matricule.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </p>
+            </div>
+            <div>
               <EleveCombobox value={eleve} onChange={setEleve} />
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
 
-          <Card>
-            <CardHeader className="gap-1.5 pb-3">
-              <CardTitle className="text-base">Nature de l&apos;incident</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <GlassCard variant="adaptive" noHover>
+            <div className="mb-3">
+              <h3 className="font-display text-base font-semibold">Nature de l&apos;incident</h3>
+            </div>
+            <div className="space-y-4">
               {/* Catégorie */}
               <div className="space-y-1.5">
                 <Label htmlFor="cat">Catégorie *</Label>
@@ -536,17 +540,15 @@ export default function ProfIncidentsPage() {
                   className="h-11"
                 />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
 
-          <Card className="border-amber-200 bg-amber-50/40">
-            <CardHeader className="gap-1.5 pb-2">
-              <CardTitle className="flex items-center gap-2 text-base text-amber-800">
-                <AlertTriangle className="size-4" />
-                Signalement anonyme
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          <GlassCard variant="adaptive" noHover className="border-amber-200 bg-amber-50/40">
+            <div className="mb-2 flex items-center gap-2">
+              <AlertTriangle className="size-4 text-amber-800" />
+              <h3 className="font-display text-base font-semibold text-amber-800">Signalement anonyme</h3>
+            </div>
+            <div>
               <div className="flex items-start gap-3">
                 <Switch
                   id="anonyme"
@@ -567,14 +569,15 @@ export default function ProfIncidentsPage() {
                   </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
 
           <Button
             type="submit"
             size="lg"
+            variant="premium"
             disabled={submitting}
-            className="h-12 w-full gap-2 bg-amber-600 text-base hover:bg-amber-700"
+            className="h-12 w-full gap-2 text-base"
           >
             {submitting ? (
               <>

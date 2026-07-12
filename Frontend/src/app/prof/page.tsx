@@ -48,6 +48,8 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 import {
   fetchMesSessions,
   type SessionCours,
@@ -127,29 +129,31 @@ function SessionCard({ session }: { session: SessionCours }) {
     );
 
   return (
-    <Card className="overflow-hidden border-l-4 border-l-emerald-500 shadow-sm">
-      <CardHeader className="gap-2 pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <CardTitle className="flex items-center gap-2 text-base">
-              {matiere?.libelle ?? "Matière inconnue"}
-              {matiere?.couleur ? (
-                <span
-                  aria-hidden
-                  className="inline-block size-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: matiere.couleur }}
-                />
-              ) : null}
-            </CardTitle>
-            <CardDescription className="flex items-center gap-1.5 text-sm">
-              <GraduationCap className="size-3.5 text-muted-foreground" />
-              {classe?.libelle ?? "Classe inconnue"}
-            </CardDescription>
-          </div>
-          {statusBadge}
+    <GlassCard
+      variant="adaptive"
+      noHover
+      className="overflow-hidden border-l-4 border-l-emerald-500"
+    >
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h3 className="font-display flex items-center gap-2 text-base font-semibold">
+            {matiere?.libelle ?? "Matière inconnue"}
+            {matiere?.couleur ? (
+              <span
+                aria-hidden
+                className="inline-block size-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: matiere.couleur }}
+              />
+            ) : null}
+          </h3>
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <GraduationCap className="size-3.5 text-muted-foreground" />
+            {classe?.libelle ?? "Classe inconnue"}
+          </p>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
+        {statusBadge}
+      </div>
+      <div className="space-y-3">
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="flex items-center gap-1.5">
             <Clock className="size-4 text-muted-foreground" />
@@ -199,14 +203,14 @@ function SessionCard({ session }: { session: SessionCours }) {
           </div>
         ) : null}
 
-        <Button asChild size="lg" className="mt-1 h-12 w-full gap-2 text-base">
+        <Button asChild size="lg" variant="success" className="mt-1 h-12 w-full gap-2 text-base">
           <Link href={`/prof/pointage?session=${encodeURIComponent(session.id)}`}>
             <CtaIcon className="size-5" />
             {ctaLabel}
           </Link>
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }
 
@@ -228,7 +232,7 @@ export default function ProfDashboardPage() {
       {/* Bandeau date du jour + actions principales */}
       <section className="space-y-3">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight sm:text-2xl">
+          <h1 className="font-display flex items-center gap-2 text-xl font-bold tracking-tight sm:text-2xl">
             <CalendarDays className="size-6 text-emerald-600" />
             Mes cours du jour
           </h1>
@@ -238,7 +242,7 @@ export default function ProfDashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <Button asChild size="lg" className="h-12 w-full gap-2 bg-amber-600 text-base hover:bg-amber-700">
+          <Button asChild size="lg" variant="premium" className="h-12 w-full gap-2 text-base">
             <Link href="/prof/incidents">
               <Flag className="size-5" />
               Signaler un incident
@@ -258,6 +262,9 @@ export default function ProfDashboardPage() {
           </Button>
         </div>
       </section>
+
+      <KentePattern variant="separator" className="my-4" />
+
 
       {/* Liste des sessions */}
       <section className="space-y-3" aria-label="Sessions de cours du jour">

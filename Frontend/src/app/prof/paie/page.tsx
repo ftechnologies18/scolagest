@@ -54,6 +54,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 import {
   Table,
   TableBody,
@@ -132,7 +134,7 @@ export default function ProfPaiePage() {
     <div className="space-y-6">
       {/* Bandeau titre */}
       <section className="space-y-1">
-        <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight sm:text-2xl">
+        <h1 className="font-display flex items-center gap-2 text-xl font-bold tracking-tight sm:text-2xl">
           <Wallet className="size-6 text-emerald-600" />
           Mes bulletins de paie
         </h1>
@@ -141,6 +143,9 @@ export default function ProfPaiePage() {
           vos paiements.
         </p>
       </section>
+
+      <KentePattern variant="separator" className="my-4" />
+
 
       {/* Bandeau d'action */}
       <section>
@@ -205,10 +210,9 @@ export default function ProfPaiePage() {
         ) : (
           <>
             {/* Vue tableau sur desktop */}
-            <Card className="hidden sm:block">
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
+            <GlassCard variant="adaptive" noHover className="hidden overflow-hidden p-0 sm:block">
+              <div className="overflow-x-auto">
+                <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead className="min-w-[160px]">Période</TableHead>
@@ -265,8 +269,7 @@ export default function ProfPaiePage() {
                     </TableBody>
                   </Table>
                 </div>
-              </CardContent>
-            </Card>
+            </GlassCard>
 
             {/* Vue cartes sur mobile */}
             <div className="space-y-3 sm:hidden">
@@ -303,28 +306,30 @@ function BulletinMobileCard({
   onSeeDetails: () => void;
 }) {
   return (
-    <Card className="overflow-hidden border-l-4 border-l-emerald-500 shadow-sm">
-      <CardHeader className="gap-2 pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CalendarDays className="size-4 text-muted-foreground" />
-              {moisLabel(bulletin.mois)} {bulletin.annee}
-            </CardTitle>
-            <CardDescription className="mt-1 flex items-center gap-1.5 text-sm">
-              <GraduationCap className="size-3.5" />
-              {bulletin.heures_pointees.toFixed(1)} h pointées
-            </CardDescription>
-          </div>
-          <Badge
-            variant="outline"
-            className={cn("font-medium", STATUT_BULLETIN_BADGE[bulletin.statut])}
-          >
-            {STATUT_BULLETIN_LABEL[bulletin.statut]}
-          </Badge>
+    <GlassCard
+      variant="adaptive"
+      noHover
+      className="overflow-hidden border-l-4 border-l-emerald-500"
+    >
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h3 className="font-display flex items-center gap-2 text-base font-semibold">
+            <CalendarDays className="size-4 text-muted-foreground" />
+            {moisLabel(bulletin.mois)} {bulletin.annee}
+          </h3>
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+            <GraduationCap className="size-3.5" />
+            {bulletin.heures_pointees.toFixed(1)} h pointées
+          </p>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
+        <Badge
+          variant="outline"
+          className={cn("font-medium", STATUT_BULLETIN_BADGE[bulletin.statut])}
+        >
+          {STATUT_BULLETIN_LABEL[bulletin.statut]}
+        </Badge>
+      </div>
+      <div className="space-y-3">
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div>
             <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -353,8 +358,8 @@ function BulletinMobileCard({
           <Eye className="size-4" />
           Voir le détail
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }
 
