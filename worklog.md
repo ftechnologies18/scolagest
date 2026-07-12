@@ -7091,3 +7091,445 @@ Créer/Enregistrer. Donc `variant="success"` n'est pas utilisé ici.
   `kpi-card.tsx` (qui n'est désormais plus importé nulle part après
   fe-5c — décider suppression définitive vs conservation comme
   wrapper legacy).
+
+---
+
+## Task ID: fe-6a — Audit accessibilité WCAG AA + corrections
+
+### Agent
+Frontend developer (a11y audit + corrections — Design System Forêt EdTech)
+
+### Contexte
+- **Projet** : ScolaGest (Next.js 16 App Router, TypeScript 5, Tailwind
+  CSS 4, shadcn/ui).
+- **Phase** : fe-6a — audit accessibilité WCAG AA (niveau AA) sur les
+  composants DS et le chrome Forêt (dashboard-shell), puis corrections
+  ciblées.
+- **Phases précédentes** : fe-0 à fe-5c terminées (tokens DS, primitives
+  GlassCard/StatCard/ProgressCircle/KentePattern, chrome sidebar/topbar
+  Forêt, dashboard home vitrine, 3 vues migrées caisse/eleves/rapports).
+- **Composants audités** :
+  • Primitives DS : `glass-card.tsx`, `stat-card.tsx`,
+    `progress-circle.tsx`, `kente-pattern.tsx`.
+  • `button.tsx` (variants Forêt : success, premium, terracotta, gold,
+    forest).
+  • `use-prefers-reduced-motion.ts` (hook SSR-safe) + `animations.ts`
+    (helper `getMotion`).
+  • `globals.css` (tokens, classes glass/kente).
+  • `dashboard-shell.tsx` (sidebar dark + topbar dark + contenu light).
+
+### Audit findings (analyse, pas de code)
+
+#### 1. Contraste WCAG AA (ratio 4.5:1 texte normal, 3:1 texte large)
+- **Sidebar dark `bg-forest #064E3B`** :
+  • `text-emerald-100/80` sur forest → ratio ≈ 6.0:1 ✅ (déjà OK).
+  • `text-emerald-100/60` (sub-labels : « Établissement actif », icône
+    Building2, icônes nav inactives, libellés sidebar mode, libellé
+    rôle user bottom, sous-titre topbar « ScolaGest · Gestion… »,
+    icône Search, libellé groupe `PILOTAGE`/`CONFIGURATION`/etc. en
+    /50) → ratio ≈ 4.25:1 ⚠️ (juste sous le seuil AA 4.5:1 pour texte
+    normal).
+  • `text-emerald-100/50` (group labels sidebar) → ratio ≈ 3.4:1 ❌
+    (sous AA pour texte normal, OK pour texte large ≥18px mais ici
+    10px).
+  • `placeholder:text-emerald-100/40` (input recherche) → ratio ≈ 2.7:1
+    ❌ (placeholders sont techniquement soumis au WCAG, bien que non
+    strictement requis pour l'usage hint).
+  • `text-muted-foreground` (`oklch(0.556 0 0)` ≈ rgb(133,133,133))
+    utilisé sur topbar dark pour : libellé rôle dans user menu trigger
+    (ligne 880) + ChevronDown icône (ligne 884) → ratio ≈ 2.8:1 ❌
+    (couleur grise shadcn par défaut, pensée pour fond clair — sur
+    forest dark, contraste insuffisant).
+  • `text-emerald-100/70` (footer + sous-titre logo) → ratio ≈ 4.7:1
+    borderline ✅ (légèrement au-dessus du seuil, mais on monte à /80
+    pour marge de sécurité et cohérence).
+- **Topbar dark `bg-forest/95`** : même analyse que sidebar — les
+  mêmes classes `text-emerald-100/60` et `text-muted-foreground`
+  posent souci.
+- **GlassCard desktop** : `bg: rgba(255,255,255,0.85)` + texte foncé
+  (`text-foreground`, `text-muted-foreground` shadcn) → ratio AA
+  largement respecté ✅.
+- **StatCard** : `text-muted-foreground` sur glass desktop → oklch
+  0.556 sur blanc 85% → ratio ≈ 4.6:1 ✅ (juste au-dessus du seuil,
+  acceptable).
+- **ProgressCircle** : `text-forest #064E3B` sur fond blanc → ratio
+  ≈ 8.5:1 ✅.
+
+#### 2. Focus visible
+- **Boutons shadcn** : base `focus-visible:border-ring focus-visible:
+  ring-ring/50 focus-visible:ring-[3px]` ✅. Sur fond dark forest, le
+  ring par défaut (`--ring: oklch(0.708 0 0)` = gris clair) reste
+  visible mais peu on-brand.
+- **Nav items sidebar `<Link>`** : aucun `focus-visible` ❌ —
+  navigation clavier Tab ne montrait pas d'anneau sur les liens.
+- **Boutons raw `<button>` dans sidebar** (toggle sidebar mode +
+  dropdown trigger mode + user menu trigger) : aucun `focus-visible`
+  ❌.
+- **GlassCard avec onClick** : `motion.div` non-focusable par défaut
+  ❌ — pas de `tabIndex`, pas de `role`, pas de handler clavier, pas
+  de ring. StatCard avec onClick hérite du souci.
+- **Boutons icon-only topbar** (hamburger, sidebar open, notif) :
+  utilisent shadcn Button avec `aria-label` ✅ — focus-visible OK
+  mais ring gris par défaut.
+
+#### 3. prefers-reduced-motion
+- **GlassCard** : utilise `usePrefersReducedMotion` + `getMotion()` ✅
+  (animations d'entrée et hover désactivées si reduce).
+- **ProgressCircle** : utilise `usePrefersReducedMotion` ✅ (animation
+  stroke désactivée, valeur affichée immédiatement).
+- **StatCard** : hérite de GlassCard ✅.
+- **KentePattern** : pas d'animation ✅ (statique, décoratif).
+- **`animate-pulse` sur pastille notif** (dashboard-shell ligne 856)
+  : non géré par `prefers-reduced-motion` ❌ (clignotement infini
+  même si l'utilisateur a activé reduce motion).
+- **`animate-spin` sur Loader2** (~30 occurrences dans toute la
+  codebase : saas-billing dialogs, emploi-temps, comptabilite,
+  caisse, passage-masse, parent, etc.) : non géré ❌.
+- **`animate-pulse` sur Skeleton** (`ui/skeleton.tsx` ligne 7) : non
+  géré ❌.
+- **`animate-pulse` sur ecran-pointage** (ligne 595) : non géré ❌.
+- **Hook `usePrefersReducedMotion`** : SSR-safe ✅, listener
+  `matchMedia` propre ✅.
+
+#### 4. Sémantique HTML
+- **KentePattern** : `aria-hidden="true"` ✅ (tous variants).
+- **Icônes décoratives** :
+  • `Building2` (sidebar « Établissement actif ») : pas de
+    `aria-hidden` ⚠️ (decorative, adjacente à texte).
+  • `Search` (topbar input) : pas de `aria-hidden` ⚠️ (decorative,
+    adjacente à Input labelisé).
+  • `ChevronDown` (dropdown trigger sidebar mode + user menu) : pas
+    de `aria-hidden` ⚠️ (decorative).
+  • `PanelLeftClose/Open` (sidebar mode toggle) : pas de
+    `aria-hidden` ⚠️ (decorative, bouton a déjà `aria-label`).
+  • `Bell`, `Menu`, `CheckCircle2` dans boutons labelisés :
+    implicitement décoratives mais `aria-hidden` explicite recommandé.
+  • `Icon` (nav items) : pas de `aria-hidden` ⚠️ (decorative).
+  • `TrendIcon`, `Icon` dans `StatCard` : déjà `aria-hidden="true"` ✅.
+- **Boutons icon-only** :
+  • Hamburger topbar : `aria-label="Ouvrir le menu"` ✅.
+  • Sidebar open (topbar) : `aria-label="Ouvrir la sidebar"` ✅.
+  • Notifications : `aria-label="Notifications"` ✅.
+  • Toggle sidebar mode (sidebar bottom) : `aria-label="Basculer la
+    sidebar"` ✅.
+  • Recherche Input : `aria-label="Recherche"` ✅.
+  • Dropdown mode sidebar : pas d'`aria-label` ⚠️ (mais texte visible
+    « Étendu/Réduit/Survol » — non strictement requis).
+  • User menu trigger : pas d'`aria-label` ⚠️ (mais contient nom
+    user + rôle — non strictement requis, mais utile pour SR).
+- **Landmarks** : `<header>`, `<main>`, `<footer>`, `<nav>` (dans
+  sidebar) ✅. `<aside>` pour la sidebar ✅.
+
+#### 5. Touch targets (WCAG 2.2 SC 2.5.8 — AA Target Size Minimum 24px)
+- **shadcn `Button size="icon"`** = `size-9` (36px) ✅ (au-dessus du
+  minimum AA 24px, en-dessous du AAA 44px — acceptable).
+- **Toggle sidebar mode `<button>`** = `size-7` (28px) ✅ (au-dessus
+  du minimum AA, desktop-only `lg:flex`).
+- **Dropdown mode trigger `<button>`** = `px-1.5 py-1 text-[11px]`
+  ≈ 22-24px de haut — borderline ⚠️ (desktop-only).
+- **User menu trigger `<button>`** = Avatar `size-8` (32px) +
+  padding → ~36px ✅.
+
+### Corrections appliquées (4 fichiers)
+
+#### 1. `src/app/globals.css` (+30 lignes)
+- **Ajout d'un bloc `@media (prefers-reduced-motion: reduce)`** à la
+  fin du fichier (après `.font-body`), avec deux règles :
+  • Désactive explicitement `.animate-pulse, .animate-spin,
+    .animate-bounce, .animate-ping` (`animation: none !important`).
+    Couvre pastille notif topbar, Loader2 (~30 occurrences), Skeleton
+    shadcn, ecran-pointage.
+  • Règle universelle `*, *::before, *::after` pour réduire à
+    `0.01ms` toutes les autres `animation-duration`/`transition-
+    duration` et forcer `animation-iteration-count: 1` + `scroll-
+    behavior: auto`. Couvre drawers, modales, dropdowns, tooltips
+    shadcn/Radix sans les supprimer brutalement.
+- **Complète** le hook `usePrefersReducedMotion` qui ne gère que les
+  animations Framer Motion (GlassCard, ProgressCircle, StatCard). À
+  présent, toutes les animations CSS utilitaires Tailwind sont
+  également désactivées quand l'utilisateur a activé « reduce motion »
+  au niveau OS (Windows Show animations, macOS Reduce motion, etc.).
+
+#### 2. `src/components/dashboard/dashboard-shell.tsx` (~10 edits)
+- **Correction 1 — Contraste sidebar/topbar** :
+  • `text-emerald-100/60` → `text-emerald-100/80` sur 8 occurrences
+    (sub-label logo « Groupe Le Chandelier — Dabou », label
+    « Établissement actif » + icône Building2, icônes nav inactives
+    `Icon className`, sous-titre topbar « ScolaGest · Gestion… »,
+    icône Search, sidebar mode toggle bouton, sidebar mode dropdown
+    trigger bouton, libellé rôle user bottom sidebar).
+  • `text-emerald-100/50` → `text-emerald-100/70` sur 1 occurrence
+    (group labels sidebar « Pilotage », « Configuration »,
+    « Pédagogie », « Modules avancés »).
+  • `text-emerald-100/70` → `text-emerald-100/80` sur 3 occurrences
+    (footer + div footer + sous-titre logo — cohérence + marge AA).
+  • `placeholder:text-emerald-100/40` → `placeholder:text-emerald-
+    100/60` (input recherche — meilleur contraste hint).
+  • `text-muted-foreground` → `text-emerald-100/80` sur 2
+    occurrences dans le user menu trigger topbar (libellé rôle +
+    ChevronDown) — corrige le contraste insuffisant du gris shadcn
+    par défaut sur fond forest dark.
+- **Correction 2 — Focus visible sur nav items sidebar** :
+  • Ajout de `focus-visible:outline-none focus-visible:ring-2
+    focus-visible:ring-amber-400/50 focus-visible:ring-offset-2
+    focus-visible:ring-offset-forest` sur :
+    - Le `<Link>` logo (sidebar header).
+    - Tous les `<Link>` nav items (ligne 609).
+    - Le `<button>` toggle sidebar mode (ligne 672).
+    - Le `<button>` dropdown mode trigger (ligne 682).
+    - Le `<button>` user menu trigger topbar (ligne 866).
+  • Ajout de `focus-visible:ring-amber-400/50 focus-visible:ring-
+    offset-forest` (override du ring shadcn par défaut) sur les
+    boutons shadcn topbar : hamburger menu, sidebar open,
+    notifications, recherche Input. Le ring amber 400/50 sur fond
+    forest dark est bien visible et on-brand.
+- **Correction 3 — aria-labels manquants** :
+  • Ajout `aria-label="Mode d'affichage de la sidebar"` sur le
+    `<button>` dropdown mode trigger (n'avait que `title`).
+  • Ajout `aria-label="Menu utilisateur"` sur le `<button>` user
+    menu trigger (n'avait ni `aria-label` ni `title`).
+- **Correction 4 — aria-hidden sur icônes décoratives** :
+  • `Building2` (sidebar « Établissement actif ») ✅.
+  • `Search` (topbar input) ✅.
+  • `ChevronDown` (dropdown mode trigger + user menu trigger) ✅.
+  • `PanelLeftClose`/`PanelLeftOpen` (sidebar mode toggle) ✅.
+  • `Menu` (hamburger topbar) ✅.
+  • `Bell` (notifications topbar) ✅.
+  • `Icon` (nav items sidebar) ✅.
+  • `span` pastille notif `animate-pulse` (topbar) ✅ — purement
+    décorative, ne doit pas être annoncée par SR.
+
+#### 3. `src/components/ds/glass-card.tsx` (~35 lignes, refactor)
+- **GlassCard devient keyboard-accessible quand `onClick` est passé** :
+  • Déstructure `onClick` et `onKeyDown` des props (au lieu de les
+    laisser dans `...props` spread).
+  • Calcule `interactive = Boolean(onClick)`.
+  • Si `interactive` :
+    - Ajoute `role="button"` + `tabIndex={0}` (rend la carte
+      focusable au clavier Tab).
+    - Ajoute `cursor-pointer` + `focus-visible:outline-none
+      focus-visible:ring-2 focus-visible:ring-emerald-500/50
+      focus-visible:ring-offset-2 focus-visible:ring-offset-
+      background` (anneau de focus visible sur fond light).
+    - Ajoute un handler `onKeyDown` qui déclenche `click()` sur
+      Entrée ou Espace (conforme au pattern button ARIA). Le
+      handler merge d'abord l'éventuel `onKeyDown` consumer pour
+      ne pas l'écraser, et respecte `e.defaultPrevented`.
+  • Si pas `interactive` : comportement inchangé (div statique non
+    focusable).
+- **Backward compatible** : les consumers existants (StatCard, toutes
+  les vues migrées fe-5a/b/c) n'ont pas besoin d'être modifiés — la
+  prop `onClick` est toujours passée de la même façon via `...props`.
+  Le `cursor-pointer` est désormais géré automatiquement par GlassCard
+  (StatCard le passait déjà en doublon, ce qui est inoffensif grâce à
+  `cn()` dedup).
+
+#### 4. `src/components/ds/stat-card.tsx` (+1 ligne)
+- **Ajout `aria-label={onClick ? label : undefined}`** sur le
+  `<GlassCard>` sous-jacent. Quand la StatCard est cliqueable, le
+  screen reader annonce « Total encaissé, bouton » (au lieu de lire
+  tout le contenu textuel de la carte). Utilise la prop `label`
+  existante comme nom accessible.
+- Le `cursor-pointer` est désormais redondant avec GlassCard mais
+  laissé en place (inoffensif, et StatCard reste lisible
+  indépendamment).
+
+### Vérifications finales
+
+- **Lint** : `bun run lint` → 0 erreurs, 3 warnings pré-existants
+  dans `step-scolarite.tsx` (unused eslint-disable directives, non
+  liés à fe-6a).
+- **TypeScript** : `bunx tsc --noEmit` → 15 erreurs pré-existantes
+  dans 6 fichiers NON touchés par fe-6a (login-form, view-impayes,
+  view-parametres, view-utilisateurs, etablissement-form-dialog,
+  utilisateur-form-dialog, instrumentation). 0 nouvelle erreur
+  introduite par fe-6a sur les 4 fichiers modifiés (glass-card,
+  stat-card, dashboard-shell, globals.css).
+- **Logique préservée** : aucun useQuery/useMutation/handler/état
+  touché dans dashboard-shell. La signature de `GlassCard` et
+  `StatCard` est strictement backward-compatible (ajout de
+  comportement, pas de breaking change).
+- **Palette Forêt EdTech** : aucun indigo/blue ajouté. Ring focus
+  utiliser `amber-400/50` (sur fond forest dark) et `emerald-500/50`
+  (sur fond light glass) — couleurs DS Forêt.
+- **Aucun backend/DB/schema/.env touché**.
+- **Landing page `/` et login `(auth)/*` NON touchés** (les
+  corrections globals.css `prefers-reduced-motion` s'appliquent
+  globalement y compris à ces pages, mais n'ajoutent aucun styling
+  visible — elles désactivent seulement les animations quand
+  l'utilisateur le demande).
+
+### Stage Summary
+- **4 fichiers modifiés** : `globals.css` (+30 lignes), `dashboard-
+  shell.tsx` (~10 edits MultiEdit), `glass-card.tsx` (refactor
+  ~35 lignes), `stat-card.tsx` (+1 ligne). 0 fichier créé, 0 ligne
+  de logique supprimée, 0 nouvelle erreur TypeScript/ESLint.
+- **Audit couvert** : contraste WCAG AA (5 soucis identifiés et
+  corrigés), focus visible (5 éléments non-focusables corrigés +
+  4 boutons shadcn override ring), prefers-reduced-motion (règle
+  globale ajoutée couvrant ~35 occurrences `animate-*` dans toute
+  la codebase), sémantique HTML (8 `aria-hidden` ajoutés + 2
+  `aria-label` ajoutés), touch targets (conformes AA, borderline
+  sur 1 bouton desktop-only non bloquant).
+- **GlassCard/StatCard** : désormais keyboard-accessible quand
+  `onClick` est passé (tabindex + role + handler Entrée/Espace +
+  ring focus visible). Aucun consumer actuel n'utilise `onClick`
+  à ce jour, mais la primitive est prête pour les futures vues
+  interactives (fe-5d+).
+- **Règle `prefers-reduced-motion` globale** : couvre toutes les
+  animations CSS Tailwind (`animate-pulse/spin/bounce/ping`) +
+  transitions/animations universelles (drawers, modales, skeletons,
+  tooltips) en un seul endroit (`globals.css`), plutôt qu'éparpillée
+  sur chaque composant — conformément à la règle 5 « Privilégier les
+  corrections dans globals.css ».
+- **Prochaine étape suggérée** : fe-6b (audit final + cleanup :
+  supprimer `kpi-card.tsx` désormais orphan, vérifier `dashboard-
+  home.tsx` pas de soucis a11y résiduel, vérifier les vues migrées
+  fe-5a/b/c n'ont pas de soucis a11y spécifiques), puis fe-7
+  (documentation DS README.md update + storybook léger ou pages
+  de démo).
+
+---
+
+## Task ID: fe-6b-1 — README DS final (mise à jour complète)
+
+### Agent
+Frontend developer (design system documentation — Forêt EdTech)
+
+### Contexte
+- **Projet** : ScolaGest (Next.js 16 App Router, TypeScript 5, Tailwind
+  CSS 4, shadcn/ui).
+- **Phase** : fe-6b-1 — mise à jour finale du README du Design System
+  "Forêt EdTech" (`src/components/ds/README.md`) pour refléter l'état
+  FINAL du DS après toutes les phases fe-1 → fe-6a.
+- **Phases précédentes** : fe-0 (cadrage), fe-1 (tokens/hooks/animations
+  /fonts), fe-2 (primitives Button/GlassCard/KentePattern/ProgressCircle
+  /StatCard), fe-3 (chrome Forêt sidebar/topbar + layouts scoped),
+  fe-4 (dashboard home vitrine), fe-5a/b/c (migration vues caisse/eleves
+  /rapports), fe-6a (audit a11y WCAG AA + corrections).
+- **README précédent** : créé en fe-2d, listait 7 couleurs, 5 variants
+  glass, primitives de base, hooks/animations, 7 règles strictes,
+  exemples, roadmap avec Phase 3-6 en ⏳. Ne mentionnait ni le chrome
+  Forêt, ni le keyboard-accessible GlassCard, ni l'aria-label StatCard,
+  ni la règle `prefers-reduced-motion` globale, ni le contraste corrigé,
+  ni la roadmap finale.
+
+### Mission
+Réécrire `src/components/ds/README.md` pour qu'il serve de référence
+complète et professionnelle pour les futurs développeurs — incluant :
+- Périmètre d'application (dashboards only, pas landing/login).
+- Table des matières (11 sections).
+- Palette complète (11 couleurs + dégradés + shadows).
+- Motif Kente (4 variants × 3 positions + règles strictes).
+- Glassmorphism adaptatif (5 variants + .glass-adaptive + WCAG AA).
+- Typographie (Poppins display + Inter body + Geist landing).
+- Composants : 5 primitives (Button 11 variants/5 tailles, GlassCard
+  keyboard-accessible, KentePattern, ProgressCircle, StatCard aria-label
+  auto) + chrome dashboard-shell (sidebar 3 modes + topbar + footer +
+  badges polling).
+- Hooks & Animations (useMediaQuery + presets + usePrefersReducedMotion
+  + 9 exports animations.ts).
+- Accessibilité (contraste AA, focus visible, prefers-reduced-motion,
+  sémantique ARIA, keyboard, touch targets).
+- Règles strictes (10 règles).
+- Exemples de code (StatCard cliqueable, GlassCard keyboard-accessible,
+  ProgressCircle, layout dashboard type).
+- Roadmap (fe-1 à fe-6b, tous ✅).
+- Stats finales (5 primitives, 11 variants Button, 5 variants GlassCard,
+  4 variants KentePattern, 6 tones StatCard, 4 layouts, 3 vues migrées,
+  0 indigo/blue, WCAG AA).
+
+### Fichiers lus avant édition
+1. `worklog.md` (sections fe-0 à fe-6a, notamment audit findings fe-6a
+   pour reprendre les corrections exactes : ratios contraste, ring
+   focus, reduced-motion, aria-labels).
+2. `src/components/ds/README.md` (README précédent, 119 lignes).
+3. `src/components/ds/glass-card.tsx` (refactor fe-6a : role/tabIndex
+   /onKeyDown/ring focus quand onClick).
+4. `src/components/ds/stat-card.tsx` (ajout fe-6a : aria-label={label}
+   quand onClick).
+5. `src/components/ds/progress-circle.tsx` (gradient emerald→amber,
+   usePrefersReducedMotion, React.useId).
+6. `src/components/ds/kente-pattern.tsx` (4 variants, aria-hidden auto).
+7. `src/app/globals.css` (palette :root, classes glass/kente, règle
+   `@media (prefers-reduced-motion: reduce)` ligne 443-464).
+8. `src/components/ui/button.tsx` (11 variants : 6 shadcn + 5 Forêt,
+   5 tailles sm/default/lg/xl/icon).
+
+### Édition appliquée
+
+#### `src/components/ds/README.md` — réécriture complète
+- **Avant** : 119 lignes, 7 sections, roadmap incomplète (Phases 3-6
+  en ⏳), pas de chrome Forêt, pas de keyboard-accessible, pas de
+  reduced-motion globale, palette 7 couleurs (manquaient gold-light,
+  gold-dark, terracotta-light, terracotta-dark).
+- **Après** : **350 lignes**, 11 sections structurées selon le template
+  demandé :
+  1. **Header + périmètre** (dashboards only).
+  2. **Table des matières** (11 entrées avec ancres emoji).
+  3. **🎨 Palette** — tableau 11 couleurs (token CSS + hex + usage) +
+     dégradés (4) + shadows (5).
+  4. **🪡 Motif Kente** — 4 variants × 3 positions + règles strictes.
+  5. **🧊 Glassmorphism adaptatif** — tableau 6 classes (5 variants +
+     .glass-adaptive) + mention WCAG AA desktop 85%.
+  6. **🔤 Typographie** — Poppins/Inter via next/font + fallbacks +
+     Geist landing/login.
+  7. **🧩 Composants** — 5 primitives détaillées (props, variants,
+     comportements) + chrome dashboard-shell (sidebar 3 modes, topbar,
+     footer kente, badges polling 30s).
+  8. **🪝 Hooks & Animations** — 3 hooks (useMediaQuery + 3 presets +
+     usePrefersReducedMotion) + tableau 9 exports animations.ts
+     (pageTransition, stagger, cardHover, buttonHover/Tap, fadeInUp,
+     scaleIn, slideIn, getMotion).
+  9. **♿ Accessibilité** — 5 sous-sections : contraste AA (ratios
+     précis), focus visible (ring amber sur dark + emerald sur light),
+     prefers-reduced-motion (hook + règle globals.css complémentaires),
+     sémantique ARIA (aria-hidden, aria-label, landmarks), keyboard
+     (GlassCard role=button + Entrée/Espace), touch targets (36px/40px).
+  10. **✅ Règles strictes** — 10 règles (couleurs, glass, kente,
+      animations, touch targets, radius, shadows, focus, typo, DS).
+  11. **📐 Exemples** — 4 snippets TypeScript complets : StatCard
+      cliqueable (invertTrend), GlassCard keyboard-accessible,
+      ProgressCircle, layout dashboard type (chrome + KPIs + charts).
+  12. **🚀 Roadmap** — tableau 7 phases fe-1 à fe-6b toutes ✅.
+  13. **📊 Stats** — tableau 11 métriques clés (5 primitives, 11
+      variants Button, 5 tailles, 5 variants GlassCard, 4 KentePattern,
+      6 tones StatCard, 4 layouts, 3 vues, 0 indigo/blue, WCAG AA, 2
+      polices DS + Geist).
+  14. Footer copyright.
+
+### Vérifications finales
+- **Lignes** : 350 lignes (vs 119 avant → +231 lignes, ×2.9).
+- **`head -50`** : header + périmètre + table des matières + début
+  palette (tableau 11 couleurs démarré) ✅.
+- **Structure Markdown** : 11 sections H2 + sous-sections H3/H4 + 5
+  tableaux (palette, glass, animations, roadmap, stats) + 4 blocs de
+  code TypeScript ✅.
+- **Évolutions fe-6a intégrées** :
+  • GlassCard keyboard-accessible (role/tabIndex/onKeyDown/ring) ✅
+  • StatCard aria-label automatique quand onClick ✅
+  • Règle `prefers-reduced-motion` globale globals.css ✅
+  • Contraste corrigé (text-emerald-100/80 + ring amber/emerald) ✅
+  • Focus visible nav items sidebar (ring-amber-400/50) ✅
+  • aria-hidden sur icônes décoratives ✅
+  • aria-label boutons icon-only ✅
+- **Évolutions fe-3/4/5 intégrées** :
+  • Chrome Forêt (sidebar 3 modes, topbar, footer kente) ✅
+  • Dashboard home vitrine mentionné ✅
+  • 3 vues migrées (caisse/eleves/rapports) dans roadmap + stats ✅
+- **Aucune mention de fe-7** (n'existe pas) ✅ — règle 4 respectée.
+- **Pas de backend/DB/schema/.env touché**.
+- **Aucun composant TS/TSX modifié** — doc seule.
+
+### Stage Summary
+- **1 fichier modifié** : `src/components/ds/README.md` (réécriture
+  complète, 119 → 350 lignes, +231 lignes). 0 fichier créé, 0 ligne
+  de code/logique touchée.
+- **README désormais utilisable comme référence onboarding** pour tout
+  nouveau développeur rejoignant le projet ScolaGest : couvre palette,
+  kente, glass, typo, composants, hooks, animations, a11y, règles,
+  exemples, roadmap et stats.
+- **Cohérent avec l'état réel du code** (vérifié via lecture des 4
+  primitives + button.tsx + globals.css + audit findings fe-6a).
+- **DS "Forêt EdTech" est désormais COMPLET et DOCUMENTÉ** — phases
+  fe-1 à fe-6b toutes closes.
