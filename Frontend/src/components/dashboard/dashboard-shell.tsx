@@ -20,7 +20,7 @@
  * coquille suppose donc que l'utilisateur est authentifié avec le bon rôle.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
@@ -55,6 +55,8 @@ import {
   GraduationCap,
   Clock,
   ShieldAlert,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -401,6 +403,36 @@ export function DashboardShell({
   const [etablissements, setEtablissements] = useState<Etablissement[]>([]);
   const [loadingEtabs, setLoadingEtabs] = useState(true);
 
+  // Mode sidebar desktop : "expanded" (toujours visible), "collapsed" (masquée),
+  // "hover" (s'ouvre au survol). Persisté en localStorage.
+  type SidebarMode = "expanded" | "collapsed" | "hover";
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>("expanded");
+  const [hoverActive, setHoverActive] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("scolagest-sidebar-mode");
+      if (saved === "expanded" || saved === "collapsed" || saved === "hover") {
+        setSidebarMode(saved);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const changeSidebarMode = useCallback((mode: SidebarMode) => {
+    setSidebarMode(mode);
+    try {
+      localStorage.setItem("scolagest-sidebar-mode", mode);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Dérivé : la sidebar est-elle visuellement affichée ?
+  const sidebarVisible =
+    sidebarMode === "expanded" || (sidebarMode === "hover" && hoverActive) || (sidebarMode === "collapsed" && hoverActive);
+
   // Charge la liste des établissements pour le sélecteur multi-sites.
   useEffect(() => {
     if (!showEtablissement) {
@@ -633,6 +665,70 @@ export function DashboardShell({
         </nav>
       </ScrollArea>
 
+      {/* Contrôle sidebar — discret, desktop seulement */}
+      <div className="hidden shrink-0 items-center gap-1 border-t px-3 py-2 lg:flex">
+        <button
+          onClick={() => changeSidebarMode(sidebarMode === "expanded" ? "collapsed" : "expanded")}
+          className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          title={sidebarMode === "expanded" ? "Réduire la sidebar" : "Étendre la sidebar"}
+          aria-label="Basculer la sidebar"
+        >
+          {sidebarMode === "expanded" ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
+        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              title="Mode d'affichage de la sidebar"
+            >
+              {sidebarMode === "expanded" && "Étendu"}
+              {sidebarMode === "collapsed" && "Réduit"}
+              {sidebarMode === "hover" && "Survol"}
+              <ChevronDown className="size-3" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="start" className="w-52">
+            <DropdownMenuLabel className="text-xs text-muted-foreground">
+              Affichage de la sidebar
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => changeSidebarMode("expanded")}
+              className={cn("gap-2 text-xs", sidebarMode === "expanded" && "bg-emerald-50 text-emerald-700")}
+            >
+              <PanelLeftOpen className="size-3.5" />
+              <div className="flex flex-col">
+                <span className="font-medium">Étendu</span>
+                <span className="text-[10px] text-muted-foreground">Sidebar toujours visible</span>
+              </div>
+              {sidebarMode === "expanded" && <CheckCircle2 className="ml-auto size-3.5 text-emerald-600" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => changeSidebarMode("collapsed")}
+              className={cn("gap-2 text-xs", sidebarMode === "collapsed" && "bg-emerald-50 text-emerald-700")}
+            >
+              <PanelLeftClose className="size-3.5" />
+              <div className="flex flex-col">
+                <span className="font-medium">Réduit</span>
+                <span className="text-[10px] text-muted-foreground">Sidebar toujours masquée</span>
+              </div>
+              {sidebarMode === "collapsed" && <CheckCircle2 className="ml-auto size-3.5 text-emerald-600" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => changeSidebarMode("hover")}
+              className={cn("gap-2 text-xs", sidebarMode === "hover" && "bg-emerald-50 text-emerald-700")}
+            >
+              <PanelLeftOpen className="size-3.5 opacity-50" />
+              <div className="flex flex-col">
+                <span className="font-medium">Survol</span>
+                <span className="text-[10px] text-muted-foreground">S&apos;ouvre au survol</span>
+              </div>
+              {sidebarMode === "hover" && <CheckCircle2 className="ml-auto size-3.5 text-emerald-600" />}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       {/* Carte utilisateur en bas */}
       <div className="shrink-0 border-t p-3">
         <div className="flex items-center gap-2.5 rounded-lg bg-muted/40 p-2">
@@ -658,11 +754,36 @@ export function DashboardShell({
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-muted/30">
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar desktop — fixe, ne défile pas avec le contenu */}
-        <aside className="hidden w-64 shrink-0 border-r bg-background lg:flex lg:flex-col lg:overflow-y-auto">
+      <div className="relative flex flex-1 overflow-hidden">
+        {/* Sidebar desktop — 3 modes : expanded (visible), collapsed (masquée),
+            hover (s'ouvre au survol). Fixe, ne défile pas avec le contenu. */}
+        <aside
+          className={cn(
+            "hidden border-r bg-background lg:flex lg:flex-col lg:overflow-y-auto transition-all duration-200 ease-in-out",
+            sidebarVisible ? "w-64 opacity-100" : "w-0 opacity-0 overflow-hidden",
+          )}
+        >
           {sidebarContent}
         </aside>
+
+        {/* Zone de survol (pour modes collapsed et hover) — invisible mais
+            détecte la souris sur le bord gauche pour ouvrir la sidebar */}
+        {!sidebarVisible && (
+          <div
+            className="absolute left-0 top-0 z-10 hidden h-full w-3 lg:block"
+            onMouseEnter={() => setHoverActive(true)}
+            aria-hidden
+          />
+        )}
+
+        {/* Overlay sombre quand la sidebar est ouverte en mode hover/collapsed */}
+        {sidebarVisible && (sidebarMode === "hover" || sidebarMode === "collapsed") && (
+          <div
+            className="absolute inset-0 z-10 hidden bg-black/20 lg:block"
+            onMouseEnter={() => setHoverActive(false)}
+            aria-hidden
+          />
+        )}
 
         {/* Sidebar mobile (Sheet) */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -678,6 +799,7 @@ export function DashboardShell({
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Topbar */}
           <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+            {/* Bouton menu mobile (toujours visible <lg) */}
             <Button
               variant="ghost"
               size="icon"
@@ -687,6 +809,18 @@ export function DashboardShell({
             >
               <Menu className="size-5" />
             </Button>
+            {/* Bouton ouvrir sidebar desktop (visible si sidebar masquée) */}
+            {sidebarMode !== "expanded" && !sidebarVisible && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hidden lg:flex"
+                onClick={() => setHoverActive(true)}
+                aria-label="Ouvrir la sidebar"
+              >
+                <PanelLeftOpen className="size-5" />
+              </Button>
+            )}
 
             <div className="flex flex-col">
               <h1 className="text-base font-semibold leading-tight">
