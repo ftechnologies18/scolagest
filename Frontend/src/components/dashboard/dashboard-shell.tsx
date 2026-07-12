@@ -87,6 +87,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuthStore, type Etablissement, type Role } from "@/lib/auth-store";
 import { apiGet } from "@/lib/api-client";
 import { fetchCountSoumises } from "@/lib/api-pre-inscription";
+import { fetchFileAttente } from "@/lib/api-caisse";
 import { useToast } from "@/hooks/use-toast";
 
 /** Item de navigation pour la coquille — un `href` App Router (URL réelle). */
@@ -435,6 +436,19 @@ export function DashboardShell({
   });
   const pendingCount = preInscriptionCount?.count ?? 0;
 
+  // Badge « Caisse » : compte les élèves PRE_INSCRIT en attente de paiement
+  // (polling 30s). Uniquement pour les rôles CAISSIER et COMPTABLE (les rôles
+  // qui ont accès à la caisse). Même pattern que le badge pré-inscriptions.
+  const hasCaisseAccess = role === "CAISSIER" || role === "COMPTABLE";
+  const { data: fileAttente } = useQuery({
+    queryKey: ["caisse", "file-attente", "list"] as const,
+    queryFn: fetchFileAttente,
+    enabled: !!etablissement && hasCaisseAccess,
+    refetchInterval: 30_000, // polling toutes les 30s
+    refetchOnWindowFocus: true,
+  });
+  const fileAttenteCount = fileAttente?.length ?? 0;
+
   // Filtrage RBAC des groupes de navigation.
   const visibleGroups = useMemo<NavGroup[]>(() => {
     return navGroups
@@ -591,9 +605,24 @@ export function DashboardShell({
                             {pendingCount > 99 ? "99+" : pendingCount}
                           </span>
                         )}
-                        {active && item.href !== "/pre-inscriptions" && (
-                          <CheckCircle2 className="ml-auto size-3.5 text-white/90" />
+                        {/* Badge file d'attente caisse (élèves PRE_INSCRIT) */}
+                        {item.href === "/caisse" && fileAttenteCount > 0 && (
+                          <span
+                            className={cn(
+                              "ml-auto flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
+                              active
+                                ? "bg-white text-amber-700"
+                                : "bg-amber-500 text-white",
+                            )}
+                          >
+                            {fileAttenteCount > 99 ? "99+" : fileAttenteCount}
+                          </span>
                         )}
+                        {active &&
+                          item.href !== "/pre-inscriptions" &&
+                          item.href !== "/caisse" && (
+                            <CheckCircle2 className="ml-auto size-3.5 text-white/90" />
+                          )}
                       </Link>
                     </li>
                   );

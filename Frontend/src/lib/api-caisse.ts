@@ -227,3 +227,70 @@ export function createCloture(dto: ClotureDTO): Promise<ClotureCaisse> {
 export function validerCloture(id: string): Promise<ClotureCaisse> {
   return apiPost<ClotureCaisse>(`/api/clotures/${id}/valider`, {});
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// File d'attente PRE_INSCRIT + Dashboard caisse (amélioration)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Élève en file d'attente (PRE_INSCRIT, en attente de paiement frais inscription). */
+export interface EleveFileAttente {
+  eleve_id: string;
+  identifiant_interne: string;
+  nom: string;
+  prenoms: string;
+  classe_libelle: string;
+  classe_id: string;
+  categorie: string;
+  inscription_id: string;
+  date_inscription: string;
+  source: string; // "PRE_INSCRIPTION" | "INSCRIPTION_MANUELLE"
+  frais_inscription_id?: string | null;
+  montant_attendu: number;
+  montant_deja_paye: number;
+  solde_du: number;
+}
+
+/** Répartition des encaissements par mode de paiement. */
+export interface RepartitionModeCaisse {
+  mode: string;
+  label: string;
+  montant: number;
+  nb: number;
+  pourcentage: number;
+}
+
+/** Dernier paiement du jour (pour le dashboard). */
+export interface DernierPaiement {
+  id: string;
+  numero_recu: string;
+  eleve_nom: string;
+  eleve_prenoms: string;
+  montant: number;
+  mode_paiement: string;
+  heure: string;
+  frais_libelle: string;
+}
+
+/** Dashboard caisse : KPIs temps réel. */
+export interface DashboardCaisse {
+  date: string;
+  total_encaisse: number;
+  nb_transactions: number;
+  nb_annulations: number;
+  file_attente_count: number;
+  repartition_modes: RepartitionModeCaisse[];
+  derniers_paiements: DernierPaiement[];
+}
+
+/** Récupère la file d'attente des élèves PRE_INSCRIT. */
+export function fetchFileAttente(): Promise<EleveFileAttente[]> {
+  return apiGet<EleveFileAttente[]>("/api/caisse/file-attente");
+}
+
+/** Récupère le dashboard caisse (KPIs du jour). */
+export function fetchDashboardCaisse(date?: string): Promise<DashboardCaisse> {
+  const qs = new URLSearchParams();
+  if (date) qs.set("date", date);
+  const query = qs.toString();
+  return apiGet<DashboardCaisse>(`/api/caisse/dashboard${query ? `?${query}` : ""}`);
+}

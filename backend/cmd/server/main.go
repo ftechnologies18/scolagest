@@ -136,6 +136,9 @@ func main() {
         edtHandler := handlers.NewEmploiTempsHandler(edtSvc)
         // Scheduler — auto-génération nocturne des sessions (cron 3h00)
         scheduler := services.NewScheduler(edtSvc)
+        // Caisse avancée (file d'attente + dashboard)
+        caisseAvanceeSvc := services.NewCaisseService()
+        caisseAvanceeHandler := handlers.NewCaisseHandler(caisseAvanceeSvc)
 
         // 6. Router Gin
         r := gin.Default()
@@ -200,6 +203,8 @@ func main() {
         paieHandler.RegisterRoutes(api, authMW)
         // Emploi du temps (Phase A étendue)
         edtHandler.RegisterRoutes(api, authMW)
+        // Caisse avancée (file d'attente + dashboard)
+        caisseAvanceeHandler.RegisterRoutes(api, authMW)
 
         // Route de bienvenue
         r.GET("/", func(c *gin.Context) {

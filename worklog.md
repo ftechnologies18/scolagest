@@ -3695,3 +3695,213 @@ Stage Summary:
   rapide depuis le dashboard.
 - 6 fichiers au total (2 créés + 4 modifiés). Frontend uniquement, aucun
   changement backend, DB, schema, ou .env.
+
+---
+Task ID: caisse-file-attente-dashboard
+Agent: Z.ai Code (tuteur principal)
+Task: Coder 2 nouveaux composants caisse (file d'attente + tableau de bord)
++ modifier la vue caisse existante pour ajouter 2 onglets + badge sidebar.
+Frontend uniquement, réutilisation du client API `api-caisse.ts` (types
+`EleveFileAttente`, `DashboardCaisse`, `RepartitionModeCaisse`,
+`DernierPaiement`, fonctions `fetchFileAttente`, `fetchDashboardCaisse`) et
+`createPaiement` pour l'encaissement rapide.
+
+Work Log:
+- Contexte : le backend expose déjà `/api/caisse/file-attente` et
+  `/api/caisse/dashboard` (typés dans `Frontend/src/lib/api-caisse.ts`). La vue
+  caisse existante `view-caisse.tsx` a 3 onglets (Encaissement, Historique,
+  Clôture) — il faut en ajouter 2 AVANT (Tableau de bord + File d'attente). Le
+  formulaire d'encaissement `paiement-entry-form.tsx` accepte déjà un élève
+  sélectionné via recherche ; pour la file on utilise `createPaiement`
+  directement avec `eleve_id` + `frais_inscription_id` pour l'encaissement
+  rapide.
+
+- 4 fichiers créés / modifiés (frontend uniquement) :
+
+  1) Frontend/src/components/caisse/file-attente.tsx (NOUVEAU, ~635 lignes) :
+     • "use client". Composant `FileAttente` + sous-composant
+       `EncaissementDialog` (dialog d'encaissement rapide).
+     • `useQuery` `fetchFileAttente()` avec polling 30s
+       (`refetchInterval: 30_000`, `refetchOnWindowFocus: true`), `enabled`
+       seulement si `etablissement` sélectionné. Clé React Query dédiée
+       `fileAttenteKeys` (all / list) exportée pour invalidation croisée.
+     • En-tête : badge ambre « {count} en attente » (icône Clock) + bouton
+       « Actualiser » (icône RefreshCw, spin si `isFetching`).
+     • Liste ordonnée (telle que renvoyée par le backend — par date
+       d'inscription) des élèves PRE_INSCRIT. Chaque ligne = une `Card` avec :
+         - Avatar GraduationCap (emerald)
+         - Badges « EN ATTENTE » (amber) + source (« PRÉ-INSCRIPTION » emerald
+           / « MANUELLE » slate) via helper `sourceBadge(source)`.
+         - Nom + prénoms (gras) + identifiant interne (mono) + classe + date
+           d'inscription (icône Clock, `formatDateShort`).
+         - Grille montants (3 colonnes sur mobile, flex sur sm+) : attendu
+           (gras), payé (emerald), solde dû (amber).
+         - Bouton « Encaisser » (emerald, `size="lg" h-11`, plein largeur sur
+           mobile, auto sur sm+) — désactivé si `solde_du <= 0` ou
+           `!frais_inscription_id`.
+     • `EncaissementDialog` : à l'ouverture, pré-remplit le montant avec
+       `solde_du` (via `useEffect` sur `[open, eleve]`). Récap élève (carte
+       emerald avec nom, identifiant, classe, 3 colonnes attendu/payé/solde).
+       Formulaire :
+         - `<Select>` mode (Espèces / Chèque / Virement / Mobile Money)
+         - Si MoMo : `<Select>` provider (Orange Money / MTN MoMo / Wave)
+         - Si non-espèces : `<Input>` référence (placeholder adapté au mode)
+         - `<Input type="number">` montant + `<Input type="date">` date
+         - Alerte si montant > solde dû (rose) ; alerte si pas de
+           `frais_inscription_id` (amber)
+       Bouton « Valider l'encaissement » (emerald, icône Wallet) → mutation
+       `createPaiement({ eleve_id, frais_id, montant, mode_paiement,
+       provider_momo?, reference_externe?, date_paiement? })`. Au succès :
+       invalidation croisée de `fileAttenteKeys.all` +
+       `dashboardCaisseKeys.all` + `paiementsKeys.all` + `soldesKeys.all`
+       (Promise.all), toast succès « Encaissement réussi · Reçu N · X FCFA
+       encaissés. L'élève sort de la file d'attente. », fermeture dialog. Au
+       défaut : toast erreur (variant destructive).
+     • États : pas d'établissement (amber), chargement initial (4 skeletons
+       h-28), erreur (rose + bouton Réessayer), file vide (emerald « Aucun
+       élève en attente — tous sont à jour ✓ »).
+     • Mobile-first : carte flex-col sur mobile, flex-row sm+ ; grille 3 cols
+       montants en mobile, flex sm+ ; bouton plein largeur mobile, auto sm+.
+
+  2) Frontend/src/components/caisse/dashboard-caisse.tsx (NOUVEAU, ~470
+     lignes) :
+     • "use client". Composant `DashboardCaissePanel` + sous-composants
+       `KpiCard`, `RepartitionBar`, `DernierPaiementRow`.
+     • `useQuery` `fetchDashboardCaisse()` avec polling 30s, `enabled` si
+       `etablissement`. Clé React Query dédiée `dashboardCaisseKeys`
+       (all / today) exportée.
+     • Bandeau : badge emerald « Actualisé toutes les 30s » (icône Clock) +
+       bouton « Actualiser » (icône RefreshCw).
+     • 4 cartes KPI en grille responsive 1 → 2 → 4 cols :
+         1. Total encaissé (emerald, gros chiffre `formatFCFA`, icône Wallet,
+            hint « Panier moyen X FCFA » si nb_transactions > 0).
+         2. Transactions (sky, `nb_transactions`, icône Receipt, hint
+            « Encaissements validés du jour »).
+         3. File d'attente (amber, `file_attente_count`, icône Users) — carte
+            cliquable (rend `<button>` au lieu de `<div>`) si count > 0 et
+            `onJumpToFileAttente` fourni : flèche `ArrowRight` à droite +
+            hover border-amber-400. Au clic → callback `onJumpToFileAttente`
+            (la vue caisse bascule sur l'onglet « File d'attente »).
+         4. Annulations (rose, `nb_annulations`, icône XCircle).
+     • Carte « Répartition par mode » : barres horizontales colorées via
+       helper `modeStyle(mode)` :
+         - ESPECES = bg-emerald-500 / track emerald-100
+         - MOBILE_MONEY = bg-amber-500 / track amber-100
+         - CHEQUE = bg-sky-500 / track sky-100
+         - VIREMENT = bg-slate-500 / track slate-100
+         - fallback slate-400 pour mode inconnu.
+       Chaque ligne : point couleur + label + « ({nb} tx) » + montant
+       (`formatFCFA`) + pourcentage (1 décimale). Barre de progression
+       `role="progressbar"` avec `aria-valuenow/min/max`, width = `pct%`.
+     • Carte « Derniers encaissements » : liste `<ul>` des 5 derniers
+       (`max-h-96 overflow-y-auto` + `divide-y`), chaque ligne avec :
+         - icône Receipt dans un cercle teinté selon le mode
+         - nom élève + n° reçu (mono) + frais libellé
+         - montant (gras emerald, `formatFCFA`)
+         - badge mode court (teinté) + heure (icône Clock, `formatTime`)
+     • États : pas d'établissement (amber), chargement (4 skeletons h-24 +
+       2 skeletons h-56), erreur (rose + bouton Réessayer).
+     • Note de bas : rappel des libellés courts mode utilisés sur les reçus.
+     • Mobile-first : grille KPI 1 col mobile / 2 sm / 4 lg ; grille
+       répartition + derniers encaissements 1 col mobile / 2 lg.
+
+  3) Frontend/src/components/dashboard/views/view-caisse.tsx (MODIFIÉ) :
+     • `Tabs` passé en mode contrôlé (`value={tab}` + `onValueChange`).
+     • 2 nouveaux onglets AVANT les existants :
+         - Onglet 1 « Tableau de bord » (icône LayoutDashboard) →
+           `<DashboardCaissePanel onJumpToFileAttente={() => setTab("file")} />`
+         - Onglet 2 « File d'attente » (icône Users) → `<FileAttente />`
+       Les 3 existants (Encaissement / Historique / Clôture) restent en
+       position 3, 4, 5.
+     • Badge compteur ambre sur l'onglet « File d'attente » : `useQuery`
+       `fetchFileAttente` (polling 30s) pour récupérer la liste, count =
+       `data.length`. Badge `size-4 min-w-4 rounded-full px-1 text-[10px]
+       font-bold` affiché si count > 0. Couleur adaptée : ambre-600 fond
+       blanc si onglet actif, ambre-100/ambre-700 sinon (amber-950/60 /
+       amber-300 en dark). Si count > 99 → « 99+ ».
+     • `TabsList` responsive : `grid w-full grid-cols-3 sm:w-auto
+       sm:grid-cols-none` (3 cols mobile avec `col-span-2 sm:col-span-1` sur
+       Historique pour bien remplir la 2e ligne de 2 éléments ; inline-flex
+       auto sur sm+).
+     • Type `CaisseTab` union stricte ("dashboard" | "file" | "encaissement"
+       | "historique" | "cloture") pour le state.
+
+  4) Frontend/src/components/dashboard/dashboard-shell.tsx (MODIFIÉ) :
+     • Ajout import `fetchFileAttente` depuis `@/lib/api-caisse`.
+     • Nouveau `useQuery` `fetchFileAttente` (polling 30s) dans
+       `DashboardShell`, `enabled` si `etablissement` et `hasCaisseAccess`
+       (`role === "CAISSIER" || role === "COMPTABLE"` — exactement les rôles
+       autorisés sur l'item `/caisse` de la sidebar). Même pattern que le
+       badge pré-inscriptions existant.
+     • Rendu du badge ambre sur l'item `/caisse` (entre le span label et le
+       CheckCircle2 actif) : `ml-auto flex size-5 items-center justify-center
+       rounded-full text-[10px] font-bold`. Couleurs : si actif → fond blanc
+       + texte ambre-700 ; sinon → fond ambre-500 + texte blanc. Si count >
+       99 → « 99+ ».
+     • Modification du guard du `CheckCircle2` (icône check active) : il ne
+       s'affiche plus sur `/pre-inscriptions` NI sur `/caisse` (pour laisser
+       la place au badge quand l'item est actif).
+     • Clé React Query `["caisse", "file-attente", "list"]` (identique à
+       `fileAttenteKeys.list()` du composant `file-attente.tsx`) pour partager
+       le cache entre sidebar et onglet file d'attente.
+
+- Conventions respectées :
+  • "use client" sur tous les composants interactifs (2 fichiers nouveaux).
+  • Imports `@/lib/...`, `@/components/ui/...`, `@/components/caisse/...`
+    (alias `@/`).
+  • Couleurs UI : emerald (primaire / succès / espèces / total encaissé),
+    amber (file d'attente / MoMo / warning), rose (erreur / annulations),
+    sky (transactions / chèque), slate (neutre / virement / MANUELLE).
+    Aucun indigo/blue.
+  • shadcn/ui : Card, Button, Badge, Input, Label, Select, Dialog, Skeleton
+    + lucide-react (Wallet, Receipt, Users, XCircle, LayoutDashboard, Lock,
+    History, ReceiptText, Loader2, AlertCircle, CheckCircle2, RefreshCw,
+    Clock, GraduationCap, HandCoins, ArrowRight).
+  • TanStack Query : useQuery (3 : file-attente dans FileAttente, dashboard
+    dans DashboardCaissePanel, file-attente dans view-caisse pour le badge,
+    file-attente dans dashboard-shell pour le badge sidebar — tous avec
+    polling 30s + refetchOnWindowFocus) + useMutation (1 : createPaiement
+    dans EncaissementDialog) avec `invalidateQueries` sur 4 clés
+    (fileAttenteKeys.all, dashboardCaisseKeys.all, paiementsKeys.all,
+    soldesKeys.all) après chaque mutation.
+  • `useAuthStore` pour l'établissement. Si `!etablissement` → EmptyState
+    amber qui invite à sélectionner un établissement.
+  • Montants en FCFA via `formatFCFA()` de `@/lib/format`
+    (Intl.NumberFormat("fr-FR") + " FCFA"). Dates via `formatDateShort` /
+    `formatTime`. Date du jour + conversion input→ISO via `todayISO` /
+    `dateInputToISO` du même module.
+  • Mobile-first : grille KPI 1→2→4 cols, listes avec `max-h-96
+    overflow-y-auto`, cartes flex-col mobile / flex-row sm+, boutons
+    tactiles `h-11` plein largeur mobile, libellés tronqués `truncate`.
+  • Footer / sticky : non pertinent (composants rendus dans DashboardShell
+    qui a son footer sticky mt-auto).
+  • Accessibility : `role="progressbar"` + `aria-valuenow/min/max` sur les
+    barres de répartition, `type="button"` sur tous les boutons, icônes
+    `aria-hidden` implicites, alt text sur les avatars (icônes), focus
+    visible via shadcn/ui.
+
+- Qualité :
+  - cd Frontend && bun run lint → 0 erreur, 3 warnings pré-existants dans
+    step-scolarite.tsx (hors périmètre) ✓.
+  - cd Frontend && bunx tsc --noEmit → 15 erreurs pré-existantes (login-form
+    ×8 Framer Motion, view-impayes ×2 toast, view-parametres ×1 Record,
+    view-utilisateurs ×1, etablissement-form-dialog ×1 quota_classe,
+    utilisateur-form-dialog ×1 Record, instrumentation ×1). 0 erreur sur
+    les 4 fichiers créés/modifiés par cette tâche ✓.
+  - Aucune modification backend, .env, schema, ou DB. Pas de
+    `bun run build`.
+
+Stage Summary:
+- Vue caisse étendue (5 onglets au lieu de 3) : Tableau de bord + File
+  d'attente en tête, puis Encaissement / Historique / Clôture.
+- 2 composants caisse livrés : `FileAttente` (liste ordonnée PRE_INSCRIT +
+  dialog encaissement rapide + polling 30s + 4 états) et
+  `DashboardCaissePanel` (4 KPI + répartition modes colorée + 5 derniers
+  encaissements + polling 30s).
+- Sidebar staff étendue : badge ambre sur « Caisse » pour CAISSIER et
+  COMPTABLE (compte PRE_INSCRIT, polling 30s, partagé avec le cache de
+  l'onglet file d'attente via la même clé React Query).
+- Navigation rapide : la KPI « File d'attente » du tableau de bord est
+  cliquable et bascule l'onglet caisse vers « File d'attente ».
+- 4 fichiers au total (2 créés + 2 modifiés). Frontend uniquement, aucun
+  changement backend, DB, schema, ou .env.
