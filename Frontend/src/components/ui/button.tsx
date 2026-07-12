@@ -20,12 +20,27 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
+        // success: gradient emerald — primaire Forêt EdTech, actions de validation / encaissement
+        success:
+          "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-900/20 hover:from-emerald-700 hover:to-emerald-800",
+        // premium: gradient gold/amber — actions premium, abonnements SaaS
+        premium:
+          "bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-900/20 hover:from-amber-600 hover:to-amber-700",
+        // terracotta: danger warm — suppressions définitives, actions destructrices "chaudes"
+        terracotta:
+          "bg-terracotta text-white shadow-xs hover:bg-terracotta-light focus-visible:ring-terracotta/20",
+        // gold: bouton or plein — CTA premium secondaire, badges
+        gold: "bg-gold text-white shadow-xs hover:bg-gold-dark",
+        // forest: vert forêt profond — navigation secondaire, items admin
+        forest: "bg-forest text-white shadow-xs hover:bg-forest-deep",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
         sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
         lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
         icon: "size-9",
+        // xl: taille élargie pour CTA principaux (h-12, texte base, padding généreux)
+        xl: "h-12 rounded-lg gap-2 px-8 text-base has-[>svg]:px-6",
       },
     },
     defaultVariants: {
