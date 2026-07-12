@@ -134,6 +134,8 @@ func main() {
         // Emploi du temps (Phase A étendue)
         edtSvc := services.NewEmploiTempsService()
         edtHandler := handlers.NewEmploiTempsHandler(edtSvc)
+        // Scheduler — auto-génération nocturne des sessions (cron 3h00)
+        scheduler := services.NewScheduler(edtSvc)
 
         // 6. Router Gin
         r := gin.Default()
@@ -209,7 +211,21 @@ func main() {
                 })
         })
 
-        // 7. Démarrage du serveur
+        // Route de statut du scheduler
+        r.GET("/api/scheduler/status", func(c *gin.Context) {
+                c.JSON(200, gin.H{
+                        "active":          true,
+                        "schedule":        "Toutes les nuits à 3h00",
+                        "last_run":        scheduler.GetLastRunDate(),
+                        "description":     "Auto-génération des SessionCours du lendemain depuis l'emploi du temps",
+                })
+        })
+
+        // 7. Démarrage du scheduler (auto-génération nocturne)
+        scheduler.Start()
+        defer scheduler.Stop()
+
+        // 8. Démarrage du serveur
         addr := fmt.Sprintf(":%s", cfg.Port)
         log.Printf("✅ Serveur démarré sur http://localhost:%s", cfg.Port)
         if err := r.Run(addr); err != nil {
