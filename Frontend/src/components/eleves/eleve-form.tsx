@@ -58,8 +58,8 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
 import {
   RadioGroup,
   RadioGroupItem,
@@ -307,7 +307,7 @@ export function EleveForm({ eleveId, onSaved, onCancel }: EleveFormProps) {
       <BackButton onClick={onCancel} />
 
       <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold tracking-tight">
+        <h2 className="font-display text-xl font-semibold tracking-tight">
           {isEditMode ? "Modifier l'élève" : "Nouvel élève"}
         </h2>
         <p className="text-sm text-muted-foreground">
@@ -319,11 +319,11 @@ export function EleveForm({ eleveId, onSaved, onCancel }: EleveFormProps) {
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         {/* Identité */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Identité</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
+        <GlassCard variant="adaptive" noHover>
+          <div className="mb-3">
+            <h3 className="font-display text-base font-semibold">Identité</h3>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               label="Nom"
               required
@@ -397,15 +397,15 @@ export function EleveForm({ eleveId, onSaved, onCancel }: EleveFormProps) {
                 </Label>
               </RadioGroup>
             </FormField>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
 
         {/* Scolarité */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Scolarité</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
+        <GlassCard variant="adaptive" noHover>
+          <div className="mb-3">
+            <h3 className="font-display text-base font-semibold">Scolarité</h3>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               label="Matricule Ministère (MEN)"
               error={form.formState.errors.matricule_ministere?.message}
@@ -482,15 +482,15 @@ export function EleveForm({ eleveId, onSaved, onCancel }: EleveFormProps) {
                 </SelectContent>
               </Select>
             </FormField>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
 
         {/* Tuteur & photo */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Tuteur & photo</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
+        <GlassCard variant="adaptive" noHover>
+          <div className="mb-3">
+            <h3 className="font-display text-base font-semibold">Tuteur &amp; photo</h3>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               label="Tuteur"
               error={form.formState.errors.tuteur_id?.message}
@@ -543,8 +543,8 @@ export function EleveForm({ eleveId, onSaved, onCancel }: EleveFormProps) {
                 {...form.register("photo_url")}
               />
             </FormField>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
 
         {/* Actions */}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -559,7 +559,7 @@ export function EleveForm({ eleveId, onSaved, onCancel }: EleveFormProps) {
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
+            variant="success"
           >
             {isSubmitting ? (
               <>

@@ -52,7 +52,9 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 import {
   Avatar,
   AvatarFallback,
@@ -227,8 +229,8 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
       <BackButton onClick={onBack} />
 
       {/* En-tête */}
-      <Card>
-        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <GlassCard variant="adaptive" noHover>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <Avatar className="size-16 border-2 border-emerald-100 dark:border-emerald-900/40">
               {eleve.photo_url ? (
@@ -242,7 +244,7 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 space-y-1.5">
-              <h2 className="text-xl font-semibold tracking-tight">
+              <h2 className="font-display text-xl font-semibold tracking-tight">
                 {eleveFullName(eleve)}
               </h2>
               <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -296,20 +298,20 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
               </AlertDialogContent>
             </AlertDialog>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
+
+      <KentePattern variant="separator" className="my-1" />
 
       {/* Grille de cartes */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Identité */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <UserCircle2 className="size-4 text-emerald-600" />
-              Identité
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+        <GlassCard variant="adaptive" noHover>
+          <div className="mb-3 flex items-center gap-2">
+            <UserCircle2 className="size-4 text-emerald-600" />
+            <h3 className="font-display text-base font-semibold">Identité</h3>
+          </div>
+          <div className="space-y-3">
             <InfoRow
               icon={Calendar}
               label="Date de naissance"
@@ -330,18 +332,16 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
               label="Établissement"
               value={eleve.etablissement?.nom ?? "—"}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
 
         {/* Tuteur */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <User className="size-4 text-emerald-600" />
-              Tuteur
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+        <GlassCard variant="adaptive" noHover>
+          <div className="mb-3 flex items-center gap-2">
+            <User className="size-4 text-emerald-600" />
+            <h3 className="font-display text-base font-semibold">Tuteur</h3>
+          </div>
+          <div className="space-y-3">
             {eleve.tuteur ? (
               <>
                 <InfoRow
@@ -441,30 +441,32 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
                 </Button>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       </div>
 
       {/* Soldes & paiements (Phase 3) */}
       <EleveSoldeCard eleveId={eleveId} />
 
       {/* Inscriptions */}
-      <Card className="overflow-hidden">
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div className="flex items-center justify-between p-5 pb-3">
+          <div className="flex items-center gap-2">
             <FileText className="size-4 text-emerald-600" />
-            Historique des inscriptions
-          </CardTitle>
+            <h3 className="font-display text-base font-semibold">
+              Historique des inscriptions
+            </h3>
+          </div>
           <Button
             onClick={() => setInscriptionOpen(true)}
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
+            variant="success"
             size="sm"
           >
             <Plus className="size-4" />
             Nouvelle inscription
           </Button>
-        </CardHeader>
-        <CardContent className="p-0">
+        </div>
+        <div>
           {inscriptions.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
               <FileText className="size-8 text-muted-foreground/50" />
@@ -490,8 +492,8 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
               </TableBody>
             </Table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {/* Dialog nouvelle inscription */}
       <InscriptionDialog

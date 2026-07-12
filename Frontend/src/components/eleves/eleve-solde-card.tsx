@@ -34,7 +34,7 @@ import type { SoldeEleve } from "@/lib/types";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -83,14 +83,14 @@ export function EleveSoldeCard({
   const derniersPaiements = paiementsData?.data ?? [];
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Wallet className="size-4 text-emerald-600" />
+    <GlassCard variant="adaptive" noHover className="overflow-hidden">
+      <div className="mb-3 flex items-center gap-2">
+        <Wallet className="size-4 text-emerald-600" />
+        <h3 className="font-display text-base font-semibold">
           Soldes &amp; paiements
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </h3>
+      </div>
+      <div className="space-y-4">
         {isLoading ? (
           <SoldeSkeleton />
         ) : isError || !solde ? (
@@ -106,7 +106,7 @@ export function EleveSoldeCard({
         {/* Derniers paiements */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="font-display flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <History className="size-3.5" />
               Derniers paiements
             </h3>
@@ -174,8 +174,8 @@ export function EleveSoldeCard({
             Ouvrir la caisse (historique complet)
           </Button>
         ) : null}
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }
 

@@ -18,6 +18,7 @@ import * as React from "react";
 import { ElevesList } from "@/components/eleves/eleves-list";
 import { EleveDetail } from "@/components/eleves/eleve-detail";
 import { EleveForm } from "@/components/eleves/eleve-form";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 type SubView = "list" | "detail" | "form";
 
@@ -58,32 +59,41 @@ export default function ElevesView() {
   }
 
   // ─── Render ──────────────────────────────────────────────────────────────
+  // Bande kente Forêt EdTech en tête de vue (commune aux 3 sous-vues).
+  let content: React.ReactNode;
   if (view === "detail" && selectedEleveId) {
-    return (
+    content = (
       <EleveDetail
         eleveId={selectedEleveId}
         onBack={goToList}
         onEdit={() => goToEdit(selectedEleveId)}
       />
     );
-  }
-
-  if (view === "form") {
-    return (
+  } else if (view === "form") {
+    content = (
       <EleveForm
         eleveId={selectedEleveId ?? undefined}
         onSaved={(id) => goToDetail(id)}
-        onCancel={selectedEleveId ? () => goToDetail(selectedEleveId) : goToList}
+        onCancel={
+          selectedEleveId ? () => goToDetail(selectedEleveId) : goToList
+        }
+      />
+    );
+  } else {
+    // Vue par défaut : liste
+    content = (
+      <ElevesList
+        onCreate={goToCreate}
+        onSelect={(id) => goToDetail(id)}
+        onEdit={(id) => goToEdit(id)}
       />
     );
   }
 
-  // Vue par défaut : liste
   return (
-    <ElevesList
-      onCreate={goToCreate}
-      onSelect={(id) => goToDetail(id)}
-      onEdit={(id) => goToEdit(id)}
-    />
+    <div className="space-y-4">
+      <KentePattern variant="strip" position="top" />
+      {content}
+    </div>
   );
 }

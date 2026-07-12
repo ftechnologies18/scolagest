@@ -67,6 +67,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Table,
@@ -350,8 +352,8 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
       />
 
       {/* Barre de filtres + mini-stats + export */}
-      <Card>
-        <CardContent className="space-y-4">
+      <GlassCard variant="adaptive" noHover className="p-4">
+        <div className="space-y-4">
           {/* Ligne 1 : recherche + export */}
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="relative flex-1">
@@ -506,7 +508,7 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
               </span>
               <span className="text-muted-foreground">·</span>
               <span className="flex items-center gap-1.5 text-muted-foreground">
-                <GraduationCap className="size-4 text-blue-600" />
+                <GraduationCap className="size-4 text-forest" />
                 {stats.garcons} G
                 <span className="text-muted-foreground/60">/</span>
                 <span className="text-pink-600">{stats.filles} F</span>
@@ -528,8 +530,10 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
+
+      <KentePattern variant="separator" className="my-1" />
 
       {/* Erreur */}
       {isError && !isLoading && (
@@ -555,8 +559,8 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
 
       {/* Tableau */}
       {!isLoading && !isError && (
-        <Card className="overflow-hidden">
-          <CardContent className="p-0">
+        <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+          <div>
             {eleves.length === 0 ? (
               <EmptyState onCreate={onCreate} />
             ) : (
@@ -630,8 +634,8 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
                 </div>
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       )}
     </div>
   );
@@ -655,7 +659,9 @@ function ListHeader({
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <Users className="size-5 text-emerald-600" />
-          <h2 className="text-xl font-semibold tracking-tight">Élèves</h2>
+          <h2 className="font-display text-xl font-semibold tracking-tight">
+            Élèves
+          </h2>
         </div>
         <p className="text-sm text-muted-foreground">
           Gérez les fiches élèves, les matricules, catégories et inscriptions.
@@ -667,7 +673,7 @@ function ListHeader({
       <Button
         onClick={onCreate}
         disabled={createDisabled}
-        className="bg-emerald-600 text-white hover:bg-emerald-700"
+        variant="success"
       >
         <Plus className="size-4" />
         Nouvel élève
@@ -840,10 +846,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
           ajustez vos filtres.
         </p>
       </div>
-      <Button
-        onClick={onCreate}
-        className="bg-emerald-600 text-white hover:bg-emerald-700"
-      >
+      <Button onClick={onCreate} variant="success">
         <Plus className="size-4" />
         Créer un élève
       </Button>
