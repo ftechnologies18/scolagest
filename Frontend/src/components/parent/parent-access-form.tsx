@@ -422,8 +422,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
           </motion.div>
 
           <p className="mt-6 text-center text-[11px] text-gray-400">
-            © {new Date().getFullYear()} ScolaGest · Freelance Technologies Côte
-            d&apos;Ivoire
+            2026 ScolaGest Freelance Technologies Côte d&apos;Ivoire
           </p>
         </motion.div>
       </div>
