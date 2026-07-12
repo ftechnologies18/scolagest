@@ -1,6 +1,7 @@
 package seed
 
 import (
+        "errors"
         "log"
         "time"
 
@@ -228,7 +229,12 @@ func seedUtilisateurs(db *gorm.DB) {
 
         for _, u := range users {
                 var existing models.Utilisateur
-                if err := db.Where("email = ?", u.email).First(&existing).Error; err == gorm.ErrRecordNotFound {
+                err := db.Where("email = ?", u.email).First(&existing).Error
+                if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+                        log.Printf("⚠ vérification utilisateur %s: %v", u.email, err)
+                        continue
+                }
+                if errors.Is(err, gorm.ErrRecordNotFound) {
                         hash, _ := utils.HashPassword(u.password)
                         roleCopy := u.role
                         user := models.Utilisateur{
