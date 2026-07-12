@@ -178,3 +178,18 @@ export function traiterAvance(
 export function fetchMesBulletins(): Promise<BulletinPaie[]> {
   return apiGet<BulletinPaie[]>("/api/prof/bulletins");
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API — Avances prof (l'enseignant fait ses propres demandes)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function fetchMesAvances(): Promise<AvanceSalaire[]> {
+  return apiGet<AvanceSalaire[]>("/api/prof/avances");
+}
+
+export function createMesAvance(body: {
+  montant: number;
+  motif?: string;
+}): Promise<AvanceSalaire> {
+  return apiPost<AvanceSalaire>("/api/prof/avances", body);
+}

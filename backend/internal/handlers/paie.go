@@ -278,10 +278,68 @@ func (h *PaieHandler) RegisterRoutes(rg *gin.RouterGroup, authMW gin.HandlerFunc
         prof := rg.Group("/prof", authMW, middleware.RequireRole(models.RoleEnseignant))
         {
                 prof.GET("/bulletins", h.GetMesBulletins)
+                prof.GET("/avances", h.GetMesAvances)
+                prof.POST("/avances", h.CreateMesAvance)
         }
 }
 
-// parseInt helper
+// GetMesAvances gère GET /api/prof/avances
+// L'enseignant consulte ses demandes d'avance et leur statut.
+func (h *PaieHandler) GetMesAvances(c *gin.Context) {
+        userID := middleware.CurrentUserID(c)
+
+        ensID, err := services.NewPointageService().GetEnseignantIDFromUtilisateur(userID)
+        if err != nil {
+                c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+                return
+        }
+
+        // Récupérer directement les avances de cet enseignant (tous statuts)
+        var avances []models.AvanceSalaire
+        database.Current().Where("enseignant_id = ?", *ensID).
+                Order("date_demande DESC").
+                Find(&avances)
+
+        c.JSON(http.StatusOK, avances)
+}
+
+// CreateMesAvance gère POST /api/prof/avances
+// L'enseignant fait sa propre demande d'avance sur salaire.
+func (h *PaieHandler) CreateMesAvance(c *gin.Context) {
+        userID := middleware.CurrentUserID(c)
+
+        ensID, err := services.NewPointageService().GetEnseignantIDFromUtilisateur(userID)
+        if err != nil {
+                c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+                return
+        }
+
+        // Récupérer l'établissement depuis l'enseignant
+        var ens models.Enseignant
+        if err := database.Current().First(&ens, "id = ?", *ensID).Error; err != nil {
+                c.JSON(http.StatusForbidden, gin.H{"error": "enseignant introuvable"})
+                return
+        }
+
+        var body struct {
+                Montant float64 `json:"montant"`
+                Motif   string  `json:"motif"`
+        }
+        if err := c.ShouldBindJSON(&body); err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": "payload invalide"})
+                return
+        }
+
+        a, err := h.svc.CreateAvance(*ensID, ens.EtablissementID, services.AvanceDTO{
+                Montant: body.Montant,
+                Motif:   body.Motif,
+        })
+        if err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
+        }
+        c.JSON(http.StatusCreated, a)
+}
 func parseInt(s string) (int, error) {
         return strconv.Atoi(s)
 }

@@ -35,6 +35,7 @@ import {
   GraduationCap,
   Flag,
   Wallet,
+  HandCoins,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -247,6 +248,12 @@ export default function ProfDashboardPage() {
             <Link href="/prof/paie">
               <Wallet className="size-5" />
               Mes bulletins de paie
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="h-12 w-full gap-2 border-amber-300 text-base text-amber-700 hover:bg-amber-50 dark:border-amber-900/50 dark:text-amber-300">
+            <Link href="/prof/avances">
+              <HandCoins className="size-5" />
+              Mes avances sur salaire
             </Link>
           </Button>
         </div>
