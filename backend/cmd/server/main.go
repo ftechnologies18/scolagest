@@ -111,10 +111,11 @@ func main() {
         parentHandler := handlers.NewParentHandler(parentSvc, parentAccessSvc, momoSvc)
         saasHandler := handlers.NewSaasHandler(saasSvc)
         saasBillingHandler := handlers.NewSaasBillingHandler(saasBillingSvc)
-        // Phase 3 : effectifs, pré-inscription en ligne
+        // Phase 3 : effectifs, pré-inscription en ligne, notifications
         effectifsSvc := services.NewEffectifsService()
         effectifsHandler := handlers.NewEffectifsHandler(effectifsSvc)
-        preInscriptionSvc := services.NewPreInscriptionService(inscriptionWorkflowSvc)
+        notifSvc := services.NewNotificationService()
+        preInscriptionSvc := services.NewPreInscriptionService(inscriptionWorkflowSvc, notifSvc)
         preInscriptionHandler := handlers.NewPreInscriptionHandler(preInscriptionSvc)
         // Récupération mot de passe staff / PIN parent
         passwordResetSvc := services.NewPasswordResetService()

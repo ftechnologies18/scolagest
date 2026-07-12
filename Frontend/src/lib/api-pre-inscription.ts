@@ -64,6 +64,11 @@ export interface PreInscription {
   eleve_sexe: SexeEleve;
   eleve_categorie: CategorieEleve;
 
+  // ── Champs supplémentaires (transfert, santé) ──
+  eleve_ancien_etablissement?: string;
+  eleve_allergies?: string;
+  eleve_notes_sante?: string;
+
   // ── Tuteur ──
   tuteur_nom: string;
   tuteur_prenoms: string;
@@ -95,6 +100,10 @@ export interface PreInscriptionDTO {
   eleve_lieu_naissance?: string;
   eleve_sexe: SexeEleve;
   eleve_categorie: CategorieEleve;
+  // Champs supplémentaires (transfert, santé)
+  eleve_ancien_etablissement?: string;
+  eleve_allergies?: string;
+  eleve_notes_sante?: string;
   tuteur_nom: string;
   tuteur_prenoms?: string;
   tuteur_telephone: string;
@@ -123,6 +132,32 @@ export interface ValiderResult {
   eleve: Eleve;
   inscription: Inscription;
   annee_scolaire?: AnneeScolaire;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Détection fratrie (route publique)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Tuteur existant trouvé par téléphone (données non sensibles). */
+export interface TuteurLite {
+  nom: string;
+  prenoms: string;
+  telephone: string;
+  email: string;
+  lien_parente: string;
+}
+
+/** Élève existant du tuteur (nom seulement, pour affichage fratrie). */
+export interface EleveLite {
+  nom: string;
+  prenoms: string;
+}
+
+/** Résultat de la recherche fratrie. */
+export interface TuteurFratrieResult {
+  found: boolean;
+  tuteur: TuteurLite;
+  eleves: EleveLite[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -170,6 +205,22 @@ export function fetchPreInscriptionByToken(
   );
 }
 
+/**
+ * Recherche un tuteur existant par téléphone (route PUBLIQUE).
+ * Utilisé pour la détection fratrie sur le formulaire de pré-inscription :
+ * si le parent a déjà un enfant inscrit, on pré-remplit les champs tuteur.
+ */
+export function searchTuteurByPhone(
+  telephone: string,
+): Promise<TuteurFratrieResult> {
+  const qs = new URLSearchParams();
+  qs.set("telephone", telephone);
+  return apiGet<TuteurFratrieResult>(
+    `/api/public/pre-inscriptions/search-tuteur?${qs.toString()}`,
+    { skipAuth: true },
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Routes staff (avec auth)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -187,6 +238,15 @@ export function fetchPreInscriptions(
   return apiGet<PreInscription[]>(
     `/api/pre-inscriptions${query ? `?${query}` : ""}`,
   );
+}
+
+/**
+ * Compte les pré-inscriptions en attente (SOUMISE + EN_REVUE) de
+ * l'établissement courant. Utilisé pour le badge de notifications sur la
+ * sidebar staff.
+ */
+export function fetchCountSoumises(): Promise<{ count: number }> {
+  return apiGet<{ count: number }>("/api/pre-inscriptions/count-soumises");
 }
 
 /** Récupère une pré-inscription par son ID (route staff). */

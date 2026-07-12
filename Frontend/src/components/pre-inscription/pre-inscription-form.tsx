@@ -13,7 +13,12 @@
  *  - Élève : nom, prénoms, date/lieu naissance, sexe, catégorie
  *    (catégorie masquée si l'établissement n'applique pas la distinction)
  *  - Tuteur : nom, prénoms, téléphone, email, lien de parenté
+ *    + Détection fratrie : debounce 500ms sur le téléphone → recherche
+ *      `searchTuteurByPhone` (route publique) → bannière emerald + bouton
+ *      « Pré-remplir mes informations » si le tuteur est déjà connu.
  *  - Classe souhaitée : cascade Cycle → Niveau → Classe
+ *  - Informations complémentaires (optionnel) : ancien établissement
+ *    (transfert), allergies, notes santé
  *  - Notes : message optionnel au secrétariat
  *
  * Écran de succès : carte avec token de suivi + lien vers la page de suivi
@@ -35,13 +40,16 @@ import {
   CheckCircle2,
   ClipboardCopy,
   GraduationCap,
+  HeartPulse,
   Loader2,
   Mail,
   Phone,
   School,
   Send,
+  Sparkles,
   User,
   Users,
+  Wand2,
 } from "lucide-react";
 
 import {
@@ -52,12 +60,14 @@ import { apiGet, ApiError } from "@/lib/api-client";
 import type { Classe, Cycle } from "@/lib/types";
 import type { Etablissement } from "@/lib/auth-store";
 import {
+  searchTuteurByPhone,
   submitPreInscription,
   type CategorieEleve,
   type LienParente,
   type PreInscriptionDTO,
   type SexeEleve,
   type SubmitResult,
+  type TuteurFratrieResult,
 } from "@/lib/api-pre-inscription";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -236,6 +246,62 @@ export function PreInscriptionForm() {
 
   const [notesParent, setNotesParent] = React.useState("");
 
+  // ─── Champs complémentaires (transfert + santé) ───────────────────────────
+  const [eleveAncienEtablissement, setEleveAncienEtablissement] =
+    React.useState("");
+  const [eleveAllergies, setEleveAllergies] = React.useState("");
+  const [eleveNotesSante, setEleveNotesSante] = React.useState("");
+
+  // ─── Détection fratrie (debounce téléphone) ───────────────────────────────
+  // On debounce le téléphone 500 ms avant de lancer la recherche fratrie
+  // (route publique `searchTuteurByPhone`) pour éviter une requête par frappe.
+  // Si un tuteur existant est trouvé, on affiche une bannière emerald et un
+  // bouton « Pré-remplir mes informations » qui remplit les champs tuteur.
+  // `retry: false` évite les retries sur 404 (tuteur inconnu = comportement
+  // normal, silencieux).
+  const [debouncedTelephone, setDebouncedTelephone] = React.useState("");
+  React.useEffect(() => {
+    const handle = setTimeout(
+      () => setDebouncedTelephone(tuteurTelephone.trim()),
+      500,
+    );
+    return () => clearTimeout(handle);
+  }, [tuteurTelephone]);
+
+  const fratrieQuery = useQuery<TuteurFratrieResult>({
+    queryKey: ["public-fratrie", debouncedTelephone],
+    queryFn: () => searchTuteurByPhone(debouncedTelephone),
+    enabled: debouncedTelephone.length >= 8,
+    retry: false,
+    staleTime: 60 * 1000,
+  });
+  const fratrieResult = fratrieQuery.data;
+  const fratrieFetching = fratrieQuery.isFetching;
+
+  /** Pré-remplit les champs tuteur depuis le résultat de la recherche fratrie. */
+  function handlePrefillTuteur() {
+    if (!fratrieResult?.found || !fratrieResult.tuteur) return;
+    const t = fratrieResult.tuteur;
+    if (t.nom) setTuteurNom(t.nom);
+    if (t.prenoms) setTuteurPrenoms(t.prenoms);
+    if (t.email) setTuteurEmail(t.email);
+    const liensValides: LienParente[] = [
+      "PERE",
+      "MERE",
+      "TUTEUR_LEGAL",
+      "AUTRE",
+    ];
+    const lien = liensValides.includes(t.lien_parente as LienParente)
+      ? (t.lien_parente as LienParente)
+      : "AUTRE";
+    setTuteurLienParente(lien);
+    toast({
+      title: "Informations pré-remplies",
+      description:
+        "Vous pouvez ajuster les champs si besoin. Votre saisie reste prioritaire.",
+    });
+  }
+
   // ─── Succès ───────────────────────────────────────────────────────────────
   const [success, setSuccess] = React.useState<SubmitResult | null>(null);
 
@@ -298,6 +364,10 @@ export function PreInscriptionForm() {
       eleve_lieu_naissance: eleveLieuNaissance.trim(),
       eleve_sexe: eleveSexe,
       eleve_categorie: appliqueCategorie ? eleveCategorie : "NON_APPLICABLE",
+      eleve_ancien_etablissement:
+        eleveAncienEtablissement.trim() || undefined,
+      eleve_allergies: eleveAllergies.trim() || undefined,
+      eleve_notes_sante: eleveNotesSante.trim() || undefined,
       tuteur_nom: tuteurNom.trim(),
       tuteur_prenoms: tuteurPrenoms.trim(),
       tuteur_telephone: tuteurTelephone.trim(),
@@ -563,6 +633,12 @@ export function PreInscriptionForm() {
                       className="pl-9"
                       autoComplete="tel"
                     />
+                    {fratrieFetching && (
+                      <Loader2
+                        aria-label="Recherche d'une fratrie existante en cours"
+                        className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 animate-spin text-emerald-600"
+                      />
+                    )}
                   </div>
                 </Field>
                 <Field label="Email">
@@ -597,6 +673,12 @@ export function PreInscriptionForm() {
                   </Select>
                 </Field>
               </div>
+              {fratrieResult?.found && fratrieResult.tuteur && (
+                <FratrieBanner
+                  result={fratrieResult}
+                  onPrefill={handlePrefillTuteur}
+                />
+              )}
             </CardContent>
           </Card>
 
@@ -673,6 +755,54 @@ export function PreInscriptionForm() {
             </CardContent>
           </Card>
 
+          {/* ─── Informations complémentaires ─────────────────────────────────── */}
+          <Card>
+            <CardContent className="space-y-4 py-6">
+              <SectionHeader
+                icon={HeartPulse}
+                title="Informations complémentaires"
+                description="Optionnel : renseignements de transfert et de santé de l'enfant."
+              />
+              <Separator />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Ancien établissement (si transfert)"
+                  hint="Précédent établissement fréquenté par l'enfant."
+                >
+                  <Input
+                    value={eleveAncienEtablissement}
+                    onChange={(e) =>
+                      setEleveAncienEtablissement(e.target.value)
+                    }
+                    placeholder="Ex: Collège Saint-Michel"
+                    autoComplete="off"
+                  />
+                </Field>
+                <Field
+                  label="Allergies connues"
+                  hint="Séparez les allergies par une virgule."
+                >
+                  <Input
+                    value={eleveAllergies}
+                    onChange={(e) => setEleveAllergies(e.target.value)}
+                    placeholder="Ex: arachides, pénicilline"
+                    autoComplete="off"
+                  />
+                </Field>
+                <div className="sm:col-span-2">
+                  <Field label="Notes santé (maladies chroniques, traitements…)">
+                    <Textarea
+                      value={eleveNotesSante}
+                      onChange={(e) => setEleveNotesSante(e.target.value)}
+                      placeholder="Ex: asthme, port de lunettes"
+                      rows={2}
+                    />
+                  </Field>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* ─── Notes ───────────────────────────────────────────────────────── */}
           <Card>
             <CardContent className="space-y-4 py-6">
@@ -729,6 +859,75 @@ export function PreInscriptionForm() {
           </p>
         </div>
       </footer>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bannière de détection fratrie
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FratrieBanner({
+  result,
+  onPrefill,
+}: {
+  result: TuteurFratrieResult;
+  onPrefill: () => void;
+}) {
+  if (!result.found || !result.tuteur) return null;
+  const t = result.tuteur;
+  const nomComplet = [t.prenoms, t.nom].filter(Boolean).join(" ").trim();
+  const nb = result.eleves?.length ?? 0;
+
+  return (
+    <div
+      role="status"
+      className="rounded-lg border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20"
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+          <Sparkles className="size-4" />
+        </div>
+        <div className="min-w-0 flex-1 space-y-2">
+          <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+            Tuteur reconnu ! {nomComplet || "Ce tuteur"} a déjà {nb}{" "}
+            enfant{nb > 1 ? "s" : ""} inscrit{nb > 1 ? "s" : ""} à cet
+            établissement.
+          </p>
+          {nb > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {result.eleves.map((el, i) => {
+                const nom = [el.prenoms, el.nom]
+                  .filter(Boolean)
+                  .join(" ")
+                  .trim();
+                return (
+                  <Badge
+                    key={`${nom}-${i}`}
+                    variant="outline"
+                    className="border-emerald-300 bg-white/80 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+                  >
+                    <Users className="mr-1 size-3" />
+                    {nom}
+                  </Badge>
+                );
+              })}
+            </div>
+          )}
+          <div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={onPrefill}
+              className="border-emerald-300 bg-white/80 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/40 dark:hover:text-emerald-100"
+            >
+              <Wand2 className="size-3.5" />
+              Pré-remplir mes informations
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

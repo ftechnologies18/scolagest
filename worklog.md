@@ -2600,3 +2600,160 @@ Stage Summary:
   documentés dans password_reset_service.go).
 - 8 fichiers (3 backend créés + 2 modifiés, 1 client + 3 pages + 2 liens
   frontend). Nouvelle table Neon password_reset_tokens (AutoMigrate).
+
+
+---
+Task ID: evo-pre-inscription-form
+Agent: Z.ai Code (tuteur principal)
+Task: Évolution du formulaire PUBLIC de pré-inscription — détection fratrie
+automatique + champs complémentaires (transfert & santé).
+
+Work Log:
+- Contexte relu : le formulaire `pre-inscription-form.tsx` (page publique
+  `/pre-inscription`, sans auth) existait déjà avec sections Établissement →
+  Élève → Tuteur → Classe souhaitée → Notes + écran de succès avec token de
+  suivi. Le client `@/lib/api-pre-inscription` expose déjà `searchTuteurByPhone`
+  (route publique GET /api/public/pre-inscriptions/search-tuteur?telephone=…)
+  et les types `TuteurFratrieResult` / `TuteurLite` / `EleveLite`, ainsi que
+  les 3 nouveaux champs optionnels (`eleve_ancien_etablissement`,
+  `eleve_allergies`, `eleve_notes_sante`) dans `PreInscriptionDTO`. Aucun
+  changement backend nécessaire.
+- Fichier modifié (1) :
+  Frontend/src/components/pre-inscription/pre-inscription-form.tsx
+    • Imports lucide-react : ajout de `HeartPulse` (section santé),
+      `Sparkles` (bannière fratrie), `Wand2` (bouton pré-remplir).
+    • Imports api-pre-inscription : ajout de `searchTuteurByPhone` et du type
+      `TuteurFratrieResult` (l'export existait déjà côté client API).
+    • Évolution 1 — Détection fratrie automatique :
+      - Debounce 500 ms du téléphone (`tuteurTelephone`) via un état
+        `debouncedTelephone` + `useEffect`/`setTimeout` (cleanup du timer).
+      - `useQuery<TuteurFratrieResult>` avec clé
+        `["public-fratrie", debouncedTelephone]`, `enabled:
+        debouncedTelephone.length >= 8`, `retry: false` (évite les retries
+        sur 404 = tuteur inconnu) et `staleTime: 60s`.
+      - Si `result.found === true` : affichage d'une `FratrieBanner`
+        (nouveau sous-composant) en emerald sous les champs tuteur, avec :
+          * message « Tuteur reconnu ! [Prénoms Nom] a déjà [N] enfant(s)
+            inscrit(s) à cet établissement. »
+          * badges outline emerald listant les enfants existants
+            ([Prénoms Nom] avec icône Users),
+          * bouton outline emerald « Pré-remplir mes informations » (icône
+            Wand2) qui appelle `handlePrefillTuteur` : remplit
+        tuteur_nom / tuteur_prenoms / tuteur_email / tuteur_lien_parente
+        (cast sécurisé via liste blanche `["PERE","MERE","TUTEUR_LEGAL",
+        "AUTRE"]`, fallback "AUTRE") + toast de confirmation.
+      - Si pas trouvé : rien n'est affiché (silencieux, comportement normal).
+      - Spinner `Loader2` (emerald) à droite du champ téléphone pendant
+        `isFetching` (aria-label « Recherche d'une fratrie existante en
+        cours ») — feedback visuel pendant le debounce + la requête.
+      - Comportement attendu respecté : si le parent modifie manuellement un
+        champ après pré-remplissage, c'est sa valeur qui prime (les setters
+        React écrasent simplement la valeur pré-remplie, aucune synchro
+        inverse n'est en place).
+    • Évolution 2 — Section « Informations complémentaires » (optionnelle) :
+      nouvelle Card placée après la section « Classe souhaitée » et avant
+      la section « Notes », avec icône `HeartPulse` et 3 champs :
+        - `eleve_ancien_etablissement` (Input, label « Ancien établissement
+          (si transfert) », placeholder « Ex: Collège Saint-Michel »),
+        - `eleve_allergies` (Input, label « Allergies connues », placeholder
+          « Ex: arachides, pénicilline »),
+        - `eleve_notes_sante` (Textarea rows=2, label « Notes santé
+          (maladies chroniques, traitements…) », placeholder « Ex: asthme,
+          port de lunettes »), en `sm:col-span-2` pour occuper toute la
+        largeur.
+      Tous optionnels. Inclus dans le payload `submitPreInscription(dto)` :
+        eleve_ancien_etablissement: eleveAncienEtablissement.trim() || undefined,
+        eleve_allergies: eleveAllergies.trim() || undefined,
+        eleve_notes_sante: eleveNotesSante.trim() || undefined,
+    • JSDoc d'en-tête mis à jour pour mentionner la détection fratrie et la
+      nouvelle section.
+    • Aucun cassage des fonctionnalités existantes : cascade
+      Cycle→Niveau→Classe, sélecteur d'établissement, écran de succès avec
+      token + lien de suivi + bouton copier, toast succès/erreur, design
+      glassmorphism (dégradé emerald + orbes blur-3xl + footer sticky).
+    • Tous les appels API restent publics (`skipAuth: true` via
+      `searchTuteurByPhone` et `submitPreInscription`).
+- Qualité :
+  - cd Frontend && bun run lint → 0 erreur, 3 warnings pré-existants dans
+    step-scolarite.tsx (hors périmètre, inchangés) ✓
+  - cd Frontend && bunx tsc --noEmit → 0 erreur sur le fichier modifié
+    (pre-inscription-form.tsx) ✓. 15 erreurs pré-existantes documentées
+    (login-form.tsx ×8 Framer Motion, view-impayes.tsx ×2 toast,
+    view-parametres.tsx ×1 Record<RoleGlobal>, view-utilisateurs ×1,
+    etablissement-form-dialog ×1, utilisateur-form-dialog ×1,
+    instrumentation ×1) inchangées. Note : 1 erreur pré-existente
+    supplémentaire dans `api-pre-inscription.ts` (ligne 220,
+    `retry: false` passé à `apiGet` — `RequestOptions` ne supporte pas
+    `retry`) ; ce fichier a été modifié par une tâche antérieure non
+    journalisée et est hors périmètre (« Ne modifie pas d'autres fichiers
+    que pre-inscription-form.tsx »). L'erreur n'est pas bloquante à
+    l'exécution (la propriété est ignorée par le client API) et n'a pas
+    été introduite par cette tâche.
+- Aucun changement backend, DB, schema, ou .env. Aucun nouveau fichier.
+
+Stage Summary:
+- 1 fichier modifié (pre-inscription-form.tsx). 2 évolutions livrées :
+  (1) détection fratrie automatique au téléphone (debounce 500ms + useQuery
+  retry:false sur searchTuteurByPhone + bannière emerald avec badges enfants
+  + bouton « Pré-remplir mes informations »), (2) section optionnelle
+  « Informations complémentaires » avec 3 champs (ancien établissement,
+  allergies, notes santé) inclus dans le payload de soumission.
+- Design existant préservé (glassmorphism emerald/amber, responsive
+  mobile-first, footer sticky). Fonctionnalités existantes intactes
+  (cascade classe, établissement, écran succès avec token).
+- 0 erreur lint, 0 erreur tsc sur le fichier modifié. 15 erreurs pré-
+  existentes documentées inchangées (+ 1 erreur pré-existente dans
+  api-pre-inscription.ts hors périmètre, non introduite par cette tâche).
+
+---
+Task ID: evo-pre-inscription-5-innovations
+Agent: Z.ai Code (tuteur principal) + subagent full-stack
+Task: Implémenter les 5 évolutions futures de la pré-inscription.
+
+Work Log:
+- Évolution 1 — Envoi automatique du lien par email :
+  - services/notification_service.go (NOUVEAU) : NotificationService avec SMTP
+    (net/smtp standard). Config via env (SMTP_HOST, SMTP_PORT, SMTP_USER,
+    SMTP_PASSWORD, SMTP_FROM). Si non configuré → mode dev (log console).
+    3 méthodes métier : NotifyParentPreInscriptionSoumise (lien suivi),
+    NotifyParentPreInscriptionValidee (identifiant + classe),
+    NotifyParentPreInscriptionRejetee (motif).
+  - Intégré dans Submit/Valider/Rejeter du PreInscriptionService.
+- Évolution 2 — Notifications staff (badge sidebar) :
+  - Backend : PreInscriptionService.CountSoumises(etbID) → compte SOUMISE+EN_REVUE.
+    Route GET /api/pre-inscriptions/count-soumises.
+  - Frontend : dashboard-shell.tsx — useQuery polling 30s sur
+    fetchCountSoumises, badge emerald sur l'item "Pré-inscriptions" (count
+    si > 0, "99+" si > 99). Badge masqué pour les rôles sans accès.
+- Évolution 3 — Pré-remplissage fratrie :
+  - Backend : PreInscriptionService.SearchTuteurByPhone(tel) → recherche
+    tuteur par téléphone normalisé, retourne tuteur + élèves (données non
+    sensibles : nom, prénoms seulement). Route publique
+    GET /api/public/pre-inscriptions/search-tuteur?telephone=...
+  - Frontend (subagent) : pre-inscription-form.tsx — debounce 500ms sur
+    champ téléphone, useQuery searchTuteurByPhone, bannière emerald si
+    trouvé avec liste des enfants + bouton "Pré-remplir mes informations".
+- Évolution 4 — Statut EN_REVUE automatique :
+  - Backend : PreInscriptionService.autoTransitionEnRevue(etbID) —
+    transition SOUMISE→EN_REVUE après 24h (lazy, exécuté sur List()).
+    Évite d'avoir un cron. Seuil : time.Now().Add(-24h).
+- Évolution 5 — Champs supplémentaires (transfert, santé) :
+  - Backend : PreInscription model + 3 champs (eleve_ancien_etablissement,
+    eleve_allergies, eleve_notes_sante). AutoMigrate Neon automatique.
+    DTO + Submit mis à jour.
+  - Frontend (subagent) : pre-inscription-form.tsx — nouvelle section
+    "Informations complémentaires" avec 3 champs optionnels (ancien
+    établissement, allergies, notes santé).
+- Qualité :
+  - Backend : go build ✓, go vet ✓ (Go 1.25 local).
+  - Frontend : bun run lint → 0 erreur ✓ ; bunx tsc → 0 erreur sur
+    fichiers modifiés ✓ (15 pré-existantes) ; bun run build ✓ (prerender OK).
+- 9 fichiers modifiés/créés (4 backend, 5 frontend). AutoMigrate Neon
+  ajoutera les 3 nouvelles colonnes à pre_inscriptions au démarrage.
+
+Stage Summary:
+- 5 évolutions livrées en une fois : email automatique (SMTP + fallback log),
+  badge notifications staff (polling 30s), détection fratrie (pré-remplissage),
+  auto-transition EN_REVUE (24h lazy), champs santé/transfert.
+- Mode démo SMTP : logge les emails en console (prod = ajouter SMTP_HOST etc).
+- Aucune migration manuelle Neon (AutoMigrate gère les 3 nouvelles colonnes).

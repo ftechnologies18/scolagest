@@ -21,6 +21,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -82,6 +83,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuthStore, type Etablissement, type Role } from "@/lib/auth-store";
 import { apiGet } from "@/lib/api-client";
+import { fetchCountSoumises } from "@/lib/api-pre-inscription";
 import { useToast } from "@/hooks/use-toast";
 
 /** Item de navigation pour la coquille — un `href` App Router (URL réelle). */
@@ -355,6 +357,19 @@ export function DashboardShell({
     };
   }, [showEtablissement]);
 
+  // Badge notifications : compte les pré-inscriptions en attente (polling 30s).
+  // Uniquement pour les rôles qui ont accès au module pré-inscriptions.
+  const hasPreInscriptionAccess = role === "SECRETARIAT" || role === "DIRECTION" ||
+    role === "DIRECTEUR_ETUDES" || role === "DIRECTEUR_SUPERVISEUR";
+  const { data: preInscriptionCount } = useQuery({
+    queryKey: ["pre-inscriptions", "count-soumises"],
+    queryFn: fetchCountSoumises,
+    enabled: !!etablissement && hasPreInscriptionAccess,
+    refetchInterval: 30_000, // polling toutes les 30s
+    refetchOnWindowFocus: true,
+  });
+  const pendingCount = preInscriptionCount?.count ?? 0;
+
   // Filtrage RBAC des groupes de navigation.
   const visibleGroups = useMemo<NavGroup[]>(() => {
     return navGroups
@@ -498,7 +513,20 @@ export function DashboardShell({
                           )}
                         />
                         <span className="truncate">{item.label}</span>
-                        {active && (
+                        {/* Badge notifications pré-inscriptions */}
+                        {item.href === "/pre-inscriptions" && pendingCount > 0 && (
+                          <span
+                            className={cn(
+                              "ml-auto flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
+                              active
+                                ? "bg-white text-emerald-700"
+                                : "bg-emerald-600 text-white",
+                            )}
+                          >
+                            {pendingCount > 99 ? "99+" : pendingCount}
+                          </span>
+                        )}
+                        {active && item.href !== "/pre-inscriptions" && (
                           <CheckCircle2 className="ml-auto size-3.5 text-white/90" />
                         )}
                       </Link>
