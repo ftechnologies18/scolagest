@@ -77,9 +77,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Table,
@@ -121,6 +118,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ExerciceFormDialog } from "@/components/comptabilite/exercice-form-dialog";
 import { CompteFormDialog } from "@/components/comptabilite/compte-form-dialog";
+import { GlassCard } from "@/components/ds/glass-card";
+import { StatCard } from "@/components/ds/stat-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constantes
@@ -153,13 +153,14 @@ export default function ComptabiliteView() {
 
   return (
     <div className="space-y-4">
+      <KentePattern variant="strip" position="top" />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
             <BookOpen className="size-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">
+            <h1 className="font-display text-xl font-bold tracking-tight">
               Comptabilité générale
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -173,6 +174,8 @@ export default function ComptabiliteView() {
           </div>
         </div>
       </div>
+
+      <KentePattern variant="separator" className="my-2" />
 
       {!etablissement?.id ? (
         <Card className="border-dashed">
@@ -298,7 +301,7 @@ function ExercicesPanel() {
         {canManage && (
           <Button
             onClick={() => setFormOpen(true)}
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
+            variant="success"
             size="sm"
           >
             <Plus className="size-4" />
@@ -307,8 +310,8 @@ function ExercicesPanel() {
         )}
       </div>
 
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div>
           {isLoading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -373,8 +376,8 @@ function ExercicesPanel() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       <ExerciceFormDialog open={formOpen} onOpenChange={setFormOpen} />
 
@@ -481,7 +484,7 @@ function PlanComptablePanel() {
         {canManage && (
           <Button
             onClick={() => setFormOpen(true)}
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
+            variant="success"
             size="sm"
           >
             <Plus className="size-4" />
@@ -516,16 +519,14 @@ function PlanComptablePanel() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {TYPE_COMPTE_ORDER.map((type) => (
-            <Card key={type} className="overflow-hidden">
-              <CardHeader className="bg-muted/30 py-3">
-                <CardTitle className="flex items-center justify-between text-sm">
-                  <span>{TYPE_COMPTE_LABEL[type]}</span>
-                  <Badge variant="outline" className={cn(TYPE_COMPTE_CLS[type])}>
-                    {grouped[type].length}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
+            <GlassCard key={type} variant="adaptive" noHover className="overflow-hidden p-0">
+              <div className="flex items-center justify-between bg-muted/30 px-5 py-3">
+                <h3 className="font-display text-sm font-semibold">{TYPE_COMPTE_LABEL[type]}</h3>
+                <Badge variant="outline" className={cn(TYPE_COMPTE_CLS[type])}>
+                  {grouped[type].length}
+                </Badge>
+              </div>
+              <div>
                 {grouped[type].length === 0 ? (
                   <p className="px-4 py-6 text-center text-xs text-muted-foreground">
                     Aucun compte de type {TYPE_COMPTE_LABEL[type].toLowerCase()}.
@@ -533,8 +534,8 @@ function PlanComptablePanel() {
                 ) : (
                   <CompteTreeList comptes={grouped[type]} />
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </GlassCard>
           ))}
         </div>
       )}
@@ -680,8 +681,8 @@ function EcrituresPanel() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <GlassCard variant="adaptive" noHover>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1.5">
             <Label className="text-xs">Exercice</Label>
             <Select value={exerciceId} onValueChange={setExerciceId}>
@@ -755,8 +756,8 @@ function EcrituresPanel() {
               Réinitialiser
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -783,8 +784,8 @@ function EcrituresPanel() {
         </Button>
       </div>
 
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div>
           {isLoading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -862,8 +863,8 @@ function EcrituresPanel() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -1095,8 +1096,8 @@ function GrandLivrePanel() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <GlassCard variant="adaptive" noHover>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1.5">
             <Label className="text-xs">Exercice</Label>
             <Select value={exerciceId} onValueChange={setExerciceId}>
@@ -1172,8 +1173,8 @@ function GrandLivrePanel() {
               Réinitialiser
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -1231,10 +1232,10 @@ function GrandLivrePanel() {
       ) : (
         <div className="space-y-4">
           {(grandLivre as GrandLivreResult).comptes.map((c) => (
-            <Card key={c.compte_id} className="overflow-hidden">
-              <CardHeader className="bg-muted/30 py-3">
-                <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                  <span>
+            <GlassCard key={c.compte_id} variant="adaptive" noHover className="overflow-hidden p-0">
+              <div className="bg-muted/30 px-5 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <span className="font-display font-semibold">
                     <span className="font-mono">{c.numero}</span>
                     {" — "}
                     {c.libelle}
@@ -1261,9 +1262,9 @@ function GrandLivrePanel() {
                       </span>
                     </Badge>
                   </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
+                </div>
+              </div>
+              <div>
                 {c.mouvements.length === 0 ? (
                   <p className="px-4 py-6 text-center text-xs text-muted-foreground">
                     Aucun mouvement sur ce compte.
@@ -1320,12 +1321,12 @@ function GrandLivrePanel() {
                     </Table>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </GlassCard>
           ))}
 
-          <Card className="bg-muted/30">
-            <CardContent className="flex items-center justify-between py-3">
+          <GlassCard variant="adaptive" noHover className="bg-muted/30 p-3">
+            <div className="flex items-center justify-between">
               <span className="text-xs font-medium uppercase text-muted-foreground">
                 Totaux généraux
               </span>
@@ -1337,8 +1338,8 @@ function GrandLivrePanel() {
                   Crédit : {formatFCFA(grandLivre.total_credit)}
                 </span>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
         </div>
       )}
     </div>
@@ -1382,8 +1383,8 @@ function BilanPanel() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <GlassCard variant="adaptive" noHover>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1.5">
             <Label className="text-xs">Exercice</Label>
             <Select value={exerciceId} onValueChange={setExerciceId}>
@@ -1409,8 +1410,8 @@ function BilanPanel() {
             <Loader2 className={cn("size-3.5", isFetching && "animate-spin")} />
             Actualiser
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1437,42 +1438,48 @@ function BilanPanel() {
         <div className="space-y-4">
           {/* 4 cartes section */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <BilanCard
-              title="Actif"
-              total={bilan.actif.total}
+            <StatCard
               icon={Wallet}
-              accent="emerald"
+              label="Actif"
+              value={formatFCFA(bilan.actif.total)}
+              tone="emerald"
+              delay={0}
             />
-            <BilanCard
-              title="Passif"
-              total={bilan.passif.total}
+            <StatCard
               icon={Scale}
-              accent="amber"
+              label="Passif"
+              value={formatFCFA(bilan.passif.total)}
+              tone="amber"
+              delay={0.05}
             />
-            <BilanCard
-              title="Produits"
-              total={bilan.produits.total}
+            <StatCard
               icon={TrendingUp}
-              accent="emerald"
+              label="Produits"
+              value={formatFCFA(bilan.produits.total)}
+              tone="emerald"
+              delay={0.1}
             />
-            <BilanCard
-              title="Charges"
-              total={bilan.charges.total}
+            <StatCard
               icon={TrendingDown}
-              accent="rose"
+              label="Charges"
+              value={formatFCFA(bilan.charges.total)}
+              tone="terracotta"
+              delay={0.15}
             />
           </div>
 
           {/* Résultat */}
-          <Card
+          <GlassCard
+            variant="adaptive"
+            noHover
             className={cn(
-              "border-l-4",
+              "border-l-4 p-4",
               isProfit
-                ? "border-l-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20"
-                : "border-l-rose-500 bg-rose-50/40 dark:bg-rose-950/20",
+                ? "border-l-emerald-500"
+                : "border-l-rose-500",
             )}
           >
-            <CardContent className="flex flex-col items-start justify-between gap-2 py-4 sm:flex-row sm:items-center">
+            <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
               <div className="flex items-center gap-3">
                 {isProfit ? (
                   <div className="flex size-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
@@ -1494,7 +1501,7 @@ function BilanPanel() {
               </div>
               <p
                 className={cn(
-                  "font-mono text-2xl font-bold",
+                  "font-mono text-2xl font-bold font-display",
                   isProfit
                     ? "text-emerald-700 dark:text-emerald-300"
                     : "text-rose-700 dark:text-rose-300",
@@ -1502,8 +1509,8 @@ function BilanPanel() {
               >
                 {formatFCFA(resultat)}
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
 
           {/* Détails par section */}
           <div className="grid gap-4 lg:grid-cols-2">
@@ -1534,46 +1541,6 @@ function BilanPanel() {
   );
 }
 
-function BilanCard({
-  title,
-  total,
-  icon: Icon,
-  accent,
-}: {
-  title: string;
-  total: number;
-  icon: React.ComponentType<{ className?: string }>;
-  accent: "emerald" | "amber" | "rose";
-}) {
-  const cls: Record<string, string> = {
-    emerald:
-      "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
-    amber:
-      "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
-    rose: "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
-  };
-  return (
-    <Card>
-      <CardContent className="flex items-center justify-between py-4">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            {title}
-          </p>
-          <p className="mt-1 font-mono text-xl font-bold">{formatFCFA(total)}</p>
-        </div>
-        <div
-          className={cn(
-            "flex size-10 items-center justify-center rounded-full",
-            cls[accent],
-          )}
-        >
-          <Icon className="size-5" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function BilanDetailTable({
   title,
   section,
@@ -1590,13 +1557,13 @@ function BilanDetailTable({
     rose: "text-rose-700 dark:text-rose-300",
   };
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="bg-muted/30 py-3">
-        <CardTitle className={cn("text-sm", headerCls[accent])}>
+    <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+      <div className="bg-muted/30 px-5 py-3">
+        <h3 className={cn("font-display text-sm font-semibold", headerCls[accent])}>
           {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
+        </h3>
+      </div>
+      <div>
         {section.comptes.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-muted-foreground">
             Aucun compte mouvementé.
@@ -1642,8 +1609,8 @@ function BilanDetailTable({
             </Table>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }
 

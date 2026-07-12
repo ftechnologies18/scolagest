@@ -16,7 +16,10 @@ import {
   KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
+import { StatCard } from "@/components/ds/stat-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -76,6 +79,33 @@ const STATUT_CLS: Record<string, string> = {
   ACTIF: "border-emerald-200 bg-emerald-50 text-emerald-700",
   INACTIF: "border-muted-foreground/20 bg-muted text-muted-foreground",
   BLOQUE: "border-rose-200 bg-rose-50 text-rose-700",
+};
+
+// Tones & icônes DS Forêt EdTech pour les StatCards par rôle :
+//  - terracotta : privilège élevé / danger (SUPER_ADMIN)
+//  - gold       : leadership premium (DIRECTION, DIRECTEUR_*)
+//  - emerald    : opérations actives (CAISSIER, COMPTABLE, SECRETARIAT)
+const ROLE_TONE: Record<
+  string,
+  "emerald" | "amber" | "terracotta" | "gold"
+> = {
+  SUPER_ADMIN: "terracotta",
+  DIRECTION: "gold",
+  DIRECTEUR_ETUDES: "gold",
+  DIRECTEUR_SUPERVISEUR: "gold",
+  CAISSIER: "emerald",
+  COMPTABLE: "emerald",
+  SECRETARIAT: "emerald",
+};
+
+const ROLE_ICON: Record<string, typeof UserCog> = {
+  SUPER_ADMIN: ShieldCheck,
+  DIRECTION: ShieldCheck,
+  DIRECTEUR_ETUDES: UserCog,
+  DIRECTEUR_SUPERVISEUR: UserCog,
+  CAISSIER: UserCog,
+  COMPTABLE: UserCog,
+  SECRETARIAT: UserCog,
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -154,15 +184,16 @@ export default function UtilisateursView() {
 
   return (
     <div className="space-y-6">
+      <KentePattern variant="strip" position="top" />
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold">Utilisateurs</h2>
+          <h2 className="font-display text-xl font-bold tracking-tight">Utilisateurs</h2>
           <p className="text-sm text-muted-foreground">
             Comptes staff, rôles RBAC et accès multi-établissements.
           </p>
         </div>
-        <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleCreate}>
+        <Button variant="success" onClick={handleCreate}>
           <Plus className="mr-2 size-4" />
           Nouvel utilisateur
         </Button>
@@ -195,9 +226,11 @@ export default function UtilisateursView() {
         </Select>
       </div>
 
+      <KentePattern variant="separator" className="my-2" />
+
       {/* Tableau */}
-      <Card>
-        <CardContent className="p-0">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div>
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="size-8 animate-spin text-emerald-600" />
@@ -259,22 +292,24 @@ export default function UtilisateursView() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {/* Stats */}
       {filteredUsers.length > 0 && (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-          {Object.entries(ROLE_LABELS).map(([role, label]) => {
+          {Object.entries(ROLE_LABELS).map(([role, label], index) => {
             const count = filteredUsers.filter((u) => u.role_global === role).length;
             if (count === 0) return null;
             return (
-              <Card key={role}>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold">{count}</p>
-                  <p className="text-xs text-muted-foreground">{label}</p>
-                </CardContent>
-              </Card>
+              <StatCard
+                key={role}
+                icon={ROLE_ICON[role] ?? UserCog}
+                label={label}
+                value={count}
+                tone={ROLE_TONE[role] ?? "emerald"}
+                delay={index * 0.05}
+              />
             );
           })}
         </div>
