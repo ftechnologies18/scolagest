@@ -6175,3 +6175,50 @@ Stage Summary:
   DS en suivant le pattern établi dans fe-4), puis audit `kpi-card.tsx`
   (désormais plus utilisé dans le dashboard home — décider suppression
   vs conservation comme wrapper legacy pour vues Rapports).
+
+---
+Task ID: fe-3a/b-fix
+Agent: Z.ai Code (tuteur principal)
+Task: Correction du chrome Forêt EdTech — le subagent fe-3a/b avait modifié
+dashboard-layout.tsx (fichier UNUSED) au lieu de dashboard-shell.tsx (vrai
+composant rendu, importé par (staff)/layout.tsx et (saas)/layout.tsx).
+
+Work Log:
+- Diagnostic : computed styles via agent-browser eval JS ont révélé que la
+  sidebar rendait `bg-background` (classe shadcn) au lieu de `bg-forest`.
+  Investigation : (staff)/layout.tsx importe `DashboardShell` depuis
+  `dashboard-shell.tsx`, PAS `DashboardLayout` depuis `dashboard-layout.tsx`.
+  Le fichier `dashboard-layout.tsx` est unused (mentionné seulement dans des
+  commentaires de vues). Le subagent fe-3a/b a modifié le mauvais fichier.
+- Fix : application manuelle des changements Forêt EdTech sur dashboard-shell.tsx
+  (le BON fichier, 944 lignes) via MultiEdit + Edit :
+  • Sidebar : bg-forest (aside + SheetContent mobile), logo border-2 border-gold/40,
+    text-white font-display, nav items actifs gradient emerald, inactifs
+    text-emerald-100/80 hover:bg-white/10, icônes hover text-amber-300,
+    CheckCircle2 text-amber-300, carte user bg-white/5 avatar border-gold/40.
+  • Topbar : bg-forest/95 backdrop-blur-xl border-white/10, titre font-display
+    text-white, recherche bg-white/5 border-white/10 text-white, pastille notif
+    bg-terracotta animate-pulse, separator bg-white/10, menu user hover:bg-white/10
+    avatar border-gold/40 text-white.
+  • Contrôle 3 modes sidebar : boutons text-emerald-100/60 hover:bg-white/10,
+    item expanded actif bg-white/10 text-amber-300.
+  • Bandes kente : <KentePattern strip bottom> avant carte user sidebar,
+    <KentePattern strip top> avant footer.
+  • Footer : bg-forest text-emerald-100/70 border-white/10.
+  • Import KentePattern ajouté (et doublon supprimé).
+- Revert dashboard-layout.tsx à son état d'origine (commit 741c554) pour éviter
+  confusion (fichier unused avec changements Forêt non appliqués visuellement).
+- Vérification visuelle via agent-browser + VLM :
+  • Computed styles : sidebar bg = rgb(6, 78, 59) = #064E3B (forest) ✓
+  • Topbar bg = oklab(0.378.../0.95) = forest sombre avec blur ✓
+  • VLM note 7/10 : sidebar forest + bordure gold + kente ✓, topbar forest blur ✓,
+    KPIs glassmorphism ✓, palette africaine + kente ✓.
+    Points d'amélioration : pastille notif terracotta petite (size-1.5), données
+    KPI qui chargent (useQuery async).
+
+Stage Summary:
+- Chrome Forêt EdTech correctement appliqué sur dashboard-shell.tsx (vrai composant).
+- dashboard-layout.tsx reverté (unused, éviter confusion).
+- Identité visuelle Forêt EdTech confirmée par VLM (7/10) : sidebar/topbar dark
+  forest, glassmorphism KPIs, accents kente/gold, palette africaine.
+- Prêt pour Phase 5 (migration vues caisse/eleves/rapports).
