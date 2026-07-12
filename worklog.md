@@ -6222,3 +6222,872 @@ Stage Summary:
 - Identité visuelle Forêt EdTech confirmée par VLM (7/10) : sidebar/topbar dark
   forest, glassmorphism KPIs, accents kente/gold, palette africaine.
 - Prêt pour Phase 5 (migration vues caisse/eleves/rapports).
+
+---
+Task ID: fe-5a
+Agent: Z.ai Code (tuteur principal — migration vues)
+Task: Migration de la vue « Caisse » vers le Design System « Forêt EdTech ».
+Vue caisse = view-caisse.tsx + 5 sous-composants caisse (dashboard-caisse,
+file-attente, paiements-list, cloture-caisse, paiement-entry-form).
+
+Work Log:
+- Lecture préalable : worklog fe-0 à fe-4 + fe-3a/b-fix, primitives DS
+  (glass-card.tsx, stat-card.tsx, kente-pattern.tsx), vue caisse + 5
+  sous-composants.
+- Stratégie : chirurgical — toucher UNIQUEMENT rendu JSX + imports.
+  Préserver 100% de la logique (useQuery, useMutation, polling 30s,
+  invalidations React Query, guards d'auth, états loading/error/empty).
+  Préserver les Dialogs (modals) — laissés tels quels avec leur Card
+  shadcn styling.
+- 6 fichiers modifiés (tous en MultiEdit + Edit), 0 fichier créé,
+  0 ligne de logique supprimée, 0 nouvelle erreur TypeScript/ESLint.
+
+### 1. view-caisse.tsx (149 lignes, +4)
+- Imports : ajout `KentePattern` depuis `@/components/ds/kente-pattern`.
+- Bande kente header : `<KentePattern variant="strip" position="top" />`
+  ajouté en tête de vue (avant le header h1).
+- Titre h1 « Caisse » : ajout classe `font-display` (Poppins fe-1c).
+- Séparateur kente : `<KentePattern variant="separator" />` ajouté
+  entre le header (h1 + badge établissement) et le `<Tabs>` principal.
+- Logique 100% préservée : useQuery fetchFileAttente, polling 30s,
+  fileCount, setTab, fileAttenteKeys — INTACTS.
+
+### 2. dashboard-caisse.tsx (445 lignes, -104)
+- Imports : retrait `CardHeader`, `CardTitle`, `ArrowRight` (lucide),
+  `React` namespace (n'était plus utilisé après suppression KpiCard).
+  Ajout `GlassCard`, `StatCard`, `KentePattern`.
+- KpiCard interne supprimée (interface KpiCardProps + TONE_CLS +
+  function KpiCard — ~104 lignes) : remplacée par primitive DS
+  StatCard (fe-2d) qui fournit les mêmes tones + animations +
+  respect prefers-reduced-motion.
+- 4 KPIs migrés vers StatCard (mapping tones brief) :
+  • Total encaissé → tone="emerald" (Wallet) delay=0
+  • Transactions → tone="sky" (Receipt) delay=0.05
+  • File d'attente → tone="amber" (Users) delay=0.1 + onClick
+    conditionnel (passe onJumpToFileAttente si fileAttenteCount>0)
+  • Annulations → tone="terracotta" (XCircle) delay=0.15
+  Stagger via `delay` prop (0/0.05/0.1/0.15s) — pas de motion.div
+  wrapper (StatCard gère l'animation en interne).
+- Séparateur kente : `<KentePattern variant="separator" />` ajouté
+  entre les 4 KPIs et la grid Répartition/Derniers encaissements.
+- Carte « Répartition par mode » : `<Card><CardHeader><CardTitle>
+  <CardContent>` → `<GlassCard variant="adaptive" noHover>` avec
+  `<div className="mb-3 flex items-center gap-2">` + `<h3 className=
+  "font-display text-sm font-semibold">`. `noHover` ajouté (carte
+  non-interactive).
+- Carte « Derniers encaissements » : même pattern, `className=
+  "overflow-hidden p-0"` pour préserver le rendu borderless de la
+  liste scrollable (max-h-96 divide-y).
+- États préservés : !etablissement (Card amber + AlertCircle),
+  isLoading (4 Skeleton h-24), isError (Card rose + RefreshCw button)
+  — TOUS INTACTS en `<Card>` shadcn (stylés conditionnellement).
+- Logique 100% préservée : useQuery fetchDashboardCaisse, polling
+  30s, refetchOnWindowFocus, dashboardCaisseKeys.today(), refetch(),
+  isFetching, totalEncaisse/nbTransactions/fileAttenteCount/
+  nbAnnulations/panierMoyen/repartition/derniers — INTACTS.
+- Bouton « Actualiser » (ghost) NON touché (secondaire, pas CTA
+  principal).
+
+### 3. file-attente.tsx (638 lignes, +4)
+- Imports : retrait `CardHeader`, `CardTitle` (déjà unused avant
+  migration — nettoyage opportun). Ajout `GlassCard`.
+- Cartes élève (dans .map) : `<Card className="overflow-hidden
+  transition-shadow hover:shadow-md"><CardContent className="flex
+  flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">`
+  → `<GlassCard variant="adaptive" noHover className="overflow-hidden
+  p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center
+  sm:justify-between">`. `noHover` ajouté (la carte elle-même n'est
+  pas un bouton — le bouton Encaisser est à l'intérieur).
+- Bouton « Encaisser » (par élève, hors dialog) : `className="h-11
+  w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"`
+  → `variant="success" className="h-11 w-full sm:w-auto"`. Variant
+  success DS (gradient emerald fe-2a) remplace le style inline.
+- Dialog EncaissementDialog (modal) : NON TOUCHÉ (DialogContent +
+  DialogHeader + bouton « Valider l'encaissement » avec bg-emerald-600
+  inline — préservé tel quel conformément au brief).
+- États préservés : !etablissement, isLoading (4 Skeleton h-28),
+  isError, count===0 (Card emerald CheckCircle2) — TOUS INTACTS en
+  `<Card>` shadcn.
+- Logique 100% préservée : useQuery fetchFileAttente (polling 30s),
+  useMutation createPaiement, queryClient.invalidateQueries (4 clés :
+  fileAttenteKeys, dashboardCaisseKeys, paiementsKeys, soldesKeys),
+  toast onSuccess, setDialogEleve, eleveNom, sourceBadge,
+  MODE_OPTIONS, PROVIDER_OPTIONS — INTACTS.
+
+### 4. paiements-list.tsx (610 lignes, +3)
+- Imports : retrait `Card, CardContent` (plus utilisés). Ajout
+  `GlassCard`, `KentePattern`.
+- Carte « Filtres » : `<Card><CardContent className="grid gap-3
+  sm:grid-cols-2 lg:grid-cols-4">` → `<GlassCard variant="adaptive"
+  noHover className="p-4"><div className="grid gap-3 sm:grid-cols-2
+  lg:grid-cols-4">`. Filtres dateDebut/dateFin/mode/moiOnly INTACTS.
+- Séparateur kente : `<KentePattern variant="separator" />` ajouté
+  entre Filtres et Tableau.
+- Carte « Tableau » : `<Card className="overflow-hidden">
+  <CardContent className="p-0">` → `<GlassCard variant="adaptive"
+  noHover className="overflow-hidden p-0"><div>`. Rendu borderless
+  pour la table + cartes mobiles préservé.
+- États préservés : isLoading (6 Skeleton h-10), isError (rose
+  AlertCircle), paiements.length === 0 (History muted) — TOUS
+  INTACTS dans la GlassCard (pas besoin de Card shadcn ici).
+- Pagination : boutons Précédent/Suivant (outline) NON touchés.
+- Dialog Annulation : NON TOUCHÉ (modal préservé).
+- Dialog RecuDialog : NON TOUCHÉ.
+- Logique 100% préservée : useQuery fetchPaiements, useMutation
+  annulerPaiement, queryClient.invalidateQueries (paiementsKeys),
+  pagination (page, totalPages, setPage), filtres (dateDebut,
+  dateFin, mode, moiOnly, useMemo params, useEffect reset page),
+  handleOpenAnnulation, handleConfirmAnnulation, toast — INTACTS.
+
+### 5. cloture-caisse.tsx (509 lignes, +3)
+- Imports : retrait `Card, CardContent` (plus utilisés), retrait
+  `CardHeader, CardTitle`. Ajout `GlassCard`, `KentePattern`.
+- Carte « Clôture de caisse — {date} » : `<Card><CardHeader>
+  <CardTitle className="flex items-center gap-2 text-base"><Lock/>
+  Clôture...</CardTitle></CardHeader><CardContent className="space-y-4">`
+  → `<GlassCard variant="adaptive" noHover><div className="mb-4 flex
+  items-center gap-2"><Lock/><h3 className="font-display text-base
+  font-semibold">Clôture...</h3></div><div className="space-y-4">`.
+- Carte « Paiements du jour ({count}) » : même pattern avec
+  `className="overflow-hidden p-0"` + header div padding p-5 pb-3
+  pour préserver le rendu borderless de la table.
+- Séparateur kente : `<KentePattern variant="separator" />` ajouté
+  entre les 2 cartes principales.
+- Bouton « Clôturer la caisse » / « Mettre à jour la clôture » :
+  `className="bg-emerald-600 text-white hover:bg-emerald-700"` →
+  `variant="success"`. Variant success DS remplace style inline.
+- Bouton « Valider la clôture » (outline + classes emerald
+  personnalisées) : NON TOUCHÉ (action secondaire superviseur).
+- Logique 100% préservée : useQuery fetchClotureAujourdhui,
+  useQuery fetchPaiements (today), useMutation createCloture,
+  useMutation validerCloture, SUPERVISEUR_ROLES, isSuperviseur,
+  estCloturee, estValidee, canEdit, ecart (calcule), totalTheorique
+  (fallback), totalRemisNum, queryClient.invalidateQueries
+  (cloturesKeys), toast — INTACTS.
+
+### 6. paiement-entry-form.tsx (818 lignes, +1)
+- Imports : retrait `CardTitle` (plus utilisée). Conservation de
+  `Card, CardContent, CardHeader` (CardHeader encore utilisé par
+  l'état loading de SoldeCard). Ajout `GlassCard`.
+- Carte « Nouvel encaissement » (col principale) : `<Card><CardHeader>
+  <CardTitle className="flex items-center gap-2 text-base"><Wallet/>
+  Nouvel encaissement</CardTitle></CardHeader><CardContent className=
+  "space-y-4">` → `<GlassCard variant="adaptive" noHover><div
+  className="mb-4 flex items-center gap-2"><Wallet/><h3 className=
+  "font-display text-base font-semibold">Nouvel encaissement</h3>
+  </div><div className="space-y-4">`.
+- Carte SoldeCard (état succès) : `<Card className={cn("overflow-
+  hidden", isSolde ? ... : ...)}><CardHeader className="pb-3">
+  <CardTitle className="text-sm">Solde de l'élève</CardTitle>
+  </CardHeader><CardContent className="space-y-3">` → `<GlassCard
+  variant="adaptive" noHover className={cn("overflow-hidden", isSolde
+  ? ... : ...)}><div className="mb-3"><h3 className="font-display
+  text-sm font-semibold">Solde de l'élève</h3></div><div className=
+  "space-y-3">`. Conditional border color (emerald/amber) préservée
+  via className sur GlassCard.
+- Bouton « Encaisser {montant} » : `className="bg-emerald-600
+  text-white hover:bg-emerald-700"` → `variant="success"`.
+- États SoldeCard préservés : !eleve (Card dashed), loading (Card +
+  CardHeader Skeleton), error (Card amber) — TOUS INTACTS en `<Card>`
+  shadcn (stylés conditionnellement).
+- Dialog RecuDialog : NON TOUCHÉ (modal préservé).
+- Logique 100% préservée : useQuery fetchEleves (debounce 250ms),
+  useQuery fetchSoldeEleve, useMutation createPaiement, useEffect
+  reset motif on eleve change, echeancesPourFrais (useMemo),
+  queryClient.invalidateQueries (paiementsKeys, soldesKeys), toast,
+  setPaiementCree + setRecuOpen onSuccess, refetchSolde, reset
+  partiel (setMontant, setReference, setBanque, setEcheanceId),
+  handleSelectEleve, handleClearEleve — INTACTS.
+
+### Vérifications finales
+- `bun run lint` : 0 erreur, 0 warning sur les 6 fichiers modifiés
+  (3 warnings résiduels sur step-scolarite.tsx — fichier non touché,
+  préexistants).
+- `dev.log` : /dashboard compile en 3.7s, 200 OK, pas d'erreur
+  runtime. Backend Go démarré PID=16860 sur port 8080.
+- `grep -niE "indigo|blue"` : 0 occurrence sur les 6 fichiers
+  (aucune palette interdite).
+- `grep "useQuery|useMutation|refetchInterval"` : 32 occurrences
+  cumulées sur les 6 fichiers — logique React Query préservée.
+- DS tokens/classes consommés :
+  • `font-display` : 9 occurrences (1 h1 + 8 h3/CardTitle)
+  • `GlassCard` : 12 instances (2 dashboard-caisse + 1 file-attente
+    × N élèves + 2 paiements-list + 2 cloture-caisse + 2 paiement-
+    entry-form + 0 view-caisse)
+  • `StatCard` : 4 instances (4 KPIs dashboard-caisse)
+  • `KentePattern` : 4 instances (1 strip top view-caisse + 1
+    separator view-caisse + 1 separator dashboard-caisse + 1
+    separator paiements-list + 1 separator cloture-caisse = 5
+    en réalité)
+  • `variant="success"` : 3 instances (Encaisser file-attente +
+    Clôturer cloture-caisse + Encaisser paiement-entry-form)
+- Composants DS consommés (lecture seule) : GlassCard, StatCard,
+  KentePattern. Aucun composant DS modifié. Button variants success
+  (fe-2a) consommé.
+- Respect prefers-reduced-motion : toutes les animations passent
+  par les primitives DS qui gèrent le hook en interne.
+- Aucune palette interdite (indigo/blue) — vérifié par grep.
+- Aucun backend/DB/schema/.env touché. Landing page `/` et login
+  `(auth)/*` NON touchés. Chrome Forêt (dashboard-shell.tsx) NON
+  touché (déjà migré fe-3a/b-fix).
+
+Stage Summary:
+- **6 fichiers modifiés** (view-caisse + 5 sous-composants caisse),
+  0 fichier créé, 0 ligne de logique supprimée, 0 nouvelle erreur
+  TypeScript/ESLint. ~22 edits chirurgicaux via MultiEdit + Edit.
+- **KPIs migrés** : 4 `KpiCard` interne (composant custom dashboard-
+  caisse basé sur Card shadcn) → 4 `StatCard` (primitive DS fe-2d
+  basée sur GlassCard). Mapping tones exact du brief : emerald
+  (Wallet/Total encaissé) / sky (Receipt/Transactions) / amber
+  (Users/File d'attente, cliquable) / terracotta (XCircle/Annulations,
+  anciennement rose). Stagger via `delay` prop (0/0.05/0.1/0.15s).
+  KpiCard interne + TONE_CLS + KpiCardProps supprimés (-104 lignes
+  sur dashboard-caisse.tsx).
+- **Cards migrées** : 8 `<Card>` de contenu principal → 8
+  `<GlassCard variant="adaptive" noHover>` (2 dashboard-caisse +
+  N file-attente + 2 paiements-list + 2 cloture-caisse + 2
+  paiement-entry-form). CardHeader/CardTitle → `<div className="mb-3
+  flex items-center gap-2">` + `<h3 className="font-display ...">`.
+- **Cards préservées** (NON touchées) : 7 `<Card>` d'états
+  conditionnels stylés (!etablissement, isError, isLoading, empty,
+  dashed, amber) — gardées en shadcn pour préserver leur styling
+  spécifique. Tous les Dialogs (EncaissementDialog, AnnulationDialog,
+  RecuDialog) NON touchés.
+- **Titres migrés** : 9 occurrences `font-display` ajoutées sur
+  h1 (Caisse view-caisse) + 8 h3 (Répartition par mode, Derniers
+  encaissements, Clôture de caisse, Paiements du jour, Nouvel
+  encaissement, Solde de l'élève).
+- **KentePattern** : 1 strip top (view-caisse) + 4 separators
+  (view-caisse entre header et Tabs, dashboard-caisse entre KPIs
+  et grid, paiements-list entre Filtres et Tableau, cloture-caisse
+  entre les 2 cartes principales) = 5 instances au total. Pas de
+  separator dans file-attente (liste homogène) ni paiement-entry-
+  form (grid 3 cols, pas de transition verticale naturelle).
+- **Boutons migrés** : 3 boutons d'action principaux →
+  `variant="success"` (gradient emerald fe-2a) :
+  • « Encaisser » par élève (file-attente.tsx, hors dialog)
+  • « Clôturer la caisse » / « Mettre à jour la clôture » (cloture-
+    caisse.tsx)
+  • « Encaisser {montant} » (paiement-entry-form.tsx)
+  Boutons secondaires (Actualiser, Réinitialiser, Précédent/Suivant,
+  Valider la clôture outline, boutons dans dialogs) NON touchés.
+- **Logique 100% préservée** sur les 6 fichiers :
+  • view-caisse.tsx : useQuery fetchFileAttente, polling 30s,
+    fileCount, setTab, fileAttenteKeys
+  • dashboard-caisse.tsx : useQuery fetchDashboardCaisse, polling
+    30s, dashboardCaisseKeys, refetch, isFetching, calculs
+    totalEncaisse/nbTransactions/panierMoyen
+  • file-attente.tsx : useQuery fetchFileAttente (polling 30s),
+    useMutation createPaiement, 4 invalidations React Query,
+    toast, setDialogEleve
+  • paiements-list.tsx : useQuery fetchPaiements, useMutation
+    annulerPaiement, pagination, filtres (dateDebut/dateFin/mode/
+    moiOnly), useMemo params, useEffect reset page
+  • cloture-caisse.tsx : 2 useQuery (clotureAujourdhui + paiements
+    today), 2 useMutation (createCloture + validerCloture),
+    SUPERVISEUR_ROLES, isSuperviseur, calcul écart
+  • paiement-entry-form.tsx : useQuery fetchEleves (debounce
+    250ms), useQuery fetchSoldeEleve, useMutation createPaiement,
+    2 invalidations, toast, refetchSolde, reset partiel
+- **États préservés** : tous les Skeleton (loading), AlertCircle
+  (erreur), CheckCircle2 (vide), AlertCircle amber (pas
+  d'établissement) — TOUS INTACTS à leurs emplacements d'origine.
+- Aucune palette interdite (indigo/blue) — vérifié par grep.
+- Aucun composant DS modifié — uniquement consommés en lecture.
+- Aucun backend/DB/schema/.env touché. Landing page `/` et login
+  `(auth)/*` NON touchés. Chrome Forêt (dashboard-shell.tsx) NON
+  touché.
+- Prochaine étape suggérée : fe-5b (migration vues élèves, rapports,
+  impayés vers le DS Forêt EdTech en suivant le pattern établi),
+  puis audit `kpi-card.tsx` (toujours utilisé dans view-rapports —
+  décider suppression vs conservation comme wrapper legacy).
+
+---
+
+## Task ID: fe-5b — Migration vue Élèves vers DS Forêt EdTech
+
+### Agent
+Frontend developer (DS Forêt EdTech migration — vue élèves)
+
+### Contexte
+- **Projet** : ScolaGest (Next.js 16 App Router, TypeScript 5, Tailwind
+  CSS 4, shadcn/ui).
+- **Phase** : fe-5b — migration de la vue « Élèves » (view-eleves.tsx +
+  4 sous-composants eleves) vers le Design System « Forêt EdTech ».
+- **Phases précédentes** : fe-0 à fe-4 + fe-3a/b-fix + fe-5a (vue
+  Caisse migrée). Toutes terminées. Chrome Forêt (sidebar/topbar)
+  appliqué sur dashboard-shell.tsx.
+- **Primitives DS disponibles** : `GlassCard` (variants mobile/tablet/
+  desktop/premium/adaptive, props `premiumBorder`, `noAnimation`,
+  `noHover`, `delay`), `StatCard` (tones emerald/amber/terracotta/gold/
+  sky/forest, props `trend`, `invertTrend`, `hint`, `delay`, `onClick`),
+  `KentePattern` (variants strip/bg/border/separator, positions top/
+  bottom/custom), `ProgressCircle` (non utilisé ici).
+- **Button DS variants** : `success` (gradient emerald), `premium`
+  (gradient gold/amber), `terracotta`, `gold`, `forest` + variants
+  shadcn standard.
+
+### Mission
+Migrer view-eleves.tsx + 4 sous-composants eleves (eleves-list, eleve-
+detail, eleve-solde-card, eleve-form) vers le DS Forêt EdTech SANS
+casser la logique (useQuery, useMutation, handlers, états, pagination,
+filtres, recherche debounce, react-hook-form, zod). Préserver les
+Dialogs (modals inscription-dialog, tuteur-dialog) tels quels. NE PAS
+toucher aux états (loading skeleton, error, empty).
+
+### Fichiers modifiés (5)
+
+### 1. `src/components/dashboard/views/view-eleves.tsx` (99 lignes, +10)
+- Ajout import `KentePattern` depuis `@/components/ds/kente-pattern`.
+- Refactor du return : 3 branches conditionnelles (detail/form/list)
+  conservées mais factorisées dans une variable `content` puis
+  enveloppées dans `<div className="space-y-4"><KentePattern
+  variant="strip" position="top" />{content}</div>`. La bande kente
+  Forêt EdTech apparaît donc en tête de chacune des 3 sous-vues.
+- Logique 100% préservée : handlers goToList/goToDetail/goToCreate/
+  goToEdit (avec window.scrollTo), état local `view` + `selectedEleveId`,
+  branche detail vs form vs list — INTACTS.
+
+### 2. `src/components/eleves/eleves-list.tsx` (856 lignes, +4)
+- Imports : conservation `Card, CardContent` (encore utilisés par
+  l'état !etablissement, l'état isError, et ListSkeleton). Ajout
+  `GlassCard`, `KentePattern`.
+- Carte « Filtres + mini-stats + export » : `<Card><CardContent
+  className="space-y-4">` → `<GlassCard variant="adaptive" noHover
+  className="p-4"><div className="space-y-4">`. Recherche, menu export
+  (DropdownMenu PDF/Excel/CSV), filtres en cascade Cycle→Niveau→Classe
+  + catégorie + statut, mini-stats inline pills — TOUS INTACTS.
+- `<KentePattern variant="separator" className="my-1" />` ajouté entre
+  Filtres et Tableau.
+- Carte « Tableau » : `<Card className="overflow-hidden"><CardContent
+  className="p-0">` → `<GlassCard variant="adaptive" noHover className=
+  "overflow-hidden p-0"><div>`. Vue table desktop + vue cartes mobile
+  + pagination prev/next — INTACTS.
+- ListHeader : `<h2 className="text-xl font-semibold tracking-tight">`
+  → `<h2 className="font-display text-xl font-semibold tracking-tight">`
+  (titre « Élèves »).
+- Bouton « Nouvel élève » (ListHeader) : `className="bg-emerald-600
+  text-white hover:bg-emerald-700"` → `variant="success"`.
+- Bouton « Créer un élève » (EmptyState) : même migration
+  `variant="success"`.
+- Icône GraduationCap dans mini-stats garçons : `text-blue-600` →
+  `text-forest` (palette Forêt EdTech — suppression de la dernière
+  occurrence `blue` du module, conformément à la règle stricte
+  « NE PAS utiliser indigo/blue »).
+- États préservés : !etablissement (Card amber AlertCircle), isLoading
+  (ListSkeleton Card 8 lignes), isError (Card rose AlertCircle),
+  EmptyState (Card emerald UserPlus à l'intérieur de la GlassCard
+  tableau) — TOUS INTACTS en `<Card>` shadcn.
+- Logique 100% préservée : 4 useQuery (fetchEleves, fetchClasses,
+  fetchCycles, fetchElevesStats), debounce 300ms (search), cascade
+  Cycle→Niveau→Classe (2 useEffects + 2 useMemo filteredClasses +
+  availableNiveaux), export PDF/Excel/CSV (handleExport useCallback),
+  queryParams useMemo, pagination page/totalPages, appliqueCategorie
+  selon etablissement — INTACTS.
+
+### 3. `src/components/eleves/eleve-detail.tsx` (638 lignes, +2)
+- Imports : retrait `CardTitle` (plus utilisée). Conservation `Card,
+  CardContent, CardHeader` (encore utilisés par l'état erreur et le
+  DetailSkeleton). Ajout `GlassCard`, `KentePattern`.
+- Carte « En-tête » (photo + nom + badges + actions) : `<Card>
+  <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-
+  center sm:justify-between">` → `<GlassCard variant="adaptive"
+  noHover><div className="flex flex-col gap-4 sm:flex-row sm:items-
+  center sm:justify-between">`. h2 eleveFullName → ajout `font-display`.
+- `<KentePattern variant="separator" className="my-1" />` ajouté entre
+  l'en-tête et la grille Identité/Tuteur.
+- Carte « Identité » : `<Card><CardHeader><CardTitle className="flex
+  items-center gap-2 text-base">…</CardTitle></CardHeader><CardContent
+  className="space-y-3">` → `<GlassCard variant="adaptive" noHover><div
+  className="mb-3 flex items-center gap-2"><UserCircle2 …/><h3
+  className="font-display text-base font-semibold">Identité</h3></div>
+  <div className="space-y-3">`.
+- Carte « Tuteur » : même pattern (User icon → h3 font-display
+  « Tuteur »). Tous les sous-éléments (InfoRow nom complet + badge
+  lien_parenté, profession, tel: liens, mailto: lien, adresse, empty
+  state « Affecter un tuteur ») — INTACTS.
+- Carte « Historique des inscriptions » : `<Card className="overflow-
+  hidden"><CardHeader className="flex-row items-center justify-
+  between"><CardTitle…>` → `<GlassCard variant="adaptive" noHover
+  className="overflow-hidden p-0"><div className="flex items-center
+  justify-between p-5 pb-3"><div className="flex items-center gap-2">
+  <FileText…/><h3 className="font-display text-base font-semibold">
+  Historique des inscriptions</h3></div>`. CardContent p-0 → `<div>`.
+  Tableau inscriptions + empty state — INTACTS.
+- Bouton « Nouvelle inscription » : `className="bg-emerald-600 text-
+  white hover:bg-emerald-700"` → `variant="success"`.
+- Boutons secondaires NON touchés : « Modifier » (outline), « Supprimer »
+  (outline + text-destructive), « Affecter un tuteur » (outline +
+  classes emerald).
+- AlertDialog (confirmation suppression) : NON TOUCHÉ (modal préservé
+  avec AlertDialogContent, AlertDialogAction bg-destructive inline).
+- InscriptionDialog : NON TOUCHÉ (modal préservé).
+- États préservés : isLoading (DetailSkeleton 4 Cards), isError/
+  !eleve (Card rose AlertCircle « Élève introuvable ») — TOUS INTACTS
+  en `<Card>` shadcn.
+- Logique 100% préservée : useQuery fetchEleve, useQueryClient,
+  handleDelete (async, await deleteEleve, invalidateQueries elevesKeys.
+  lists, toast, onBack), formatSexe, formatDate, LIEN_PARENTE_LABEL,
+  STATUT_INSCRIPTION_LABEL, StatutInscriptionBadge, InscriptionRow —
+  INTACTS.
+
+### 4. `src/components/eleves/eleve-solde-card.tsx` (354 lignes, -3)
+- Imports : retrait `Card, CardContent, CardHeader, CardTitle` (plus
+  utilisés — toute la carte est migrée à GlassCard, le SoldeSkeleton
+  est interne et n'utilise pas Card). Ajout `GlassCard`.
+- Carte « Soldes & paiements » : `<Card className="overflow-hidden">
+  <CardHeader className="pb-3"><CardTitle className="flex items-center
+  gap-2 text-base">…</CardTitle></CardHeader><CardContent className=
+  "space-y-4">` → `<GlassCard variant="adaptive" noHover className=
+  "overflow-hidden"><div className="mb-3 flex items-center gap-2">
+  <Wallet …/><h3 className="font-display text-base font-semibold">
+  Soldes &amp; paiements</h3></div><div className="space-y-4">`.
+- h3 « Derniers paiements » (sous-section dans la carte) : ajout
+  `font-display` (était déjà h3 avec classes uppercase/tracking-wide —
+  conservées).
+- SoldeBody (sous-composant) : totaux (Attendu/Payé/Restant en grid
+  3 cols avec couleurs emerald/amber), tableau des frais attendus,
+  échéances à venir avec badges statut — INTACTS.
+- Boutons secondaires NON touchés : « Voir tout l'historique → »
+  (link emerald), « Ouvrir la caisse » (outline + classes emerald).
+- États préservés : isLoading (SoldeSkeleton 3 Skeleton grid), isError/
+  !solde (div amber border AlertCircle « Solde indisponible »),
+  derniersPaiements.length === 0 (p dashed muted « Aucun paiement ») —
+  TOUS INTACTS dans la GlassCard.
+- Logique 100% préservée : 2 useQuery (fetchSoldeEleve + fetchPaiements
+  eleve_id, page 1, page_size 5, retry 0), formatFCFA/formatDateShort/
+  formatTime, ModePaiementBadge/StatutPaiementBadge/TypeFraisBadge —
+  INTACTS.
+
+### 5. `src/components/eleves/eleve-form.tsx` (658 lignes, 0)
+- Imports : retrait `CardTitle` (plus utilisée). Conservation `Card,
+  CardContent, CardHeader` (encore utilisés par l'état !etablissement
+  et le FormSkeleton). Ajout `GlassCard`.
+- h2 « Modifier l'élève » / « Nouvel élève » : ajout `font-display`.
+- Carte « Identité » : `<Card><CardHeader><CardTitle className="text-
+  base">Identité</CardTitle></CardHeader><CardContent className="grid
+  gap-4 sm:grid-cols-2">` → `<GlassCard variant="adaptive" noHover><div
+  className="mb-3"><h3 className="font-display text-base font-
+  semibold">Identité</h3></div><div className="grid gap-4 sm:grid-
+  cols-2">`.
+- Carte « Scolarité » : même pattern → h3 font-display « Scolarité ».
+- Carte « Tuteur & photo » : même pattern → h3 font-display « Tuteur
+  & photo ». Note : `&` littéral dans la source, rendu `&amp;` dans
+  JSX pour conformité HTML.
+- Bouton submit « Enregistrer » / « Créer l'élève » : `className="bg-
+  emerald-600 text-white hover:bg-emerald-700"` → `variant="success"`.
+- Boutons secondaires NON touchés : « Annuler » (outline).
+- TuteurDialog : NON TOUCHÉ (modal préservé).
+- États préservés : !etablissement (Card amber AlertCircle), isEditMode
+  && isLoadingEleve (FormSkeleton 2 Cards avec CardHeader + Skeleton) —
+  TOUS INTACTS en `<Card>` shadcn.
+- Logique 100% préservée : useQuery fetchEleve (mode édition), useQuery
+  fetchTuteurs, useForm + zodResolver (eleveSchema z.object), useWatch
+  (tuteur_id, categorie, sexe, statut), useEffect hydratation form en
+  mode édition, 2 useMutation (createEleve + updateEleve) avec toast
+  onSuccess + invalidateQueries, handleTuteurCreated (setValue +
+  invalidateQueries tuteursKeys + toast), isSubmitting, onSubmit —
+  INTACTS.
+
+### Table de préservation logique
+
+| Fichier | useQuery | useMutation | useQueryClient | Pagination/Filtres | États | Dialogs |
+|---|---|---|---|---|---|---|
+| view-eleves.tsx | 0 | 0 | 0 | 0 (router) | 0 | 0 |
+| eleves-list.tsx | 4 (eleves+classes+cycles+stats) | 0 | 0 | ✓ page + 5 filtres + debounce 300ms + cascade | 4 (!etab/isError/isLoading/empty) | 0 |
+| eleve-detail.tsx | 1 (fetchEleve) | 0 | 1 (handleDelete) | 0 | 2 (isLoading/isError) | 2 (AlertDialog + InscriptionDialog) ✓ préservés |
+| eleve-solde-card.tsx | 2 (solde+paiements) | 0 | 0 | 0 | 3 (isLoading/isError/empty paiements) | 0 |
+| eleve-form.tsx | 2 (eleve+tuteurs) | 2 (create+update) | 1 (invalidateQueries) | 0 (react-hook-form + zod) | 2 (!etab/isLoadingEleve) | 1 (TuteurDialog) ✓ préservé |
+
+### Comptage DS tokens
+
+| Token/classe | view-eleves | eleves-list | eleve-detail | eleve-solde-card | eleve-form | Total |
+|---|---|---|---|---|---|---|
+| font-display | 0 | 1 (h2) | 4 (1 h2 + 3 h3) | 2 (2 h3) | 4 (1 h2 + 3 h3) | 11 |
+| GlassCard | 0 | 2 | 4 | 1 | 3 | 10 |
+| StatCard | 0 | 0 | 0 | 0 | 0 | 0 |
+| KentePattern | 1 (strip top) | 1 (sep) | 1 (sep) | 0 | 0 | 3 |
+| variant="success" | 0 | 2 (Nouvel élève + Créer) | 1 (Nouvelle inscription) | 0 | 1 (Enregistrer/Créer) | 4 |
+
+Note : pas de StatCard utilisée dans cette migration — la vue eleves
+n'a pas de cartes KPIs dédiées (les mini-stats contextuelles dans
+eleves-list sont des pills inline, pas des cartes stats).
+
+### Vérifications finales
+- `bun run lint` : **0 erreur, 0 warning** sur les 5 fichiers
+  modifiés (3 warnings résiduels sur step-scolarite.tsx — fichier non
+  touché, préexistants).
+- `grep -niE "indigo|blue"` : **0 occurrence** sur les 5 fichiers
+  eleves + view-eleves (dernière occurrence `text-blue-600` sur
+  GraduationCap garçons remplacée par `text-forest`).
+- `grep "useQuery|useMutation|useQueryClient|refetchInterval"` :
+  **~18 occurrences** cumulées sur les 5 fichiers — logique React
+  Query préservée.
+- DS tokens/classes consommés :
+  • `font-display` : 11 occurrences (3 h2 + 8 h3)
+  • `GlassCard` : 10 instances (2 eleves-list + 4 eleve-detail + 1
+    eleve-solde-card + 3 eleve-form + 0 view-eleves)
+  • `StatCard` : 0 instance (pas de KPI dédié dans la vue eleves)
+  • `KentePattern` : 3 instances (1 strip top view-eleves + 1
+    separator eleves-list + 1 separator eleve-detail)
+  • `variant="success"` : 4 instances (Nouvel élève + Créer un élève
+    dans eleves-list, Nouvelle inscription dans eleve-detail, Submit
+    dans eleve-form)
+- Composants DS consommés (lecture seule) : GlassCard, KentePattern.
+  Aucun composant DS modifié. Button variants success (fe-2a) consommé.
+- Respect prefers-reduced-motion : toutes les animations passent par
+  les primitives DS qui gèrent le hook en interne.
+- Aucune palette interdite (indigo/blue) — vérifié par grep.
+- Aucun backend/DB/schema/.env touché. Landing page `/` et login
+  `(auth)/*` NON touchés. Chrome Forêt (dashboard-shell.tsx) NON
+  touché. Dialogs (InscriptionDialog, TuteurDialog, AlertDialog
+  suppression) NON touchés.
+
+### Stage Summary
+- **5 fichiers modifiés** (view-eleves + 4 sous-composants eleves),
+  0 fichier créé, 0 ligne de logique supprimée, 0 nouvelle erreur
+  TypeScript/ESLint. ~22 edits chirurgicaux via MultiEdit + Edit.
+- **Cards migrées** : 10 `<Card>` de contenu principal → 10 `<GlassCard
+  variant="adaptive" noHover>` (2 eleves-list + 4 eleve-detail + 1
+  eleve-solde-card + 3 eleve-form). CardHeader/CardTitle → `<div
+  className="mb-3 flex items-center gap-2">` + `<h3 className="font-
+  display text-base font-semibold">`.
+- **Cards préservées** (NON touchées) : ~7 `<Card>` d'états
+  conditionnels (!etablissement, isError, isLoading/DetailSkeleton,
+  ListSkeleton, FormSkeleton) — gardées en shadcn pour préserver
+  leur styling spécifique. Tous les Dialogs (InscriptionDialog,
+  TuteurDialog, AlertDialog suppression) NON touchés.
+- **Titres migrés** : 11 occurrences `font-display` ajoutées sur
+  3 h2 (Élèves, eleveFullName, Modifier/Nouvel élève) + 8 h3
+  (Identité, Tuteur, Historique des inscriptions, Soldes & paiements,
+  Derniers paiements, Identité, Scolarité, Tuteur & photo).
+- **KentePattern** : 1 strip top (view-eleves) + 2 separators
+  (eleves-list entre Filtres et Tableau, eleve-detail entre en-tête
+  et grille Identité/Tuteur) = 3 instances au total. Pas de separator
+  dans eleve-solde-card (carte unique) ni eleve-form (formulaire
+  empilé, space-y-4 suffit).
+- **Boutons migrés** : 4 boutons d'action principaux →
+  `variant="success"` (gradient emerald fe-2a) :
+  • « Nouvel élève » (eleves-list ListHeader)
+  • « Créer un élève » (eleves-list EmptyState)
+  • « Nouvelle inscription » (eleve-detail)
+  • « Enregistrer » / « Créer l'élève » (eleve-form submit)
+  Boutons secondaires (Annuler, Modifier, Supprimer, Affecter un
+  tuteur, Voir tout l'historique, Ouvrir la caisse, boutons dans
+  dialogs) NON touchés.
+- **Logique 100% préservée** sur les 5 fichiers :
+  • view-eleves.tsx : router 3 branches + handlers scrollTo
+  • eleves-list.tsx : 4 useQuery, debounce 300ms, cascade Cycle→
+    Niveau→Classe (2 useMemo + 2 useEffect), export PDF/Excel/CSV,
+    pagination, queryParams useMemo
+  • eleve-detail.tsx : useQuery fetchEleve, useQueryClient, handleDelete
+    (deleteEleve + invalidateQueries + toast + onBack)
+  • eleve-solde-card.tsx : 2 useQuery (solde + 5 derniers paiements),
+    retry 0, formatFCFA/formatDateShort/formatTime
+  • eleve-form.tsx : useQuery fetchEleve (mode édition) + fetchTuteurs,
+    useForm + zodResolver, useWatch (4 champs), 2 useMutation
+    (create + update) avec toast + 2 invalidateQueries, handleTuteurCreated
+- **États préservés** : tous les Skeleton (loading), AlertCircle
+  (erreur/introuvable), AlertCircle amber (pas d'établissement),
+  UserPlus emerald (empty), div amber (solde indisponible) — TOUS
+  INTACTS à leurs emplacements d'origine.
+- **Palette nettoyée** : dernière occurrence `text-blue-600` sur
+  GraduationCap (icône garçons dans mini-stats eleves-list) remplacée
+  par `text-forest` (vert forêt DS). Le module eleves est désormais
+  100% sans indigo/blue.
+- Aucune palette interdite (indigo/blue) — vérifié par grep.
+- Aucun composant DS modifié — uniquement consommés en lecture.
+- Aucun backend/DB/schema/.env touché. Landing page `/` et login
+  `(auth)/*` NON touchés. Chrome Forêt (dashboard-shell.tsx) NON
+  touché.
+- **Prochaine étape suggérée** : fe-5c (migration vues rapports +
+  impayés vers le DS Forêt EdTech en suivant le pattern établi), puis
+  audit `kpi-card.tsx` (toujours utilisé dans view-rapports — décider
+  suppression vs conservation comme wrapper legacy de StatCard).
+
+---
+
+## Task ID: fe-5c — Migration vue Rapports vers DS Forêt EdTech
+
+### Agent
+Frontend developer (DS Forêt EdTech migration — vue rapports)
+
+### Contexte
+- **Projet** : ScolaGest (Next.js 16 App Router, TypeScript 5, Tailwind
+  CSS 4, shadcn/ui).
+- **Phase** : fe-5c — migration de la vue « Rapports » (view-rapports.tsx)
+  vers le Design System « Forêt EdTech ».
+- **Phases précédentes** : fe-0 à fe-4 + fe-3a/b-fix + fe-5a (vue Caisse)
+  + fe-5b (vue Élèves). Toutes terminées. Chrome Forêt (sidebar/topbar)
+  appliqué sur dashboard-shell.tsx.
+- **Phases parallèles** : fe-5a (caisse) et fe-5b (eleves) en cours de
+  finalisation côté autres agents — cette tâche fe-5c est indépendante
+  et ne touche qu'au fichier `view-rapports.tsx`.
+- **Primitives DS disponibles** : `GlassCard` (variants mobile/tablet/
+  desktop/premium/adaptive, props `premiumBorder`, `noAnimation`,
+  `noHover`, `delay`), `StatCard` (tones emerald/amber/terracotta/gold/
+  sky/forest, props `trend`, `invertTrend`, `hint`, `delay`, `onClick`),
+  `KentePattern` (variants strip/bg/border/separator, positions top/
+  bottom/custom), `ProgressCircle` (props `value`, `size`, `strokeWidth`,
+  `label`, `trackColor`, `className`).
+- **Button DS variants** : `success`, `premium`, `terracotta`, `gold`,
+  `forest` + variants shadcn standard (default, outline, ghost,
+  secondary, destructive, link).
+
+### Mission
+Migrer view-rapports.tsx vers le DS Forêt EdTech SANS casser la logique
+(useQuery × 8, fetchRapport* × 3, downloadRapportPaiements, handlers
+d'export CSV/Excel, filtres période debounce 300ms, états loading/error/
+empty, 3 onglets Tabs). Préserver les Dialogs (aucun dans cette vue).
+NE PAS toucher aux états (loading skeleton, error, empty). NE PAS
+modifier kpi-card.tsx ni bar-chart.tsx (conservation legacy, KpiCard
+n'est de toute façon pas importé dans view-rapports).
+
+### Fichier modifié (1)
+
+#### `src/components/dashboard/views/view-rapports.tsx` (1235 lignes, -24)
+- **Imports** : retrait `CardDescription, CardHeader, CardTitle` (plus
+  utilisés — toutes les cartes principales migrées à GlassCard avec
+  titres h3 font-display inline). Conservation `Card, CardContent`
+  (encore utilisés par l'état `!etablissement?.id` — Card amber
+  AlertCircle « Sélectionnez un établissement »). Ajout `GlassCard`,
+  `StatCard`, `KentePattern`, `ProgressCircle` depuis `@/components/ds/*`.
+- **RapportsView** (composant racine) :
+  • Bande kente Forêt : `<KentePattern variant="strip" position="top"
+    />` ajouté en tête, avant le header FileBarChart + titre.
+  • Titre h1 « Rapports » : ajout classe `font-display`.
+  • État `!etablissement?.id` : Card shadcn amber AlertCircle — NON
+    TOUCHÉ (état préservé).
+- **RapportPaiementsPanel** :
+  • Carte « Filtres » (8 filtres : Date début, Date fin, Cycle, Classe,
+    Catégorie, Mode, Caissier, Réinitialiser) : `<Card><CardContent
+    className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">` →
+    `<GlassCard variant="adaptive" noHover className="p-4"><div
+    className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">`. Tous les
+    Labels, Inputs date, Selects, et bouton Réinitialiser (ghost) —
+    INTACTS.
+  • Résumé : 3 `<SummaryCard>` (Montant total emerald, Nombre de
+    paiements sky, Panier moyen amber) → 3 `<StatCard>` avec `delay`
+    stagger 0/0.05/0.1s et tones correspondants.
+  • `<KentePattern variant="separator" className="my-1" />` ajouté
+    entre Résumé et la barre Export+Rafraîchir.
+  • Bouton « Export Excel » : `className="bg-emerald-600 text-white
+    hover:bg-emerald-700"` → `variant="outline"` (règle 7 : boutons
+    d'export → outline/ghost).
+  • Bouton « Export CSV » : conservation `variant="outline"` + classes
+    emerald inline (non-indigo/blue, OK).
+  • Bouton « Actualiser » : conservation `variant="outline"`.
+  • Carte « Tableau » (9 colonnes : Date, Reçu, Élève, Classe, Motif,
+    Montant, Mode, Caissier, Statut) : `<Card className="overflow-
+    hidden"><CardContent className="p-0">` → `<GlassCard variant=
+    "adaptive" noHover className="overflow-hidden p-0"><div>`. Table
+    + ModePaiementBadge + StatutPaiementBadge + état annulé opacity-
+    60 — INTACTS.
+  • États préservés : isLoading (6 Skeleton h-10), isError (ErrorState
+    rose AlertCircle), empty (EmptyState FileBarChart « Aucun
+    paiement ») — TOUS INTACTS à l'intérieur de la GlassCard tableau.
+  • Logique 100% préservée : 3 useQuery (cycles, classes, paiements),
+    debounce 300ms (debouncedFilters useEffect), handleExport async
+    (setExporting + downloadRapportPaiements + toast success/error) —
+    INTACTS.
+- **RapportSoldesPanel** :
+  • Carte « Filtres » (4 filtres : Classe, Catégorie, Statut, Réinitialiser) :
+    même migration `<Card><CardContent>` → `<GlassCard variant=
+    "adaptive" noHover className="p-4"><div>`.
+  • Résumé : 4 `<SummaryCard>` (Total attendu sky, Total payé emerald,
+    Solde dû amber, Élèves concernés slate) → 4 `<StatCard>` avec
+    tones correspondants (slate → forest car StatCard n'a pas de tone
+    slate ; forest = vert forêt profond DS, neutre/sobre pour un
+    compteur). Stagger delay 0/0.05/0.1/0.15s.
+  • Bouton « Export CSV » : `className="bg-emerald-600 text-white
+    hover:bg-emerald-700"` → `variant="outline"` (règle 7).
+  • Carte « Tableau » (6 colonnes : Élève, Classe, Attendu, Payé, Solde
+    dû, Statut) : même migration → GlassCard. SoldeStatutBadge (SOLDE
+    emerald, PARTIEL amber, IMPAYE rose) — INTACT.
+  • États préservés : isLoading (6 Skeleton), isError, empty (EmptyState
+    « Aucun solde ») — INTACTS.
+  • Logique 100% préservée : 2 useQuery (classes, soldes), debounce
+    300ms, handleExport async (génération CSV navigateur via Blob +
+    URL.createObjectURL + download + toast) — INTACTS.
+- **RapportRecouvrementPanel** :
+  • Carte « Filtres » (3 colonnes : Cycle, Classe, Réinitialiser) :
+    même migration → GlassCard.
+  • Résumé : 2 `<SummaryCard>` (Total attendu sky, Total encaissé
+    emerald) → 2 `<StatCard>` + remplacement de la 3e SummaryCard
+    « Taux de recouvrement amber » par une `<GlassCard>` custom
+    contenant un `<ProgressCircle value={resume?.taux ?? 0} size={88}
+    strokeWidth={8} />` + label « Taux de recouvrement » font-display
+    + hint « Encaissé / Attendu ». Mise en page flex items-center
+    justify-between gap-4 p-5 (label à gauche, cercle à droite).
+  • `<KentePattern variant="separator" className="my-1" />` ajouté
+    entre Résumé et le Graphique.
+  • Carte « Graphique » (BarChart horizontal encaissé vs attendu par
+    classe) : `<Card><CardHeader><CardTitle>Taux de recouvrement par
+    classe</CardTitle><CardDescription>…</CardDescription></CardHeader>
+    <CardContent>` → `<GlassCard variant="adaptive" noHover><div
+    className="mb-3"><h3 className="font-display text-base font-
+    semibold">Taux de recouvrement par classe</h3><p className="text-
+    xs text-muted-foreground">Comparaison du total attendu et encaissé
+    par classe.</p></div><div>`. BarChart + légende + empty state «
+    Aucune donnée de recouvrement disponible » — INTACTS.
+  • Carte « Tableau » (7 colonnes : Classe, Effectif, Attendu, Encaissé,
+    Impayés, Taux, Niveau) : `<Card className="overflow-hidden">
+    <CardHeader className="pb-3"><div className="flex items-center
+    justify-between"><CardTitle>Détail par classe</CardTitle>…</div>
+    </CardHeader><CardContent className="p-0">` → `<GlassCard variant=
+    "adaptive" noHover className="overflow-hidden p-0"><div className=
+    "flex items-center justify-between p-5 pb-3"><h3 className="font-
+    display text-base font-semibold">Détail par classe</h3>…</div>
+    <div>`. Bouton « Actualiser » outline + RecouvrementTauxBadge +
+    TauxMiniBar — INTACTS.
+  • États préservés : isLoading (5 Skeleton), isError, empty (EmptyState
+    « Aucune classe ») — INTACTS.
+  • Logique 100% préservée : 3 useQuery (cycles, classes, recouvrement),
+    debounce 300ms, vars `lignes = data?.data ?? []` + `resume = data?.
+    resume` — INTACTES.
+- **Composant `SummaryCard` (helper)** : SUPPRIMÉ. Plus utilisé après
+  migration des 9 instances (3 paiements + 4 soldes + 2 recouvrement)
+  vers StatCard + 1 GlassCard custom pour le taux. La fonction
+  SummaryCard (35 lignes) + son type local ont été retirés du fichier.
+  Aucune autre dépendance (grep confirmé : SummaryCard n'était référencé
+  que dans view-rapports.tsx).
+- **kpi-card.tsx** : NON TOUCHÉ (instruction explicite). Vérification
+  grep : `KpiCard` n'était de toute façon pas importé dans view-rapports
+  (la vue utilisait SummaryCard, pas KpiCard). Le worklog fe-5b
+  mentionnait kpi-card comme « toujours utilisé dans view-rapports »
+  mais c'était une erreur — kpi-card n'a jamais été importé dans
+  view-rapports.tsx. kpi-card.tsx reste donc intact et n'est plus
+  référencé nulle part dans view-rapports.
+- **bar-chart.tsx** : NON TOUCHÉ. Conservé en l'état (CSS pur, pas de
+  dépendance DS externe — les barres utilisent bg-emerald-500 qui est
+  déjà compatible palette Forêt).
+
+### Table de préservation logique
+
+| Panel | useQuery | useMutation | Pagination/Filtres | États | Dialogs |
+|---|---|---|---|---|---|
+| RapportsView | 0 | 0 | 0 | 1 (!etab) | 0 |
+| RapportPaiementsPanel | 3 (cycles+classes+paiements) | 0 | ✓ 7 filtres + debounce 300ms | 3 (isLoading/isError/empty) | 0 |
+| RapportSoldesPanel | 2 (classes+soldes) | 0 | ✓ 3 filtres + debounce 300ms | 3 (isLoading/isError/empty) | 0 |
+| RapportRecouvrementPanel | 3 (cycles+classes+recouvrement) | 0 | ✓ 2 filtres + debounce 300ms | 3 (isLoading/isError/empty) | 0 |
+
+Total : 8 useQuery (cycles × 2 panels + classes × 3 panels + paiements
++ soldes + recouvrement), 0 useMutation, 0 Dialog. Tous préservés.
+
+### Comptage DS tokens
+
+| Token/classe | view-rapports | Total |
+|---|---|---|
+| font-display | 4 (1 h1 + 2 h3 + 1 span ProgressCircle label) | 4 |
+| GlassCard | 8 instances (3 Filtres + 3 Tableaux + 1 Graphique + 1 Resume ProgressCircle) | 8 |
+| StatCard | 9 instances (3 paiements + 4 soldes + 2 recouvrement) | 9 |
+| KentePattern | 3 instances (1 strip top + 2 separators) | 3 |
+| ProgressCircle | 1 instance (Taux de recouvrement) | 1 |
+| variant="success" | 0 (aucun bouton d'action principal non-export dans rapports) | 0 |
+| variant="outline" | 6 (4 exports + 2 actualiser) | 6 |
+| variant="ghost" | 3 (3 Réinitialiser filtres) | 3 |
+
+Note : la vue rapports ne contient QUE des boutons d'export et
+d'actualisation — pas de bouton « action principale » type Encaisser/
+Créer/Enregistrer. Donc `variant="success"` n'est pas utilisé ici.
+
+### Vérifications finales
+- `bun run lint` : **0 erreur, 0 warning** sur view-rapports.tsx (3
+  warnings résiduels sur step-scolarite.tsx — fichier non touché,
+  préexistants).
+- `grep -niE "indigo|blue"` : **0 occurrence** sur view-rapports.tsx.
+- `grep "useQuery|fetchRapport|downloadRapport|refetch"` : **~18
+  occurrences** cumulées — logique React Query préservée.
+- DS tokens/classes consommés :
+  • `font-display` : 4 occurrences (1 h1 + 2 h3 + 1 span)
+  • `GlassCard` : 8 instances (3 Filtres + 3 Tableaux + 1 Graphique +
+    1 Resume ProgressCircle custom)
+  • `StatCard` : 9 instances (3 paiements + 4 soldes + 2 recouvrement)
+  • `KentePattern` : 3 instances (1 strip top RapportsView + 1 sep
+    paiements + 1 sep recouvrement)
+  • `ProgressCircle` : 1 instance (taux de recouvrement global)
+  • `variant="outline"` : 6 instances (4 exports + 2 actualiser)
+  • `variant="ghost"` : 3 instances (3 Réinitialiser filtres)
+- Composants DS consommés (lecture seule) : GlassCard, StatCard,
+  KentePattern, ProgressCircle. Aucun composant DS modifié.
+- Composants reports (kpi-card, bar-chart) NON touchés.
+- Respect prefers-reduced-motion : toutes les animations passent par
+  les primitives DS qui gèrent le hook en interne.
+- Aucune palette interdite (indigo/blue) — vérifié par grep.
+- Aucun backend/DB/schema/.env touché. Landing page `/` et login
+  `(auth)/*` NON touchés. Chrome Forêt (dashboard-shell.tsx) NON
+  touché. Dialogs : aucun dans cette vue.
+
+### Stage Summary
+- **1 fichier modifié** (view-rapports.tsx), 0 fichier créé, 0 ligne
+  de logique supprimée, 0 nouvelle erreur TypeScript/ESLint. ~12
+  edits chirurgicaux via Edit + MultiEdit.
+- **Cards migrées** : 8 `<Card>` de contenu principal → 8 `<GlassCard
+  variant="adaptive" noHover>` (3 Filtres + 3 Tableaux + 1 Graphique
+  + 1 Resume ProgressCircle custom). CardHeader/CardTitle/CardDescription
+  → `<div className="mb-3">` + `<h3 className="font-display text-base
+  font-semibold">` ou `<div className="flex items-center justify-
+  between p-5 pb-3">` pour le tableau recouvrement avec bouton
+  Actualiser inline.
+- **Cards préservées** (NON touchées) : 1 `<Card className="border-
+  dashed">` pour l'état `!etablissement?.id` (Card amber AlertCircle
+  « Sélectionnez un établissement ») — gardée en shadcn pour préserver
+  son styling spécifique d'état vide.
+- **Titres migrés** : 4 occurrences `font-display` ajoutées sur
+  1 h1 (Rapports) + 2 h3 (Taux de recouvrement par classe, Détail par
+  classe) + 1 span (label du ProgressCircle custom « Taux de
+  recouvrement »).
+- **KPIs migrés** : 9 `<SummaryCard>` → 9 `<StatCard>` (3 paiements +
+  4 soldes + 2 recouvrement) avec tones DS Forêt (emerald, amber, sky,
+  forest). La 10e KPI « Taux de recouvrement » dans le panel
+  Recouvrement est devenue une GlassCard custom avec ProgressCircle
+  animé (gradient emerald→amber) pour valoriser visuellement le taux.
+- **KentePattern** : 1 strip top (RapportsView) + 2 separators
+  (entre Résumé et Export+Tableau dans paiements, entre Résumé et
+  Graphique dans recouvrement) = 3 instances au total. Pas de separator
+  dans soldes (le panel est plus court, space-y-4 suffit).
+- **ProgressCircle** : 1 instance (taille 88px, strokeWidth 8) pour
+  le taux de recouvrement global, avec gradient stroke emerald→amber
+  conforme au DS Forêt EdTech. Animation 1.5s easeInOut, respect
+  prefers-reduced-motion.
+- **Boutons migrés** : 2 boutons `className="bg-emerald-600 text-white
+  hover:bg-emerald-700"` → `variant="outline"` (Export Excel paiements
+  + Export CSV soldes), conformément à la règle 7 « boutons d'export →
+  outline/ghost ». Boutons secondaires (Actualiser × 2 outline,
+  Réinitialiser × 3 ghost, Export CSV paiements outline+emerald-classes)
+  NON touchés. Aucun `variant="success"` ajouté car la vue rapports
+  ne contient aucun bouton d'action principal non-export.
+- **Helper SummaryCard SUPPRIMÉ** : 35 lignes retirées (fonction +
+  type local + 5 entrées du dictionnaire cls). Était uniquement
+  référencé dans view-rapports.tsx — aucune autre dépendance. La
+  fonctionnalité est désormais couverte par StatCard (DS) pour les
+  KPIs standard + une GlassCard custom pour le taux de recouvrement
+  avec ProgressCircle.
+- **Logique 100% préservée** sur view-rapports.tsx :
+  • RapportsView : 0 useQuery, état etab, branche !etab → Card
+    AlertCircle, branche etab → Tabs (3 onglets)
+  • RapportPaiementsPanel : 3 useQuery (cycles, classes, paiements),
+    debounce 300ms (debouncedFilters), handleExport async (setExporting
+    + downloadRapportPaiements + toast success/error/finally)
+  • RapportSoldesPanel : 2 useQuery (classes, soldes), debounce 300ms,
+    handleExport async (génération CSV navigateur via Blob + URL +
+    download + toast)
+  • RapportRecouvrementPanel : 3 useQuery (cycles, classes,
+    recouvrement), debounce 300ms, vars `lignes` + `resume`
+- **États préservés** : tous les Skeleton (loading 6/6/5 lignes),
+  ErrorState (rose AlertCircle « Erreur de chargement » + bouton
+  Réessayer), EmptyState (FileBarChart « Aucun paiement/solde/classe »),
+  Card amber « Sélectionnez un établissement » — TOUS INTACTS à leurs
+  emplacements d'origine.
+- Aucune palette interdite (indigo/blue) — vérifié par grep.
+- Aucun composant DS modifié — uniquement consommés en lecture.
+- Aucun composant reports modifié — kpi-card.tsx et bar-chart.tsx
+  NON touchés.
+- Aucun backend/DB/schema/.env touché. Landing page `/` et login
+  `(auth)/*` NON touchés. Chrome Forêt (dashboard-shell.tsx) NON
+  touché.
+- **Prochaine étape suggérée** : fe-5d (migration vue impayés vers le
+  DS Forêt EdTech en suivant le pattern établi), puis audit final
+  `kpi-card.tsx` (qui n'est désormais plus importé nulle part après
+  fe-5c — décider suppression définitive vs conservation comme
+  wrapper legacy).

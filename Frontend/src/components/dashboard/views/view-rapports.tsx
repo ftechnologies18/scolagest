@@ -61,13 +61,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -94,6 +88,10 @@ import {
   StatutPaiementBadge,
 } from "@/components/caisse/caisse-badges";
 import { BarChart } from "@/components/reports/bar-chart";
+import { GlassCard } from "@/components/ds/glass-card";
+import { StatCard } from "@/components/ds/stat-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
+import { ProgressCircle } from "@/components/ds/progress-circle";
 
 const MODE_OPTIONS: { value: "all" | ModePaiement; label: string }[] = [
   { value: "all", label: "Tous modes" },
@@ -122,13 +120,14 @@ export default function RapportsView() {
 
   return (
     <div className="space-y-4">
+      <KentePattern variant="strip" position="top" />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
             <FileBarChart className="size-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Rapports</h1>
+            <h1 className="font-display text-xl font-bold tracking-tight">Rapports</h1>
             <p className="text-sm text-muted-foreground">
               Exports et statistiques des encaissements, soldes et taux de
               recouvrement.
@@ -273,8 +272,8 @@ function RapportPaiementsPanel() {
   return (
     <div className="space-y-4">
       {/* Filtres */}
-      <Card>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <GlassCard variant="adaptive" noHover className="p-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1.5">
             <Label htmlFor="rp-date-debut" className="text-xs">
               Date début
@@ -399,24 +398,26 @@ function RapportPaiementsPanel() {
               Réinitialiser
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {/* Résumé */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <SummaryCard
+        <StatCard
           label="Montant total"
           value={formatFCFA(data?.total_montant ?? 0)}
           icon={Wallet}
-          accent="emerald"
+          tone="emerald"
+          delay={0}
         />
-        <SummaryCard
+        <StatCard
           label="Nombre de paiements"
           value={`${data?.count ?? 0}`}
           icon={FileText}
-          accent="sky"
+          tone="sky"
+          delay={0.05}
         />
-        <SummaryCard
+        <StatCard
           label="Panier moyen"
           value={
             data && data.count > 0
@@ -424,9 +425,12 @@ function RapportPaiementsPanel() {
               : "—"
           }
           icon={PieChart}
-          accent="amber"
+          tone="amber"
+          delay={0.1}
         />
       </div>
+
+      <KentePattern variant="separator" className="my-1" />
 
       {/* Export + Rafraîchir */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -470,10 +474,10 @@ function RapportPaiementsPanel() {
             Export CSV
           </Button>
           <Button
+            variant="outline"
             size="sm"
             onClick={() => handleExport("excel")}
             disabled={exporting !== null || (data?.count ?? 0) === 0}
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
           >
             {exporting === "excel" ? (
               <Loader2 className="size-3.5 animate-spin" />
@@ -486,8 +490,8 @@ function RapportPaiementsPanel() {
       </div>
 
       {/* Tableau */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div>
           {isLoading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -571,8 +575,8 @@ function RapportPaiementsPanel() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     </div>
   );
 }
@@ -675,8 +679,8 @@ function RapportSoldesPanel() {
   return (
     <div className="space-y-4">
       {/* Filtres */}
-      <Card>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <GlassCard variant="adaptive" noHover className="p-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1.5">
             <Label className="text-xs">Classe</Label>
             <Select value={classeId} onValueChange={setClasseId}>
@@ -738,34 +742,38 @@ function RapportSoldesPanel() {
               Réinitialiser
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {/* Résumé */}
       <div className="grid gap-4 sm:grid-cols-4">
-        <SummaryCard
+        <StatCard
           label="Total attendu"
           value={formatFCFA(data?.total_attendu ?? 0)}
           icon={Wallet}
-          accent="sky"
+          tone="sky"
+          delay={0}
         />
-        <SummaryCard
+        <StatCard
           label="Total payé"
           value={formatFCFA(data?.total_paye ?? 0)}
           icon={Wallet}
-          accent="emerald"
+          tone="emerald"
+          delay={0.05}
         />
-        <SummaryCard
+        <StatCard
           label="Solde dû"
           value={formatFCFA(data?.total_solde_du ?? 0)}
           icon={AlertCircle}
-          accent="amber"
+          tone="amber"
+          delay={0.1}
         />
-        <SummaryCard
+        <StatCard
           label="Élèves concernés"
           value={`${data?.count ?? 0}`}
           icon={FileText}
-          accent="slate"
+          tone="forest"
+          delay={0.15}
         />
       </div>
 
@@ -781,10 +789,10 @@ function RapportSoldesPanel() {
           )}
         </p>
         <Button
+          variant="outline"
           size="sm"
           onClick={handleExport}
           disabled={exporting || (data?.count ?? 0) === 0}
-          className="bg-emerald-600 text-white hover:bg-emerald-700"
         >
           {exporting ? (
             <Loader2 className="size-3.5 animate-spin" />
@@ -796,8 +804,8 @@ function RapportSoldesPanel() {
       </div>
 
       {/* Tableau */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div>
           {isLoading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -865,8 +873,8 @@ function RapportSoldesPanel() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     </div>
   );
 }
@@ -918,8 +926,8 @@ function RapportRecouvrementPanel() {
   return (
     <div className="space-y-4">
       {/* Filtres */}
-      <Card>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <GlassCard variant="adaptive" noHover className="p-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-1.5">
             <Label className="text-xs">Cycle</Label>
             <Select value={cycleId} onValueChange={setCycleId}>
@@ -966,42 +974,58 @@ function RapportRecouvrementPanel() {
               Réinitialiser
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {/* Résumé global */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <SummaryCard
+        <StatCard
           label="Total attendu"
           value={formatFCFA(resume?.attendu ?? 0)}
           icon={Wallet}
-          accent="sky"
+          tone="sky"
+          delay={0}
         />
-        <SummaryCard
+        <StatCard
           label="Total encaissé"
           value={formatFCFA(resume?.encaisse ?? 0)}
           icon={Wallet}
-          accent="emerald"
+          tone="emerald"
+          delay={0.05}
         />
-        <SummaryCard
-          label="Taux de recouvrement"
-          value={`${(resume?.taux ?? 0).toFixed(1)} %`}
-          icon={PieChart}
-          accent="amber"
-        />
+        <GlassCard variant="adaptive" noHover className="flex items-center justify-between gap-4 p-5">
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Taux de recouvrement
+            </span>
+            <span className="text-2xl font-bold font-display text-foreground">
+              {(resume?.taux ?? 0).toFixed(1)} %
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Encaissé / Attendu
+            </span>
+          </div>
+          <ProgressCircle
+            value={resume?.taux ?? 0}
+            size={88}
+            strokeWidth={8}
+          />
+        </GlassCard>
       </div>
 
+      <KentePattern variant="separator" className="my-1" />
+
       {/* Graphique */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
+      <GlassCard variant="adaptive" noHover>
+        <div className="mb-3">
+          <h3 className="font-display text-base font-semibold">
             Taux de recouvrement par classe
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-xs text-muted-foreground">
             Comparaison du total attendu et encaissé par classe.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div>
           {lignes.length === 0 ? (
             <p className="py-8 text-center text-xs text-muted-foreground">
               Aucune donnée de recouvrement disponible.
@@ -1019,28 +1043,26 @@ function RapportRecouvrementPanel() {
               legendLabel2="Attendu"
             />
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {/* Tableau */}
-      <Card className="overflow-hidden">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Détail par classe</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              disabled={isFetching}
-            >
-              <Loader2
-                className={cn("size-3.5", isFetching && "animate-spin")}
-              />
-              Actualiser
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div className="flex items-center justify-between p-5 pb-3">
+          <h3 className="font-display text-base font-semibold">Détail par classe</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            <Loader2
+              className={cn("size-3.5", isFetching && "animate-spin")}
+            />
+            Actualiser
+          </Button>
+        </div>
+        <div>
           {isLoading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -1110,8 +1132,8 @@ function RapportRecouvrementPanel() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     </div>
   );
 }
@@ -1119,51 +1141,6 @@ function RapportRecouvrementPanel() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Composants partagés
 // ─────────────────────────────────────────────────────────────────────────────
-
-function SummaryCard({
-  label,
-  value,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: string;
-  icon: typeof Wallet;
-  accent: "emerald" | "amber" | "rose" | "sky" | "slate";
-}) {
-  const cls: Record<typeof accent, string> = {
-    emerald:
-      "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
-    amber:
-      "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
-    rose: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
-    sky: "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
-    slate:
-      "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300",
-  };
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div
-            className={cn(
-              "flex size-9 items-center justify-center rounded-lg",
-              cls[accent],
-            )}
-          >
-            <Icon className="size-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="mt-0.5 truncate text-base font-bold tracking-tight tabular-nums">
-              {value}
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
