@@ -33,7 +33,6 @@ import {
   Users,
   Wallet,
   Timer,
-  MessageSquare,
   Send,
 } from "lucide-react";
 
@@ -54,13 +53,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+
 import {
   Table,
   TableBody,
@@ -83,6 +76,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { GlassCard } from "@/components/ds/glass-card";
+import { StatCard } from "@/components/ds/stat-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 const CATEGORIE_OPTIONS = [
   { value: "all", label: "Toutes catégories" },
@@ -202,6 +198,7 @@ export default function ImpayesView() {
 
   return (
     <div className="space-y-4">
+      <KentePattern variant="strip" position="top" />
       {/* En-tête */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
@@ -209,7 +206,7 @@ export default function ImpayesView() {
             <AlertTriangle className="size-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">
+            <h1 className="font-display text-xl font-bold tracking-tight">
               Impayés &amp; relances
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -225,9 +222,11 @@ export default function ImpayesView() {
         </div>
       </div>
 
+      <KentePattern variant="separator" className="my-4" />
+
       {!etablissementId ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+        <GlassCard variant="adaptive" noHover className="border border-dashed">
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
               <Filter className="size-6" />
             </div>
@@ -238,13 +237,13 @@ export default function ImpayesView() {
               Les impayés sont calculés par établissement. Choisissez-en un dans
               la barre latérale pour commencer.
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       ) : (
         <>
           {/* Filtres */}
-          <Card>
-            <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <GlassCard variant="adaptive" noHover>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1.5">
                 <Label className="text-xs">Classe</Label>
                 <Select value={classeId} onValueChange={setClasseId}>
@@ -307,24 +306,28 @@ export default function ImpayesView() {
                   Réinitialiser
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
+
+          <KentePattern variant="separator" className="my-4" />
 
           {/* Résumé */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <SummaryStat
+            <StatCard
               label="Élèves en retard"
               value={`${list.length}`}
               icon={Users}
-              accent="amber"
+              tone="amber"
+              delay={0}
             />
-            <SummaryStat
+            <StatCard
               label="Total solde dû"
               value={formatFCFA(totalSolde)}
               icon={Wallet}
-              accent="rose"
+              tone="terracotta"
+              delay={0.05}
             />
-            <SummaryStat
+            <StatCard
               label="Retard maximum"
               value={
                 maxRetard > 0
@@ -332,7 +335,8 @@ export default function ImpayesView() {
                   : "—"
               }
               icon={Timer}
-              accent="rose"
+              tone="terracotta"
+              delay={0.1}
             />
           </div>
 
@@ -351,7 +355,7 @@ export default function ImpayesView() {
             </p>
             <div className="flex flex-wrap gap-2">
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => refetch()}
                 disabled={isFetching}
@@ -363,9 +367,9 @@ export default function ImpayesView() {
               </Button>
               <Button
                 size="sm"
+                variant="success"
                 onClick={() => setBordereauOpen(true)}
                 disabled={selected.size === 0}
-                className="bg-amber-600 text-white hover:bg-amber-700"
               >
                 <Printer className="size-3.5" />
                 Bordereau {selected.size > 0 ? `(${selected.size})` : ""}
@@ -375,7 +379,6 @@ export default function ImpayesView() {
                 variant="outline"
                 disabled={selected.size === 0 || smsSending}
                 onClick={handleSendSMS}
-                className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
               >
                 {smsSending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
                 Relance SMS {selected.size > 0 ? `(${selected.size})` : ""}
@@ -384,8 +387,8 @@ export default function ImpayesView() {
           </div>
 
           {/* Tableau */}
-          <Card className="overflow-hidden">
-            <CardContent className="p-0">
+          <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+            <div>
               {isLoading ? (
                 <div className="space-y-2 p-4">
                   {Array.from({ length: 6 }).map((_, i) => (
@@ -559,8 +562,8 @@ export default function ImpayesView() {
                   </ul>
                 </>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
         </>
       )}
 
@@ -851,51 +854,6 @@ function BordereauRelanceDialog({
 // ─────────────────────────────────────────────────────────────────────────────
 // Petits composants
 // ─────────────────────────────────────────────────────────────────────────────
-
-function SummaryStat({
-  label,
-  value,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: string;
-  icon: typeof Users;
-  accent: "emerald" | "amber" | "rose" | "sky" | "slate";
-}) {
-  const cls: Record<typeof accent, string> = {
-    emerald:
-      "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
-    amber:
-      "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
-    rose: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
-    sky: "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
-    slate:
-      "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300",
-  };
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div
-            className={cn(
-              "flex size-9 items-center justify-center rounded-lg",
-              cls[accent],
-            )}
-          >
-            <Icon className="size-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="mt-0.5 truncate text-base font-bold tracking-tight tabular-nums">
-              {value}
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 function CategorieMiniBadge({ categorie }: { categorie: string }) {
   const map: Record<string, { label: string; cls: string }> = {

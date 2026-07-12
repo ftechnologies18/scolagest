@@ -50,7 +50,8 @@ import type { Frais, TypeFrais } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -218,7 +219,7 @@ export default function FraisView() {
               <section key={g.type} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Icon className="size-4 text-emerald-600" />
-                  <h2 className="text-sm font-semibold tracking-tight">
+                  <h2 className="font-display text-sm font-semibold tracking-tight">
                     {TYPE_FRAIS_LABEL[g.type]}
                   </h2>
                   <Badge
@@ -278,13 +279,14 @@ function FraisShell({
 }) {
   return (
     <div className="space-y-4">
+      <KentePattern variant="strip" position="top" />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
             <Coins className="size-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">
+            <h1 className="font-display text-xl font-bold tracking-tight">
               Frais &amp; échéanciers
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -300,15 +302,16 @@ function FraisShell({
         </div>
         {onNew ? (
           <Button
+            variant="success"
             onClick={onNew}
             disabled={newDisabled}
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
           >
             <Plus className="size-4" />
             Nouveau frais
           </Button>
         ) : null}
       </div>
+      <KentePattern variant="separator" className="my-4" />
       {children}
     </div>
   );
@@ -345,12 +348,12 @@ function FraisCard({
   const lastDate = echeances[echeances.length - 1]?.date_limite;
 
   return (
-    <Card className="group relative overflow-hidden transition-shadow hover:shadow-md">
-      <CardHeader className="pb-3">
+    <GlassCard variant="adaptive" noHover className="group relative overflow-hidden">
+      <div className="pb-3">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-base leading-tight">
+          <h3 className="font-display text-base font-semibold leading-tight">
             {frais.libelle}
-          </CardTitle>
+          </h3>
           <TypeFraisBadge type={frais.type_frais} />
         </div>
         <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -382,8 +385,8 @@ function FraisCard({
             </Badge>
           ) : null}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
+      </div>
+      <div className="space-y-3">
         <div className="flex items-baseline justify-between">
           <span className="text-[11px] uppercase text-muted-foreground">
             Montant total
@@ -460,8 +463,8 @@ function FraisCard({
             </AlertDialogContent>
           </AlertDialog>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }
 
@@ -486,8 +489,8 @@ function EmptyState({
     rose: "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
   }[tone];
   return (
-    <Card>
-      <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+    <GlassCard variant="adaptive" noHover>
+      <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
         <div
           className={cn(
             "flex size-12 items-center justify-center rounded-full",
@@ -502,7 +505,7 @@ function EmptyState({
             {description}
           </p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }

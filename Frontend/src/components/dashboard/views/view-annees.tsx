@@ -16,8 +16,9 @@ import {
   UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 import {
   Table,
   TableBody,
@@ -137,10 +138,11 @@ export default function AnneesView() {
 
   return (
     <div className="space-y-6">
+      <KentePattern variant="strip" position="top" />
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold">Années scolaires</h2>
+          <h2 className="font-display text-xl font-bold">Années scolaires</h2>
           <p className="text-sm text-muted-foreground">
             Gestion des exercices scolaires, passage et réinscriptions.
           </p>
@@ -150,12 +152,14 @@ export default function AnneesView() {
             <ArrowRight className="mr-2 size-4" />
             Passage / Réinscription
           </Button>
-          <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => setCreateOpen(true)}>
+          <Button variant="success" onClick={() => setCreateOpen(true)}>
             <Plus className="mr-2 size-4" />
             Nouvelle année
           </Button>
         </div>
       </div>
+
+      <KentePattern variant="separator" className="my-4" />
 
       {/* Liste des années */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -170,14 +174,14 @@ export default function AnneesView() {
           />
         ))}
         {(!annees || annees.length === 0) && (
-          <Card className="col-span-full">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <GlassCard variant="adaptive" noHover className="col-span-full">
+            <div className="flex flex-col items-center justify-center py-12 text-center">
               <CalendarDays className="size-12 text-muted-foreground/40" />
               <p className="mt-4 text-sm text-muted-foreground">
                 Aucune année scolaire. Créez votre première année pour commencer.
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
         )}
       </div>
 
@@ -220,19 +224,19 @@ function AnneeCard({
   });
 
   return (
-    <Card className={annee.est_active ? "border-emerald-400 shadow-md" : ""}>
-      <CardHeader className="pb-3">
+    <GlassCard variant="adaptive" noHover className={annee.est_active ? "ring-2 ring-emerald-400/60" : ""}>
+      <div className="pb-3">
         <div className="flex items-start justify-between">
           <div>
-            <CardTitle className="text-lg">{annee.libelle}</CardTitle>
+            <h3 className="font-display text-lg font-semibold">{annee.libelle}</h3>
             <p className="text-xs text-muted-foreground mt-1">
               {formatDate(annee.date_debut)} → {formatDate(annee.date_fin)}
             </p>
           </div>
           {statutBadge(annee.statut, annee.est_active)}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
+      </div>
+      <div className="space-y-3">
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="rounded-lg bg-muted/40 p-2">
@@ -289,8 +293,8 @@ function AnneeCard({
             </Badge>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }
 
