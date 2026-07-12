@@ -7,6 +7,17 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# --- Bootstrap Go toolchain (persistance inter-sessions) ---
+# Go est stocké dans le projet (.local-tools/go, gitignoré) pour survivre au
+# cycle pre-stop/boot du sandbox. On (re)crée le symlink /home/z/.local/go
+# attendu par instrumentation.ts et mini-services/backend/start.sh.
+if [ -d "$PROJECT_DIR/.local-tools/go" ]; then
+  mkdir -p /home/z/.local
+  ln -sfn "$PROJECT_DIR/.local-tools/go" /home/z/.local/go 2>/dev/null || true
+fi
+export PATH="/home/z/.local/go/bin:$PATH"
+# --- fin bootstrap Go ---
+
 log_step_start() {
 	local step_name="$1"
 	echo "=========================================="

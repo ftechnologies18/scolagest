@@ -3905,3 +3905,74 @@ Stage Summary:
   cliquable et bascule l'onglet caisse vers « File d'attente ».
 - 4 fichiers au total (2 créés + 2 modifiés). Frontend uniquement, aucun
   changement backend, DB, schema, ou .env.
+
+---
+Task ID: env-restore-2026-07-12
+Agent: Z.ai Code (tuteur principal)
+Task: Restauration de l'environnement de développement ScolaGest dans un
+sandbox fraîchement réinitialisé — clone GitHub, relocalisation à la racine,
+installation Go 1.25, création des .env, bootstrap Go persistant dans dev.sh,
+et vérification E2E (frontend + backend Go + Neon).
+
+Work Log:
+- Cloné https://github.com/ftechnologies18/scolagest.git (branche main, HEAD
+  741c554) avec l'identité ftechnologies18 <freelancetechnologies.ci@gmail.com>
+  (git config global + credential store).
+- Analysé l'architecture monorepo : Frontend/ (Next.js 16 + TS + Tailwind +
+  shadcn/ui + Prisma scaffold), backend/ (Go 1.25 + Gin + GORM + JWT, ~25
+  modèles, ~17 services, ~14 handlers), mini-services/backend (wrapper start.sh),
+  docs/ (data-model.md, render-docker-deploy.md), .github/workflows/deploy-backend.yml
+  (CI: déploie Render sur changements backend/**).
+- Vérifié la stack production : backend Render sain (db:true, Neon connecté),
+  frontend Vercel HTTP 200, git propre.
+- Découvert que instrumentation.ts + start.sh codent en dur /home/z/my-project/backend
+  et /home/z/.local/go/bin/go -> le projet doit vivre à la racine /home/z/my-project/.
+- Relocalisé le dépôt cloné de /home/z/my-project/scolagest/ vers /home/z/my-project/
+  (suppression du boilerplate Next.js sandbox jetable, fusion upload/ dans le mount,
+  préservation de skills/examples/download/tool-results). git fonctionnel après move.
+- Installé Go 1.25.0 (linux-amd64) depuis go.dev. Backend compile (go build ./cmd/server/ ✓).
+- Créé Frontend/.env (NEXT_PUBLIC_API_BASE_URL= vide -> mode gateway Caddy ;
+  DATABASE_URL=file:...local SQLite pour le prisma scaffold inoffensif) et
+  backend/.env (DATABASE_URL=Neon, JWT_SECRET, APP_ENV=development) — cohérent
+  avec instrumentation.ts. Symlink /home/z/my-project/dev.log -> Frontend/dev.log.
+- Analysé /start.sh (boot sandbox) : restaure /home/sync/repo.tar, lance la gateway
+  Python (uv run main.py, pid 881) + lance .zscripts/dev.sh en arrière-plan (persistant,
+  reparenté vers tini). Le sandbox TUE tout process non-démarré-au-boot entre appels Bash
+  (confirmé: setsid sleep 300 meurt). La gateway NE démarre PAS le dev server à la demande
+  (502 persistant sans dev server boot-started).
+- Persistance Go inter-sessions : déplacé Go vers /home/z/my-project/.local-tools/go
+  (gitignoré via /.local-tools/, persisté via repo.tar), symlink /home/z/.local/go ->
+  in-project, et ajouté un bootstrap Go dans .zscripts/dev.sh (recrée le symlink au boot
+  + export PATH). .gitignore de scolagest (db/+download/ mais PAS upload/) ne déclenche
+  PAS l'auto-heal du boot (triple upload/+download/+db/ incomplet) -> .gitignore préservé.
+- Démarré le dev server via `bun run dev` (Frontend :3000 + instrumentation build/spawn
+  backend Go :8080 connecté à Neon). Vérifié E2E :
+  • Frontend /login rendu (HTML: Connexion, Se connecter, Établissement, Identifiants démo).
+  • agent-browser: landing page / rendue (navbar, hero, features grid), console clean.
+  • agent-browser: /login form interactif (Email, Mot de passe, combobox Établissement
+    avec 3 options chargées depuis /api/etablissements, bouton Se connecter).
+  • API auth: POST /api/auth/login admin (etab_id vide) -> token 399 chars ;
+    caissier (etab_id=UUID Collège) -> token. (etab_id="none" -> "invalide" car non-UUID.)
+  • Données Neon: GET /api/eleves -> 8 élèves (Brou David, Diabaté Mariam, Kouassi Yann…).
+    GET /api/caisse/dashboard -> total_encaisse=145000 FCFA, 3 transactions.
+  • Login interactif agent-browser (caissier + Collège Le Chandelier) -> redirect
+    /dashboard, dashboard rendu avec sidebar (PILOTAGE: Tableau de bord/Élèves/Caisse/
+    Impayés/Rapports ; MODULES AVANCÉS: Mobile Money), user "Aminata (Caissière) Traoré",
+    établissement "Collège Privé Le Chandelier", screenshot 114 Ko, 0 erreur.
+
+Stage Summary:
+- Environnement de développement ScolaGest pleinement restauré dans le sandbox :
+  monorepo à la racine /home/z/my-project/, Go 1.25 installé (persistant in-project),
+  .env locaux créés, dev.sh bootstrap Go pour la persistance inter-sessions.
+- Stack locale vérifiée E2E : Frontend Next.js :3000 + Backend Go :8080 (Neon) +
+  auth JWT + RBAC + données réelles (8 élèves, caisse 145000 FCFA). Login caissier
+  -> /dashboard rendu avec données.
+- Stack production vérifiée live : Render backend sain (Neon connecté), Vercel 200.
+- CI/CD : GitHub Action deploy-backend.yml (Render sur backend/**), Vercel auto-deploy
+  (Frontend/). Push -> main déclenche Vercel + Render ; backend Render sync Neon au démarrage.
+- Contrainte sandbox documentée : le dev server ne persiste que démarré par le boot
+  (.zscripts/dev.sh). Cette session, le dev server est éphémère (meurt entre appels Bash).
+  PROCHAINE session : le boot restaurera repo.tar + lancera dev.sh (avec bootstrap Go)
+  -> dev server persistant -> Preview Panel fonctionnel.
+- Fichiers locaux modifiés (non commités): .zscripts/dev.sh (bootstrap Go, +9 lignes).
+  .env et .local-tools/ sont gitignorés. .zscripts/dev.sh à valider/pousser avec l'user.
