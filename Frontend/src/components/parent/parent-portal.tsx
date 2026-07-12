@@ -68,6 +68,10 @@ import {
 
 import { useAuthStore } from "@/lib/auth-store";
 import { useToast } from "@/hooks/use-toast";
+// PWA parent : enregistre le service worker pour le mode hors-ligne
+// (cache du shell `/parent` + `/portal` + fallback API). Le hook est une
+// amélioration progressive — aucune erreur n'est remontée à l'utilisateur.
+import { useParentPWA } from "@/hooks/use-parent-pwa";
 import {
   fetchEnfants,
   fetchEcheancesParent,
@@ -206,6 +210,11 @@ export function ParentPortal() {
   const tuteur = useAuthStore((s) => s.tuteur);
   const etablissement = useAuthStore((s) => s.etablissement);
   const logoutParent = useAuthStore((s) => s.logoutParent);
+
+  // PWA — enregistre le service worker parent (offline + cache API).
+  // Sur la route `/portal`, le hook détecte automatiquement la route et
+  // enregistre `/sw-parent.js`. Aucune interférence avec les routes staff.
+  useParentPWA();
 
   // État UI
   const [activeSection, setActiveSection] =

@@ -8239,3 +8239,193 @@ Stage Summary:
 - Aucune couleur indigo/bleu ajoutée. TypeScript strict respecté. Go
   idiomatique.
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+
+## pwa-parent — PWA dédiée pour le module parent ScolaGest
+
+**Task ID** : `pwa-parent`
+**Contexte** : Le module parent (`/parent` = login téléphone+PIN,
+`/portal` = portail) n'avait pas de PWA dédiée. Le manifeste existant
+(`/manifest.json`) est pour le portail prof (`/prof`). On crée une PWA
+séparée pour les parents (installable, offline, branding emerald/amber)
+sans toucher à la PWA prof.
+
+### Fichiers CRÉÉS (5)
+
+1. **`Frontend/public/manifest-parent.json`** — Manifeste PWA parent dédié :
+   • `name` : "ScolaGest Parent"
+   • `short_name` : "ScolaGest Parent"
+   • `start_url` : "/parent", `scope` : "/", `display` : "standalone"
+   • `orientation` : "portrait", `lang` : "fr"
+   • `background_color` : "#ffffff", `theme_color` : "#059669" (emerald)
+   • `categories` : ["education", "finance"]
+   • Icônes : `/icon.png` (any + maskable, 192 + 512) + `/logo.png`
+     (any, 192 + 512) — 6 entrées pour laisser le navigateur choisir.
+   • Shortcuts : "Mes enfants" → "/portal", "Payer en ligne" → "/portal".
+
+2. **`Frontend/public/sw-parent.js`** — Service Worker offline minimal :
+   • Cache `scolagest-parent-v1`, pré-cache ASSETS = ["/parent",
+     "/portal", "/logo.png", "/icon.png", "/favicon.png",
+     "/manifest-parent.json"].
+   • Install : `cache.addAll` via `Promise.allSettled` (tolérant aux 404
+     sur une ressource — n'interrompt pas l'installation).
+   • Activate : nettoyage des anciens caches + `clients.claim()`.
+   • Fetch strategies :
+     - API `/api/*` (GET uniquement) : network-first + fallback cache
+       (permet consultation offline des dernières données chargées).
+     - Assets statiques (CSS/JS/fonts/images/`/_next/*`) : cache-first
+       avec mise en cache des nouvelles réponses.
+     - Navigation HTML (mode "navigate") : stale-while-revalidate,
+       fallback `/parent` si réseau + cache morts.
+     - Non-GET (POST/PUT/DELETE) : jamais intercepté (laissé au
+       navigateur).
+     - Cross-origin : jamais intercepté (CDN, Google Fonts).
+   • N'inclut QUE les ressources parent — les routes staff/prof ne sont
+     jamais mises en cache et ne sont pas interceptées.
+
+3. **`Frontend/src/app/(parent)/layout.tsx`** — Layout Server Component
+   pour le groupe `(parent)` (route `/portal`). Exporte `metadata` +
+   `viewport` référençant `/manifest-parent.json`. Permet de garder la
+   page `/portal` en Client Component (`"use client"` pour React Query)
+   tout en injectant la metadata PWA (impossible depuis un Client Comp).
+
+4. **`Frontend/src/app/(auth)/parent/layout.tsx`** — Layout Server
+   Component pour la route `/parent` (login). Même metadata + viewport
+   que ci-dessus. Portée limitée à `/parent` (pas aux autres routes du
+   groupe `(auth)` comme `/login` ou `/code-oublie`).
+
+5. **`Frontend/src/hooks/use-parent-pwa.ts`** — 2 hooks client :
+   • `useParentPWA()` : enregistre `/sw-parent.js` au mount. Garde-fou
+     `isParentRoute()` : n'enregistre le SW QUE sur `/parent`, `/portal`
+     ou `/parent/*`. Aucune interférence avec `/prof`, `/dashboard`,
+     `/caisse`, etc. Erreurs silencieuses (amélioration progressive).
+   • `useParentInstallPrompt()` : capture `beforeinstallprompt`
+     (Chrome/Edge/Android), expose `{ canInstall, promptInstall }`. Gère
+     aussi `appinstalled` pour reset l'état après installation. Sur iOS
+     Safari, l'événement n'est jamais déclenché → `canInstall` reste
+     false → bouton caché (comportement attendu).
+   • Type `BeforeInstallPromptEvent` local (spec W3C non stabilisée,
+     évite une dépendance tierce).
+
+### Fichiers MODIFIÉS (2)
+
+6. **`Frontend/src/components/parent/parent-access-form.tsx`** :
+   • Import `Download` (lucide-react) + `useParentPWA`,
+     `useParentInstallPrompt` (nouveau hook).
+   • Appel `useParentPWA()` au mount du composant (enregistre le SW sur
+     `/parent`).
+   • Appel `useParentInstallPrompt()` + état local `installing`.
+   • Nouvelle fonction `handleInstall()` : déclenche `promptInstall()`,
+     toast "Application installée" si acceptée.
+   • Nouveau bandeau "Installer l'application" (amber glass, icône
+     `Download`) inséré entre le titre "Espace Parent" et le formulaire.
+     Animé Framer Motion (`initial={{opacity:0,height:0}}` →
+     `animate={{opacity:1,height:"auto"}}`). Affiché UNIQUEMENT si
+     `canInstall === true` (Chrome/Edge/Android éligibles, non installé).
+   • Aucune modification de la logique métier (login téléphone+PIN
+     intacte).
+
+7. **`Frontend/src/components/parent/parent-portal.tsx`** :
+   • Import `useParentPWA`.
+   • Appel `useParentPWA()` au début de `ParentPortal()` (enregistre le
+     SW sur `/portal`).
+   • Aucune autre modification — la logique React Query, le rendu des
+     sections enfants/historique/échéances et les dialogues MoMo/reçus
+     sont intacts.
+
+### RÈGLES STRICTES — respectées
+
+1. ✅ Manifest prof INTACT — `Frontend/public/manifest.json` non touché,
+   `start_url: "/prof"`, `scope: "/prof"` inchangés. Vérifié par relecture.
+2. ✅ Layout root INTACT — `Frontend/src/app/layout.tsx` non modifié,
+   garde `manifest: "/manifest.json"` (PWA prof).
+3. ✅ Manifest parent séparé — `manifest-parent.json` créé, référencé
+   uniquement par les layouts `(parent)/layout.tsx` et
+   `(auth)/parent/layout.tsx` (surcharge locale, n'affecte pas le root).
+4. ✅ Service Worker non-interférent — `sw-parent.js` n'intercepte que
+   les requêtes same-origin GET ; les routes staff/prof tombent dans le
+   fetch navigateur par défaut. Le hook `useParentPWA()` a un garde-fou
+   `isParentRoute()` qui n'enregistre le SW que sur `/parent` et
+   `/portal`.
+5. ✅ TypeScript strict — 0 erreur sur mes fichiers (vérifié par
+   `npx tsc --noEmit` filtré sur `use-parent-pwa|parent-access-form|
+   parent-portal|\(parent\)/layout|\(auth\)/parent/layout|manifest-parent`
+   → 0 match).
+6. ✅ Aucune couleur indigo/bleu — palette amber/orange/emerald uniquement
+   (cohérente avec l'existant parent).
+7. ✅ Mobile-first — bouton install full-width 44px+, layout glass
+   responsive (lg:grid 2 colonnes, mobile 1 colonne).
+
+### TESTS — vérifications effectuées
+
+1. **Lint frontend** :
+   `cd Frontend && bun run lint` → **0 erreur, 3 warnings pré-existants**
+   (dans `step-scolarite.tsx`, non liés à ce changement — directives
+   `eslint-disable` inutilisées). Mes fichiers : 0 erreur, 0 warning.
+
+2. **Validation JSON** :
+   `node -e "JSON.parse(...)"` sur `manifest-parent.json` → JSON valide.
+
+3. **Validation JS** :
+   `node --check sw-parent.js` → syntaxe OK.
+
+4. **TypeScript strict (filtré)** :
+   `npx tsc --noEmit 2>&1 | rg "use-parent-pwa|parent-access-form|
+   parent-portal|\(parent\)/layout|\(auth\)/parent/layout|manifest-parent"`
+   → 0 erreur sur mes fichiers. (Les 19 erreurs tsc signalées dans
+   `login-form.tsx`, `dashboard-shell.tsx`, `view-impayes.tsx`,
+   `view-parametres.tsx`, `view-utilisateurs.tsx`,
+   `etablissement-form-dialog.tsx`, `utilisateur-form-dialog.tsx`,
+   `instrumentation.ts` sont toutes PRÉ-EXISTANTES et non liées à ce
+   travail.)
+
+5. **Non-régression manifest prof** :
+   `Frontend/public/manifest.json` — non modifié, toujours
+   `start_url: "/prof"`, `scope: "/prof"`, `theme_color: "#059669"`,
+   `name: "ScolaGest Prof"`. Le layout root `app/layout.tsx` garde
+   `manifest: "/manifest.json"`. Aucune interférence.
+
+6. **Non-régression layout root** :
+   `Frontend/src/app/layout.tsx` — non modifié. Manifest prof reste
+   référencé au niveau root. La surcharge metadata parent s'applique
+   uniquement via les layouts `(parent)/layout.tsx` et
+   `(auth)/parent/layout.tsx` (Next.js App Router : le layout le plus
+   proche gagne).
+
+### Architecture PWA — résumé
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Route /  (root layout.tsx) → manifest.json (PROF)           │
+│   ├─ /prof          [hérite manifest prof]                  │
+│   ├─ /dashboard     [hérite manifest prof]                  │
+│   ├─ /caisse, /eleves, etc. [hérite manifest prof]          │
+│   ├─ /login, /code-oublie  [hérite manifest prof]           │
+│   │                                                          │
+│   ├─ (auth)/parent/layout.tsx → manifest-parent.json (PARENT)│
+│   │     └─ /parent  [parent-access-form + useParentPWA]     │
+│   │                                                          │
+│   └─ (parent)/layout.tsx → manifest-parent.json (PARENT)    │
+│         └─ /portal  [parent-portal + useParentPWA]          │
+└─────────────────────────────────────────────────────────────┘
+
+Service Worker `/sw-parent.js` :
+  - enregistré uniquement sur /parent et /portal (garde-fou isParentRoute)
+  - scope "/" mais n'intercepte que GET same-origin
+  - routes staff/prof jamais mises en cache
+```
+
+Stage Summary :
+- 5 fichiers créés (manifest-parent.json, sw-parent.js, 2 layouts
+  Server, 1 hook client), 2 fichiers modifiés (parent-access-form,
+  parent-portal).
+- PWA parent pleinement fonctionnelle : installable (bouton sur page
+  login + shortcuts), offline (SW cache shell + fallback API),
+  branding emerald cohérent.
+- Manifest prof INTACT (vérifié par relecture).
+- Layout root INTACT (vérifié par relecture).
+- Lint : 0 erreur, 3 warnings pré-existants non liés.
+- TypeScript : 0 erreur sur mes fichiers.
+- Aucune couleur indigo/bleu. Mobile-first. TypeScript strict.
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.

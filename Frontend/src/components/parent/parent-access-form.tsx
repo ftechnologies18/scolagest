@@ -46,9 +46,12 @@ import {
   Wallet,
   ReceiptText,
   Smartphone,
+  Download,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+// PWA parent : enregistrement du service worker + prompt d'installation.
+import { useParentPWA, useParentInstallPrompt } from "@/hooks/use-parent-pwa";
 import {
   InputOTP,
   InputOTPGroup,
@@ -110,10 +113,35 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
   const { toast } = useToast();
   const loginParent = useAuthStore((s) => s.loginParent);
 
+  // PWA — enregistre le service worker parent (offline + cache API).
+  // Capture aussi l'événement `beforeinstallprompt` pour afficher un bouton
+  // « Installer l'app » (Chrome/Edge/Android uniquement — iOS Safari ne
+  // déclenche jamais cet événement, le bouton reste caché).
+  useParentPWA();
+  const { canInstall, promptInstall } = useParentInstallPrompt();
+  const [installing, setInstalling] = useState(false);
+
   const [telephone, setTelephone] = useState("");
   const [pin, setPin] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
+
+  /** Déclenche l'installation native de la PWA (Chrome/Edge/Android). */
+  async function handleInstall() {
+    setInstalling(true);
+    try {
+      const accepted = await promptInstall();
+      if (accepted) {
+        toast({
+          title: "Application installée",
+          description:
+            "ScolaGest Parent est maintenant sur votre écran d'accueil.",
+        });
+      }
+    } finally {
+      setInstalling(false);
+    }
+  }
 
   /** Normalise le numéro de téléphone : supprime les espaces, garde `+`. */
   function normalizePhone(value: string): string {
@@ -233,6 +261,28 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
                 Accédez avec votre numéro de téléphone et votre code PIN.
               </p>
             </div>
+
+            {/* Bandeau d'installation PWA (uniquement si `beforeinstallprompt`
+                capturé — Chrome/Edge/Android. Caché sur iOS Safari). */}
+            {canInstall ? (
+              <motion.button
+                type="button"
+                onClick={handleInstall}
+                disabled={installing}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                whileHover={{ scale: installing ? 1 : 1.01 }}
+                whileTap={{ scale: installing ? 1 : 0.99 }}
+                className="mb-5 flex w-full items-center justify-center gap-2 rounded-lg border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm transition-colors hover:from-amber-100 hover:to-orange-100 disabled:opacity-60"
+              >
+                {installing ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Download className="size-3.5" />
+                )}
+                {installing ? "Installation…" : "Installer l'application"}
+              </motion.button>
+            ) : null}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Téléphone */}
