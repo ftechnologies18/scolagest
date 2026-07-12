@@ -371,3 +371,108 @@ func (s *PaieService) TraiterAvance(id, adminID uuid.UUID, approuver bool, motif
         }
         return &a, nil
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dû courant — montant déjà gagné par l'enseignant ce mois-ci
+// ─────────────────────────────────────────────────────────────────────────────
+
+// DuCourantResult : montant déjà gagné par l'enseignant ce mois-ci (heures
+// enseignées × taux moyen), moins les avances déjà demandées/approuvées.
+type DuCourantResult struct {
+	Mois             int     `json:"mois"`
+	Annee            int     `json:"annee"`
+	HeuresEnseignees float64 `json:"heures_enseignees"`
+	NbSessions       int     `json:"nb_sessions"`
+	TauxMoyen        float64 `json:"taux_moyen"`
+	SalaireDu        float64 `json:"salaire_du"`
+	AvancesEnCours   float64 `json:"avances_en_cours"`
+	DuDisponible     float64 `json:"du_disponible"`
+}
+
+// GetDuCourant calcule le montant déjà gagné par l'enseignant pour le mois
+// en cours (du 1er du mois à maintenant), basé sur les pointages validés.
+// C'est le plafond maximal pour une demande d'avance — empêche un enseignant
+// de demander une avance supérieure à ce qu'il a réellement gagné.
+func (s *PaieService) GetDuCourant(enseignantID uuid.UUID) (*DuCourantResult, error) {
+	db := database.Current()
+	now := time.Now()
+	debutMois := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+
+	// 1. Pointages validés du mois (du 1er à maintenant)
+	var pointages []models.Pointage
+	db.Preload("SessionCours").
+		Where("enseignant_id = ? AND date_heure_serveur BETWEEN ? AND ? AND statut IN ?",
+			enseignantID, debutMois, now,
+			[]models.StatutPointage{models.StatutPointValide, models.StatutPointValideManuel}).
+		Find(&pointages)
+
+	// 2. Heures enseignées (durée réelle des sessions pointées)
+	sessionsPointees := make(map[uuid.UUID]bool)
+	for _, p := range pointages {
+		if p.Type == models.TypePointageEntree {
+			sessionsPointees[p.SessionCoursID] = true
+		}
+	}
+	var sessionsList []models.SessionCours
+	sessionIDs := make([]uuid.UUID, 0, len(sessionsPointees))
+	for sid := range sessionsPointees {
+		sessionIDs = append(sessionIDs, sid)
+	}
+	if len(sessionIDs) > 0 {
+		db.Where("id IN ?", sessionIDs).Find(&sessionsList)
+	}
+	heuresEnseignees := 0.0
+	for _, s := range sessionsList {
+		duree := s.HeureFin.Sub(s.HeureDebut).Hours()
+		if duree > 0 {
+			heuresEnseignees += duree
+		}
+	}
+
+	// 3. Taux horaire moyen
+	var ensMatieres []models.EnseignantMatiere
+	db.Where("enseignant_id = ?", enseignantID).Find(&ensMatieres)
+	tauxMoyen := 0.0
+	if len(ensMatieres) > 0 {
+		sommeTaux := 0.0
+		for _, em := range ensMatieres {
+			sommeTaux += em.TauxHoraire
+		}
+		tauxMoyen = sommeTaux / float64(len(ensMatieres))
+	} else {
+		var ens models.Enseignant
+		db.First(&ens, "id = ?", enseignantID)
+		tauxMoyen = ens.TauxHoraireDefaut
+	}
+
+	// 4. Salaire dû = heures × taux
+	salaireDu := heuresEnseignees * tauxMoyen
+
+	// 5. Avances en cours (DEMANDEE + APPROUVEE non déduites ce mois)
+	var avances []models.AvanceSalaire
+	db.Where("enseignant_id = ? AND statut IN ? AND date_demande >= ?",
+		enseignantID,
+		[]models.StatutAvance{models.StatutAvanceDemandee, models.StatutAvanceApprouvee},
+		debutMois).Find(&avances)
+	avancesEnCours := 0.0
+	for _, a := range avances {
+		avancesEnCours += a.Montant
+	}
+
+	// 6. Dû disponible = salaire dû - avances en cours
+	duDisponible := salaireDu - avancesEnCours
+	if duDisponible < 0 {
+		duDisponible = 0
+	}
+
+	return &DuCourantResult{
+		Mois:             int(now.Month()),
+		Annee:            now.Year(),
+		HeuresEnseignees: heuresEnseignees,
+		NbSessions:       len(sessionsPointees),
+		TauxMoyen:        tauxMoyen,
+		SalaireDu:        salaireDu,
+		AvancesEnCours:   avancesEnCours,
+		DuDisponible:     duDisponible,
+	}, nil
+}

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+        "fmt"
         "net/http"
         "strconv"
 
@@ -280,6 +281,7 @@ func (h *PaieHandler) RegisterRoutes(rg *gin.RouterGroup, authMW gin.HandlerFunc
                 prof.GET("/bulletins", h.GetMesBulletins)
                 prof.GET("/avances", h.GetMesAvances)
                 prof.POST("/avances", h.CreateMesAvance)
+                prof.GET("/du-courant", h.GetDuCourant)
         }
 }
 
@@ -330,6 +332,29 @@ func (h *PaieHandler) CreateMesAvance(c *gin.Context) {
                 return
         }
 
+        // Règle métier anti-abus : l'avance ne peut pas dépasser le dû courant
+        // (heures déjà enseignées × taux - avances en cours). Empêche un prof
+        // de demander une avance puis de ne plus venir donner cours.
+        du, err := h.svc.GetDuCourant(*ensID)
+        if err != nil {
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "impossible de calculer votre dû"})
+                return
+        }
+        if body.Montant > du.DuDisponible {
+                c.JSON(http.StatusBadRequest, gin.H{
+                        "error": fmt.Sprintf("montant trop élevé — votre dû disponible ce mois-ci est de %.0f FCFA (%.1fh enseignées × %.0f FCFA/h, moins %.0f FCFA d'avances en cours). Vous ne pouvez pas demander une avance supérieure à ce que vous avez déjà gagné.",
+                                du.DuDisponible, du.HeuresEnseignees, du.TauxMoyen, du.AvancesEnCours),
+                        "du_disponible": du.DuDisponible,
+                        "heures_enseignees": du.HeuresEnseignees,
+                        "taux_moyen": du.TauxMoyen,
+                })
+                return
+        }
+        if du.DuDisponible <= 0 {
+                c.JSON(http.StatusBadRequest, gin.H{"error": "vous n'avez pas encore de dû disponible ce mois-ci — donnez des cours et pointez vos sessions pour pouvoir demander une avance"})
+                return
+        }
+
         a, err := h.svc.CreateAvance(*ensID, ens.EtablissementID, services.AvanceDTO{
                 Montant: body.Montant,
                 Motif:   body.Motif,
@@ -340,6 +365,28 @@ func (h *PaieHandler) CreateMesAvance(c *gin.Context) {
         }
         c.JSON(http.StatusCreated, a)
 }
+
+// GetDuCourant gère GET /api/prof/du-courant
+// Retourne le montant déjà gagné par l'enseignant ce mois-ci (heures
+// enseignées × taux), moins les avances en cours. C'est le plafond
+// maximal pour une demande d'avance.
+func (h *PaieHandler) GetDuCourant(c *gin.Context) {
+        userID := middleware.CurrentUserID(c)
+
+        ensID, err := services.NewPointageService().GetEnseignantIDFromUtilisateur(userID)
+        if err != nil {
+                c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+                return
+        }
+
+        du, err := h.svc.GetDuCourant(*ensID)
+        if err != nil {
+                c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+                return
+        }
+        c.JSON(http.StatusOK, du)
+}
+
 func parseInt(s string) (int, error) {
         return strconv.Atoi(s)
 }

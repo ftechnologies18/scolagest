@@ -193,3 +193,22 @@ export function createMesAvance(body: {
 }): Promise<AvanceSalaire> {
   return apiPost<AvanceSalaire>("/api/prof/avances", body);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API — Dû courant (montant déjà gagné ce mois-ci)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface DuCourant {
+  mois: number;
+  annee: number;
+  heures_enseignees: number;
+  nb_sessions: number;
+  taux_moyen: number;
+  salaire_du: number;
+  avances_en_cours: number;
+  du_disponible: number;
+}
+
+export function fetchDuCourant(): Promise<DuCourant> {
+  return apiGet<DuCourant>("/api/prof/du-courant");
+}

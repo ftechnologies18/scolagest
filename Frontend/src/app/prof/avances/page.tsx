@@ -32,6 +32,8 @@ import {
   STATUT_AVANCE_LABEL,
   type AvanceSalaire,
   type StatutAvance,
+  fetchDuCourant,
+  type DuCourant,
 } from "@/lib/api-paie";
 import { ApiError } from "@/lib/api-client";
 import { useToast } from "@/hooks/use-toast";
@@ -96,6 +98,11 @@ export default function MesAvancesPage() {
     queryFn: fetchMesAvances,
   });
 
+  const { data: duCourant } = useQuery({
+    queryKey: ["prof", "du-courant"],
+    queryFn: fetchDuCourant,
+  });
+
   const mutation = useMutation({
     mutationFn: () =>
       createMesAvance({
@@ -122,6 +129,11 @@ export default function MesAvancesPage() {
     },
   });
 
+  const duDisponible = duCourant?.du_disponible ?? 0;
+  const montantNum = Number(montant) || 0;
+  const isOverDu = montantNum > duDisponible;
+  const canSubmit = montantNum > 0 && !isOverDu && !mutation.isPending && duDisponible > 0;
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const m = Number(montant);
@@ -129,6 +141,14 @@ export default function MesAvancesPage() {
       toast({
         title: "Montant invalide",
         description: "Veuillez saisir un montant positif.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (m > duDisponible) {
+      toast({
+        title: "Montant trop élevé",
+        description: `Votre dû disponible est de ${formatFCFA(duDisponible)}. Vous ne pouvez pas demander plus que ce que vous avez déjà gagné.`,
         variant: "destructive",
       });
       return;
@@ -156,6 +176,45 @@ export default function MesAvancesPage() {
           <span className="hidden sm:inline">Nouvelle demande</span>
         </Button>
       </div>
+
+      {/* Carte dû courant */}
+      {duCourant && (
+        <Card className="border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+          <CardContent className="grid grid-cols-2 gap-4 py-4 sm:grid-cols-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Heures enseignées</p>
+              <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
+                {duCourant.heures_enseignees.toFixed(1)}h
+              </p>
+              <p className="text-[10px] text-muted-foreground">{duCourant.nb_sessions} session(s)</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Taux moyen</p>
+              <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
+                {formatFCFA(duCourant.taux_moyen)}
+              </p>
+              <p className="text-[10px] text-muted-foreground">/heure</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Salaire gagné</p>
+              <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
+                {formatFCFA(duCourant.salaire_du)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Dû disponible</p>
+              <p className={`text-lg font-bold ${duCourant.du_disponible > 0 ? "text-amber-600" : "text-muted-foreground"}`}>
+                {formatFCFA(duCourant.du_disponible)}
+              </p>
+              {duCourant.avances_en_cours > 0 && (
+                <p className="text-[10px] text-muted-foreground">
+                  - {formatFCFA(duCourant.avances_en_cours)} avances en cours
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Liste */}
       {isLoading ? (
@@ -246,21 +305,50 @@ export default function MesAvancesPage() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Alerte dû disponible */}
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+              <p className="text-xs text-emerald-800 dark:text-emerald-300">
+                <strong>Dû disponible ce mois-ci : {formatFCFA(duDisponible)}</strong>
+                {duCourant && (
+                  <> ({duCourant.heures_enseignees.toFixed(1)}h enseignées × {formatFCFA(duCourant.taux_moyen)}/h{duCourant.avances_en_cours > 0 ? ` − ${formatFCFA(duCourant.avances_en_cours)} d'avances en cours` : ""})</>
+                )}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Vous ne pouvez demander une avance que sur ce que vous avez déjà gagné.
+              </p>
+            </div>
+            {duDisponible <= 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-900/50 dark:bg-amber-950/20">
+                <p className="text-xs text-amber-800 dark:text-amber-300">
+                  Vous n&apos;avez pas encore de dû disponible ce mois-ci. Donnez des cours et pointez vos sessions pour pouvoir demander une avance.
+                </p>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="montant" className="text-sm font-medium">
                 Montant souhaité (FCFA)
+                <span className="ml-2 text-xs text-muted-foreground">
+                  max: {formatFCFA(duDisponible)}
+                </span>
               </Label>
               <Input
                 id="montant"
                 type="number"
                 min="1"
+                max={duDisponible > 0 ? duDisponible : undefined}
                 step="500"
                 value={montant}
                 onChange={(e) => setMontant(e.target.value)}
                 placeholder="ex: 50000"
                 required
-                disabled={mutation.isPending}
+                disabled={mutation.isPending || duDisponible <= 0}
+                className={isOverDu ? "border-rose-400" : ""}
               />
+              {isOverDu && (
+                <p className="text-xs text-rose-500">
+                  Montant supérieur à votre dû disponible ({formatFCFA(duDisponible)})
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="motif" className="text-sm font-medium">
@@ -282,7 +370,7 @@ export default function MesAvancesPage() {
               <Button
                 type="submit"
                 className="bg-emerald-600 hover:bg-emerald-700"
-                disabled={mutation.isPending || !montant}
+                disabled={!canSubmit}
               >
                 {mutation.isPending ? (
                   <>
