@@ -59,7 +59,8 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -272,14 +273,12 @@ export function PaiementEntryForm() {
     <div className="grid gap-4 lg:grid-cols-3">
       {/* Colonne principale : formulaire */}
       <div className="space-y-4 lg:col-span-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Wallet className="size-4 text-emerald-600" />
-              Nouvel encaissement
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <GlassCard variant="adaptive" noHover>
+          <div className="mb-4 flex items-center gap-2">
+            <Wallet className="size-4 text-emerald-600" />
+            <h3 className="font-display text-base font-semibold">Nouvel encaissement</h3>
+          </div>
+          <div className="space-y-4">
             {/* Recherche d'élève */}
             <div className="space-y-1.5">
               <Label>Élève</Label>
@@ -582,9 +581,9 @@ export function PaiementEntryForm() {
               </Button>
               <Button
                 type="button"
+                variant="success"
                 disabled={!canSubmit || mutation.isPending}
                 onClick={() => mutation.mutate()}
-                className="bg-emerald-600 text-white hover:bg-emerald-700"
               >
                 {mutation.isPending ? (
                   <>
@@ -599,8 +598,8 @@ export function PaiementEntryForm() {
                 )}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       </div>
 
       {/* Colonne latérale : solde */}
@@ -681,7 +680,9 @@ function SoldeCard({
 
   const isSolde = solde.solde_du <= 0;
   return (
-    <Card
+    <GlassCard
+      variant="adaptive"
+      noHover
       className={cn(
         "overflow-hidden",
         isSolde
@@ -689,10 +690,10 @@ function SoldeCard({
           : "border-amber-200 dark:border-amber-900/40",
       )}
     >
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm">Solde de l&apos;élève</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+      <div className="mb-3">
+        <h3 className="font-display text-sm font-semibold">Solde de l&apos;élève</h3>
+      </div>
+      <div className="space-y-3">
         {/* Totaux */}
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="rounded-lg border bg-muted/20 p-2">
@@ -811,7 +812,7 @@ function SoldeCard({
             </ul>
           </div>
         ) : null}
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }

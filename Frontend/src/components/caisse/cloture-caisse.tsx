@@ -52,7 +52,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 import {
   Table,
   TableBody,
@@ -186,14 +187,14 @@ export function ClotureCaissePanel() {
   return (
     <div className="space-y-4">
       {/* En-tête */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Lock className="size-4 text-emerald-600" />
+      <GlassCard variant="adaptive" noHover>
+        <div className="mb-4 flex items-center gap-2">
+          <Lock className="size-4 text-emerald-600" />
+          <h3 className="font-display text-base font-semibold">
             Clôture de caisse — {formatDateShort(today)}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </h3>
+        </div>
+        <div className="space-y-4">
           {/* Infos caissier + statut */}
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
@@ -348,9 +349,9 @@ export function ClotureCaissePanel() {
                 {canEdit ? (
                   <Button
                     type="button"
+                    variant="success"
                     disabled={saveMutation.isPending}
                     onClick={() => saveMutation.mutate()}
-                    className="bg-emerald-600 text-white hover:bg-emerald-700"
                   >
                     {saveMutation.isPending ? (
                       <>
@@ -404,18 +405,20 @@ export function ClotureCaissePanel() {
               même saisir le total remis.
             </div>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
+
+      <KentePattern variant="separator" />
 
       {/* Détail des paiements du jour */}
-      <Card className="overflow-hidden">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Wallet className="size-4 text-emerald-600" />
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div className="flex items-center gap-2 p-5 pb-3">
+          <Wallet className="size-4 text-emerald-600" />
+          <h3 className="font-display text-base font-semibold">
             Paiements du jour ({paiementsDuJour.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+          </h3>
+        </div>
+        <div>
           {paiementsDuJour.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
               <Wallet className="size-8 text-muted-foreground/40" />
@@ -470,8 +473,8 @@ export function ClotureCaissePanel() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     </div>
   );
 }

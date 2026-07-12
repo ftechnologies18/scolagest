@@ -40,6 +40,7 @@ import { FileAttente, fileAttenteKeys } from "@/components/caisse/file-attente";
 import {
   DashboardCaissePanel,
 } from "@/components/caisse/dashboard-caisse";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 type CaisseTab =
   | "dashboard"
@@ -64,13 +65,14 @@ export default function CaisseView() {
 
   return (
     <div className="space-y-4">
+      <KentePattern variant="strip" position="top" />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
             <Wallet className="size-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Caisse</h1>
+            <h1 className="font-display text-xl font-bold tracking-tight">Caisse</h1>
             <p className="text-sm text-muted-foreground">
               Tableau de bord, file d'attente, encaissement, historique et
               clôture quotidienne.
@@ -83,6 +85,8 @@ export default function CaisseView() {
           </div>
         </div>
       </div>
+
+      <KentePattern variant="separator" />
 
       <Tabs
         value={tab}

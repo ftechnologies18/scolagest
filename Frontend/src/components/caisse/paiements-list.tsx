@@ -49,7 +49,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 import {
   Table,
   TableBody,
@@ -187,8 +188,8 @@ export function PaiementsList() {
   return (
     <div className="space-y-4">
       {/* Filtres */}
-      <Card>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <GlassCard variant="adaptive" noHover className="p-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1.5">
             <Label htmlFor="date-debut" className="text-xs">
               Date début
@@ -247,12 +248,14 @@ export function PaiementsList() {
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
+
+      <KentePattern variant="separator" />
 
       {/* Tableau */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div>
           {isLoading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -325,8 +328,8 @@ export function PaiementsList() {
               </ul>
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {/* Pagination */}
       {total > 0 ? (

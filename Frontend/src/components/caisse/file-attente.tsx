@@ -54,7 +54,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
 import {
   Select,
   SelectContent,
@@ -534,11 +535,13 @@ export function FileAttente() {
         {file!.map((eleve) => {
           const src = sourceBadge(eleve.source);
           return (
-            <Card
+            <GlassCard
               key={eleve.eleve_id}
-              className="overflow-hidden transition-shadow hover:shadow-md"
+              variant="adaptive"
+              noHover
+              className="overflow-hidden p-4"
             >
-              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 {/* Identité + badges */}
                 <div className="flex min-w-0 flex-1 items-start gap-3">
                   <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
@@ -607,7 +610,8 @@ export function FileAttente() {
                   <Button
                     type="button"
                     size="lg"
-                    className="h-11 w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+                    variant="success"
+                    className="h-11 w-full sm:w-auto"
                     onClick={() => setDialogEleve(eleve)}
                     disabled={eleve.solde_du <= 0 || !eleve.frais_inscription_id}
                   >
@@ -615,8 +619,8 @@ export function FileAttente() {
                     Encaisser
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </GlassCard>
           );
         })}
       </div>
