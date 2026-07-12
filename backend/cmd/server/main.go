@@ -93,6 +93,8 @@ func main() {
         eleveHandler := handlers.NewEleveHandler(eleveSvc)
         tuteurHandler := handlers.NewTuteurHandler(tuteurSvc)
         inscriptionHandler := handlers.NewInscriptionHandler(inscriptionSvc)
+        inscriptionWorkflowSvc := services.NewInscriptionWorkflowService(eleveSvc)
+        inscriptionWorkflowHandler := handlers.NewInscriptionWorkflowHandler(inscriptionWorkflowSvc)
         referentielHandler := handlers.NewReferentielHandler(referentielSvc)
         anneeHandler := handlers.NewAnneeScolaireHandler(anneeSvc)
         fraisHandler := handlers.NewFraisHandler(fraisSvc)
@@ -131,6 +133,7 @@ func main() {
         eleveHandler.RegisterRoutes(api, authMW)
         tuteurHandler.RegisterRoutes(api, authMW)
         inscriptionHandler.RegisterRoutes(api, authMW)
+        inscriptionWorkflowHandler.RegisterRoutes(api, authMW)
         referentielHandler.RegisterRoutes(api, authMW)
         anneeHandler.RegisterRoutes(api, authMW)
 

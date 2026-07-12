@@ -91,6 +91,7 @@ import SaasDashboardView from "./views/view-saas-dashboard";
 export type DashboardViewId =
   | "dashboard"
   | "eleves"
+  | "inscription"
   | "caisse"
   | "impayes"
   | "rapports"

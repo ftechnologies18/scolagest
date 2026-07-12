@@ -28,6 +28,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   Users,
+  UserPlus,
   Wallet,
   AlertTriangle,
   FileBarChart,
@@ -115,6 +116,15 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         label: "Élèves",
         icon: Users,
         roles: ["CAISSIER", "COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
+      },
+      {
+        // Nouvelle inscription (wizard 4 étapes) : réservé au secrétariat
+        // et à la direction (le caissier/comptable gèrent la caisse, pas les
+        // inscriptions).
+        href: "/inscription",
+        label: "Nouvelle inscription",
+        icon: UserPlus,
+        roles: ["SECRETARIAT", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
       {
         // Caisse : réservée au CAISSIER et au COMPTABLE (encaissement,

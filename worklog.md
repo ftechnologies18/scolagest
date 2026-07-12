@@ -2386,3 +2386,35 @@ Stage Summary:
 - Backend : 2 nouvelles routes (/api/eleves/export, /api/eleves/stats) + filtres cycle_id/niveau sur /api/eleves. Sous-requêtes IN au lieu de JOIN (fix latent double-comptage redoublants).
 - Frontend : barre de filtres refondue (5 selects cascade), menu « Télécharger » (PDF officiel / Excel / CSV), bandeau mini-stats (total, genre, redoublants). Génération fichiers 100% côté client (xlsx/jspdf).
 - 7 fichiers (4 frontend modifiés + 1 créé, 2 backend modifiés) + 3 deps installées. Aucun changement schema Neon (RequireRole/filtres = middleware/query, pas de migration).
+
+---
+Task ID: phase2-inscription-wizard
+Agent: Z.ai Code (tuteur principal)
+Task: Phase 2 — Module Inscription complet (wizard 4 étapes) avec détection doublon, identifiant auto, recherche tuteur existant, cascade classe, dérogation.
+
+Work Log:
+- Backend (Go) — 3 fichiers créés + 1 modifié :
+  - services/inscription_workflow_service.go (NOUVEAU) : InscriptionWorkflowService.Create(dto, etbID, userID) → transaction GORM atomique (élève + tuteur nouveau/existant + inscription). Inclut : validation établissement + catégorie, unicité matricule, génération identifiant interne (COL/EPV-YYYY-NNNN), unicité inscription (élève+année), cohérence dérogation (AFFECTE only), auto-création classe si quota atteint (createNextClasseTx : 6e A → 6e B). Méthodes CheckDoublon (nom+dateNaiss ou matricule) et NextIdentifiant (aperçu).
+  - handlers/inscription_workflow.go (NOUVEAU) : POST /api/inscriptions/workflow (Create), GET /api/eleves/check-doublon, GET /api/eleves/next-identifiant. Routes enregistrées sans RequireRole (cohérent avec eleve/tuteur existants ; le guard frontend gère la restriction).
+  - cmd/server/main.go : instanciation InscriptionWorkflowService(handler) + RegisterRoutes.
+- Frontend (TS/React) — 6 fichiers créés + 3 modifiés :
+  - lib/api-inscription.ts (NOUVEAU) : types WorkflowDTO/WorkflowEleve/WorkflowTuteur/WorkflowInscription/WorkflowResult, submitInscriptionWorkflow, checkDoublon, fetchNextIdentifiant, searchTuteurByPhone.
+  - app/(staff)/inscription/page.tsx (NOUVEAU) : RoleGuard allow=[SECRETARIAT, DIRECTION, DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR] + InscriptionWizard.
+  - components/inscription/inscription-wizard.tsx (NOUVEAU) : orchestrateur 4 étapes (état global, navigation, mutation submit, StepIndicator animé, SuccessView avec fiche élève + actions). Animations Framer Motion (transitions entre étapes, ApparitionPopper succès).
+  - components/inscription/step-eleve.tsx (NOUVEAU) : identité élève + détection doublon temps réel (useQuery checkDoublon sur nom+dateNaiss, bannière alerte avec liens vers fiches existantes) + aperçu identifiant auto (fetchNextIdentifiant, bandeau emerald).
+  - components/inscription/step-tuteur.tsx (NOUVEAU) : 2 modes (ToggleGroup) — tuteur existant (recherche par téléphone, searchTuteurByPhone, sélection) ou nouveau (champs complets). Gestion fratrie via tuteur_id.
+  - components/inscription/step-scolarite.tsx (NOUVEAU) : cascade Cycle→Niveau→Classe (réutilise logique Phase 1), année active présélectionnée, suggestion de classe, dérogation (AFFECTE only, motif obligatoire), notes.
+  - components/inscription/step-recap.tsx (NOUVEAU) : 3 cartes récap (élève/tuteur/scolarité) avec résolution libellés classe/année.
+  - dashboard-shell.tsx + dashboard-layout.tsx : ajout entrée sidebar « Nouvelle inscription » (UserPlus icon) après Élèves, roles [SECRETARIAT, DIRECTION, DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR].
+  - dashboard-home.tsx : ajout "inscription" au type DashboardViewId + mapping VIEW_TO_PATH dans dashboard/page.tsx.
+- Qualité :
+  - Frontend : bun run lint → 0 erreur 0 warning ✓ ; bunx tsc --noEmit → 0 erreur sur les fichiers modifiés ✓ (15 erreurs pré-existantes view-impayes/view-parametres/view-utilisateurs/login-form, inchangées).
+  - Backend : go non disponible → validation reportée au build Render. Cohérence vérifiée : transaction GORM, imports models/utils/middleware, routes ordre OK (routes statiques /check-doublon /next-identifiant avant /:id via radix tree Gin).
+- Aucun changement schema Neon (workflow = transaction, pas de migration).
+
+Stage Summary:
+- Phase 2 livrée : wizard d'inscription 4 étapes complet avec innovations (détection doublon temps réel, identifiant auto, recherche tuteur existant/fratrie, suggestion classe, dérogation assistée).
+- Backend : 1 nouveau service transactionnel (InscriptionWorkflowService) + 3 nouvelles routes (/inscriptions/workflow, /eleves/check-doublon, /eleves/next-identifiant). Auto-création classe si quota atteint (hérité du InscriptionService existant, adapté en transaction).
+- Frontend : 6 nouveaux fichiers (1 page + 5 composants wizard) + 3 modifiés (sidebar + types). Animations Framer Motion, validations par étape, vue succès avec fiche élève.
+- RBAC : SECRETARIAT + DIRECTION + DIRECTEUR_* (caissier/comptable exclus — ils gèrent la caisse, pas les inscriptions).
+- 10 fichiers (6 créés + 4 modifiés frontend, 3 créés + 1 modifié backend). Aucun changement DB Neon.

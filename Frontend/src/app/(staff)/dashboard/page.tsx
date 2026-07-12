@@ -15,6 +15,7 @@ import { DashboardHome, type DashboardViewId } from "@/components/dashboard/dash
 const VIEW_TO_PATH: Record<DashboardViewId, string> = {
   dashboard: "/dashboard",
   eleves: "/eleves",
+  inscription: "/inscription",
   caisse: "/caisse",
   impayes: "/impayes",
   rapports: "/rapports",
