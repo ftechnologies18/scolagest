@@ -45,9 +45,10 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
+import { ProgressCircle } from "@/components/ds/progress-circle";
 import {
   Select,
   SelectContent,
@@ -267,10 +268,22 @@ export function ParentPortal() {
     retryDelay: 1500,
   });
 
-  // Calcul du solde dû total (tous enfants)
-  const totalSoldeDu = React.useMemo(() => {
-    if (!enfants || enfants.length === 0) return 0;
-    return enfants.reduce((acc, e) => acc + (e.solde?.solde_du ?? 0), 0);
+  // Calcul du solde dû total + taux de paiement global (tous enfants)
+  const { totalSoldeDu, totalAttendu, totalPaye } = React.useMemo(() => {
+    if (!enfants || enfants.length === 0) {
+      return { totalSoldeDu: 0, totalAttendu: 0, totalPaye: 0 };
+    }
+    return enfants.reduce(
+      (acc, e) => {
+        const solde = e.solde ?? { solde_du: 0, total_attendu: 0, total_paye: 0 };
+        return {
+          totalSoldeDu: acc.totalSoldeDu + (solde.solde_du ?? 0),
+          totalAttendu: acc.totalAttendu + (solde.total_attendu ?? 0),
+          totalPaye: acc.totalPaye + (solde.total_paye ?? 0),
+        };
+      },
+      { totalSoldeDu: 0, totalAttendu: 0, totalPaye: 0 },
+    );
   }, [enfants]);
 
   const parentPrenom =
@@ -340,7 +353,7 @@ export function ParentPortal() {
             className="rounded-xl shadow-sm shadow-emerald-600/20"
           />
           <div className="min-w-0 flex-1">
-            <p className="text-base font-bold leading-tight">ScolaGest</p>
+            <p className="font-display text-base font-bold leading-tight">ScolaGest</p>
             <p className="truncate text-[11px] text-muted-foreground leading-tight">
               Portail Parent ·{" "}
               {etablissement?.nom ?? "Groupe Le Chandelier — Dabou"}
@@ -417,9 +430,13 @@ export function ParentPortal() {
           parentPrenom={parentPrenom}
           nbEnfants={enfants?.length ?? 0}
           totalSoldeDu={totalSoldeDu}
+          totalAttendu={totalAttendu}
+          totalPaye={totalPaye}
           loading={loadingEnfants}
           error={errorEnfants}
         />
+
+        <KentePattern variant="separator" className="my-6" />
 
         {/* Section 1 : Mes enfants */}
         <section
@@ -600,7 +617,7 @@ export function ParentPortal() {
             </FooterBlock>
           </div>
 
-          <Separator className="my-6" />
+          <KentePattern variant="separator" className="my-6" />
 
           <div className="flex flex-col items-center justify-between gap-2 text-[11px] text-muted-foreground sm:flex-row">
             <p>© {new Date().getFullYear()} ScolaGest · Portail Parent</p>
@@ -671,16 +688,24 @@ function WelcomeBanner({
   parentPrenom,
   nbEnfants,
   totalSoldeDu,
+  totalAttendu,
+  totalPaye,
   loading,
   error,
 }: {
   parentPrenom: string;
   nbEnfants: number;
   totalSoldeDu: number;
+  totalAttendu: number;
+  totalPaye: number;
   loading: boolean;
   error: boolean;
 }) {
   const soldeOK = totalSoldeDu <= 0;
+  const tauxPaiement =
+    totalAttendu > 0
+      ? Math.min(100, Math.round((totalPaye / totalAttendu) * 100))
+      : 0;
   return (
     <div className="relative overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-800 p-6 text-white shadow-lg shadow-emerald-700/20 sm:p-8">
       <div
@@ -692,9 +717,9 @@ function WelcomeBanner({
         className="pointer-events-none absolute -bottom-20 -left-12 size-64 rounded-full bg-amber-300/10 blur-3xl"
       />
       <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm text-emerald-100">Bienvenue sur votre espace</p>
-          <h1 className="mt-1 text-2xl font-bold sm:text-3xl">
+          <h1 className="mt-1 font-display text-2xl font-bold sm:text-3xl">
             Bonjour {parentPrenom} 👋
           </h1>
           <p className="mt-2 max-w-xl text-sm text-emerald-100">
@@ -711,31 +736,46 @@ function WelcomeBanner({
         </div>
 
         {!loading && !error && nbEnfants > 0 ? (
-          <div className="flex flex-col gap-2 rounded-xl bg-white/10 p-4 backdrop-blur-sm sm:min-w-[220px]">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-emerald-100">
-              <Wallet className="size-3.5" />
-              Solde dû total
+          <div className="flex flex-col gap-3 rounded-xl bg-white/10 p-4 backdrop-blur-sm sm:min-w-[280px] sm:flex-row sm:items-center sm:gap-4">
+            <div className="flex size-20 shrink-0 items-center justify-center rounded-full bg-white/15 sm:size-24">
+              <ProgressCircle
+                value={tauxPaiement}
+                size={80}
+                strokeWidth={8}
+                trackColor="rgba(255, 255, 255, 0.2)"
+                label={
+                  <span className="font-display text-lg font-bold text-white">
+                    {tauxPaiement}%
+                  </span>
+                }
+              />
             </div>
-            <div className="font-mono text-2xl font-bold sm:text-3xl">
-              {formatFCFA(totalSoldeDu)}
-            </div>
-            <div
-              className={cn(
-                "flex items-center gap-1.5 text-xs",
-                soldeOK ? "text-emerald-100" : "text-amber-200",
-              )}
-            >
-              {soldeOK ? (
-                <>
-                  <CheckCircle2 className="size-3.5" />
-                  Tous les comptes sont à jour
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="size-3.5" />
-                  Un solde est à régulariser
-                </>
-              )}
+            <div className="flex min-w-0 flex-col gap-1">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-emerald-100">
+                <Wallet className="size-3.5" />
+                Solde dû total
+              </div>
+              <div className="font-mono text-2xl font-bold sm:text-3xl">
+                {formatFCFA(totalSoldeDu)}
+              </div>
+              <div
+                className={cn(
+                  "flex items-center gap-1.5 text-xs",
+                  soldeOK ? "text-emerald-100" : "text-amber-200",
+                )}
+              >
+                {soldeOK ? (
+                  <>
+                    <CheckCircle2 className="size-3.5" />
+                    Tous les comptes sont à jour
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="size-3.5" />
+                    Un solde est à régulariser
+                  </>
+                )}
+              </div>
             </div>
           </div>
         ) : null}
@@ -761,7 +801,7 @@ function SectionTitle({
         <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/40">
           {icon}
         </div>
-        <h2 className="text-lg font-bold sm:text-xl">{title}</h2>
+        <h2 className="font-display text-lg font-bold sm:text-xl">{title}</h2>
       </div>
       {subtitle ? (
         <p className="text-sm text-muted-foreground">{subtitle}</p>
@@ -789,8 +829,11 @@ function EnfantCard({
     totalAttendu > 0 ? Math.min(100, Math.round((totalPaye / totalAttendu) * 100)) : 0;
 
   return (
-    <Card className="group overflow-hidden border-emerald-100 transition-shadow hover:shadow-md hover:shadow-emerald-100/50">
-      <CardContent className="flex flex-col gap-4 px-5 py-5">
+    <GlassCard
+      variant="adaptive"
+      noHover
+      className="flex flex-col gap-4"
+    >
         {/* En-tête carte */}
         <div className="flex items-start gap-3">
           <Avatar className="size-14 border-2 border-emerald-200 dark:border-emerald-900">
@@ -898,18 +941,17 @@ function EnfantCard({
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             onClick={onVoirDetail}
-            className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-900/50 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
           >
             Voir le détail
             <ChevronRight className="size-4" />
           </Button>
           <Button
             type="button"
+            variant="success"
             onClick={onPayerEnLigne}
             disabled={soldeOK}
-            className="bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
             title={
               soldeOK
                 ? "Aucun solde dû — paiement inutile"
@@ -923,14 +965,12 @@ function EnfantCard({
             type="button"
             variant="outline"
             onClick={onPayerALecole}
-            className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-900/50 dark:text-amber-300 dark:hover:bg-amber-950/30"
           >
             <Landmark className="size-4" />
             Payer à l&apos;école
           </Button>
         </div>
-      </CardContent>
-    </Card>
+    </GlassCard>
   );
 }
 
@@ -942,7 +982,8 @@ function PaiementsTable({
   onVoirRecu: (p: PaiementParent) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border bg-background">
+    <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+      <div>
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/40">
@@ -1031,7 +1072,8 @@ function PaiementsTable({
           ))}
         </TableBody>
       </Table>
-    </div>
+      </div>
+    </GlassCard>
   );
 }
 
