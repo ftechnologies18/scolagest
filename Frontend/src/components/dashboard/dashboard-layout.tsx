@@ -77,6 +77,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuthStore, type Etablissement, type Role } from "@/lib/auth-store";
 import { apiGet } from "@/lib/api-client";
 import { useToast } from "@/hooks/use-toast";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 import { DashboardHome, type DashboardViewId } from "./dashboard-home";
 import ElevesView from "./views/view-eleves";
@@ -494,11 +495,11 @@ export function DashboardLayout() {
           alt="ScolaGest"
           width={36}
           height={36}
-          className="rounded-lg shadow-sm"
+          className="rounded-lg border-2 border-gold/40 shadow-sm"
         />
         <div className="min-w-0">
-          <p className="text-sm font-bold leading-tight">ScolaGest</p>
-          <p className="truncate text-[10px] text-muted-foreground leading-tight">
+          <p className="text-sm font-bold font-display leading-tight text-white">ScolaGest</p>
+          <p className="truncate text-[10px] leading-tight text-emerald-100/70">
             Groupe Le Chandelier — Dabou
           </p>
         </div>
@@ -507,8 +508,8 @@ export function DashboardLayout() {
       {/* Sélecteur d'établissement (masqué pour le SUPER_ADMIN) */}
       {role !== "SUPER_ADMIN" && (
         <div className="shrink-0 border-b p-3">
-          <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            <Building2 className="size-3" />
+          <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-emerald-100/60">
+            <Building2 className="size-3 text-emerald-100/60" />
             Établissement actif
           </p>
           <Select
@@ -516,7 +517,7 @@ export function DashboardLayout() {
             onValueChange={handleEtablissementChange}
             disabled={loadingEtabs || etablissements.length === 0}
           >
-            <SelectTrigger className="w-full bg-muted/40">
+            <SelectTrigger className="w-full border-white/10 bg-white/5 text-white">
               <SelectValue
                 placeholder={
                   loadingEtabs ? "Chargement…" : "Tous établissements"
@@ -540,7 +541,7 @@ export function DashboardLayout() {
         <nav className="space-y-5 p-3">
           {visibleGroups.map((group) => (
             <div key={group.label}>
-              <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-100/50">
                 {group.label}
               </p>
               <ul className="space-y-0.5">
@@ -555,8 +556,8 @@ export function DashboardLayout() {
                         className={cn(
                           "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
                           active
-                            ? "bg-emerald-600 text-white shadow-sm"
-                            : "text-foreground/80 hover:bg-emerald-50 hover:text-emerald-700",
+                            ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-900/30"
+                            : "text-emerald-100/80 hover:bg-white/10 hover:text-white",
                         )}
                       >
                         <Icon
@@ -564,12 +565,12 @@ export function DashboardLayout() {
                             "size-4 shrink-0",
                             active
                               ? "text-white"
-                              : "text-muted-foreground group-hover:text-emerald-600",
+                              : "text-emerald-100/60 group-hover:text-amber-300",
                           )}
                         />
                         <span className="truncate">{item.label}</span>
                         {active && (
-                          <CheckCircle2 className="ml-auto size-3.5 text-white/90" />
+                          <CheckCircle2 className="ml-auto size-3.5 text-amber-300" />
                         )}
                       </button>
                     </li>
@@ -581,21 +582,24 @@ export function DashboardLayout() {
         </nav>
       </ScrollArea>
 
+      {/* Bande kente décorative — séparateur avant carte utilisateur */}
+      <KentePattern variant="strip" position="bottom" />
+
       {/* Carte utilisateur en bas */}
       <div className="shrink-0 border-t p-3">
-        <div className="flex items-center gap-2.5 rounded-lg bg-muted/40 p-2">
-          <Avatar className="size-8 border">
+        <div className="flex items-center gap-2.5 rounded-lg bg-white/5 p-2">
+          <Avatar className="size-8 border-2 border-gold/40">
             <AvatarFallback className="bg-emerald-600 text-white text-[11px] font-semibold">
               {initials(user?.nom, user?.prenoms)}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium leading-tight">
+            <p className="truncate text-xs font-medium leading-tight text-white">
               {user
                 ? `${user.prenoms ?? ""} ${user.nom ?? ""}`.trim() || user.email
                 : "Utilisateur"}
             </p>
-            <p className="truncate text-[10px] text-muted-foreground leading-tight">
+            <p className="truncate text-[10px] leading-tight text-emerald-100/60">
               {roleLabel(role)}
             </p>
           </div>
@@ -608,13 +612,13 @@ export function DashboardLayout() {
     <div className="flex h-screen flex-col overflow-hidden bg-muted/30">
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar desktop — fixe, ne défile pas avec le contenu */}
-        <aside className="hidden w-64 shrink-0 border-r bg-background lg:flex lg:flex-col lg:overflow-y-auto">
+        <aside className="hidden w-64 shrink-0 bg-forest lg:flex lg:flex-col lg:overflow-y-auto">
           {sidebarContent}
         </aside>
 
         {/* Sidebar mobile (Sheet) */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetContent side="left" className="w-72 p-0">
+          <SheetContent side="left" className="w-72 bg-forest p-0">
             <SheetHeader className="sr-only">
               <SheetTitle>Navigation ScolaGest</SheetTitle>
             </SheetHeader>
@@ -625,11 +629,11 @@ export function DashboardLayout() {
         {/* Colonne principale */}
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Topbar */}
-          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-white/10 bg-forest/95 px-4 backdrop-blur-xl">
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden"
+              className="text-white hover:bg-white/10 lg:hidden"
               onClick={() => setMobileOpen(true)}
               aria-label="Ouvrir le menu"
             >
@@ -637,10 +641,10 @@ export function DashboardLayout() {
             </Button>
 
             <div className="flex flex-col">
-              <h1 className="text-base font-semibold leading-tight">
+              <h1 className="text-base font-display font-semibold leading-tight text-white">
                 {pageTitle}
               </h1>
-              <p className="hidden text-[11px] text-muted-foreground leading-tight sm:block">
+              <p className="hidden text-[11px] leading-tight text-emerald-100/60 sm:block">
                 ScolaGest · Gestion &amp; Caisse Scolaire
               </p>
             </div>
@@ -648,10 +652,10 @@ export function DashboardLayout() {
             <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
               {/* Recherche (placeholder non fonctionnel) */}
               <div className="relative hidden md:block">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-emerald-100/60" />
                 <Input
                   placeholder="Rechercher un élève, un reçu…"
-                  className="h-9 w-56 pl-8 lg:w-72"
+                  className="h-9 w-56 border-white/10 bg-white/5 pl-8 text-white placeholder:text-emerald-100/40 focus:border-amber-400/50 lg:w-72"
                   aria-label="Recherche"
                 />
               </div>
@@ -661,38 +665,38 @@ export function DashboardLayout() {
                 variant="ghost"
                 size="icon"
                 aria-label="Notifications"
-                className="relative"
+                className="relative text-white hover:bg-white/10"
               >
                 <Bell className="size-5" />
-                <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-amber-500" />
+                <span className="absolute right-1.5 top-1.5 size-1.5 animate-pulse rounded-full bg-terracotta" />
               </Button>
 
-              <Separator orientation="vertical" className="h-6" />
+              <Separator orientation="vertical" className="h-6 bg-white/10" />
 
               {/* Menu utilisateur */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-accent transition-colors"
+                    className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-white/10"
                   >
-                    <Avatar className="size-8 border">
+                    <Avatar className="size-8 border-2 border-gold/40">
                       <AvatarFallback className="bg-emerald-600 text-white text-[11px] font-semibold">
                         {initials(user?.nom, user?.prenoms)}
                       </AvatarFallback>
                     </Avatar>
                     <span className="hidden flex-col items-start leading-tight sm:flex">
-                      <span className="text-xs font-medium">
+                      <span className="text-xs font-medium text-white">
                         {user
                           ? `${user.prenoms ?? ""} ${user.nom ?? ""}`.trim() ||
                             user.email
                           : "Utilisateur"}
                       </span>
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-[10px] text-emerald-100/60">
                         {roleLabel(role)}
                       </span>
                     </span>
-                    <ChevronDown className="hidden size-3.5 text-muted-foreground sm:block" />
+                    <ChevronDown className="hidden size-3.5 text-emerald-100/60 sm:block" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -768,9 +772,12 @@ export function DashboardLayout() {
               {activeView === "saas-support" && <SaasSupportView />}
             </div>
 
+            {/* Bande kente — séparateur or entre contenu et footer */}
+            <KentePattern variant="strip" position="top" />
+
             {/* Pied de page */}
-            <footer className="mt-auto border-t bg-background">
-              <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:px-6">
+            <footer className="mt-auto border-t border-white/10 bg-forest text-emerald-100/70">
+              <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-emerald-100/70 sm:flex-row sm:px-6">
                 <p>
                   ScolaGest · Application de Gestion &amp; Caisse Scolaire —
                   Freelance Technologies Côte d&apos;Ivoire
