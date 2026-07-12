@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ScolaGest — Formulaire de création / édition d'un élève (Phase 2)
+ * ScolaGest — Formulaire de création / édition d'un élève (Phase 2 — Refonte)
  *
  * Champs :
  *  - nom* + prenoms
@@ -9,16 +9,29 @@
  *  - lieu_naissance
  *  - sexe (RadioGroup M/F)
  *  - matricule_ministere (hint : laisser vide pour le préscolaire)
- *  - catégorie (Select — options dépendent de l'établissement :
- *    si `applique_categorie_affecte` → Affecté / Non affecté ;
- *    sinon NON_APPLICABLE forcé et désactivé)
+ *  - catégorie (Select — options dépendent de l'établissement)
  *  - statut (Select)
- *  - photo_url (text input optionnel)
+ *  - photo_url (text input optionnel + Avatar preview)
  *  - tuteur (Select + option "Créer nouveau tuteur" → TuteurDialog)
+ *
+ * Refonte Forêt EdTech :
+ *  - Header avec stepper visuel (3 étapes : Identité → Scolarité → Tuteur &
+ *    photo). Le formulaire reste en un seul tenant ; les sections sont
+ *    visuellement délimitées par des GlassCard numérotées.
+ *  - Chaque section : header avec badge rond emerald numéroté + titre
+ *    `font-display` + sous-titre.
+ *  - KentePattern separator entre les sections.
+ *  - Photo preview : si `photo_url` est rempli, Avatar size-20 à côté du
+ *    champ.
+ *  - Tuteur Select : item "Créer un nouveau tuteur" avec separator au-dessus.
+ *  - Bouton submit : sticky en bas de page sur mobile (backdrop-blur).
  *
  * Validation zod + react-hook-form. À la soumission, appelle
  * createEleve (mode création) ou updateEleve (mode édition), toast,
  * puis `onSaved(id)`.
+ *
+ * LOGIQUE MÉTIER INTACTE : hooks, mutations, query keys, DTOs, types,
+ * endpoints API.
  */
 
 import * as React from "react";
@@ -32,6 +45,9 @@ import {
   UserPlus,
   Save,
   AlertCircle,
+  IdCard,
+  GraduationCap,
+  Image as ImageIcon,
 } from "lucide-react";
 
 import { useAuthStore } from "@/lib/auth-store";
@@ -50,6 +66,7 @@ import type {
   Tuteur,
 } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +77,12 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
 import {
   RadioGroup,
   RadioGroupItem,
@@ -67,13 +90,17 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { TuteurDialog } from "@/components/eleves/tuteur-dialog";
+import { initialsOf } from "@/components/eleves/eleves-list";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Validation
@@ -111,6 +138,12 @@ const STATUT_OPTIONS: { value: StatutEleve; label: string }[] = [
   { value: "TRANSFERE", label: "Transféré" },
   { value: "DIPLOME", label: "Diplômé" },
 ];
+
+const SECTIONS = [
+  { num: 1, label: "Identité" },
+  { num: 2, label: "Scolarité" },
+  { num: 3, label: "Tuteur & photo" },
+] as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Composant
@@ -176,6 +209,9 @@ export function EleveForm({ eleveId, onSaved, onCancel }: EleveFormProps) {
   });
   const sexeValue = useWatch({ control: form.control, name: "sexe" });
   const statutValue = useWatch({ control: form.control, name: "statut" });
+  const photoUrlValue = useWatch({ control: form.control, name: "photo_url" });
+  const nomValue = useWatch({ control: form.control, name: "nom" });
+  const prenomsValue = useWatch({ control: form.control, name: "prenoms" });
 
   // Quand l'élève existant est chargé, on hydrate le formulaire
   React.useEffect(() => {
@@ -303,26 +339,63 @@ export function EleveForm({ eleveId, onSaved, onCancel }: EleveFormProps) {
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-20 sm:pb-0">
       <BackButton onClick={onCancel} />
 
-      <div className="flex flex-col gap-1">
-        <h2 className="font-display text-xl font-semibold tracking-tight">
-          {isEditMode ? "Modifier l'élève" : "Nouvel élève"}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {isEditMode
-            ? "Mettez à jour les informations de la fiche élève."
-            : `Renseignez les informations de l'élève. Établissement : ${etablissement.nom}.`}
-        </p>
-      </div>
+      {/* Header avec stepper visuel */}
+      <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <h2 className="font-display text-xl font-semibold tracking-tight text-forest sm:text-2xl">
+              {isEditMode ? "Modifier l'élève" : "Nouvel élève"}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {isEditMode
+                ? "Mettez à jour les informations de la fiche élève."
+                : `Renseignez les informations de l'élève. Établissement : ${etablissement.nom}.`}
+            </p>
+          </div>
+
+          {/* Stepper desktop horizontal */}
+          <div className="hidden items-center gap-2 sm:flex">
+            {SECTIONS.map((section, idx) => (
+              <React.Fragment key={section.num}>
+                <div className="flex items-center gap-2">
+                  <div className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 text-sm font-bold text-white shadow-sm">
+                    {section.num}
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    {section.label}
+                  </span>
+                </div>
+                {idx < SECTIONS.length - 1 ? (
+                  <div className="h-0.5 flex-1 bg-gradient-to-r from-emerald-300 to-emerald-500" />
+                ) : null}
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* Stepper mobile : barre de progression simple */}
+          <div className="sm:hidden">
+            <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+              <span>Formulaire en 3 sections</span>
+              <span className="font-medium text-emerald-700">3 étapes</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-full w-full bg-gradient-to-r from-emerald-500 to-amber-500" />
+            </div>
+          </div>
+        </div>
+      </GlassCard>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        {/* Identité */}
-        <GlassCard variant="adaptive" noHover>
-          <div className="mb-3">
-            <h3 className="font-display text-base font-semibold">Identité</h3>
-          </div>
+        {/* ─── Section 1 : Identité ───────────────────────────────────────── */}
+        <SectionCard
+          num={1}
+          icon={IdCard}
+          title="Identité"
+          subtitle="État civil de l'élève"
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               label="Nom"
@@ -398,13 +471,17 @@ export function EleveForm({ eleveId, onSaved, onCancel }: EleveFormProps) {
               </RadioGroup>
             </FormField>
           </div>
-        </GlassCard>
+        </SectionCard>
 
-        {/* Scolarité */}
-        <GlassCard variant="adaptive" noHover>
-          <div className="mb-3">
-            <h3 className="font-display text-base font-semibold">Scolarité</h3>
-          </div>
+        <KentePattern variant="separator" />
+
+        {/* ─── Section 2 : Scolarité ──────────────────────────────────────── */}
+        <SectionCard
+          num={2}
+          icon={GraduationCap}
+          title="Scolarité"
+          subtitle="Matricule, catégorie & statut"
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               label="Matricule Ministère (MEN)"
@@ -483,13 +560,17 @@ export function EleveForm({ eleveId, onSaved, onCancel }: EleveFormProps) {
               </Select>
             </FormField>
           </div>
-        </GlassCard>
+        </SectionCard>
 
-        {/* Tuteur & photo */}
-        <GlassCard variant="adaptive" noHover>
-          <div className="mb-3">
-            <h3 className="font-display text-base font-semibold">Tuteur &amp; photo</h3>
-          </div>
+        <KentePattern variant="separator" />
+
+        {/* ─── Section 3 : Tuteur & photo ─────────────────────────────────── */}
+        <SectionCard
+          num={3}
+          icon={ImageIcon}
+          title="Tuteur & photo"
+          subtitle="Tuteur légal et visuel de l'élève"
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               label="Tuteur"
@@ -515,14 +596,20 @@ export function EleveForm({ eleveId, onSaved, onCancel }: EleveFormProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Aucun tuteur</SelectItem>
-                  {tuteurs?.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {`${t.prenoms ?? ""} ${t.nom}`.trim()}
-                      {t.telephone ? ` · ${t.telephone}` : ""}
-                    </SelectItem>
-                  ))}
+                  {tuteurs && tuteurs.length > 0 ? (
+                    <SelectGroup>
+                      <SelectLabel>Tuteurs existants</SelectLabel>
+                      {tuteurs.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {`${t.prenoms ?? ""} ${t.nom}`.trim()}
+                          {t.telephone ? ` · ${t.telephone}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ) : null}
+                  <Separator className="my-1" />
                   <SelectItem value="__new__">
-                    <span className="flex items-center gap-1.5 text-emerald-700">
+                    <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300">
                       <UserPlus className="size-3.5" />
                       Créer un nouveau tuteur…
                     </span>
@@ -531,48 +618,74 @@ export function EleveForm({ eleveId, onSaved, onCancel }: EleveFormProps) {
               </Select>
             </FormField>
 
+            {/* Photo URL avec preview */}
             <FormField
               label="Photo (URL)"
               error={form.formState.errors.photo_url?.message}
               className="sm:col-span-2"
               hint="Collez une URL d'image. L'upload de fichier sera disponible plus tard."
             >
-              <Input
-                type="url"
-                placeholder="https://exemple.com/photo.jpg"
-                {...form.register("photo_url")}
-              />
+              <div className="flex items-center gap-3">
+                <Avatar className="size-12 shrink-0 border-2 border-emerald-100 dark:border-emerald-900/40">
+                  {photoUrlValue ? (
+                    <AvatarImage
+                      src={photoUrlValue}
+                      alt="Aperçu photo"
+                      onError={() => {
+                        /* l'AvatarFallback s'affiche automatiquement */
+                      }}
+                    />
+                  ) : null}
+                  <AvatarFallback className="bg-emerald-100 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    {photoUrlValue ? (
+                      <ImageIcon className="size-4" />
+                    ) : (
+                      initialsOf(nomValue, prenomsValue) || "?"
+                    )}
+                  </AvatarFallback>
+                </Avatar>
+                <Input
+                  type="url"
+                  placeholder="https://exemple.com/photo.jpg"
+                  className="flex-1"
+                  {...form.register("photo_url")}
+                />
+              </div>
             </FormField>
           </div>
-        </GlassCard>
+        </SectionCard>
 
-        {/* Actions */}
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={isSubmitting}
-          >
-            Annuler
-          </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            variant="success"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                {isEditMode ? "Enregistrement…" : "Création…"}
-              </>
-            ) : (
-              <>
-                <Save className="size-4" />
-                {isEditMode ? "Enregistrer" : "Créer l'élève"}
-              </>
-            )}
-          </Button>
+        {/* Actions — sticky sur mobile */}
+        <div className="sticky bottom-0 z-20 -mx-4 border-t border-emerald-100/50 bg-background/80 px-4 py-3 backdrop-blur-md dark:border-emerald-900/30 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto"
+            >
+              Annuler
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              variant="success"
+              className="w-full shadow-lg shadow-emerald-900/20 sm:w-auto"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  {isEditMode ? "Enregistrement…" : "Création…"}
+                </>
+              ) : (
+                <>
+                  <Save className="size-4" />
+                  {isEditMode ? "Enregistrer" : "Créer l'élève"}
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </form>
 
@@ -604,6 +717,42 @@ function BackButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+function SectionCard({
+  num,
+  icon: Icon,
+  title,
+  subtitle,
+  children,
+}: {
+  num: number;
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <GlassCard variant="adaptive" noHover>
+      <div className="mb-4 flex items-start gap-3">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 text-sm font-bold text-white shadow-sm">
+          {num}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <Icon className="size-4 text-emerald-600" />
+            <h3 className="font-display text-base font-semibold leading-tight">
+              {title}
+            </h3>
+          </div>
+          {subtitle ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
+          ) : null}
+        </div>
+      </div>
+      {children}
+    </GlassCard>
+  );
+}
+
 function FormField({
   label,
   required,
@@ -620,7 +769,7 @@ function FormField({
   className?: string;
 }) {
   return (
-    <div className={`space-y-1.5 ${className ?? ""}`}>
+    <div className={cn("space-y-1.5", className)}>
       <Label>
         {label}
         {required ? <span className="ml-0.5 text-destructive">*</span> : null}

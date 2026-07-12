@@ -1,19 +1,27 @@
 "use client";
 
 /**
- * ScolaGest — Liste des élèves (Phase 2)
+ * ScolaGest — Liste des élèves (Phase 2 — Refonte Forêt EdTech)
  *
  * Vue principale du module Élèves :
- *  - Barre de recherche (debounce 300ms) sur nom / matricule.
- *  - Filtres : classe, catégorie (selon établissement), statut.
- *  - Bouton "Nouvel élève" (emerald) qui ouvre le formulaire de création.
- *  - Tableau (shadcn Table) avec photo+nom, matricule, classe courante,
- *    catégorie (badge), statut (badge), actions voir/modifier.
- *  - Pagination prev/next + "page X sur Y".
- *  - États : chargement (skeleton), vide ("Aucun élève trouvé"), erreur.
+ *  - Hero header (GlassCard desktop) avec badge rond emerald→amber, titre
+ *    `font-display`, sous-titre + compteur total + bouton "Nouvel élève".
+ *  - Barre de filtres repensée : icônes contextuelles devant chaque Select
+ *    (Layers / BarChart3 / School / Tag / CircleDot) + bouton "Réinitialiser"
+ *    visible seulement si un filtre est actif.
+ *  - Mini-stats : 3 StatCard horizontales (Total, G/F, Redoublants).
+ *  - Tableau desktop : avatar avec ring emerald, colonne Sexe discrète,
+ *    hover row bg-emerald-50/50 + slight lift, actions ghost avec tooltips.
+ *  - Carte mobile : GlassCard mobile avec Kebab DropdownMenu pour actions.
+ *  - Pagination : "1-20 sur 53" + boutons icônes ChevronLeft / Right.
+ *  - Export : DropdownMenu avec icônes colorées (déjà en place).
+ *  - Empty state premium : GlassCard + KentePattern bg + CTA emerald.
  *
  * Le contexte d'établissement vient de `useAuthStore`. Si aucun
  * établissement n'est sélectionné, on invite l'utilisateur à en choisir un.
+ *
+ * LOGIQUE MÉTIER INTACTE : hooks React Query, query keys, types, endpoints
+ * API, exports PDF/Excel/CSV, cascade Cycle → Niveau → Classe.
  */
 
 import * as React from "react";
@@ -33,6 +41,17 @@ import {
   Loader2,
   GraduationCap,
   TrendingDown,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+  Layers,
+  BarChart3,
+  School,
+  Tag,
+  CircleDot,
+  MoreVertical,
+  Mars,
+  Venus,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -69,7 +88,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { GlassCard } from "@/components/ds/glass-card";
 import { KentePattern } from "@/components/ds/kente-pattern";
+import { StatCard } from "@/components/ds/stat-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+// Tooltips removed — using native `title` attribute instead for action buttons.
+// Radix TooltipTrigger asChild interfered with onClick propagation on the
+// ghost buttons (bug: click on Voir la fiche / Modifier did nothing).
 import {
   Table,
   TableBody,
@@ -124,11 +147,11 @@ export const STATUT_LABEL: Record<StatutEleve, string> = {
 export function CategorieBadge({ categorie }: { categorie: CategorieEleve }) {
   const cls: Record<CategorieEleve, string> = {
     AFFECTE:
-      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300",
+      "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200",
     NON_AFFECTE:
-      "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300",
+      "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200",
     NON_APPLICABLE:
-      "border-muted-foreground/20 bg-muted text-muted-foreground",
+      "border-muted-foreground/30 bg-muted text-muted-foreground",
   };
   return (
     <Badge variant="outline" className={cn("font-medium", cls[categorie])}>
@@ -140,11 +163,11 @@ export function CategorieBadge({ categorie }: { categorie: CategorieEleve }) {
 export function StatutBadge({ statut }: { statut: StatutEleve }) {
   const cls: Record<StatutEleve, string> = {
     ACTIF:
-      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300",
+      "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200",
     INACTIF:
-      "border-muted-foreground/20 bg-muted text-muted-foreground",
+      "border-muted-foreground/30 bg-muted text-muted-foreground",
     TRANSFERE:
-      "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300",
+      "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200",
     DIPLOME:
       "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300",
   };
@@ -286,6 +309,25 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
     return classes?.find((c) => c.id === classeId)?.libelle;
   }, [classes, classeId]);
 
+  // ─── Indicateur "filtre actif" (Reset button) ───────────────────────────
+  const hasActiveFilter =
+    cycleId !== "all" ||
+    niveau !== "all" ||
+    classeId !== "all" ||
+    categorie !== "all" ||
+    statut !== "all" ||
+    debouncedSearch !== "";
+
+  function resetFilters() {
+    setSearch("");
+    setDebouncedSearch("");
+    setCycleId("all");
+    setNiveau("all");
+    setClasseId("all");
+    setCategorie("all");
+    setStatut("all");
+  }
+
   // ─── Export (PDF / Excel / CSV) ──────────────────────────────────────────
   const handleExport = React.useCallback(
     async (format: "pdf" | "xlsx" | "csv") => {
@@ -312,6 +354,8 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
   const eleves = data?.data ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(page * PAGE_SIZE, total);
 
   // ─── Pas d'établissement sélectionné ──────────────────────────────────────
   if (!etablissement) {
@@ -321,6 +365,7 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
           onCreate={onCreate}
           createDisabled
           appliqueCategorie={false}
+          total={0}
         />
         <Card>
           <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
@@ -349,10 +394,60 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
         onCreate={onCreate}
         createDisabled={false}
         appliqueCategorie={appliqueCategorie}
+        total={stats?.total ?? total}
       />
 
-      {/* Barre de filtres + mini-stats + export */}
-      <GlassCard variant="adaptive" noHover className="p-4">
+      {/* Mini-stats (3 StatCard horizontales) */}
+      {stats && stats.total > 0 && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <StatCard
+            icon={Users}
+            tone="emerald"
+            label="Élèves"
+            value={stats.total}
+            hint={isFetching && !isLoading ? "mise à jour…" : "filtrés"}
+            delay={0}
+          />
+          <StatCard
+            icon={GraduationCap}
+            tone="amber"
+            label="Répartition"
+            value={`${stats.garcons} G · ${stats.filles} F`}
+            hint="garçons · filles"
+            delay={0.05}
+          />
+          {stats.redoublants > 0 ? (
+            <StatCard
+              icon={TrendingDown}
+              tone="terracotta"
+              label="Redoublants"
+              value={stats.redoublants}
+              hint={
+                stats.redoublants > 1
+                  ? `${((stats.redoublants / stats.total) * 100).toFixed(1)}% des effectifs`
+                  : "1 redoublant"
+              }
+              delay={0.1}
+            />
+          ) : (
+            <StatCard
+              icon={CircleDot}
+              tone="forest"
+              label="Catégorie"
+              value={appliqueCategorie ? "Affecté" : "N/A"}
+              hint={
+                appliqueCategorie
+                  ? "Distinction active"
+                  : "Préscolaire / primaire"
+              }
+              delay={0.1}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Barre de filtres + export */}
+      <GlassCard variant="adaptive" noHover className="p-4 sm:p-5">
         <div className="space-y-4">
           {/* Ligne 1 : recherche + export */}
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -362,7 +457,7 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Rechercher par nom ou matricule…"
-                className="pl-8"
+                className="h-10 pl-8"
                 aria-label="Rechercher un élève"
               />
             </div>
@@ -371,9 +466,9 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="default"
                   disabled={exporting || total === 0}
-                  className="shrink-0"
+                  className="h-10 shrink-0"
                 >
                   {exporting ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -383,20 +478,44 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
                   Télécharger
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Format d&apos;export</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleExport("pdf")}>
-                  <FileText className="size-4 text-rose-600" />
-                  PDF (liste officielle)
+                <DropdownMenuItem
+                  onClick={() => handleExport("pdf")}
+                  className="flex items-start gap-2.5 py-2"
+                >
+                  <FileText className="mt-0.5 size-4 shrink-0 text-rose-600" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">PDF</p>
+                    <p className="text-xs text-muted-foreground">
+                      Liste officielle imprimable
+                    </p>
+                  </div>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport("xlsx")}>
-                  <FileSpreadsheet className="size-4 text-emerald-600" />
-                  Excel (.xlsx)
+                <DropdownMenuItem
+                  onClick={() => handleExport("xlsx")}
+                  className="flex items-start gap-2.5 py-2"
+                >
+                  <FileSpreadsheet className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Excel (.xlsx)</p>
+                    <p className="text-xs text-muted-foreground">
+                      Tableur calculable
+                    </p>
+                  </div>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport("csv")}>
-                  <FileIcon className="size-4 text-amber-600" />
-                  CSV
+                <DropdownMenuItem
+                  onClick={() => handleExport("csv")}
+                  className="flex items-start gap-2.5 py-2"
+                >
+                  <FileIcon className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">CSV</p>
+                    <p className="text-xs text-muted-foreground">
+                      Données brutes UTF-8
+                    </p>
+                  </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -406,7 +525,8 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
             {/* Cycle */}
             <Select value={cycleId} onValueChange={setCycleId}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="h-10 w-full">
+                <Layers className="mr-1.5 size-4 shrink-0 text-emerald-600" />
                 <SelectValue placeholder="Tous cycles" />
               </SelectTrigger>
               <SelectContent>
@@ -421,7 +541,8 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
 
             {/* Niveau (dépend du cycle) */}
             <Select value={niveau} onValueChange={setNiveau}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="h-10 w-full">
+                <BarChart3 className="mr-1.5 size-4 shrink-0 text-emerald-600" />
                 <SelectValue placeholder="Tous niveaux" />
               </SelectTrigger>
               <SelectContent>
@@ -436,7 +557,8 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
 
             {/* Classe (dépend du cycle + niveau) */}
             <Select value={classeId} onValueChange={setClasseId}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="h-10 w-full">
+                <School className="mr-1.5 size-4 shrink-0 text-emerald-600" />
                 <SelectValue placeholder="Toutes classes" />
               </SelectTrigger>
               <SelectContent>
@@ -457,7 +579,8 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
               }
               disabled={!appliqueCategorie}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="h-10 w-full">
+                <Tag className="mr-1.5 size-4 shrink-0 text-emerald-600" />
                 <SelectValue
                   placeholder={
                     appliqueCategorie
@@ -486,7 +609,8 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
               value={statut}
               onValueChange={(v) => setStatut(v as StatutEleve | "all")}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="h-10 w-full">
+                <CircleDot className="mr-1.5 size-4 shrink-0 text-emerald-600" />
                 <SelectValue placeholder="Tous statuts" />
               </SelectTrigger>
               <SelectContent>
@@ -499,35 +623,18 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
             </Select>
           </div>
 
-          {/* Mini-stats contextuelles */}
-          {stats && stats.total > 0 && (
-            <div className="flex flex-wrap items-center gap-4 rounded-lg border bg-muted/30 px-4 py-2.5 text-sm">
-              <span className="flex items-center gap-1.5 font-medium">
-                <Users className="size-4 text-emerald-600" />
-                {stats.total} élève{stats.total > 1 ? "s" : ""}
-              </span>
-              <span className="text-muted-foreground">·</span>
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <GraduationCap className="size-4 text-forest" />
-                {stats.garcons} G
-                <span className="text-muted-foreground/60">/</span>
-                <span className="text-pink-600">{stats.filles} F</span>
-              </span>
-              {stats.redoublants > 0 && (
-                <>
-                  <span className="text-muted-foreground">·</span>
-                  <span className="flex items-center gap-1.5 text-amber-600">
-                    <TrendingDown className="size-4" />
-                    {stats.redoublants} redoublant
-                    {stats.redoublants > 1 ? "s" : ""}
-                  </span>
-                </>
-              )}
-              {isFetching && !isLoading && (
-                <span className="ml-auto text-xs text-muted-foreground">
-                  mise à jour…
-                </span>
-              )}
+          {/* Bouton Réinitialiser (uniquement si un filtre est actif) */}
+          {hasActiveFilter && (
+            <div className="flex items-center justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetFilters}
+                className="text-muted-foreground hover:text-emerald-700"
+              >
+                <RotateCcw className="size-3.5" />
+                Réinitialiser les filtres
+              </Button>
             </div>
           )}
         </div>
@@ -572,6 +679,7 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
                       <TableRow className="bg-muted/40 hover:bg-muted/40">
                         <TableHead className="pl-4">Élève</TableHead>
                         <TableHead>Matricule</TableHead>
+                        <TableHead className="w-12 text-center">Sexe</TableHead>
                         <TableHead>Classe</TableHead>
                         <TableHead>Catégorie</TableHead>
                         <TableHead>Statut</TableHead>
@@ -581,12 +689,13 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {eleves.map((eleve) => (
+                      {eleves.map((eleve, idx) => (
                         <EleveRow
                           key={eleve.id}
                           eleve={eleve}
                           onSelect={() => onSelect(eleve.id)}
                           onEdit={() => onEdit(eleve.id)}
+                          index={idx}
                         />
                       ))}
                     </TableBody>
@@ -594,41 +703,60 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
                 </div>
 
                 {/* Vue cartes (mobile) */}
-                <div className="divide-y md:hidden">
-                  {eleves.map((eleve) => (
+                <div className="space-y-2 p-3 md:hidden">
+                  {eleves.map((eleve, idx) => (
                     <EleveRowMobile
                       key={eleve.id}
                       eleve={eleve}
                       onSelect={() => onSelect(eleve.id)}
                       onEdit={() => onEdit(eleve.id)}
+                      onView={() => onSelect(eleve.id)}
+                      index={idx}
                     />
                   ))}
                 </div>
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between gap-2 border-t px-4 py-3 text-sm">
+                <div className="flex flex-col items-center justify-between gap-2 border-t px-4 py-3 text-sm sm:flex-row">
                   <p className="text-muted-foreground">
-                    Page <span className="font-medium">{page}</span> sur{" "}
-                    <span className="font-medium">{totalPages}</span>
+                    {total > 0 ? (
+                      <>
+                        <span className="font-medium text-foreground">
+                          {rangeStart}–{rangeEnd}
+                        </span>{" "}
+                        sur <span className="font-medium">{total}</span> élève
+                        {total > 1 ? "s" : ""}
+                      </>
+                    ) : (
+                      "Aucun élève"
+                    )}
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-1.5">
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="icon"
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page <= 1}
+                      aria-label="Page précédente"
+                      className="size-9"
                     >
-                      Précédent
+                      <ChevronLeft className="size-4" />
                     </Button>
+                    <span className="px-2 text-xs text-muted-foreground">
+                      Page <span className="font-medium text-foreground">{page}</span>{" "}
+                      / <span className="font-medium">{totalPages}</span>
+                    </span>
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="icon"
                       onClick={() =>
                         setPage((p) => Math.min(totalPages, p + 1))
                       }
                       disabled={page >= totalPages}
+                      aria-label="Page suivante"
+                      className="size-9"
                     >
-                      Suivant
+                      <ChevronRight className="size-4" />
                     </Button>
                   </div>
                 </div>
@@ -649,36 +777,51 @@ function ListHeader({
   onCreate,
   createDisabled,
   appliqueCategorie,
+  total,
 }: {
   onCreate: () => void;
   createDisabled: boolean;
   appliqueCategorie: boolean;
+  total: number;
 }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <Users className="size-5 text-emerald-600" />
-          <h2 className="font-display text-xl font-semibold tracking-tight">
-            Élèves
-          </h2>
+    <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-4">
+          {/* Badge rond emerald→amber gradient avec icône Users */}
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-amber-500 text-white shadow-lg shadow-emerald-900/20">
+            <Users className="size-6" />
+          </div>
+          <div className="min-w-0 space-y-1">
+            <h2 className="font-display text-xl font-semibold tracking-tight text-forest sm:text-2xl">
+              Élèves
+              {total > 0 && (
+                <span className="ml-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 align-middle text-xs font-medium text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  {total}
+                </span>
+              )}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Gérez les fiches élèves, les matricules, catégories et
+              inscriptions.
+              {appliqueCategorie
+                ? " Catégorie Affecté / Non affecté active pour cet établissement."
+                : " Catégorie non applicable (préscolaire / primaire)."}
+            </p>
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Gérez les fiches élèves, les matricules, catégories et inscriptions.
-          {appliqueCategorie
-            ? " Catégorie Affecté / Non affecté active pour cet établissement."
-            : " Catégorie non applicable (préscolaire / primaire)."}
-        </p>
+        <Button
+          onClick={onCreate}
+          disabled={createDisabled}
+          variant="success"
+          size="lg"
+          className="w-full sm:w-auto"
+        >
+          <Plus className="size-4" />
+          Nouvel élève
+        </Button>
       </div>
-      <Button
-        onClick={onCreate}
-        disabled={createDisabled}
-        variant="success"
-      >
-        <Plus className="size-4" />
-        Nouvel élève
-      </Button>
-    </div>
+    </GlassCard>
   );
 }
 
@@ -686,20 +829,27 @@ function EleveRow({
   eleve,
   onSelect,
   onEdit,
+  index,
 }: {
   eleve: Eleve;
   onSelect: () => void;
   onEdit: () => void;
+  index: number;
 }) {
+  const isFille = eleve.sexe === "F";
   return (
-    <TableRow onClick={onSelect} className="cursor-pointer">
+    <TableRow
+      onClick={onSelect}
+      className="cursor-pointer transition-colors hover:bg-emerald-50/60 hover:shadow-sm dark:hover:bg-emerald-950/20"
+      style={{ animationDelay: `${index * 0.02}s` }}
+    >
       <TableCell className="pl-4">
         <div className="flex items-center gap-3">
-          <Avatar className="size-9 border">
+          <Avatar className="size-9 border-2 border-emerald-100 ring-1 ring-emerald-200/50 dark:border-emerald-900/40 dark:ring-emerald-800/30">
             {eleve.photo_url ? (
               <AvatarImage src={eleve.photo_url} alt={eleveFullName(eleve)} />
             ) : null}
-            <AvatarFallback className="bg-emerald-100 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+            <AvatarFallback className="bg-emerald-600 text-xs font-semibold text-white dark:bg-emerald-800 dark:text-emerald-50">
               {initialsOf(eleve.nom, eleve.prenoms)}
             </AvatarFallback>
           </Avatar>
@@ -716,6 +866,15 @@ function EleveRow({
           <span className="text-muted-foreground">—</span>
         )}
       </TableCell>
+      <TableCell className="text-center">
+        {eleve.sexe === "M" ? (
+          <Mars className="mx-auto size-4 text-sky-600" aria-label="Masculin" />
+        ) : eleve.sexe === "F" ? (
+          <Venus className="mx-auto size-4 text-pink-600" aria-label="Féminin" />
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </TableCell>
       <TableCell>
         {eleve.inscription_courante?.classe_libelle ?? (
           <span className="text-muted-foreground">Non inscrit</span>
@@ -728,28 +887,30 @@ function EleveRow({
         <StatutBadge statut={eleve.statut} />
       </TableCell>
       <TableCell className="pr-4 text-right">
-        <div className="flex justify-end gap-1">
+        <div className="flex justify-end gap-0.5">
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 text-muted-foreground hover:text-emerald-700"
+            className="size-8 text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/40"
             onClick={(e) => {
               e.stopPropagation();
               onSelect();
             }}
             aria-label="Voir la fiche"
+            title="Voir la fiche"
           >
             <Eye className="size-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 text-muted-foreground hover:text-emerald-700"
+            className="size-8 text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/40"
             onClick={(e) => {
               e.stopPropagation();
               onEdit();
             }}
             aria-label="Modifier"
+            title="Modifier"
           >
             <Pencil className="size-4" />
           </Button>
@@ -763,50 +924,80 @@ function EleveRowMobile({
   eleve,
   onSelect,
   onEdit,
+  onView,
+  index,
 }: {
   eleve: Eleve;
   onSelect: () => void;
   onEdit: () => void;
+  onView: () => void;
+  index: number;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/50"
+    <GlassCard
+      variant="mobile"
+      noAnimation
+      noHover
+      className="p-3"
+      delay={index * 0.03}
     >
-      <Avatar className="size-10 shrink-0 border">
-        {eleve.photo_url ? (
-          <AvatarImage src={eleve.photo_url} alt={eleveFullName(eleve)} />
-        ) : null}
-        <AvatarFallback className="bg-emerald-100 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-          {initialsOf(eleve.nom, eleve.prenoms)}
-        </AvatarFallback>
-      </Avatar>
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex items-center justify-between gap-2">
-          <p className="truncate font-medium">{eleveFullName(eleve)}</p>
-          <StatutBadge statut={eleve.statut} />
-        </div>
-        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span className="truncate">
+      <div className="flex items-start gap-3">
+        <Avatar
+          className="size-11 shrink-0 border-2 border-emerald-100 ring-1 ring-emerald-200/50 dark:border-emerald-900/40"
+          onClick={onSelect}
+        >
+          {eleve.photo_url ? (
+            <AvatarImage src={eleve.photo_url} alt={eleveFullName(eleve)} />
+          ) : null}
+          <AvatarFallback className="bg-emerald-600 text-xs font-semibold text-white dark:bg-emerald-800 dark:text-emerald-50">
+            {initialsOf(eleve.nom, eleve.prenoms)}
+          </AvatarFallback>
+        </Avatar>
+        <button
+          type="button"
+          onClick={onSelect}
+          className="min-w-0 flex-1 space-y-1 text-left"
+          aria-label={`Voir la fiche de ${eleveFullName(eleve)}`}
+        >
+          <p className="truncate font-medium leading-tight">
+            {eleveFullName(eleve)}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
             {eleve.inscription_courante?.classe_libelle ?? "Non inscrit"} ·{" "}
-            {eleve.matricule_ministere ?? eleve.identifiant_interne}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7 text-muted-foreground"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            aria-label="Modifier"
-          >
-            <Pencil className="size-3.5" />
-          </Button>
-        </div>
+            <span className="font-mono">
+              {eleve.matricule_ministere ?? eleve.identifiant_interne}
+            </span>
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            <StatutBadge statut={eleve.statut} />
+            <CategorieBadge categorie={eleve.categorie} />
+          </div>
+        </button>
+        {/* Menu Kebab pour actions */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9 shrink-0 text-muted-foreground"
+              aria-label="Actions"
+            >
+              <MoreVertical className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={onView}>
+              <Eye className="size-4 text-emerald-600" />
+              Voir la fiche
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onEdit}>
+              <Pencil className="size-4 text-amber-600" />
+              Modifier
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-    </button>
+    </GlassCard>
   );
 }
 
@@ -835,21 +1026,26 @@ function ListSkeleton() {
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-      <div className="flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-        <UserPlus className="size-6" />
+    <div className="relative overflow-hidden px-4 py-16">
+      <KentePattern variant="bg" />
+      <div className="relative flex flex-col items-center justify-center gap-4 text-center">
+        <div className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-amber-500 text-white shadow-xl shadow-emerald-900/20">
+          <UserPlus className="size-8" />
+        </div>
+        <div className="space-y-1.5">
+          <p className="font-display text-lg font-semibold">
+            Aucun élève trouvé
+          </p>
+          <p className="max-w-md text-sm text-muted-foreground">
+            Aucun élève ne correspond à vos critères. Créez votre premier élève
+            ou ajustez vos filtres pour élargir la recherche.
+          </p>
+        </div>
+        <Button onClick={onCreate} variant="success" size="lg">
+          <Plus className="size-4" />
+          Créer un élève
+        </Button>
       </div>
-      <div className="space-y-1">
-        <p className="text-base font-medium">Aucun élève trouvé</p>
-        <p className="max-w-md text-sm text-muted-foreground">
-          Aucun élève ne correspond à vos critères. Créez votre premier élève ou
-          ajustez vos filtres.
-        </p>
-      </div>
-      <Button onClick={onCreate} variant="success">
-        <Plus className="size-4" />
-        Créer un élève
-      </Button>
     </div>
   );
 }

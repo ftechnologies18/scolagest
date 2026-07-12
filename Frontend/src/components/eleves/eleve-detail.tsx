@@ -1,16 +1,26 @@
 "use client";
 
 /**
- * ScolaGest — Fiche détail d'un élève (Phase 2)
+ * ScolaGest — Fiche détail d'un élève (Phase 2 — Refonte Forêt EdTech)
  *
  * Affiche :
- *  - En-tête : photo (Avatar), nom complet, badges catégorie / statut,
- *    matricule MEN + identifiant interne, actions éditer / supprimer.
- *  - Carte "Identité" : date / lieu de naissance, sexe, établissement.
- *  - Carte "Tuteur" : nom, lien de parenté, téléphone (tel:), email, adresse.
- *  - Carte "Inscriptions" : tableau de l'historique (année, classe, statut,
- *    dérogation), bouton "Nouvelle inscription".
+ *  - En-tête premium : GlassCard desktop + premiumBorder (effet carte
+ *    d'identité) avec photo avatar size-20 ring gold, nom font-display, ID
+ *    interne + Matricule MEN mono, badges catégorie/statut/sexe, actions
+ *    Modifier (outline) / Supprimer (destructive outline).
+ *  - Carte "Identité" (icône UserCircle2) : date / lieu de naissance, sexe,
+ *    établissement. InfoRow avec icône en badge arrondi emerald/10 + hover bg.
+ *  - Carte "Tuteur" (icône Users) : nom, lien de parenté, téléphone (tel:),
+ *    email, adresse. Empty state avec KentePattern bg + CTA "Affecter un
+ *    tuteur" en variant success.
+ *  - Carte "Soldes & paiements" (EleveSoldeCard — refactor dans son fichier).
+ *  - Carte "Historique des inscriptions" :
+ *      - ProgressCircle : taux d'inscriptions valides (INSCRIT + REINSCRIT).
+ *      - Timeline verticale : année en gras, classe, badge statut à droite.
  *  - États : chargement (skeleton), erreur, non trouvé.
+ *
+ * LOGIQUE MÉTIER INTACTE : hooks React Query, query keys, fetchEleve,
+ * deleteEleve, invalidations, types Inscription / StatutInscription.
  */
 
 import * as React from "react";
@@ -32,6 +42,9 @@ import {
   AlertCircle,
   FileText,
   Plus,
+  Users,
+  Mars,
+  Venus,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -55,20 +68,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { GlassCard } from "@/components/ds/glass-card";
 import { KentePattern } from "@/components/ds/kente-pattern";
+import { ProgressCircle } from "@/components/ds/progress-circle";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -147,6 +153,15 @@ function StatutInscriptionBadge({ statut }: { statut: StatutInscription }) {
   );
 }
 
+/** Calcule le % d'inscriptions "valides" (INSCRIT + REINSCRIT) sur le total. */
+function computeValidRatio(inscriptions: Inscription[]): number {
+  if (inscriptions.length === 0) return 0;
+  const valid = inscriptions.filter(
+    (i) => i.statut === "INSCRIT" || i.statut === "REINSCRIT",
+  ).length;
+  return Math.round((valid / inscriptions.length) * 100);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Composant principal
 // ─────────────────────────────────────────────────────────────────────────────
@@ -223,38 +238,42 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
   }
 
   const inscriptions = eleve.inscriptions ?? [];
+  const validRatio = computeValidRatio(inscriptions);
 
   return (
     <div className="space-y-4">
       <BackButton onClick={onBack} />
 
-      {/* En-tête */}
-      <GlassCard variant="adaptive" noHover>
+      {/* En-tête premium — carte d'identité avec bordure gold */}
+      <GlassCard variant="desktop" premiumBorder noHover className="p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <Avatar className="size-16 border-2 border-emerald-100 dark:border-emerald-900/40">
+            <Avatar className="size-20 border-2 border-gold ring-2 ring-gold/30 shadow-lg dark:border-gold-dark">
               {eleve.photo_url ? (
                 <AvatarImage
                   src={eleve.photo_url}
                   alt={eleveFullName(eleve)}
                 />
               ) : null}
-              <AvatarFallback className="bg-emerald-100 text-lg font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+              <AvatarFallback className="bg-gradient-to-br from-emerald-600 to-emerald-700 text-xl font-bold text-white shadow-inner dark:from-emerald-700 dark:to-emerald-900 dark:text-emerald-50">
                 {initialsOf(eleve.nom, eleve.prenoms)}
               </AvatarFallback>
             </Avatar>
-            <div className="min-w-0 space-y-1.5">
-              <h2 className="font-display text-xl font-semibold tracking-tight">
+            <div className="min-w-0 space-y-2">
+              <h2 className="font-display text-xl font-semibold tracking-tight text-forest sm:text-2xl">
                 {eleveFullName(eleve)}
               </h2>
-              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:text-sm">
                 <span className="font-mono">
-                  ID interne : {eleve.identifiant_interne}
+                  ID interne :{" "}
+                  <span className="font-semibold text-foreground">
+                    {eleve.identifiant_interne}
+                  </span>
                 </span>
-                <Separator orientation="vertical" className="h-4" />
+                <Separator orientation="vertical" className="hidden h-4 sm:block" />
                 <span>
                   Matricule MEN :{" "}
-                  <span className="font-mono">
+                  <span className="font-mono font-semibold text-foreground">
                     {eleve.matricule_ministere ?? "—"}
                   </span>
                 </span>
@@ -262,17 +281,37 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
               <div className="flex flex-wrap items-center gap-2">
                 <CategorieBadge categorie={eleve.categorie} />
                 <StatutBadge statut={eleve.statut} />
+                {eleve.sexe === "M" ? (
+                  <Badge
+                    variant="outline"
+                    className="border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/50 dark:bg-sky-950/40 dark:text-sky-300"
+                  >
+                    <Mars className="mr-1 size-3" />
+                    Masculin
+                  </Badge>
+                ) : eleve.sexe === "F" ? (
+                  <Badge
+                    variant="outline"
+                    className="border-pink-200 bg-pink-50 text-pink-700 dark:border-pink-900/50 dark:bg-pink-950/40 dark:text-pink-300"
+                  >
+                    <Venus className="mr-1 size-3" />
+                    Féminin
+                  </Badge>
+                ) : null}
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex shrink-0 gap-2">
             <Button variant="outline" onClick={onEdit}>
               <Pencil className="size-4" />
               Modifier
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" className="text-destructive">
+                <Button
+                  variant="outline"
+                  className="border-destructive/30 text-destructive hover:bg-destructive/5"
+                >
                   <Trash2 className="size-4" />
                   Supprimer
                 </Button>
@@ -304,14 +343,15 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
       <KentePattern variant="separator" className="my-1" />
 
       {/* Grille de cartes */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid items-stretch gap-4 lg:grid-cols-2">
         {/* Identité */}
-        <GlassCard variant="adaptive" noHover>
-          <div className="mb-3 flex items-center gap-2">
-            <UserCircle2 className="size-4 text-emerald-600" />
-            <h3 className="font-display text-base font-semibold">Identité</h3>
-          </div>
-          <div className="space-y-3">
+        <GlassCard variant="adaptive" noHover className="h-full">
+          <SectionHeader
+            icon={UserCircle2}
+            title="Identité"
+            subtitle="Informations d'état civil"
+          />
+          <div className="space-y-2">
             <InfoRow
               icon={Calendar}
               label="Date de naissance"
@@ -323,7 +363,7 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
               value={eleve.lieu_naissance || "—"}
             />
             <InfoRow
-              icon={User}
+              icon={eleve.sexe === "F" ? Venus : Mars}
               label="Sexe"
               value={formatSexe(eleve.sexe)}
             />
@@ -336,12 +376,13 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
         </GlassCard>
 
         {/* Tuteur */}
-        <GlassCard variant="adaptive" noHover>
-          <div className="mb-3 flex items-center gap-2">
-            <User className="size-4 text-emerald-600" />
-            <h3 className="font-display text-base font-semibold">Tuteur</h3>
-          </div>
-          <div className="space-y-3">
+        <GlassCard variant="adaptive" noHover className="h-full">
+          <SectionHeader
+            icon={Users}
+            title="Tuteur"
+            subtitle="Contact & lien de parenté"
+          />
+          <div className="space-y-2">
             {eleve.tuteur ? (
               <>
                 <InfoRow
@@ -354,7 +395,7 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
                     eleve.tuteur.lien_parente ? (
                       <Badge
                         variant="outline"
-                        className="border-emerald-200 bg-emerald-50 text-emerald-700"
+                        className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
                       >
                         {LIEN_PARENTE_LABEL[eleve.tuteur.lien_parente]}
                       </Badge>
@@ -369,50 +410,29 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
                   />
                 ) : null}
                 {eleve.tuteur.telephone ? (
-                  <a
+                  <ContactRow
                     href={`tel:${eleve.tuteur.telephone}`}
-                    className="flex items-center gap-3 rounded-md border border-transparent px-1 py-1 text-sm hover:border-border hover:bg-muted/40"
-                  >
-                    <Phone className="size-4 text-emerald-600" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs text-muted-foreground">
-                        Téléphone
-                      </p>
-                      <p className="font-medium">
-                        {eleve.tuteur.telephone}
-                      </p>
-                    </div>
-                  </a>
+                    icon={Phone}
+                    label="Téléphone"
+                    value={eleve.tuteur.telephone}
+                  />
                 ) : null}
                 {eleve.tuteur.telephone2 ? (
-                  <a
+                  <ContactRow
                     href={`tel:${eleve.tuteur.telephone2}`}
-                    className="flex items-center gap-3 rounded-md border border-transparent px-1 py-1 text-sm hover:border-border hover:bg-muted/40"
-                  >
-                    <Phone className="size-4 text-muted-foreground" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs text-muted-foreground">
-                        Téléphone 2
-                      </p>
-                      <p className="font-medium">
-                        {eleve.tuteur.telephone2}
-                      </p>
-                    </div>
-                  </a>
+                    icon={Phone}
+                    label="Téléphone 2"
+                    value={eleve.tuteur.telephone2}
+                    muted
+                  />
                 ) : null}
                 {eleve.tuteur.email ? (
-                  <a
+                  <ContactRow
                     href={`mailto:${eleve.tuteur.email}`}
-                    className="flex items-center gap-3 rounded-md border border-transparent px-1 py-1 text-sm hover:border-border hover:bg-muted/40"
-                  >
-                    <Mail className="size-4 text-emerald-600" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs text-muted-foreground">Email</p>
-                      <p className="truncate font-medium">
-                        {eleve.tuteur.email}
-                      </p>
-                    </div>
-                  </a>
+                    icon={Mail}
+                    label="Email"
+                    value={eleve.tuteur.email}
+                  />
                 ) : null}
                 {eleve.tuteur.adresse ? (
                   <InfoRow
@@ -426,20 +446,7 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
                 </p>
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
-                <User className="size-8 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">
-                  Aucun tuteur renseigné.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onEdit}
-                  className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                >
-                  Affecter un tuteur
-                </Button>
-              </div>
+              <EmptyTuteur onEdit={onEdit} />
             )}
           </div>
         </GlassCard>
@@ -449,8 +456,8 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
       <EleveSoldeCard eleveId={eleveId} />
 
       {/* Inscriptions */}
-      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
-        <div className="flex items-center justify-between p-5 pb-3">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden">
+        <div className="flex flex-col gap-3 p-5 pb-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <FileText className="size-4 text-emerald-600" />
             <h3 className="font-display text-base font-semibold">
@@ -466,33 +473,40 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
             Nouvelle inscription
           </Button>
         </div>
-        <div>
-          {inscriptions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-              <FileText className="size-8 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">
-                Aucune inscription enregistrée pour cet élève.
-              </p>
+
+        {inscriptions.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+            <FileText className="size-8 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">
+              Aucune inscription enregistrée pour cet élève.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4 p-5 pt-2 lg:grid-cols-[auto_1fr]">
+            {/* ProgressCircle : taux d'inscriptions valides */}
+            <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+              <ProgressCircle value={validRatio} size={110} strokeWidth={9} />
+              <div className="text-center">
+                <p className="text-xs font-medium text-emerald-800 dark:text-emerald-300">
+                  Inscriptions valides
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {inscriptions.length} au total
+                </p>
+              </div>
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40 hover:bg-muted/40">
-                  <TableHead className="pl-4">Année scolaire</TableHead>
-                  <TableHead>Classe</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead className="pr-4">Dérogation</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {inscriptions.map((insc) => (
-                  <InscriptionRow key={insc.id} inscription={insc} />
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </div>
+
+            {/* Timeline verticale */}
+            <ol className="relative space-y-3 border-l-2 border-emerald-100 pl-4 dark:border-emerald-900/40">
+              {inscriptions.map((insc) => (
+                <InscriptionTimelineItem
+                  key={insc.id}
+                  inscription={insc}
+                />
+              ))}
+            </ol>
+          </div>
+        )}
       </GlassCard>
 
       {/* Dialog nouvelle inscription */}
@@ -523,6 +537,32 @@ function BackButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+function SectionHeader({
+  icon: Icon,
+  title,
+  subtitle,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="mb-3 flex items-start gap-2.5">
+      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+        <Icon className="size-4" />
+      </div>
+      <div className="min-w-0">
+        <h3 className="font-display text-base font-semibold leading-tight">
+          {title}
+        </h3>
+        {subtitle ? (
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function InfoRow({
   icon: Icon,
   label,
@@ -535,48 +575,121 @@ function InfoRow({
   badge?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <Icon className="size-4 shrink-0 text-muted-foreground" />
+    <div className="flex items-start gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20">
+      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+        <Icon className="size-3.5" />
+      </div>
       <div className="min-w-0 flex-1">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="truncate font-medium">{value}</p>
+        <p className="break-words text-sm font-medium leading-snug">{value}</p>
       </div>
       {badge}
     </div>
   );
 }
 
-function InscriptionRow({ inscription }: { inscription: Inscription }) {
+function ContactRow({
+  href,
+  icon: Icon,
+  label,
+  value,
+  muted = false,
+}: {
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  muted?: boolean;
+}) {
   return (
-    <TableRow>
-      <TableCell className="pl-4">
-        {inscription.annee_scolaire?.libelle ?? "—"}
-      </TableCell>
-      <TableCell className="font-medium">
-        {inscription.classe?.libelle ?? "—"}
-      </TableCell>
-      <TableCell className="text-muted-foreground">
-        {formatDate(inscription.date_inscription)}
-      </TableCell>
-      <TableCell>
-        <StatutInscriptionBadge statut={inscription.statut} />
-      </TableCell>
-      <TableCell className="pr-4">
-        {inscription.derogation_inscription ? (
-          <Badge
-            variant="outline"
-            className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
-          >
-            Dérogation
-            {inscription.motif_derogation
-              ? ` · ${inscription.motif_derogation}`
-              : ""}
-          </Badge>
-        ) : (
-          <span className="text-muted-foreground">—</span>
+    <a
+      href={href}
+      className="flex items-start gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20"
+    >
+      <div
+        className={cn(
+          "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md",
+          muted
+            ? "bg-muted text-muted-foreground"
+            : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
         )}
-      </TableCell>
-    </TableRow>
+      >
+        <Icon className="size-3.5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="break-words text-sm font-medium leading-snug">{value}</p>
+      </div>
+    </a>
+  );
+}
+
+function EmptyTuteur({ onEdit }: { onEdit: () => void }) {
+  return (
+    <div className="relative overflow-hidden rounded-lg border border-dashed border-emerald-200 px-4 py-8 text-center dark:border-emerald-900/40">
+      <KentePattern variant="bg" />
+      <div className="relative flex flex-col items-center gap-2">
+        <div className="flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <Users className="size-6" />
+        </div>
+        <p className="text-sm font-medium">Aucun tuteur renseigné</p>
+        <p className="max-w-xs text-xs text-muted-foreground">
+          Affectez un tuteur légal pour permettre le suivi et les relances.
+        </p>
+        <Button
+          variant="success"
+          size="sm"
+          onClick={onEdit}
+          className="mt-1"
+        >
+          <User className="size-3.5" />
+          Affecter un tuteur
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function InscriptionTimelineItem({
+  inscription,
+}: {
+  inscription: Inscription;
+}) {
+  return (
+    <li className="relative">
+      {/* Point sur la timeline */}
+      <span
+        className="absolute -left-[22px] top-1.5 flex size-3 items-center justify-center rounded-full border-2 border-emerald-600 bg-white dark:bg-emerald-950"
+        aria-hidden="true"
+      />
+      <div className="flex flex-col gap-1.5 rounded-lg border border-muted bg-muted/20 p-3 transition-colors hover:border-emerald-200 hover:bg-emerald-50/40 dark:hover:border-emerald-900/40 dark:hover:bg-emerald-950/20 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-0.5">
+          <p className="font-display text-sm font-semibold">
+            {inscription.annee_scolaire?.libelle ?? "—"}
+          </p>
+          <p className="text-sm text-foreground">
+            {inscription.classe?.libelle ?? "—"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Inscrit le {formatDate(inscription.date_inscription)}
+          </p>
+          {inscription.derogation_inscription ? (
+            <Badge
+              variant="outline"
+              className="mt-1 border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
+            >
+              Dérogation
+              {inscription.motif_derogation
+                ? ` · ${inscription.motif_derogation}`
+                : ""}
+            </Badge>
+          ) : null}
+        </div>
+        <div className="shrink-0">
+          <StatutInscriptionBadge statut={inscription.statut} />
+        </div>
+      </div>
+    </li>
   );
 }
 
@@ -587,7 +700,7 @@ function DetailSkeleton({ onBack }: { onBack: () => void }) {
       <Card>
         <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <Skeleton className="size-16 rounded-full" />
+            <Skeleton className="size-20 rounded-full" />
             <div className="space-y-2">
               <Skeleton className="h-6 w-64" />
               <Skeleton className="h-4 w-72" />

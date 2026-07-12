@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ScolaGest — Dialogue de création d'un tuteur (Phase 2)
+ * ScolaGest — Dialogue de création d'un tuteur (Phase 2 — Refonte)
  *
  * Modal shadcn utilisé depuis le formulaire élève pour créer un tuteur
  * à la volée. À la soumission, appelle `createTuteur` puis déclenche la
@@ -10,6 +10,16 @@
  *
  * Champs : nom* + prenoms + telephone* + telephone2 + email + adresse +
  * lien_parente (Select) + profession.
+ *
+ * Refonte Forêt EdTech :
+ *  - Header avec icône UserPlus emerald dans badge rond gradient.
+ *  - Layout 2 colonnes desktop, 1 colonne mobile.
+ *  - Hint contextuel sous le téléphone : « Format international recommandé
+ *    (+225…) » pour faciliter la saisie ivoirienne.
+ *  - Footer : boutons plein largeur sur mobile (grid-cols-2).
+ *
+ * LOGIQUE MÉTIER INTACTE : hooks, mutations, query keys, createTuteur,
+ * types TuteurDTO / LienParente.
  */
 
 import * as React from "react";
@@ -162,11 +172,13 @@ export function TuteurDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="size-5 text-emerald-600" />
-            Nouveau tuteur
+          <DialogTitle className="flex items-center gap-2.5">
+            <span className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-md shadow-emerald-900/20">
+              <UserPlus className="size-5" />
+            </span>
+            <span className="font-display text-lg">Nouveau tuteur</span>
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="pl-11">
             Créez un tuteur à la volée. Il sera automatiquement affecté à
             l&apos;élève en cours.
           </DialogDescription>
@@ -204,6 +216,7 @@ export function TuteurDialog({
               label="Téléphone"
               required
               error={form.formState.errors.telephone?.message}
+              hint="Format international recommandé (+225 07 00 00 00 00)."
             >
               <Input
                 placeholder="+225 07 00 00 00 00"
@@ -216,10 +229,12 @@ export function TuteurDialog({
             <FormField
               label="Téléphone 2"
               error={form.formState.errors.telephone2?.message}
+              hint="Optionnel — numéro secondaire."
             >
               <Input
                 placeholder="+225 05 00 00 00 00"
                 inputMode="tel"
+                autoComplete="tel"
                 {...form.register("telephone2")}
               />
             </FormField>
@@ -281,19 +296,21 @@ export function TuteurDialog({
             </FormField>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={mutation.isPending}
+              className="w-full sm:w-auto"
             >
               Annuler
             </Button>
             <Button
               type="submit"
               disabled={mutation.isPending}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
+              variant="success"
+              className="w-full sm:w-auto"
             >
               {mutation.isPending ? (
                 <>
@@ -319,12 +336,14 @@ function FormField({
   label,
   required,
   error,
+  hint,
   children,
   className,
 }: {
   label: string;
   required?: boolean;
   error?: string;
+  hint?: string;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -335,6 +354,9 @@ function FormField({
         {required ? <span className="ml-0.5 text-destructive">*</span> : null}
       </Label>
       {children}
+      {hint ? (
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      ) : null}
       {error ? (
         <p className="text-xs text-destructive">{error}</p>
       ) : null}

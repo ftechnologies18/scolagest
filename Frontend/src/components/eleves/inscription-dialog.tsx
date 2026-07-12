@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ScolaGest — Dialogue d'inscription d'un élève (Phase 2)
+ * ScolaGest — Dialogue d'inscription d'un élève (Phase 2 — Refonte)
  *
  * Modal shadcn permettant d'ajouter une inscription à un élève :
  *  - Classe (Select, liste des classes de l'établissement courant)
@@ -9,8 +9,15 @@
  *  - Statut (Select, défaut INSCRIT)
  *  - Dérogation (Switch) — si activé, montre le motif
  *
- * À la soumission, appelle `createInscription(eleveId, dto)` puis
- * invalide le cache React Query de la fiche élève et de la liste.
+ * Refonte Forêt EdTech :
+ *  - Header avec icône GraduationCap emerald dans badge rond gradient.
+ *  - Layout 2 colonnes desktop, 1 colonne mobile.
+ *  - Section dérogation : carte amber-toned avec icône AlertTriangle,
+ *    paddings affinés.
+ *  - Footer : boutons plein largeur sur mobile (grid-cols-2).
+ *
+ * LOGIQUE MÉTIER INTACTE : hooks, mutations, query keys, createInscription,
+ * types InscriptionDTO / StatutInscription.
  */
 
 import * as React from "react";
@@ -43,7 +50,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -214,11 +220,13 @@ export function InscriptionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <GraduationCap className="size-5 text-emerald-600" />
-            Nouvelle inscription
+          <DialogTitle className="flex items-center gap-2.5">
+            <span className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-md shadow-emerald-900/20">
+              <GraduationCap className="size-5" />
+            </span>
+            <span className="font-display text-lg">Nouvelle inscription</span>
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="pl-11">
             Inscrivez cet élève dans une classe pour une année scolaire.
           </DialogDescription>
         </DialogHeader>
@@ -226,14 +234,14 @@ export function InscriptionDialog({
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Classe</Label>
+              <Label htmlFor="classe-insc">Classe</Label>
               <Select
                 value={classeValue}
                 onValueChange={(v) =>
                   form.setValue("classe_id", v, { shouldDirty: true })
                 }
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger id="classe-insc" className="w-full">
                   <SelectValue placeholder="Sélectionner…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -252,14 +260,14 @@ export function InscriptionDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label>Année scolaire</Label>
+              <Label htmlFor="annee-insc">Année scolaire</Label>
               <Select
                 value={anneeValue}
                 onValueChange={(v) =>
                   form.setValue("annee_scolaire_id", v, { shouldDirty: true })
                 }
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger id="annee-insc" className="w-full">
                   <SelectValue placeholder="Sélectionner…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -279,14 +287,14 @@ export function InscriptionDialog({
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Statut</Label>
+              <Label htmlFor="statut-insc">Statut</Label>
               <Select
                 value={statutValue}
                 onValueChange={(v) =>
                   form.setValue("statut", v, { shouldDirty: true })
                 }
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger id="statut-insc" className="w-full">
                   <SelectValue placeholder="Sélectionner…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -300,8 +308,8 @@ export function InscriptionDialog({
             </div>
           </div>
 
-          {/* Dérogation */}
-          <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-900/40 dark:bg-amber-950/20">
+          {/* Dérogation — carte amber-toned avec paddings affinés */}
+          <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/60 px-3.5 py-3 dark:border-amber-900/40 dark:bg-amber-950/20">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-0.5">
                 <Label className="flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
@@ -309,7 +317,7 @@ export function InscriptionDialog({
                   Dérogation d&apos;inscription
                 </Label>
                 <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
-                  Activez si l&apos;inscription déroge à la règle (ex.hors délai,
+                  Activez si l&apos;inscription déroge à la règle (ex. hors délai,
                   cycle inhabituel). Un motif est alors obligatoire.
                 </p>
               </div>
@@ -341,19 +349,21 @@ export function InscriptionDialog({
             ) : null}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={mutation.isPending}
+              className="w-full sm:w-auto"
             >
               Annuler
             </Button>
             <Button
               type="submit"
               disabled={mutation.isPending}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
+              variant="success"
+              className="w-full sm:w-auto"
             >
               {mutation.isPending ? (
                 <>
