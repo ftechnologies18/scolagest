@@ -220,6 +220,10 @@ func seedUtilisateurs(db *gorm.DB) {
                         etbID uuid.UUID
                         role  models.RoleUtilisateur
                 }{{epv.ID, models.RoleSecretariat}}},
+                {"Éducateur Test", "Compte", "educateur@scolagest.ci", "educateur123", models.RoleEducateur, []struct {
+                        etbID uuid.UUID
+                        role  models.RoleUtilisateur
+                }{{college.ID, models.RoleEducateur}}},
         }
 
         for _, u := range users {

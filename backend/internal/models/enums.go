@@ -93,6 +93,11 @@ const (
         RoleDirecteurSuperviseur RoleUtilisateur = "DIRECTEUR_SUPERVISEUR"
         RoleSecretariat      RoleUtilisateur = "SECRETARIAT"
         RoleEnseignant       RoleUtilisateur = "ENSEIGNANT"
+        // RoleEducateur : éducateur (vie scolaire, suivi & discipline des élèves).
+        // Rôle staff d'établissement au même titre que CAISSIER / COMPTABLE /
+        // SECRETARIAT, mais au périmètre restreint (dashboard, élèves en lecture,
+        // discipline, rapports). Pas d'accès caisse / compta / frais / paramètres.
+        RoleEducateur        RoleUtilisateur = "EDUCATEUR"
         // RoleDirection : legacy (migré vers DIRECTEUR_ETUDES / DIRECTEUR_SUPERVISEUR)
         RoleDirection        RoleUtilisateur = "DIRECTION"
 )

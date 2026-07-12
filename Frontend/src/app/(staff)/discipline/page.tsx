@@ -4,7 +4,8 @@
  * ScolaGest — Page tableau de bord discipline (route `/discipline`).
  *
  * Rend la vue `DisciplineDashboard` (module Phase B), protégée par un RoleGuard
- * réservé à la direction, aux directeurs et au secrétariat.
+ * réservé à la direction, aux directeurs, au secrétariat et aux éducateurs
+ * (vie scolaire).
  */
 
 import { RoleGuard } from "@/components/auth/role-guard";
@@ -15,6 +16,7 @@ const ALLOWED_ROLES = [
   "DIRECTEUR_ETUDES",
   "DIRECTEUR_SUPERVISEUR",
   "SECRETARIAT",
+  "EDUCATEUR",
 ] as const;
 
 export default function DisciplinePage() {

@@ -122,13 +122,13 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/dashboard",
         label: "Tableau de bord",
         icon: LayoutDashboard,
-        roles: ["CAISSIER", "COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
+        roles: ["CAISSIER", "COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT", "EDUCATEUR"],
       },
       {
         href: "/eleves",
         label: "Élèves",
         icon: Users,
-        roles: ["CAISSIER", "COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
+        roles: ["CAISSIER", "COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT", "EDUCATEUR"],
       },
       {
         // Nouvelle inscription (wizard 4 étapes) : réservé au secrétariat
@@ -157,7 +157,7 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/rapports",
         label: "Rapports",
         icon: FileBarChart,
-        roles: ["CAISSIER", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "COMPTABLE", "SECRETARIAT"],
+        roles: ["CAISSIER", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "COMPTABLE", "SECRETARIAT", "EDUCATEUR"],
       },
       {
         // Pré-inscriptions en ligne : demandes soumises par les parents via
@@ -244,12 +244,13 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
       },
       {
         // Discipline (Phase B) : tableau de bord des tickets d'incident
-        // disciplinaire et identification des élèves à risque. Réservé à la
-        // direction, aux directeurs et au secrétariat.
+        // disciplinaire et identification des élèves à risque. Accessible à la
+        // direction, aux directeurs, au secrétariat et aux éducateurs (vie
+        // scolaire).
         href: "/discipline",
         label: "Discipline",
         icon: ShieldAlert,
-        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
+        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT", "EDUCATEUR"],
       },
       {
         // Paie enseignants (Phase C) : génération des bulletins mensuels,
@@ -352,6 +353,7 @@ function roleLabel(role: string | null): string {
   DIRECTEUR_ETUDES: "Directeur des Études",
   DIRECTEUR_SUPERVISEUR: "Directeur Superviseur",
     SECRETARIAT: "Secrétariat",
+    EDUCATEUR: "Éducateur",
     PARENT: "Parent / Tuteur",
   };
   return map[role] ?? role;

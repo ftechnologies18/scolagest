@@ -358,6 +358,7 @@ function roleLabel(role: string | null): string {
   DIRECTEUR_ETUDES: "Directeur des Études",
   DIRECTEUR_SUPERVISEUR: "Directeur Superviseur",
     SECRETARIAT: "Secrétariat",
+    EDUCATEUR: "Éducateur",
     PARENT: "Parent / Tuteur",
   };
   return map[role] ?? role;

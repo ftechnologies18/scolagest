@@ -70,6 +70,7 @@ const ALL_ROLE_OPTIONS: { value: RoleGlobal; label: string }[] = [
   { value: "CAISSIER", label: "Caissier(ère)" },
   { value: "COMPTABLE", label: "Comptable" },
   { value: "SECRETARIAT", label: "Secrétariat" },
+  { value: "EDUCATEUR", label: "Éducateur" },
 ];
 
 const ROLE_LABEL: Record<RoleGlobal, string> = {
@@ -78,6 +79,7 @@ const ROLE_LABEL: Record<RoleGlobal, string> = {
   COMPTABLE: "Comptable",
   DIRECTION: "Direction",
   SECRETARIAT: "Secrétariat",
+  EDUCATEUR: "Éducateur",
   PARENT: "Parent / Tuteur",
 };
 

@@ -64,10 +64,10 @@ func (h *UserHandler) Create(c *gin.Context) {
                                 return
                         }
                 default:
-                        // CAISSIER, COMPTABLE, SECRETARIAT
+                        // CAISSIER, COMPTABLE, SECRETARIAT, EDUCATEUR
                         // Seul DIRECTEUR_SUPERVISEUR crée le staff (pas DIRECTEUR_ETUDES)
                         if requesterRoleTyped != models.RoleDirecteurSuperviseur {
-                                c.JSON(http.StatusForbidden, gin.H{"error": "seul le Directeur Superviseur peut créer des utilisateurs staff (Caissier, Comptable, Secrétariat)"})
+                                c.JSON(http.StatusForbidden, gin.H{"error": "seul le Directeur Superviseur peut créer des utilisateurs staff (Caissier, Comptable, Secrétariat, Éducateur)"})
                                 return
                         }
                 }

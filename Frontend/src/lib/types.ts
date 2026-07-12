@@ -964,6 +964,7 @@ export type RoleGlobal =
   | "DIRECTEUR_ETUDES"
   | "DIRECTEUR_SUPERVISEUR"
   | "SECRETARIAT"
+  | "EDUCATEUR"
   | "PARENT";
 
 export interface EtablissementAccess {

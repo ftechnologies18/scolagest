@@ -8008,3 +8008,234 @@ Stage Summary:
   colorés (amber/emerald/gold/terracotta) sur fond alterné emerald/amber.
 - VLM confirme : losanges visibles, couleurs vert/jaune présentes.
 - Amélioration significative vs v1 (pointillé → losanges géométriques).
+
+---
+Task ID: add-educateur-role
+Agent: Z.ai Code (tuteur principal)
+Task: Ajouter le rôle utilisateur EDUCATEUR au système ScolaGest (backend Go +
+frontend Next.js). Rôle staff d'établissement au même niveau que CAISSIER /
+COMPTABLE / SECRETARIAT, mais au périmètre restreint : Dashboard, Élèves
+(lecture), Discipline, Rapports. PAS d'accès caisse / compta / frais / paramètres /
+mobile money / pédagogie.
+
+Work Log:
+- Lecture du worklog.md (fin) et des fichiers clés de l'architecture RBAC :
+  • backend/internal/models/utilisateurs.go + enums.go (rôle RoleUtilisateur,
+    constante RoleSuperAdmin, RoleCaissier, RoleComptable, RoleDirection…)
+  • backend/internal/middleware/auth.go (RequireRole) + rls.go (RLS PostgreSQL)
+  • backend/internal/seed/seed.go (comptes démo créés au démarrage)
+  • backend/internal/handlers/user.go (CRUD + gouvernance hiérarchique SaaS)
+  • backend/internal/handlers/auth.go (login, aucun whitelist de rôle)
+  • backend/internal/handlers/incident.go (RequireRole pour /api/incidents
+    et /api/discipline)
+  • Frontend/src/lib/auth-store.ts (type Role union)
+  • Frontend/src/lib/types.ts (type RoleGlobal)
+  • Frontend/src/components/dashboard/dashboard-shell.tsx (STAFF_NAV_GROUPS
+    + roleLabel())
+  • Frontend/src/components/dashboard/dashboard-home.tsx (roleLabel())
+  • Frontend/src/components/dashboard/dashboard-layout.tsx (roleLabel())
+  • Frontend/src/components/parametres/utilisateur-form-dialog.tsx
+    (ALL_ROLE_OPTIONS + ROLE_LABEL)
+  • Frontend/src/components/auth/login-form.tsx (DEMO_ACCOUNTS)
+  • Frontend/src/app/(staff)/discipline/page.tsx + rapports/page.tsx
+    (RoleGuard allow lists)
+  • Frontend/src/components/auth/role-guard.tsx (mécanique du guard)
+
+- BACKEND — modifications Go :
+
+  1. backend/internal/models/enums.go :
+     • Ajout de `RoleEducateur RoleUtilisateur = "EDUCATEUR"` dans le bloc
+       des constantes de rôles (après RoleEnseignant, avant RoleDirection
+       legacy). Commentaire JSDoc expliquant le périmètre : "éducateur (vie
+       scolaire, suivi & discipline des élèves). Rôle staff d'établissement
+       au même titre que CAISSIER / COMPTABLE / SECRETARIAT, mais au
+       périmètre restreint (dashboard, élèves en lecture, discipline,
+       rapports). Pas d'accès caisse / compta / frais / paramètres."
+
+  2. backend/internal/seed/seed.go :
+     • Ajout du compte démo `educateur@scolagest.ci` (mot de passe
+       `educateur123`, role EDUCATEUR) dans la liste `users` de
+       `seedUtilisateurs()`. Nom = "Éducateur Test", prénoms = "Compte".
+       Établissement rattaché : Collège Privé Le Chandelier (récupéré
+       dynamiquement via `db.Where("code_officiel = ?", "013062").First(
+       &college)` comme les autres comptes démo). Création de l'
+       EtablissementAccess (utilisateur_id, college.ID, EDUCATEUR).
+
+  3. backend/internal/handlers/incident.go :
+     • Ajout de `models.RoleEducateur` aux listes RequireRole des routes
+       `/api/incidents` (gestion staff : ListIncidents, GetIncident,
+       TraiterIncident) et `/api/discipline/eleves-risque` (tableau de bord
+       discipline). Commentaire mis à jour : "Routes staff (DIRECTION,
+       DIRECTEUR_*, SECRETARIAT, EDUCATEUR) — L'éducateur accède aux tickets
+       disciplinaires (lecture + traitement) dans le cadre de son périmètre
+       vie scolaire."
+
+  4. backend/internal/handlers/user.go :
+     • Mise à jour du message d'erreur du `default` case (CAISSIER,
+       COMPTABLE, SECRETARIAT, EDUCATEUR) : "seul le Directeur Superviseur
+       peut créer des utilisateurs staff (Caissier, Comptable, Secrétariat,
+       Éducateur)". Le `default` case couvre déjà EDUCATEUR implicitement
+       (seul SUPER_ADMIN, DIRECTEUR_SUPERVISEUR, DIRECTEUR_ETUDES, DIRECTION
+       sont gérés explicitement par le switch).
+
+  5. Aucune modification nécessaire dans :
+     • auth.go / auth_service.go : aucune whitelist de rôle au login —
+       EDUCATEUR est accepté par défaut (vérifié par test).
+     • paiement.go, compta.go, caisse.go, cloture.go, momo_message.go,
+       paie.go, pointage.go, emploi_temps.go, enseignant.go : EDUCATEUR est
+       implicitement exclu de ces routes via RequireRole explicite (listes
+       blanches sans EDUCATEUR → 403).
+     • jwt_service.go : le type `Role` est une chaîne, pas d'énumération à
+       étendre.
+     • middleware/auth.go : RequireRole prend des `models.RoleUtilisateur`
+       variadiques, pas de liste à modifier.
+
+- FRONTEND — modifications TypeScript/React :
+
+  1. Frontend/src/lib/auth-store.ts :
+     • Ajout de `"EDUCATEUR"` au type union `Role` (entre SECRETARIAT et
+       PARENT).
+
+  2. Frontend/src/lib/types.ts :
+     • Ajout de `"EDUCATEUR"` au type union `RoleGlobal` (entre SECRETARIAT
+       et PARENT). Type partagé par EtablissementAccess.role,
+       Utilisateur.role_global, UtilisateurDTO.role_global,
+       EtablissementAccessDTO.role.
+
+  3. Frontend/src/components/dashboard/dashboard-shell.tsx :
+     • STAFF_NAV_GROUPS — ajout de "EDUCATEUR" aux rôles autorisés pour :
+       - "Tableau de bord" (/dashboard)
+       - "Élèves" (/eleves)
+       - "Rapports" (/rapports)
+       - "Discipline" (/discipline)
+       • Commentaire de l'item Discipline mis à jour : "Accessible à la
+         direction, aux directeurs, au secrétariat et aux éducateurs (vie
+         scolaire)."
+     • EDUCATEUR n'a PAS été ajouté à : Caisse, Impayés, Frais, Années,
+       Utilisateurs, Comptabilité, Mobile Money, Paramètres,
+       Pré-inscriptions, Effectifs, Passage de classe, Enseignants,
+       Matières, Affectations, Pointage, Paie, Emploi du temps, Nouvelle
+       inscription.
+     • roleLabel() : ajout de `EDUCATEUR: "Éducateur"` dans la map.
+
+  4. Frontend/src/components/dashboard/dashboard-home.tsx :
+     • roleLabel() : ajout de `EDUCATEUR: "Éducateur"` dans la map (badge
+       rôle affiché dans le header du tableau de bord).
+
+  5. Frontend/src/components/dashboard/dashboard-layout.tsx :
+     • roleLabel() : ajout de `EDUCATEUR: "Éducateur"` dans la map (badge
+       rôle affiché dans le dropdown utilisateur).
+
+  6. Frontend/src/components/parametres/utilisateur-form-dialog.tsx :
+     • ALL_ROLE_OPTIONS : ajout de `{ value: "EDUCATEUR", label: "Éducateur" }`
+       (sélecteur de rôle global, devient visible pour SUPER_ADMIN et
+       DIRECTEUR_SUPERVISEUR).
+     • ROLE_LABEL : ajout de `EDUCATEUR: "Éducateur"` dans le Record
+       (badge rôle affiché dans la liste des accès par établissement).
+
+  7. Frontend/src/components/auth/login-form.tsx :
+     • DEMO_ACCOUNTS : ajout de `{ role: "Éducateur", email:
+       "educateur@scolagest.ci", password: "educateur123" }` entre
+       "Secrétariat" et "Enseignant (Maths)".
+
+  8. Frontend/src/app/(staff)/rapports/page.tsx :
+     • RoleGuard `allow` : ajout de "EDUCATEUR" à la liste.
+     • Commentaire JSDoc mis à jour : "…SECRETARIAT, EDUCATEUR."
+
+  9. Frontend/src/app/(staff)/discipline/page.tsx :
+     • ALLOWED_ROLES : ajout de "EDUCATEUR".
+     • Commentaire JSDoc mis à jour : "réservé à la direction, aux
+       directeurs, au secrétariat et aux éducateurs (vie scolaire)."
+
+- Aucune modification nécessaire dans :
+  • Frontend/src/app/(staff)/layout.tsx : le layout ne bloque que
+    SUPER_ADMIN et ENSEIGNANT. EDUCATEUR tombe dans le cas par défaut
+    (rendu du DashboardShell). Aucun blocage, donc accessible.
+  • Frontend/src/app/(staff)/eleves/page.tsx et dashboard/page.tsx :
+    pas de RoleGuard → tout le staff authentifié y accède (dont EDUCATEUR).
+  • Frontend/src/components/auth/role-guard.tsx : générique, pas de rôle
+    hardcodé.
+
+- TESTS — vérifications effectuées :
+
+  1. Compilation backend :
+     `cd /home/z/my-project/backend && go build -o /tmp/scolagest-backend ./cmd/server/`
+     → SUCCÈS (binaire 45 MB, 0 erreur).
+
+  2. Démarrage backend + seed :
+     `/tmp/scolagest-backend` (avec .env pointant vers Neon PostgreSQL).
+     → Log confirme : "✓ Seed terminé".
+     → Log seed : `+ Utilisateur: educateur@scolagest.ci (EDUCATEUR) —
+       mot de passe: educateur123`.
+     → INSERT utilisateurs : `("Éducateur Test","Compte",
+       "educateur@scolagest.ci", "$2a$10$…", "EDUCATEUR", …, "ACTIF")`.
+     → INSERT etablissement_access : `(utilisateur_id, college.ID,
+       "EDUCATEUR")`. Le college.ID dans cette base Neon est
+       `78c3e440-dff2-4021-87fc-7ade841eb433` (UUID réel, différent du
+       `9f873e88-…` cité dans la mission — celui-ci provenait d'un autre
+       environnement/DB). Le seed utilise le college.ID dynamiquement, ce
+       qui est correct.
+
+  3. Login EDUCATEUR :
+     `POST /api/auth/login` avec `educateur@scolagest.ci` / `educateur123`
+     et `etablissement_id=78c3e440-…`.
+     → HTTP 200, retourne `access_token` + `refresh_token` + `user` avec
+       `role_global="EDUCATEUR"` + `etablissement` = "Collège Privé Le
+       Chandelier" + `role="EDUCATEUR"` au top-level.
+     → JWT payload décodé : `{"role":"EDUCATEUR","etb":"78c3e440-…",
+       "uid":"279e8431-…","email":"educateur@scolagest.ci",…}`.
+
+  4. Tests de non-régression (login autres rôles) :
+     • CAISSIER → role=CAISSIER ✓ (access_token OK)
+     • DIRECTION (legacy) → role=DIRECTEUR_ETUDES ✓ (rôle effectif via
+       EtablissementAccess, access_token OK)
+     • Aucun rôle existant n'a été cassé par l'ajout d'EDUCATEUR.
+
+  5. Tests RBAC API (avec token EDUCATEUR) :
+     • GET /api/incidents → 200 ✓ (EDUCATEUR autorisé via RequireRole)
+     • GET /api/discipline/eleves-risque → 200 ✓
+     • GET /api/dashboard → 200 ✓ (pas de RequireRole, authMW seul)
+     • GET /api/eleves → 200 ✓
+     • GET /api/rapports/paiements → 200 ✓
+     • GET /api/caisse/dashboard → 403 ✓ (EDUCATEUR implicitement exclu)
+     • GET /api/caisse/file-attente → 403 ✓
+     • GET /api/comptabilite/exercices → 403 ✓ (COMPTABLE-only)
+     • GET /api/paiements → 403 ✓ (CAISSIER/COMPTABLE-only)
+     • GET /api/clotures → 403 ✓ (CAISSIER/COMPTABLE-only)
+     • GET /api/enseignants → 403 ✓ (DIRECTION/DIRECTEUR_*/SECRETARIAT)
+     Tous les endpoints sensibles refusent correctement EDUCATEUR.
+
+  6. Lint frontend :
+     `cd Frontend && bun run lint` → 0 erreur, 3 warnings pré-existants
+     (dans step-scolarite.tsx, non liés à ce changement — directives
+     eslint-disable inutilisées).
+
+Stage Summary:
+- Backend Go : 4 fichiers modifiés
+  • internal/models/enums.go (+5 lignes : constante RoleEducateur + commentaire)
+  • internal/seed/seed.go (+5 lignes : compte démo educateur)
+  • internal/handlers/incident.go (+4 modifications : RequireRole pour
+    /incidents et /discipline + commentaires)
+  • internal/handlers/user.go (1 ligne : message d'erreur du default case)
+- Frontend TS : 8 fichiers modifiés
+  • src/lib/auth-store.ts (type Role)
+  • src/lib/types.ts (type RoleGlobal)
+  • src/components/dashboard/dashboard-shell.tsx (nav + roleLabel)
+  • src/components/dashboard/dashboard-home.tsx (roleLabel)
+  • src/components/dashboard/dashboard-layout.tsx (roleLabel)
+  • src/components/parametres/utilisateur-form-dialog.tsx
+    (ALL_ROLE_OPTIONS + ROLE_LABEL)
+  • src/components/auth/login-form.tsx (DEMO_ACCOUNTS)
+  • src/app/(staff)/rapports/page.tsx + discipline/page.tsx (RoleGuard)
+- Compilation backend : OK (0 erreur).
+- Login educateur : OK (access_token + refresh_token retournés, role=
+  EDUCATEUR dans le JWT et dans la réponse).
+- Rôles existants (CAISSIER, DIRECTION, etc.) : INTACTS — vérifiés par
+  tests de non-régression.
+- RBAC backend vérifié : EDUCATEUR accède aux endpoints autorisés
+  (incidents, discipline, dashboard, eleves, rapports) et est bloqué
+  (403) sur les endpoints sensibles (caisse, compta, paiements, clotures,
+  enseignants, etc.).
+- Aucune couleur indigo/bleu ajoutée. TypeScript strict respecté. Go
+  idiomatique.
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.

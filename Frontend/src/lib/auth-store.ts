@@ -42,6 +42,7 @@ export type Role =
   | "DIRECTEUR_ETUDES"
   | "DIRECTEUR_SUPERVISEUR"
   | "SECRETARIAT"
+  | "EDUCATEUR"
   | "PARENT";
 
 export interface ScolaGestUser {
