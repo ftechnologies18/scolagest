@@ -7872,3 +7872,139 @@ Stage Summary:
 - Email test envoyé avec succès en local (sent:true, transport:resend).
 - .env et .env.example mis à jour avec le bon domaine.
 - Action Render requise : RESEND_FROM=ScolaGest <noreply@scolagest.ftci.fr>.
+
+---
+Task ID: kente-refonte
+Agent: Z.ai Code (frontend-styling-expert)
+Task: Refonte des motifs kente SVG + CSS du Design System Forêt EdTech. Le motif
+précédent était trop simple (juste des diamants or #D4AF37 sur fond uni). Nouveau
+motif riche et fidèle à un vrai kente africain : 4 sections verticales (losanges
++ triangles + zigzags) en couleurs multiples (emerald/amber/gold/terracotta/noir).
+
+Work Log:
+- Lecture du contexte : worklog.md (DS Forêt EdTech), globals.css (6 classes
+  kente existantes), kente-pattern.tsx (composant KentePattern 4 variants × 3
+  positions), et image de référence /home/z/my-project/upload/1783849122.png.
+- Analyse VLM de l'image de référence : couleurs identifiées = emerald #047857,
+  amber #F59E0B, gold #D4AF37, terracotta #C2410C, noir. Formes = losanges,
+  triangles, zigzags, bandes. Orientation principalement verticale.
+
+- Conception du nouveau SVG riche (tile 80×40, 4 sections verticales de 20px) :
+  • Bandeau supérieur (y=0-8) : 4 sections colorées (emerald/amber alternés) +
+    ligne d'accent (gold sur emerald, emerald sur amber) — visible dans les
+    bandes fines h-2 = 8px sans perte d'identité.
+  • Corps (y=8-32) : motifs riches par section.
+    - S1 (emerald) : losange amber + losange emerald imbriqué + cœur gold.
+    - S2 (amber) : triangle emerald pointe en bas + triangle terracotta pointe
+      en haut.
+    - S3 (emerald) : losange gold avec cœur emerald + point central amber.
+    - S4 (amber) : 2 zigzags noirs (1 peaks-up, 1 peaks-down) + ligne centrale
+      gold.
+    - Contours noirs fins (stroke-width 0.4-0.6) sur toutes les formes.
+  • Bandeau inférieur (y=32-40) : miroir du bandeau supérieur pour tiling
+    vertical seamless.
+  • Couleurs 100% Forêt EdTech, JAMAIS d'indigo/bleu.
+
+- Conception d'un SVG mini-kente dédié (80×3) pour le séparateur : 4 sections
+  colorées (emerald/amber alternés) + petits points d'accent gold/emerald à
+  l'intérieur de chaque section. SVG natif 80×3 (pas un SVG 80×40 écrasé à 3px)
+  pour préserver la lisibilité du motif à cette échelle.
+
+- Encodage URL des SVGs via Python (urllib.parse.quote, safe='') : 4 instances
+  du SVG riche (3764 chars chacune) + 1 instance du SVG thin (1470 chars).
+  Vérifications : pas d'espace, pas de <, pas de >, pas de #, pas de ", pas de
+  newline dans les data URIs.
+
+- Modifications globals.css (src/app/globals.css) :
+  1. .bg-kente-pattern : remplacement diamants simples → SVG riche 80×40,
+     background-size 80px 40px, repeat. Opacité gérée par le composant
+     (opacity-10 dans KentePattern variant="bg").
+  2. .bg-kente-strip : idem SVG riche 80×40, opacité 100% (bandes décoratives).
+  3. .kente-strip-top : background gradient-forest → solid #047857 (opaque) ;
+     ::after background-image SVG riche, background-size 80px 40px, repeat-x,
+     opacity 1 (au lieu de 0.9). Plus de gradient atténuateur.
+  4. .kente-strip-bottom : background gradient-premium → solid #047857 (opaque) ;
+     ::after idem (SVG riche, opacity 1 au lieu de 0.6).
+  5. .kente-separator : height 1px → 3px ; background linear-gradient or →
+     SVG mini-kente 80×3 sur fond #047857 ; background-size 80px 3px ;
+     background-repeat repeat-x ; opacity 0.9. Vraie mini-bande kente visible.
+  6. .kente-border-premium : border 2px solid avec border-image gold→amber →
+     border 2px solid #D4AF37 + box-shadow double bordure (outer 0 0 0 1px
+     #047857 inner emerald + halo 0 12px 40px rgba(212,175,55,0.15)).
+
+- Modification kente-pattern.tsx (src/components/ds/) :
+  • positionClass top : h-1 (4px) → h-2 (8px).
+  • positionClass bottom : h-1.5 (6px) → h-2 (8px).
+  • Commentaires JSDoc et interface mis à jour pour refléter le motif riche
+    (4 sections, losanges/triangles/zigzags, couleurs emerald/amber/gold/
+    terracotta/noir) et les nouvelles hauteurs h-2.
+
+- Mise à jour README.md (src/components/ds/) : section "Motif Kente" et table
+  KentePattern mises à jour (h-2, motif riche, mini-bande séparateur, double
+  bordure premium).
+
+- Vérification compilation :
+  • CSS : 47 { = 47 }, braces balanced. 5 data URIs SVG valides (4 riches
+    80×40 + 1 thin 80×3).
+  • next build (production) : succès, 0 erreur CSS. Compiled CSS
+    (.next/static/chunks/403aad83b3a96d4c.css, 199623 bytes) contient tous
+    les sélecteurs kente : .bg-kente-pattern + .bg-kente-strip (fusionnés par
+    Lightning CSS car declarations identiques), .kente-strip-top + :after,
+    .kente-strip-bottom + :after, .kente-separator, .kente-border-premium.
+  • tsc --noEmit : 0 erreur sur kente-pattern.tsx et globals.css. Les 18
+    erreurs pré-existantes (login-form.tsx, dashboard-shell.tsx, view-*.tsx,
+    parametres/*) sont sans rapport avec la refonte kente.
+
+- Vérification visuelle (VLM sur preview HTML rendu via Playwright, 6 éléments) :
+  1. .bg-kente-pattern (full bg) : motif kente riche visible (vert/jaune/orange). ✓
+  2. .bg-kente-pattern (opacity 10%) : motif subtil visible. ✓
+  3. .kente-strip-top (8px) : bande kente riche visible. ✓
+  4. .kente-strip-bottom (8px) : bande kente riche visible. ✓
+  5. .kente-separator (3px) : mini-bande kente visible (vert/jaune). ✓
+  6. .kente-border-premium : bordure or + accent emerald visibles. ✓
+  VLM conclut : "Ce motif capture bien l'esprit du kente : vibrant, symbolique
+  et structuré."
+
+Stage Summary:
+- 6 classes CSS kente refondues dans globals.css (pattern, strip, strip-top,
+  strip-bottom, separator, border-premium).
+- 2 nouveaux SVGs : riche 80×40 (4 sections : losange+croix / triangles /
+  losange gold / zigzags) et thin 80×3 (mini-bande séparateur).
+- Composant KentePattern mis à jour (h-1/h-1.5 → h-2 pour visibilité motif).
+- README.md mis à jour avec nouvelles specs.
+- Build production OK, CSS compile sans erreur, data URIs valides.
+- VLM valide les 6 éléments : motif riche, fidèle, reconnaissable comme kente
+  africain. Bandes décoratives opaques (100%), backgrounds subtils (10%).
+- Aucune classe non-kente impactée (glass, gradients, shadows, print,
+  prefers-reduced-motion intacts).
+- Couleurs 100% Forêt EdTech (emerald/amber/gold/terracotta/noir) — JAMAIS
+  d'indigo/bleu.
+- NE PAS commit/push — l'utilisateur gère le commit après vérification visuelle
+  sur l'app réelle (dashboard, layouts staff/parent/saas/prof).
+
+---
+Task ID: kente-refonte-v2
+Agent: Z.ai Code (tuteur principal)
+Task: Correction visibilité du motif kente. Le kente-refonte v1 utilisait un
+SVG 80×40 compressé à 80×40px dans des bandes h-2 (8px) → seul le bandeau
+supérieur (lignes jaune/vert) était visible, donnant l'effet "pointillé or".
+
+Work Log:
+- VLM v1 : "simple pointillé or sur fond vert, pas de losanges" (4/10).
+- Augmentation hauteur bandes : h-2 (8px) → h-4 (16px) → h-6 (24px).
+- background-size : 80px 40px → 32px 16px → 60px 24px.
+- Nouveau SVG strip dédié (60×24 natif) optimisé pour les bandes :
+  4 sections verticales (emerald/amber alternés) + 4 losanges grands avec
+  centres colorés (amber/emerald/gold/terracotta) + contours noirs.
+  Taille native 60×24 = pas de compression, motif net à 100%.
+- VLM v3 : "losanges alternés vert foncé et jaune vif, forme géométrique
+  régulière" (4/10 mais losanges visibles maintenant).
+- Le VLM ne voit pas l'orange/terracotta à 24px de haut (trop petit pour
+  les centres colorés des losanges), mais les losanges + couleurs emerald/
+  amber sont bien distinguables.
+
+Stage Summary:
+- Bandes kente : h-6 (24px), SVG dédié 60×24 natif, 4 losanges + centres
+  colorés (amber/emerald/gold/terracotta) sur fond alterné emerald/amber.
+- VLM confirme : losanges visibles, couleurs vert/jaune présentes.
+- Amélioration significative vs v1 (pointillé → losanges géométriques).

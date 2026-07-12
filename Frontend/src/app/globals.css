@@ -361,60 +361,87 @@
 }
 
 /* ─── Forêt EdTech — Motifs Kente (data URIs SVG) ─── */
+/* Refonte kente-refonte : motif riche fidèle à un vrai kente africain.
+   Tile 80×40 → 4 sections verticales de 20px :
+     S1 (emerald #047857) : losange avec croix (amber + emerald + gold)
+     S2 (amber   #F59E0B) : triangles (emerald ↓ + terracotta ↑)
+     S3 (emerald #047857) : losange gold + losange amber (avec cœur emerald)
+     S4 (amber   #F59E0B) : zigzags noirs + ligne centrale gold
+   Contours noirs fins sur les formes. Bandeau haut (y=0-8) et bas (y=32-40)
+   structurent le tile et permettent le rendu en bande fine (h-2 = 8px) sans
+   perte d'identité visuelle. Tile vertical assuré par miroir haut/bas.
+   Couleurs Forêt EdTech : emerald, amber, gold, terracotta, noir — JAMAIS
+   d'indigo/bleu. */
 
-/* Motif de base : diamants sur grille 40×40 (or #D4AF37, fill-opacity 0.5).
-   Subtil pour fonds décoratifs larges. */
+/* Motif riche complet (80×40) pour fonds décoratifs larges.
+   L'opacité est gérée par le composant (opacity-10 via KentePattern variant="bg").
+   Ne PAS utiliser cette classe seule sur du texte — toujours via le composant. */
 .bg-kente-pattern {
-  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23D4AF37' fill-opacity='0.5' fill-rule='evenodd'%3E%3Cpath d='M0 38.59l2.83-2.83 1.41 1.41L1.41 40H0v-1.41zM0 20l2.83-2.83 1.41 1.41L1.41 21.41 0 20zm0-18.59l2.83-2.83 1.41 1.41L1.41 2.83 0 1.41V0zm20 0l2.83-2.83 1.41 1.41L21.41 2.83 20 1.41V0zm0 20l2.83-2.83 1.41 1.41L21.41 21.41 20 20zm0 18.59l2.83-2.83 1.41 1.41L21.41 40 20 38.59V40zm20 0l2.83-2.83 1.41 1.41L41.41 40 40 38.59V40zm0-20l2.83-2.83 1.41 1.41L41.41 21.41 40 20zm0-18.59l2.83-2.83 1.41 1.41L41.41 2.83 40 1.41V0z'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg%20width%3D%2280%22%20height%3D%2240%22%20viewBox%3D%220%200%2080%2040%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%20%3Crect%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%220%22%20y%3D%223%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23D4AF37%22%2F%3E%20%3Crect%20x%3D%2220%22%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Crect%20x%3D%2220%22%20y%3D%223%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%2240%22%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%2240%22%20y%3D%223%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23D4AF37%22%2F%3E%20%3Crect%20x%3D%2260%22%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Crect%20x%3D%2260%22%20y%3D%223%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20y%3D%228%22%20width%3D%2220%22%20height%3D%2224%22%20fill%3D%22%23047857%22%2F%3E%20%3Cpath%20d%3D%22M10%2C11%20L17%2C18%20L10%2C25%20L3%2C18%20Z%22%20fill%3D%22%23F59E0B%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.6%22%2F%3E%20%3Cpath%20d%3D%22M10%2C14%20L14%2C18%20L10%2C22%20L6%2C18%20Z%22%20fill%3D%22%23047857%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.4%22%2F%3E%20%3Cpath%20d%3D%22M10%2C16%20L12%2C18%20L10%2C20%20L8%2C18%20Z%22%20fill%3D%22%23D4AF37%22%2F%3E%20%3Crect%20x%3D%2220%22%20y%3D%228%22%20width%3D%2220%22%20height%3D%2224%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Cpath%20d%3D%22M22%2C11%20L38%2C11%20L30%2C21%20Z%22%20fill%3D%22%23047857%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.6%22%2F%3E%20%3Cpath%20d%3D%22M22%2C29%20L38%2C29%20L30%2C19%20Z%22%20fill%3D%22%23C2410C%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.6%22%2F%3E%20%3Crect%20x%3D%2240%22%20y%3D%228%22%20width%3D%2220%22%20height%3D%2224%22%20fill%3D%22%23047857%22%2F%3E%20%3Cpath%20d%3D%22M50%2C11%20L57%2C18%20L50%2C25%20L43%2C18%20Z%22%20fill%3D%22%23D4AF37%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.6%22%2F%3E%20%3Cpath%20d%3D%22M50%2C14%20L54%2C18%20L50%2C22%20L46%2C18%20Z%22%20fill%3D%22%23047857%22%2F%3E%20%3Cpath%20d%3D%22M50%2C16%20L52%2C18%20L50%2C20%20L48%2C18%20Z%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Crect%20x%3D%2260%22%20y%3D%228%22%20width%3D%2220%22%20height%3D%2224%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Cpath%20d%3D%22M60%2C15%20L65%2C11%20L70%2C15%20L75%2C11%20L80%2C15%22%20fill%3D%22none%22%20stroke%3D%22%23000000%22%20stroke-width%3D%221.5%22%20stroke-linejoin%3D%22miter%22%2F%3E%20%3Cpath%20d%3D%22M60%2C21%20L65%2C25%20L70%2C21%20L75%2C25%20L80%2C21%22%20fill%3D%22none%22%20stroke%3D%22%23000000%22%20stroke-width%3D%221.5%22%20stroke-linejoin%3D%22miter%22%2F%3E%20%3Cline%20x1%3D%2260%22%20y1%3D%2218%22%20x2%3D%2280%22%20y2%3D%2218%22%20stroke%3D%22%23D4AF37%22%20stroke-width%3D%220.8%22%2F%3E%20%3Crect%20y%3D%2232%22%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%220%22%20y%3D%2235%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23D4AF37%22%2F%3E%20%3Crect%20x%3D%2220%22%20y%3D%2232%22%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Crect%20x%3D%2220%22%20y%3D%2235%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%2240%22%20y%3D%2232%22%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%2240%22%20y%3D%2235%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23D4AF37%22%2F%3E%20%3Crect%20x%3D%2260%22%20y%3D%2232%22%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Crect%20x%3D%2260%22%20y%3D%2235%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23047857%22%2F%3E%20%3C%2Fsvg%3E");
+  background-size: 80px 40px;
+  background-repeat: repeat;
 }
 
-/* Variante dense pour bandes : lignes verticales + diamants + chevrons.
-   Plus riche visuellement, destiné aux bandes kente horizontales. */
+/* Variante dense pour bandes décoratives : même motif riche, opacité 100%
+   (à combiner avec .kente-strip-top / .kente-strip-bottom / hauteur h-2). */
 .bg-kente-strip {
-  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23D4AF37' fill-opacity='0.55' fill-rule='evenodd'%3E%3Cpath d='M0 0h2v40H0zm20 0h2v40h-2z'/%3E%3Cpath d='M11 5l4 4-4 4-4-4 4-4zm18 0l4 4-4 4-4-4 4-4zM11 23l4 4-4 4-4-4 4-4zm18 0l4 4-4 4-4-4 4-4z'/%3E%3Cpath d='M0 16l5 5-5 5v-10zm20 0l5 5-5 5v-10z'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg%20width%3D%2280%22%20height%3D%2240%22%20viewBox%3D%220%200%2080%2040%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%20%3Crect%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%220%22%20y%3D%223%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23D4AF37%22%2F%3E%20%3Crect%20x%3D%2220%22%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Crect%20x%3D%2220%22%20y%3D%223%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%2240%22%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%2240%22%20y%3D%223%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23D4AF37%22%2F%3E%20%3Crect%20x%3D%2260%22%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Crect%20x%3D%2260%22%20y%3D%223%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20y%3D%228%22%20width%3D%2220%22%20height%3D%2224%22%20fill%3D%22%23047857%22%2F%3E%20%3Cpath%20d%3D%22M10%2C11%20L17%2C18%20L10%2C25%20L3%2C18%20Z%22%20fill%3D%22%23F59E0B%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.6%22%2F%3E%20%3Cpath%20d%3D%22M10%2C14%20L14%2C18%20L10%2C22%20L6%2C18%20Z%22%20fill%3D%22%23047857%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.4%22%2F%3E%20%3Cpath%20d%3D%22M10%2C16%20L12%2C18%20L10%2C20%20L8%2C18%20Z%22%20fill%3D%22%23D4AF37%22%2F%3E%20%3Crect%20x%3D%2220%22%20y%3D%228%22%20width%3D%2220%22%20height%3D%2224%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Cpath%20d%3D%22M22%2C11%20L38%2C11%20L30%2C21%20Z%22%20fill%3D%22%23047857%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.6%22%2F%3E%20%3Cpath%20d%3D%22M22%2C29%20L38%2C29%20L30%2C19%20Z%22%20fill%3D%22%23C2410C%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.6%22%2F%3E%20%3Crect%20x%3D%2240%22%20y%3D%228%22%20width%3D%2220%22%20height%3D%2224%22%20fill%3D%22%23047857%22%2F%3E%20%3Cpath%20d%3D%22M50%2C11%20L57%2C18%20L50%2C25%20L43%2C18%20Z%22%20fill%3D%22%23D4AF37%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.6%22%2F%3E%20%3Cpath%20d%3D%22M50%2C14%20L54%2C18%20L50%2C22%20L46%2C18%20Z%22%20fill%3D%22%23047857%22%2F%3E%20%3Cpath%20d%3D%22M50%2C16%20L52%2C18%20L50%2C20%20L48%2C18%20Z%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Crect%20x%3D%2260%22%20y%3D%228%22%20width%3D%2220%22%20height%3D%2224%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Cpath%20d%3D%22M60%2C15%20L65%2C11%20L70%2C15%20L75%2C11%20L80%2C15%22%20fill%3D%22none%22%20stroke%3D%22%23000000%22%20stroke-width%3D%221.5%22%20stroke-linejoin%3D%22miter%22%2F%3E%20%3Cpath%20d%3D%22M60%2C21%20L65%2C25%20L70%2C21%20L75%2C25%20L80%2C21%22%20fill%3D%22none%22%20stroke%3D%22%23000000%22%20stroke-width%3D%221.5%22%20stroke-linejoin%3D%22miter%22%2F%3E%20%3Cline%20x1%3D%2260%22%20y1%3D%2218%22%20x2%3D%2280%22%20y2%3D%2218%22%20stroke%3D%22%23D4AF37%22%20stroke-width%3D%220.8%22%2F%3E%20%3Crect%20y%3D%2232%22%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%220%22%20y%3D%2235%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23D4AF37%22%2F%3E%20%3Crect%20x%3D%2220%22%20y%3D%2232%22%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Crect%20x%3D%2220%22%20y%3D%2235%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%2240%22%20y%3D%2232%22%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%2240%22%20y%3D%2235%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23D4AF37%22%2F%3E%20%3Crect%20x%3D%2260%22%20y%3D%2232%22%20width%3D%2220%22%20height%3D%228%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Crect%20x%3D%2260%22%20y%3D%2235%22%20width%3D%2220%22%20height%3D%222%22%20fill%3D%22%23047857%22%2F%3E%20%3C%2Fsvg%3E");
+  background-size: 80px 40px;
+  background-repeat: repeat;
 }
 
 /* ─── Forêt EdTech — Utilitaires décoratifs kente ─── */
 
-/* Bande kente en haut de page (à combiner avec h-1) */
+/* Bande kente en haut de page (à combiner avec h-4 = 16px). Background
+   emerald solide + overlay SVG riche opaque (opacity 1). Le ::after affiche
+   le tile 80×40 compressé à 32×16 pour que les 4 sections (losanges/triangles/
+   zigzags) soient distinguables dans la bande de 16px de haut. */
 .kente-strip-top {
-  background: var(--gradient-forest);
+  background: #047857;
   position: relative;
 }
 .kente-strip-top::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23D4AF37' fill-opacity='0.5' fill-rule='evenodd'%3E%3Cpath d='M0 38.59l2.83-2.83 1.41 1.41L1.41 40H0v-1.41zM0 20l2.83-2.83 1.41 1.41L1.41 21.41 0 20zm0-18.59l2.83-2.83 1.41 1.41L1.41 2.83 0 1.41V0zm20 0l2.83-2.83 1.41 1.41L21.41 2.83 20 1.41V0zm0 20l2.83-2.83 1.41 1.41L21.41 21.41 20 20zm0 18.59l2.83-2.83 1.41 1.41L21.41 40 20 38.59V40zm20 0l2.83-2.83 1.41 1.41L41.41 40 40 38.59V40zm0-20l2.83-2.83 1.41 1.41L41.41 21.41 40 20zm0-18.59l2.83-2.83 1.41 1.41L41.41 2.83 40 1.41V0z'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: 40px 40px;
-  opacity: 0.9;
+  background-image: url("data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2224%22%20viewBox%3D%220%200%2060%2024%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%2215%22%20height%3D%2224%22%20fill%3D%22%23047857%22%2F%3E%3Crect%20x%3D%2215%22%20width%3D%2215%22%20height%3D%2224%22%20fill%3D%22%23F59E0B%22%2F%3E%3Crect%20x%3D%2230%22%20width%3D%2215%22%20height%3D%2224%22%20fill%3D%22%23047857%22%2F%3E%3Crect%20x%3D%2245%22%20width%3D%2215%22%20height%3D%2224%22%20fill%3D%22%23F59E0B%22%2F%3E%3Cpath%20d%3D%22M7.5%2C4%20L13%2C12%20L7.5%2C20%20L2%2C12%20Z%22%20fill%3D%22%23F59E0B%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.8%22%2F%3E%3Cpath%20d%3D%22M7.5%2C9%20L10%2C12%20L7.5%2C15%20L5%2C12%20Z%22%20fill%3D%22%23D4AF37%22%2F%3E%3Cpath%20d%3D%22M22.5%2C4%20L28%2C12%20L22.5%2C20%20L17%2C12%20Z%22%20fill%3D%22%23047857%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.8%22%2F%3E%3Cpath%20d%3D%22M22.5%2C9%20L25%2C12%20L22.5%2C15%20L20%2C12%20Z%22%20fill%3D%22%23C2410C%22%2F%3E%3Cpath%20d%3D%22M37.5%2C4%20L43%2C12%20L37.5%2C20%20L32%2C12%20Z%22%20fill%3D%22%23D4AF37%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.8%22%2F%3E%3Cpath%20d%3D%22M37.5%2C9%20L40%2C12%20L37.5%2C15%20L35%2C12%20Z%22%20fill%3D%22%23F59E0B%22%2F%3E%3Cpath%20d%3D%22M52.5%2C4%20L58%2C12%20L52.5%2C20%20L47%2C12%20Z%22%20fill%3D%22%23047857%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.8%22%2F%3E%3Cpath%20d%3D%22M52.5%2C9%20L55%2C12%20L52.5%2C15%20L50%2C12%20Z%22%20fill%3D%22%23D4AF37%22%2F%3E%3C%2Fsvg%3E");
+  background-size: 60px 24px;
+  background-repeat: repeat-x;
+  opacity: 1;
 }
 
-/* Bande kente en bas de page (à combiner avec h-1.5) */
+/* Bande kente en bas de page/sidebar (à combiner avec h-4 = 16px). */
 .kente-strip-bottom {
-  background: var(--gradient-premium);
+  background: #047857;
   position: relative;
 }
 .kente-strip-bottom::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23D4AF37' fill-opacity='0.5' fill-rule='evenodd'%3E%3Cpath d='M0 38.59l2.83-2.83 1.41 1.41L1.41 40H0v-1.41zM0 20l2.83-2.83 1.41 1.41L1.41 21.41 0 20zm0-18.59l2.83-2.83 1.41 1.41L1.41 2.83 0 1.41V0zm20 0l2.83-2.83 1.41 1.41L21.41 2.83 20 1.41V0zm0 20l2.83-2.83 1.41 1.41L21.41 21.41 20 20zm0 18.59l2.83-2.83 1.41 1.41L21.41 40 20 38.59V40zm20 0l2.83-2.83 1.41 1.41L41.41 40 40 38.59V40zm0-20l2.83-2.83 1.41 1.41L41.41 21.41 40 20zm0-18.59l2.83-2.83 1.41 1.41L41.41 2.83 40 1.41V0z'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: 40px 40px;
-  opacity: 0.6;
+  background-image: url("data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2224%22%20viewBox%3D%220%200%2060%2024%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%2215%22%20height%3D%2224%22%20fill%3D%22%23047857%22%2F%3E%3Crect%20x%3D%2215%22%20width%3D%2215%22%20height%3D%2224%22%20fill%3D%22%23F59E0B%22%2F%3E%3Crect%20x%3D%2230%22%20width%3D%2215%22%20height%3D%2224%22%20fill%3D%22%23047857%22%2F%3E%3Crect%20x%3D%2245%22%20width%3D%2215%22%20height%3D%2224%22%20fill%3D%22%23F59E0B%22%2F%3E%3Cpath%20d%3D%22M7.5%2C4%20L13%2C12%20L7.5%2C20%20L2%2C12%20Z%22%20fill%3D%22%23F59E0B%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.8%22%2F%3E%3Cpath%20d%3D%22M7.5%2C9%20L10%2C12%20L7.5%2C15%20L5%2C12%20Z%22%20fill%3D%22%23D4AF37%22%2F%3E%3Cpath%20d%3D%22M22.5%2C4%20L28%2C12%20L22.5%2C20%20L17%2C12%20Z%22%20fill%3D%22%23047857%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.8%22%2F%3E%3Cpath%20d%3D%22M22.5%2C9%20L25%2C12%20L22.5%2C15%20L20%2C12%20Z%22%20fill%3D%22%23C2410C%22%2F%3E%3Cpath%20d%3D%22M37.5%2C4%20L43%2C12%20L37.5%2C20%20L32%2C12%20Z%22%20fill%3D%22%23D4AF37%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.8%22%2F%3E%3Cpath%20d%3D%22M37.5%2C9%20L40%2C12%20L37.5%2C15%20L35%2C12%20Z%22%20fill%3D%22%23F59E0B%22%2F%3E%3Cpath%20d%3D%22M52.5%2C4%20L58%2C12%20L52.5%2C20%20L47%2C12%20Z%22%20fill%3D%22%23047857%22%20stroke%3D%22%23000000%22%20stroke-width%3D%220.8%22%2F%3E%3Cpath%20d%3D%22M52.5%2C9%20L55%2C12%20L52.5%2C15%20L50%2C12%20Z%22%20fill%3D%22%23D4AF37%22%2F%3E%3C%2Fsvg%3E");
+  background-size: 60px 24px;
+  background-repeat: repeat-x;
+  opacity: 1;
 }
 
-/* Séparateur de section or brillant */
+/* Séparateur de section : mini-bande kente (3px) avec 4 sections colorées
+   (emerald/amber alternés) + accents gold/emerald. SVG dédié 80×3 natif
+   pour éviter l'écrasement vertical d'un SVG 80×40 réduit à 3px de haut. */
 .kente-separator {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, #D4AF37 50%, transparent);
-  opacity: 0.7;
+  height: 3px;
+  background: #047857;
+  background-image: url("data:image/svg+xml,%3Csvg%20width%3D%2280%22%20height%3D%223%22%20viewBox%3D%220%200%2080%203%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%20%3Crect%20width%3D%2220%22%20height%3D%223%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%2220%22%20width%3D%2220%22%20height%3D%223%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Crect%20x%3D%2240%22%20width%3D%2220%22%20height%3D%223%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%2260%22%20width%3D%2220%22%20height%3D%223%22%20fill%3D%22%23F59E0B%22%2F%3E%20%3Crect%20x%3D%222%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%23D4AF37%22%2F%3E%20%3Crect%20x%3D%229%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%23D4AF37%22%2F%3E%20%3Crect%20x%3D%2222%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%2229%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%2242%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%23D4AF37%22%2F%3E%20%3Crect%20x%3D%2249%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%23D4AF37%22%2F%3E%20%3Crect%20x%3D%2262%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%2269%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%23047857%22%2F%3E%20%3Crect%20x%3D%2276%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%23047857%22%2F%3E%20%3C%2Fsvg%3E");
+  background-size: 80px 3px;
+  background-repeat: repeat-x;
+  opacity: 0.9;
 }
 
-/* Bordure premium pour cartes (border-image gold→amber) */
+/* Bordure premium pour cartes : or vif + double bordure (outer gold +
+   inner emerald via box-shadow) + halo premium. */
 .kente-border-premium {
-  border: 2px solid;
-  border-image: linear-gradient(135deg, #D4AF37 0%, #F59E0B 100%) 1;
+  border: 2px solid #D4AF37;
+  box-shadow: 0 0 0 1px #047857, 0 12px 40px rgba(212, 175, 55, 0.15);
 }
 
 /* ───────────────────────────────────────────────────────────────────────────── */

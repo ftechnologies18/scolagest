@@ -7,19 +7,26 @@ type KenteVariant = "strip" | "bg" | "border" | "separator";
 
 export interface KentePatternProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: KenteVariant;
-  /** Position : top (h-1), bottom (h-1.5), full (custom). */
+  /** Position : top (h-4 = 16px), bottom (h-4 = 16px), full (custom).
+   *  Hauteur 16px pour que le motif kente riche (4 sections, losanges/
+   *  triangles/zigzags) soit distinguable. background-size adapté dans globals.css. */
   position?: "top" | "bottom" | "custom";
   className?: string;
 }
 
 /**
- * KentePattern — motif décoratif africain Forêt EdTech.
+ * KentePattern — motif décoratif africain Forêt EdTech (refonte kente-refonte).
  *
  * Utilisations (règles strictes) :
  * - Header strip : <KentePattern variant="strip" position="top" /> en haut de page
+ *   (h-4 = 16px, motif riche opaque sur fond emerald, background-size 32×16)
  * - Footer strip : <KentePattern variant="strip" position="bottom" /> en bas de page
- * - Background subtil : <KentePattern variant="bg" /> (opacity 8-15%)
- * - Séparateur : <KentePattern variant="separator" /> (ligne or horizontale)
+ *   (h-4 = 16px, motif riche opaque sur fond emerald)
+ * - Background subtil : <KentePattern variant="bg" /> (opacity-10, motif riche
+ *   80×40 complet : 4 sections losanges/triangles/zigzags, couleurs emerald/
+ *   amber/gold/terracotta/noir)
+ * - Séparateur : <KentePattern variant="separator" /> (4px, mini-bande kente
+ *   avec 4 sections colorées + accents gold)
  * - Bordure premium : utiliser la classe .kente-border-premium sur GlassCard
  *
  * JAMAIS en fond de texte. JAMAIS opacity > 15% en bg.
@@ -31,8 +38,8 @@ export function KentePattern({
   ...props
 }: KentePatternProps) {
   const positionClass = {
-    top: "h-1 w-full",
-    bottom: "h-1.5 w-full",
+    top: "h-6 w-full",
+    bottom: "h-6 w-full",
     custom: "",
   }[position];
 
