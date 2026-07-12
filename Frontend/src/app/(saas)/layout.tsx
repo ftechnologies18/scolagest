@@ -26,6 +26,7 @@ import {
   DashboardShell,
   SAAS_NAV_GROUPS,
 } from "@/components/dashboard/dashboard-shell";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 export default function SaasLayout({
   children,
@@ -93,12 +94,15 @@ export default function SaasLayout({
   }
 
   return (
-    <DashboardShell
-      navGroups={SAAS_NAV_GROUPS}
-      showEtablissement={false}
-      logoutRedirect="/login"
-    >
-      {children}
-    </DashboardShell>
+    <div className="font-body">
+      <KentePattern variant="strip" position="top" />
+      <DashboardShell
+        navGroups={SAAS_NAV_GROUPS}
+        showEtablissement={false}
+        logoutRedirect="/login"
+      >
+        {children}
+      </DashboardShell>
+    </div>
   );
 }

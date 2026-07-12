@@ -26,6 +26,7 @@ import {
   DashboardShell,
   STAFF_NAV_GROUPS,
 } from "@/components/dashboard/dashboard-shell";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 export default function StaffLayout({
   children,
@@ -100,12 +101,15 @@ export default function StaffLayout({
   }
 
   return (
-    <DashboardShell
-      navGroups={STAFF_NAV_GROUPS}
-      showEtablissement
-      logoutRedirect="/login"
-    >
-      {children}
-    </DashboardShell>
+    <div className="font-body">
+      <KentePattern variant="strip" position="top" />
+      <DashboardShell
+        navGroups={STAFF_NAV_GROUPS}
+        showEtablissement
+        logoutRedirect="/login"
+      >
+        {children}
+      </DashboardShell>
+    </div>
   );
 }

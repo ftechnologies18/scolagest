@@ -20,6 +20,7 @@ import { Loader2 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { useAuthBootstrap } from "@/hooks/use-auth-bootstrap";
 import { ParentPortal } from "@/components/parent/parent-portal";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 export default function PortalPage() {
   const router = useRouter();
@@ -70,5 +71,10 @@ export default function PortalPage() {
     );
   }
 
-  return <ParentPortal />;
+  return (
+    <div className="font-body">
+      <KentePattern variant="strip" position="top" />
+      <ParentPortal />
+    </div>
+  );
 }

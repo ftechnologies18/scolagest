@@ -23,6 +23,7 @@ import { Loader2, LogOut, ShieldX, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/auth-store";
 import { useAuthBootstrap } from "@/hooks/use-auth-bootstrap";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 export default function ProfLayout({
   children,
@@ -128,7 +129,8 @@ export default function ProfLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="font-body flex min-h-screen flex-col bg-background">
+      <KentePattern variant="strip" position="top" />
       <header className="sticky top-0 z-30 border-b bg-emerald-600 text-emerald-50 shadow-sm">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-4 py-3 sm:px-6">
           <Image
