@@ -4379,3 +4379,1008 @@ Stage Summary:
   consommeront les tokens glassmorphism/kente de fe-1a, les animations de
   fe-1b via `getMotion(usePrefersReducedMotion())`, et pourront utiliser
   `.font-display`/`.font-body` pour leur typographie).
+
+---
+Task ID: fe-2a
+Agent: frontend-styling-expert
+Task: Phase 2a — Étendre le Button shadcn (`src/components/ui/button.tsx`)
+avec 5 nouveaux variants alignés sur l'identité "Forêt EdTech" (success,
+premium, terracotta, gold, forest) + 1 nouvelle taille `xl`. Conservation
+strict des 6 variants existants (default, destructive, outline, secondary,
+ghost, link) et des 4 tailles existantes (default, sm, lg, icon). Aucune
+modification du variant `default` (bg-primary inchangé pour ne pas casser
+l'existant). Tokens consommés : `bg-terracotta`, `bg-terracotta-light`,
+`bg-gold`, `bg-gold-dark`, `bg-forest`, `bg-forest-deep` (déclarés dans
+`@theme inline` de `globals.css` fe-1a) + `from-emerald-600`/`to-emerald-700`
+et `from-amber-500`/`to-amber-600` (palette Tailwind 4 par défaut, déjà
+utilisée massivement dans le codebase).
+
+Work Log:
+- Lu worklog (fin, sections fe-0 + fe-1a + fe-1b + fe-1c) :
+  • fe-0 : cadrage DS "Forêt EdTech" — thème Hybride (sidebar/topbar dark
+    "Forêt" + contenu light + accents kente/gold), landing/login intacts.
+  • fe-1a : `globals.css` étendu — 11 couleurs Forêt EdTech dans `@theme
+    inline` (forest, forest-deep, emerald-fe, amber-fe, gold, gold-light,
+    gold-dark, terracotta, terracotta-light, terracotta-dark, sand) +
+    11 classes utilitaires glassmorphism/kente. Tokens `--color-terracotta`,
+    `--color-terracotta-light`, `--color-gold`, `--color-gold-dark`,
+    `--color-forest`, `--color-forest-deep` disponibles pour utilitaires
+    Tailwind 4 `bg-*`, `text-*`, `ring-*`.
+  • fe-1b : 3 fichiers créés (220 lignes) — hooks media-query/reduced-motion
+    + lib/animations.ts (variants Framer Motion + getMotion(reduced)).
+  • fe-1c : next-themes branché (ThemeProvider wrappe QueryClientProvider
+    dans providers.tsx, defaultTheme="light"), Poppins/Inter chargés via
+    next/font (variables `--font-display`/`--font-body`), classes
+    utilitaires `.font-display`/`.font-body` disponibles.
+- Lu `button.tsx` (60 lignes) : cva standard shadcn/ui New York avec
+  `buttonVariants` exposant `variant` (6 entrées) et `size` (4 entrées).
+  Pattern focus-visible shadcn respecté (`focus-visible:border-ring
+  focus-visible:ring-ring/50 focus-visible:ring-[3px]` dans la base).
+  `Button` forward ref implicite via `React.ComponentProps<"button">`
+  + `VariantProps<typeof buttonVariants>` + `asChild?: boolean`. Exports
+  nommés `Button` + `buttonVariants`. Pas de dark mode variant-specific
+  overrides en dehors de `destructive` (qui a un `dark:bg-destructive/60`
+  pour harmonie).
+- Lu `globals.css` (434 lignes) pour confirmer les tokens :
+  • `--color-terracotta: var(--terracotta)` → `bg-terracotta` OK
+  • `--color-terracotta-light: var(--terracotta-light)` → `bg-terracotta-
+    light` OK
+  • `--color-gold: var(--gold)` → `bg-gold` OK
+  • `--color-gold-dark: var(--gold-dark)` → `bg-gold-dark` OK
+  • `--color-forest: var(--forest)` → `bg-forest` OK
+  • `--color-forest-deep: var(--forest-deep)` → `bg-forest-deep` OK
+  • `--color-emerald-fe`/`--color-amber-fe` existent (suffixe -fe pour
+    éviter collision), mais les variants `success`/`premium` utilisent
+    les palettes Tailwind 4 par défaut `emerald-600/700` et `amber-500/
+    600` (déjà massivement utilisées dans 105 fichiers du codebase, donc
+    garanties disponibles).
+- Vérifié usage préexistant des palettes Tailwind `emerald-*` / `amber-*` :
+  1210 occurrences réparties sur 105 fichiers → confirmé disponible et
+  cohérent avec le reste du codebase. Pas de risque de classe inconnue.
+
+- **Modifié `button.tsx`** (60 → 74 lignes, +14) :
+  • Variant `success` (l.23-25) : `"bg-gradient-to-r from-emerald-600
+    to-emerald-700 text-white shadow-lg shadow-emerald-900/20 hover:from-
+    emerald-700 hover:to-emerald-800"`. Gradient emerald profond pour
+    actions de validation / encaissement. Commentaire en ligne précise
+    l'usage.
+  • Variant `premium` (l.26-28) : `"bg-gradient-to-r from-amber-500
+    to-amber-600 text-white shadow-lg shadow-amber-900/20 hover:from-
+    amber-600 hover:to-amber-700"`. Gradient gold/amber pour actions
+    premium SaaS (abonnements, factures).
+  • Variant `terracotta` (l.29-31) : `"bg-terracotta text-white
+    shadow-xs hover:bg-terracotta-light focus-visible:ring-terracotta/
+    20"`. Danger warm pour suppressions définitives. Token fe-1a
+    `bg-terracotta`/`bg-terracotta-light`. `focus-visible:ring-terracotta/
+    20` suit le pattern `destructive` shadcn (ring teinté à 20% opacité).
+  • Variant `gold` (l.32-33) : `"bg-gold text-white shadow-xs hover:bg-
+    gold-dark"`. Bouton or plein pour CTA premium secondaire et badges.
+    Token fe-1a `bg-gold`/`bg-gold-dark`.
+  • Variant `forest` (l.34-35) : `"bg-forest text-white shadow-xs hover:
+    bg-forest-deep"`. Vert forêt profond pour navigation secondaire et
+    items admin. Token fe-1a `bg-forest`/`bg-forest-deep`.
+  • Taille `xl` (l.42-43) : `"h-12 rounded-lg gap-2 px-8 text-base has-
+    [>svg]:px-6"`. Hauteur 48px, padding horizontal 32px, texte base
+    (16px), rounded-lg au lieu de rounded-md (cohérent avec lg qui
+    reste à rounded-md — xl monte en arrondi pour distinguer visuellement
+    le CTA principal). `has-[>svg]:px-6` suit le pattern shadcn (réduit
+    le padding horizontal quand un SVG est présent).
+  • Aucune ligne existante supprimée — insertion pure après `link:` (pour
+    `variant`) et après `icon:` (pour `size`).
+  • Aucun changement sur la signature `Button`, l'interface
+    `React.ComponentProps<"button"> & VariantProps<typeof buttonVariants>
+    & { asChild?: boolean }`, ni sur le corps de la fonction (Comp =
+    asChild ? Slot : "button" + spread props).
+  • Aucun changement sur `buttonVariants` base (l.8) — `focus-visible:
+    border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]`
+    s'applique à tous les variants y compris les nouveaux.
+  • Chaque nouveau variant est commenté (// success: gradient emerald
+    — primaire Forêt EdTech, actions de validation / encaissement, etc.)
+    pour guidage immédiate du développeur dans l'IDE.
+
+- Vérifications :
+  • `head -80 button.tsx` : les 5 nouveaux variants (success, premium,
+    terracotta, gold, forest) et la nouvelle taille xl visibles, avec
+    commentaires. Les 6 variants originaux et 4 tailles originales
+    intacts en haut de chaque objet.
+  • `rg -o "(default|destructive|outline|secondary|ghost|link|success|
+    premium|terracotta|gold|forest):" button.tsx | sort -u` : 11
+    entrées (les 6 originales + 5 nouvelles), ordre alpha du fait du
+    `sort -u` mais l'ordre réel dans le fichier respecte l'ordre
+    shadcn puis l'ordre d'ajout fe-2a.
+  • `rg -o "(default|sm|lg|icon|xl):" button.tsx | sort -u` : 5
+    entrées (4 originales + xl).
+  • `npx tsc --noEmit --skipLibCheck` : 0 erreur sur `button.tsx`
+    (grep "button\.tsx" → 0 match). 15 erreurs totales, toutes
+    préexistantes (login-form.tsx 8, view-impayes.tsx 2,
+    instrumentation.ts 1, utilisateur-form-dialog.tsx 1,
+    + 3 autres 1 chacune) — déjà documentées dans fe-1c, aucune
+    nouvelle introduite par cette tâche.
+  • `wc -l button.tsx` : 60 → 74 (+14 lignes).
+  • `git status --short button.tsx` : `M` (seul fichier modifié dans
+    cette tâche).
+  • Aucune utilisation des nouveaux variants dans le codebase
+    existant — ils sont additifs et n'impactent aucun composant
+    existant (default variant inchangé).
+
+Stage Summary:
+- 1 fichier modifié (+14 lignes), 0 fichier créé, 0 ligne existante
+  supprimée. TypeScript strict respecté (0 régression, 0 nouvelle
+  erreur sur button.tsx).
+- 5 nouveaux variants ajoutés à `buttonVariants` (cva) :
+  • `success` — gradient emerald 600→700 (validation, encaissement)
+  • `premium` — gradient amber 500→600 (abonnements SaaS, actions
+    premium)
+  • `terracotta` — bg-terracotta + hover terracotta-light + ring
+    terracotta/20 (suppressions définitives, danger warm)
+  • `gold` — bg-gold + hover gold-dark (CTA premium secondaire,
+    badges)
+  • `forest` — bg-forest + hover forest-deep (navigation secondaire,
+    items admin)
+- 1 nouvelle taille ajoutée : `xl` (h-12, px-8, text-base, rounded-lg,
+  gap-2). Spécialement conçue pour les CTA principaux des pages
+  dashboard et landing premium.
+- Variants existants (default, destructive, outline, secondary, ghost,
+  link) STRICTEMENT INTACTS — aucun changement sur leurs classes, ni
+  sur l'ordre. Tailles existantes (default, sm, lg, icon) intactes
+  aussi.
+- Signature `Button` (props, asChild, VariantProps) et exports
+  (`Button`, `buttonVariants`) intacts. Pattern focus-visible shadcn
+  (ring-ring/50, ring-[3px]) hérité automatiquement par les nouveaux
+  variants via la base cva.
+- Tokens fe-1a consommés : `bg-terracotta`, `bg-terracotta-light`,
+  `bg-gold`, `bg-gold-dark`, `bg-forest`, `bg-forest-deep` (tous
+  déclarés dans `@theme inline` de globals.css). Palettes Tailwind 4
+  par défaut `emerald-600/700` et `amber-500/600` consommées pour
+  les gradients `success`/`premium` (cohérent avec les 1210
+  utilisations déjà présentes dans le codebase).
+- Chaque nouveau variant et la nouvelle taille sont commentés en
+  ligne (`// success: gradient emerald — primaire Forêt EdTech,
+  actions de validation / encaissement`, etc.) pour guidance IDE
+  immédiate.
+- Aucun composant existant impacté : `default` variant inchangé,
+  et aucun composant du codebase n'utilisait encore les nouveaux
+  variants (ils sont purement additifs).
+- Fichier modifié : `Frontend/src/components/ui/button.tsx` (+14).
+  Aucun backend, DB, schema, ou .env touché.
+- Prochaine étape : fe-2b (primitives DS `GlassCard` + `KentePattern`
+  qui consommeront les tokens glassmorphism/kente de fe-1a, les
+  animations de fe-1b via `getMotion(usePrefersReducedMotion())`,
+  pourront utiliser `.font-display`/`.font-body` de fe-1c, et
+  embarqueront des `<Button variant="success|premium|gold|forest">`
+  pour les CTA — illustration des nouveaux variants en situation
+  réelle).
+
+---
+Task ID: fe-2b
+Agent: frontend-styling-expert
+Task: Phase 2b — Créer le composant DS `GlassCard` (`src/components/ds/glass-card.tsx`)
+— wrapper de `Card` shadcn avec glassmorphism adaptatif Forêt EdTech. Basé sur
+`motion.div` (Framer Motion) pour bénéficier des animations d'entrée / hover
+lift, tout en gardant le style visuel cohérent avec le `Card` shadcn de base
+(rounded-2xl, p-5). 5 variants (`mobile`, `tablet`, `desktop`, `premium`,
+`adaptive`), option `premiumBorder` (bordure gold kente), `noAnimation` /
+`noHover` pour désactiver animations, `delay` pour le stagger en listes.
+Respect strict de `prefers-reduced-motion` via `getMotion()` +
+`usePrefersReducedMotion()`. Export nommé `GlassCard` + `export default`.
+
+Work Log:
+- Lu worklog (fin, sections fe-0 + fe-1a + fe-1b + fe-1c + fe-2a) :
+  • fe-0 : cadrage DS "Forêt EdTech" — thème Hybride, glassmorphism
+    adaptatif + motifs kente.
+  • fe-1a : `globals.css` étendu avec 11 couleurs Forêt EdTech + 6
+    classes glass (`.glass-mobile`, `.glass-tablet`, `.glass-desktop`,
+    `.glass-premium`, `.glass-dark`, `.glass-adaptive`) + bordure
+    `.kente-border-premium`.
+  • fe-1b : 3 fichiers créés — hooks `use-media-query`/`use-prefers-
+    reduced-motion` + `lib/animations.ts` (variants Framer Motion +
+    `getMotion(reduced)` qui retourne variants désactivés si l'user
+    préfère réduire les animations).
+  • fe-1c : next-themes + Poppins/Inter injectés en variables CSS,
+    classes utilitaires `.font-display`/`.font-body` disponibles.
+  • fe-2a : `button.tsx` étendu (+14 lignes) avec 5 nouveaux variants
+    (`success`, `premium`, `terracotta`, `gold`, `forest`) + 1 taille
+    `xl`. Pas de régression (15 erreurs TS préexistantes, 0 sur
+    `button.tsx`).
+- Lu `globals.css` (434 lignes) pour confirmer les classes glass :
+  • `.glass-mobile` (l.291-297) : bg rgba(255,255,255,0.70), blur 20px,
+    border gold 0.25, shadow vert 0.12 — mobile <768px.
+  • `.glass-tablet` (l.300-306) : bg 0.80, blur 16px, border gold 0.30,
+    shadow 0.15 — tablette 768-1023px.
+  • `.glass-desktop` (l.309-315) : bg 0.85, blur 12px, border emerald
+    0.15, double shadow — desktop 1024px+.
+  • `.glass-premium` (l.318-324) : dégradé forest→forest-deep 0.95,
+    blur 16px, border 2px gold 0.40, shadow gold 0.15 — pour cartes
+    premium SaaS.
+  • `.glass-adaptive` (l.336-361) : mobile-first, 3 breakpoints
+    (mobile→tablet→desktop) via media queries — utilisé par défaut.
+  • `.kente-border-premium` (l.415-418) : `border: 2px solid; border-
+    image: linear-gradient(135deg, #D4AF37 0%, #F59E0B 100%) 1;`.
+- Lu `lib/animations.ts` (137 lignes) : `fadeInUp`, `cardHover`,
+  `buttonHover`, `buttonTap`, `staggerContainer`, `staggerItem`,
+  `pageTransition`, `scaleIn`, `slideInLeft`, `slideInRight`. La
+  fonction `getMotion(prefersReducedMotion)` retourne un objet
+  agrégeant tous les variants (animés ou désactivés). Docstring de
+  `getMotion` documente le pattern : `const m = getMotion(reduced);`
+  — alias `m` pour éviter la collision avec l'import `motion` de
+  framer-motion.
+- Lu `hooks/use-prefers-reduced-motion.ts` (31 lignes) : hook SSR-safe
+  (retourne `false` au premier rendu, se met à jour après mount via
+  `useEffect` + `matchMedia`). Listener nettoyé au unmount.
+- Lu `components/ui/card.tsx` (93 lignes) : Card shadcn New York
+  standard, `data-slot="card"`, classes `bg-card text-card-foreground
+  flex flex-col gap-6 rounded-xl border py-6 shadow-sm`. Pattern
+  forward ref implicite via `React.ComponentProps<"div">`. Le
+  `GlassCard` ne réutilise pas littéralement le `Card` shadcn mais
+  s'aligne sur ses conventions visuelles (rounded, padding) tout en
+  passant à `motion.div` pour les animations Framer Motion.
+- Vérifié `package.json` : `framer-motion ^12.23.2` déjà installé.
+  `HTMLMotionProps<"div">` type disponible. `cn` utilitaire dans
+  `lib/utils.ts` (clsx + tailwind-merge).
+- Vérifié `tsconfig.json` : `strict: true` mais PAS de `noUnusedLocals`
+  ni `noUnusedParameters`. Les imports `fadeInUp` / `cardHover` non
+  consommés dans le corps (mais gardés par souci de cohérence avec la
+  spec) ne déclencheront donc aucune erreur TS. ESLint config
+  (`eslint.config.mjs`) : `@typescript-eslint/no-unused-vars: "off"`
+  + `no-unused-vars: "off"` — pas de warning lint non plus.
+- Confirmé que `src/components/ds/` n'existait pas — créé
+  implicitement à l'écriture du fichier `glass-card.tsx`.
+
+- **Créé `src/components/ds/glass-card.tsx`** (140 lignes) :
+  • `"use client";` directive (composant interatif, hook + framer-
+    motion).
+  • Imports : `React`, `motion` + `HTMLMotionProps` (framer-motion),
+    `cn` (lib/utils), `usePrefersReducedMotion` (hooks/fe-1b),
+    `fadeInUp` + `cardHover` + `getMotion` (lib/animations/fe-1b).
+  • Type `GlassVariant = "mobile" | "tablet" | "desktop" | "premium"
+    | "adaptive"` (JSDoc détaillé sur chaque variante).
+  • Interface `GlassCardProps extends Omit<HTMLMotionProps<"div">,
+    "ref">` avec props : `children`, `className`, `variant` (défaut
+    `"adaptive"`), `premiumBorder`, `noAnimation`, `noHover`, `delay`
+    (number, défaut 0). Chaque prop est commentée inline.
+  • `variantClass: Record<GlassVariant, string>` mappe chaque
+    variante à sa classe CSS fe-1a (`glass-mobile`, `glass-tablet`,
+    `glass-desktop`, `glass-premium`, `glass-adaptive`).
+  • JSDoc de 30+ lignes sur `GlassCard` avec 3 exemples (`@example`) :
+    carte simple responsive, liste avec stagger, carte premium avec
+    bordure gold. Liste explicite des tokens fe-1a et hooks fe-1b
+    consommés.
+  • Corps : `prefersReducedMotion = usePrefersReducedMotion()` puis
+    `motionVariants = getMotion(prefersReducedMotion)`. `animationProps`
+    = `{}` si `noAnimation` sinon `{ initial: reduced ? {} : {opacity:0,
+    y:16}, animate: {opacity:1, y:0}, transition: {duration: 0.4,
+    delay, ease: [0.22, 1, 0.36, 1] as const} }` (courbe easeOutExpo du
+    DS). `hoverProps` = `{}` si `noHover || reduced` sinon
+    `{ whileHover: { y: -2, transition: { duration: 0.2 } } }`
+    (correspond à `cardHover` de fe-1b).
+  • Rendu : `<motion.div className={cn("rounded-2xl p-5",
+    variantClass[variant], premiumBorder && "kente-border-premium",
+    className)} {...animationProps} {...hoverProps} {...props}>`.
+    Le spread `{...props}` à la fin permet au consumer d'overrider
+    n'importe quelle prop (y compris `className` qui passe déjà par
+    `cn`, et les props motion comme `onClick`, `drag`, `layout`).
+  • Exports : nommé `GlassCard` + `export default GlassCard;` (pour
+    flexibilité d'import).
+  • **Écart minimal vs spec** : la spec nommait la variable locale
+    `motion` (`const motion = getMotion(...)`) — cela masquait
+    l'import `motion` de framer-motion et cassait le JSX
+    `<motion.div>` (erreur TS : `Property 'div' does not exist on
+    type {...}`). Renommé en `motionVariants` (commentaire inline
+    de 4 lignes explique pourquoi), conforme à la convention
+    documentée dans `lib/animations.ts` (docstring de `getMotion`
+    utilise l'alias `m`). Aucun autre écart vs spec.
+
+- Vérifications :
+  • `head -80 glass-card.tsx` : imports, type `GlassVariant`,
+    interface `GlassCardProps`, `variantClass` record, début du JSDoc
+    de `GlassCard` — tous visibles et corrects.
+  • `wc -l glass-card.tsx` : 140 lignes.
+  • `grep "^export" glass-card.tsx` : 3 entrées —
+    `export interface GlassCardProps` (l.23), `export function
+    GlassCard` (l.96), `export default GlassCard;` (l.140).
+  • `grep "usePrefersReducedMotion\|getMotion" glass-card.tsx` :
+    imports (l.6-7) + 2 usages dans le corps (l.110-111) + mentions
+    dans le JSDoc — `usePrefersReducedMotion()` et `getMotion()`
+    bien appelés.
+  • `grep` des classes glass : les 5 variantes sont dans le
+    `variantClass` record (l.39-43) + `kente-border-premium` utilisé
+    dans le `cn()` (l.128). Aucune classe glass absente.
+  • `npx tsc --noEmit --skipLibCheck 2>&1 | grep glass-card` : 0
+    erreur (avant le renommage `motion→motionVariants` : 2 erreurs
+    `TS2339: Property 'div' does not exist on type ...` dues au
+    shadowing — corrigées).
+  • Total erreurs TS : 15 (préexistantes, déjà documentées dans
+    fe-1c/fe-2a — login-form.tsx 8, view-impayes.tsx 2,
+    instrumentation.ts 1, utilisateur-form-dialog.tsx 1, + 3 autres
+    1 chacune). Aucune nouvelle introduite par cette tâche.
+  • Pas d'usage des palettes interdites (indigo/blue) — vérifié
+    par `grep` : aucune occurrence.
+  • `git status --short src/components/ds/glass-card.tsx` : `??`
+    (nouveau fichier, non tracked).
+
+Stage Summary:
+- 1 fichier créé (140 lignes), 0 fichier modifié, 0 ligne existante
+  supprimée. TypeScript strict respecté (0 régression, 0 nouvelle
+  erreur sur glass-card.tsx).
+- Composant `GlassCard` créé comme wrapper `motion.div` (Framer Motion)
+  du pattern `Card` shadcn — style visuel cohérent (rounded-2xl, p-5)
+  mais avec animations d'entrée (fadeInUp inline : opacity 0→1, y 16→0,
+  durée 0.4s, ease easeOutExpo `[0.22, 1, 0.36, 1]`) et hover lift
+  (y: -2, durée 0.2s) nativement intégrés.
+- 5 variants glassmorphism via `variant` prop, mappés sur les classes
+  CSS fe-1a :
+  • `mobile` → `.glass-mobile` (bg 0.70, blur 20px)
+  • `tablet` → `.glass-tablet` (bg 0.80, blur 16px)
+  • `desktop` → `.glass-desktop` (bg 0.85, blur 12px, border emerald)
+  • `premium` → `.glass-premium` (dégradé forest 0.95, blur 16px,
+    border gold 2px)
+  • `adaptive` (défaut) → `.glass-adaptive` (responsive mobile→tablet
+    →desktop via media queries CSS)
+- Option `premiumBorder` ajoute `.kente-border-premium` (border-image
+  gold→amber) par-dessus le glass — pour les cartes premium SaaS.
+- Options `noAnimation` / `noHover` pour désactiver l'entrée / le
+  hover (utile pour cartes non-interactives, listes, loops).
+- Option `delay` (seconds) permet le stagger en listes — usage
+  typique : `<GlassCard delay={index * 0.05}>`.
+- Respect strict `prefers-reduced-motion` : si l'utilisateur préfère
+  réduire les animations, `initial`/`animate` deviennent `{}` / final
+  state (sans transition), `whileHover` est désactivé. Les deux hooks
+  fe-1b sont effectivement appelés — `usePrefersReducedMotion()` pour
+  la détection, `getMotion(prefersReducedMotion)` pour récupérer les
+  variants DS (animés ou neutralisés).
+- `HTMLMotionProps<"div">` étendu (avec `ref` omis pour éviter le
+  conflit de types Framer/React) → toutes les props Framer Motion
+  disponibles au consumer (`onClick`, `drag`, `layout`, `onDragEnd`,
+  `whileTap`, etc.).
+- Exports : nommé `GlassCard` + `export default` (flexibilité d'import).
+- JSDoc complet (30+ lignes) avec 3 `@example` : carte simple
+  responsive, liste avec stagger, carte premium avec bordure gold.
+  Liste explicite des tokens fe-1a et hooks fe-1b consommés.
+- **Écart minimal vs spec** : la variable locale `motion` de la spec
+  masquait l'import framer-motion `motion` et cassait le JSX
+  `<motion.div>` (TS2339). Renommée en `motionVariants` (commentaire
+  inline de 4 lignes explique le pourquoi). Convention conforme à la
+  docstring de `getMotion` dans `lib/animations.ts` qui utilise l'alias
+  `m`. Aucun autre écart.
+- Tokens fe-1a consommés : `.glass-mobile`, `.glass-tablet`,
+  `.glass-desktop`, `.glass-premium`, `.glass-adaptive`,
+  `.kente-border-premium` (6 classes CSS déclarées dans `globals.css`).
+- Hooks fe-1b consommés : `usePrefersReducedMotion` (hook SSR-safe
+  `matchMedia`), `getMotion` (factory de variants Framer Motion
+  animés/neutralisés).
+- Imports `fadeInUp` + `cardHover` conservés (présents dans la spec)
+  bien que non consommés dans le corps — la logique équivalente est
+  inline (animationProps / hoverProps) pour permettre le `delay`
+  dynamique. Aucune erreur TS ni lint grâce à `noUnusedLocals: off`
+  + `@typescript-eslint/no-unused-vars: "off"`.
+- Fichier créé : `Frontend/src/components/ds/glass-card.tsx` (140
+  lignes). Aucun backend, DB, schema, ou .env touché. Aucun composant
+  existant impacté (le dossier `ds/` n'existait pas auparavant).
+- Prochaine étape : fe-2c (KentePattern primitives — `KenteStrip`,
+  `KenteSeparator`, `KenteBorder` qui consommeront les classes
+  `.bg-kente-pattern`, `.bg-kente-strip`, `.kente-strip-top`,
+  `.kente-strip-bottom`, `.kente-separator`, `.kente-border-premium`
+  de fe-1a), puis fe-3a (StatsCard / KpiCard qui consommeront
+  `GlassCard` + `Button` variants fe-2a + tokens fe-1a pour les
+  tableaux de bord de Phase 3 et 4).
+
+
+---
+
+### fe-2c — KentePattern + ProgressCircle (DS primitives décoratives)
+
+Task ID: fe-2c
+Date: 2025
+Contexte : Phase 2c — primitives décoratives DS "Forêt EdTech". Phases
+fe-0/fe-1a/fe-1b/fe-1c/fe-2a/fe-2b terminées (voir sections précédentes
+du worklog). `ds/glass-card.tsx` créé en fe-2b (140 lignes, 5 variants
+glassmorphism, `usePrefersReducedMotion` + `getMotion`).
+
+Work Log:
+- Lu worklog (fin, sections fe-0 + fe-1a + fe-1b + fe-1c + fe-2a +
+  fe-2b) :
+  • fe-0 : cadrage DS "Forêt EdTech" — thème Hybride, glassmorphism
+    adaptatif + motifs kente.
+  • fe-1a : `globals.css` étendu — 11 couleurs Forêt EdTech + 6
+    classes glass + 6 classes kente (`.bg-kente-pattern`,
+    `.bg-kente-strip`, `.kente-strip-top`, `.kente-strip-bottom`,
+    `.kente-separator`, `.kente-border-premium`).
+  • fe-1b : hooks `use-media-query`/`use-prefers-reduced-motion` +
+    `lib/animations.ts` (`fadeInUp`, `scaleIn`, `slideInLeft/Right`,
+    `cardHover`, `buttonHover`, `buttonTap`, `staggerContainer`,
+    `staggerItem`, `pageTransition`, `getMotion(reduced)`).
+  • fe-1c : next-themes + Poppins/Inter injectés, classes
+    `.font-display`/`.font-body` disponibles.
+  • fe-2a : `button.tsx` étendu (+14 lignes) — 5 variants
+    (`success`, `premium`, `terracotta`, `gold`, `forest`) + size `xl`.
+  • fe-2b : `ds/glass-card.tsx` créé (140 lignes) — wrapper
+    `motion.div` avec 5 variants glass + `premiumBorder`/`noAnimation`/
+    `noHover`/`delay`, `usePrefersReducedMotion` + `getMotion`.
+- Lu `globals.css` (434 lignes) pour confirmer les classes kente :
+  • `.bg-kente-pattern` (l.367-369) : motif diamants or 40×40,
+    fill-opacity 0.5 — fond décoratif large.
+  • `.bg-kente-strip` (l.373-375) : motif dense (lignes verticales +
+    diamants + chevrons), fill-opacity 0.55 — bandes horizontales.
+  • `.kente-strip-top` (l.380-391) : `--gradient-forest` + `::after`
+    avec motif diamants or opacity 0.9 — bande haut de page (h-1).
+  • `.kente-strip-bottom` (l.394-405) : `--gradient-premium` +
+    `::after` avec motif diamants or opacity 0.6 — bande bas de page
+    (h-1.5).
+  • `.kente-separator` (l.408-412) : `height: 1px`, dégradé linéaire
+    `transparent → #D4AF37 → transparent`, opacity 0.7 — séparateur
+    de section.
+  • `.kente-border-premium` (l.415-418) : `border: 2px solid;
+    border-image: linear-gradient(135deg, #D4AF37, #F59E0B) 1` —
+    bordure premium pour cartes.
+- Lu `lib/animations.ts` (137 lignes) : `scaleIn` (l.72-75) défini
+  comme `{ initial: { opacity: 0, scale: 0.95 }, animate: { opacity: 1,
+  scale: 1, transition: { duration: 0.3 } } }` — pas directement
+  utilisé par ProgressCircle (animation via `strokeDashoffset` inline
+  sur `<motion.circle>` plutôt que variants), mais `getMotion` est
+  documenté pour le pattern. ProgressCircle gère le reduced-motion
+  inline (initial/animate conditionnels + `transition.duration: 0`).
+- Lu `hooks/use-prefers-reduced-motion.ts` (31 lignes) : hook SSR-safe
+  via `matchMedia("(prefers-reduced-motion: reduce)")` + listener.
+  Retourne `false` au premier rendu, se met à jour après mount.
+- Vérifié `src/components/ds/` existant : 1 fichier `glass-card.tsx`
+  (créé en fe-2b). Aucune collision avec `kente-pattern.tsx` ni
+  `progress-circle.tsx`.
+- Vérifié `package.json` : `framer-motion ^12.23.2` déjà installé,
+  `motion` + composants `<motion.circle>` disponibles.
+- Vérifié `tsconfig.json` : `strict: true`. Pas de `noUnusedLocals`
+  ni `noUnusedParameters` — pas de warning sur imports éventuellement
+  non consommés. ESLint : `no-unused-vars: "off"`.
+
+- **Créé `src/components/ds/kente-pattern.tsx`** (65 lignes) :
+  • `"use client";` directive (utile pour `cn` + spread props sur
+    `<div>` ; même si pas de hook, on garde la directive pour la
+    cohérence DS et permettre une future extension avec animations).
+  • Imports : `React`, `cn` (lib/utils).
+  • Type `KenteVariant = "strip" | "bg" | "border" | "separator"`
+    (inline, pas exporté — usage interne).
+  • Interface `KentePatternProps extends React.HTMLAttributes<
+    HTMLDivElement>` avec props : `variant` (défaut `"strip"`),
+    `position` (`"top" | "bottom" | "custom"`, défaut `"custom"`),
+    `className`. Chaque prop commentée inline.
+  • JSDoc de 14 lignes sur `KentePattern` : règles d'utilisation
+    strictes (header strip, footer strip, background subtil
+    opacity 8-15%, séparateur or, bordure premium via classe CSS sur
+    GlassCard) + interdictions explicites ("JAMAIS en fond de texte.
+    JAMAIS opacity > 15% en bg.").
+  • `positionClass` record mappe `top → "h-1 w-full"`, `bottom →
+    "h-1.5 w-full"`, `custom → ""`.
+  • Branche `variant === "separator"` : rendu `<div className={cn(
+    "kente-separator w-full", className)} aria-hidden="true"
+    {...props} />` — ligne or horizontale.
+  • Branche `variant === "bg"` : rendu `<div className={cn(
+    "bg-kente-pattern opacity-10 absolute inset-0
+    pointer-events-none", className)} aria-hidden="true" {...props} />`
+    — fond décoratif subtil (opacity 10% par défaut, override possible
+    via `className`). `absolute inset-0` pour recouvrir le parent
+    (qui doit être `relative`). `pointer-events-none` pour ne pas
+    bloquer les clics.
+  • Branche par défaut (`strip` / `border`) : `baseClass` = `top →
+    "kente-strip-top"`, `bottom → "kente-strip-bottom"`, `custom →
+    "bg-kente-strip"`. Rendu `<div className={cn(baseClass,
+    positionClass, className)} aria-hidden="true" {...props} />`.
+    Note : `variant === "border"` est accepté dans le type mais tombe
+    dans la branche par défaut (consommation de `.kente-border-premium`
+    via classe CSS directe sur GlassCard plutôt que via ce composant,
+    comme documenté dans le JSDoc).
+  • `aria-hidden="true"` systématique sur les 3 branches (décoratif,
+    pas de sémantique pour les lecteurs d'écran).
+  • Exports : nommé `KentePattern` + `export default KentePattern;`.
+
+- **Créé `src/components/ds/progress-circle.tsx`** (88 lignes) :
+  • `"use client";` directive (utilise `usePrefersReducedMotion` +
+    `motion.circle` de framer-motion).
+  • Imports : `React`, `motion` (framer-motion), `cn` (lib/utils),
+    `usePrefersReducedMotion` (hooks/fe-1b).
+  • Interface `ProgressCircleProps` (pas d'extension — props
+    spécifiques) avec : `value` (number 0-100, requis), `size`
+    (number, défaut 120), `strokeWidth` (number, défaut 10), `label`
+    (React.ReactNode, optionnel), `trackColor` (string, défaut
+    `"rgba(4, 120, 87, 0.15)"` — emerald à 15% alpha pour le track),
+    `className`. Chaque prop commentée inline.
+  • JSDoc de 7 lignes sur `ProgressCircle` : gradient stroke
+    emerald→amber, animation 1.5s easeInOut via Framer Motion, respect
+    `prefers-reduced-motion`, usage (taux de recouvrement, completion,
+    KPIs circulaires).
+  • Corps :
+    - `prefersReducedMotion = usePrefersReducedMotion()` (hook fe-1b).
+    - `clampedValue = Math.max(0, Math.min(100, value))` — borne 0-100.
+    - `radius = (size - strokeWidth) / 2` — rayon intérieur du cercle.
+    - `circumference = 2 * Math.PI * radius` — périmètre pour le
+      `strokeDasharray`.
+    - `offset = circumference - (clampedValue / 100) * circumference`
+      — décalage du dash pour révéler la portion `value%`.
+    - `gradientId = React.useId()` — ID unique pour le `<linearGradient>`
+      (évite les collisions si plusieurs ProgressCircle sur la même
+      page — React 18+ stable).
+  • Rendu : `<div className={cn("relative inline-flex items-center
+    justify-center", className)} style={{ width: size, height: size }}>`
+    contenant :
+    - `<svg width={size} height={size} className="-rotate-90">` (rotation
+      -90deg pour que le départ du stroke soit à 12h plutôt qu'à 3h).
+      - `<defs>` avec `<linearGradient id={gradientId}>` : stop 0%
+        `#047857` (emerald), stop 100% `#F59E0B` (amber).
+      - Track `<circle>` : `fill="none"`, `stroke={trackColor}`,
+        `strokeWidth={strokeWidth}` (pas de dasharray, cercle complet).
+      - Progress `<motion.circle>` : `stroke={`url(#${gradientId})`}`,
+        `strokeLinecap="round"` (bouts arrondis), `strokeDasharray=
+        {circumference}` (un seul dash de la longueur du cercle).
+        `initial={prefersReducedMotion ? { strokeDashoffset: offset }
+        : { strokeDashoffset: circumference }}` (si reduced, on
+        commence déjà à la position finale — pas d'animation
+        d'entrée). `animate={{ strokeDashoffset: offset }}`.
+        `transition={prefersReducedMotion ? { duration: 0 } : {
+        duration: 1.5, ease: "easeInOut" }}` (1.5s easeInOut normal,
+        0s si reduced).
+    - `<div className="absolute inset-0 flex flex-col items-center
+      justify-center">` (overlay centré sur le SVG) contenant un
+      `<span className="text-3xl font-bold font-display text-forest">`
+      avec `{label ?? `${clampedValue}%`}` — `font-display` (Poppins)
+      pour cohérence DS, `text-forest` (#064E3B) pour contraste WCAG
+      AA sur le fond clair du track.
+  • Exports : nommé `ProgressCircle` + `export default ProgressCircle;`.
+
+- Vérifications :
+  • `head -50 kente-pattern.tsx` : directive `"use client"`, imports,
+    type `KenteVariant`, interface `KentePatternProps`, JSDoc complet,
+    début du corps — tous visibles et corrects.
+  • `head -50 progress-circle.tsx` : directive, imports, interface
+    `ProgressCircleProps`, JSDoc, début du corps avec
+    `usePrefersReducedMotion` + `React.useId()` visibles.
+  • `wc -l` : 65 lignes pour `kente-pattern.tsx`, 88 lignes pour
+    `progress-circle.tsx` (153 total).
+  • `grep "^export"` : 3 entrées par fichier (interface + function +
+    default) — exports nommés + default conformes à la spec.
+  • `grep "prefersReducedMotion\|usePrefersReducedMotion\|aria-hidden
+    \|React.useId"` :
+    - `kente-pattern.tsx` : 3 `aria-hidden="true"` (l.40, 47, 59) —
+      décoratif, pas d'animation (KentePattern n'a pas besoin de
+      gérer `prefers-reduced-motion` car il n'anime rien — c'est un
+      pur motif statique via CSS background).
+    - `progress-circle.tsx` : import `usePrefersReducedMotion` (l.6),
+      appel (l.39), `React.useId()` (l.44), 2 usages conditionnels
+      `prefersReducedMotion ?` (l.74, 76) — respect strict du
+      reduced-motion.
+  • `grep -niE "indigo|blue"` : 0 occurrence (palettes interdites
+    absentes). Couleurs utilisées : `#047857` (emerald), `#F59E0B`
+    (amber), `rgba(4, 120, 87, 0.15)` (track emerald), classe
+    `text-forest` (Poppins). Tout dans la palette Forêt EdTech.
+  • `npx tsc --noEmit --skipLibCheck 2>&1 | grep -E "kente-pattern|
+    progress-circle"` : 0 erreur. Total erreurs TS inchangé (15
+    préexistantes documentées en fe-1c/fe-2a/fe-2b, aucune nouvelle
+    introduite par cette tâche).
+  • `git status --short src/components/ds/` : 2 nouveaux fichiers
+    non tracked (`??`).
+
+Stage Summary:
+- 2 fichiers créés (153 lignes total), 0 fichier modifié, 0 ligne
+  existante supprimée. TypeScript strict respecté (0 régression, 0
+  nouvelle erreur sur les 2 nouveaux fichiers).
+- Composant `KentePattern` (65 lignes) : primitive décorative
+  consommant les 5 classes kente de fe-1a (`.bg-kente-pattern`,
+  `.bg-kente-strip`, `.kente-strip-top`, `.kente-strip-bottom`,
+  `.kente-separator`). 4 variants via prop `variant` :
+  • `strip` (défaut) — bande horizontale, combinable avec `position
+    "top"` (h-1, `.kente-strip-top` gradient forest) / `"bottom"`
+    (h-1.5, `.kente-strip-bottom` gradient premium) / `"custom"`
+    (`.bg-kente-strip` motif dense, dimensions libres via className).
+  • `bg` — fond décoratif subtil via `.bg-kente-pattern` + `opacity-
+    10` + `absolute inset-0 pointer-events-none` (à placer dans un
+    parent `relative`).
+  • `border` — accepté mais tombe dans la branche strip (la bordure
+    premium se consomme via `.kente-border-premium` directement sur
+    GlassCard, comme documenté).
+  • `separator` — ligne or horizontale via `.kente-separator`.
+  • `aria-hidden="true"` systématique (décoratif). JSDoc avec règles
+    strictes d'utilisation et interdictions ("JAMAIS en fond de
+    texte. JAMAIS opacity > 15% en bg.").
+- Composant `ProgressCircle` (88 lignes) : cercle de progression
+  animé SVG + Framer Motion. Props `value` (0-100), `size` (défaut
+  120), `strokeWidth` (défaut 10), `label` (ReactNode, défaut
+  `"{value}%"`), `trackColor` (défaut `rgba(4,120,87,0.15)`),
+  `className`. Gradient stroke emerald→amber via `<linearGradient>`
+  avec `id` unique (`React.useId()` — pas de collision si plusieurs
+  instances). Animation d'entrée `strokeDashoffset: circumference →
+  offset` sur 1.5s easeInOut (animation sur `<motion.circle>`).
+  Label central `<span className="text-3xl font-bold font-display
+  text-forest">` — Poppins + forest pour cohérence DS et contraste
+  WCAG AA.
+- Respect strict `prefers-reduced-motion` :
+  • `ProgressCircle` : via `usePrefersReducedMotion()` (hook fe-1b,
+    SSR-safe). Si `true`, `initial` commence déjà à l'offset final
+    (pas d'animation d'entrée) et `transition.duration = 0` (pas de
+    transition). L'utilisateur reduced-motion voit la valeur finale
+    immédiatement, sans mouvement.
+  • `KentePattern` : aucun mouvement (motif statique CSS background),
+    pas besoin de gérer `prefers-reduced-motion`. `aria-hidden="true"`
+    sur les 3 branches (lecteurs d'écran ignorent le décor).
+- Pas d'usage des palettes interdites (indigo/blue) — vérifié par
+  `grep`. Couleurs strictement Forêt EdTech : emerald `#047857`,
+  amber `#F59E0B`, forest `#064E3B` (via classe `text-forest`).
+- TypeScript strict respecté : `strict: true` ok, 0 nouvelle erreur
+  TS (15 préexistantes inchangées). `React.useId()` correctly typé
+  (React 18+). `<motion.circle>` accepte les props SVG standard
+  (`cx`, `cy`, `r`, `fill`, `stroke`, `strokeWidth`, `strokeLinecap`,
+  `strokeDasharray`) + les props motion (`initial`, `animate`,
+  `transition`).
+- Exports : nommé + default pour les 2 composants (flexibilité
+  d'import, cohérence avec fe-2b `GlassCard`).
+- Tokens fe-1a consommés par `KentePattern` : `.bg-kente-pattern`,
+  `.bg-kente-strip`, `.kente-strip-top`, `.kente-strip-bottom`,
+  `.kente-separator` (5 classes CSS). `.kente-border-premium`
+  documenté comme à consommer directement sur GlassCard.
+- Hooks fe-1b consommés par `ProgressCircle` :
+  `usePrefersReducedMotion` (hook SSR-safe `matchMedia`). Pas de
+  `getMotion()` ici — l'animation se fait via props `initial`/
+  `animate`/`transition` inline sur `<motion.circle>` (pas via
+  variants), avec conditions ternaires sur `prefersReducedMotion`
+  pour neutraliser le mouvement.
+- Classes utilitaires fe-1c consommées : `font-display` (Poppins)
+  sur le label central du ProgressCircle — cohérence typographique
+  DS (titres Poppins, corps Inter).
+- Fichiers créés :
+  • `Frontend/src/components/ds/kente-pattern.tsx` (65 lignes)
+  • `Frontend/src/components/ds/progress-circle.tsx` (88 lignes)
+- Aucun backend, DB, schema, ou .env touché. Aucun composant
+  existant impacté (le dossier `ds/` ne contenait que `glass-card.tsx`
+  en fe-2b).
+- Prochaine étape : fe-3a (StatsCard / KpiCard qui consommeront
+  `GlassCard` fe-2b + `ProgressCircle` fe-2c + `Button` variants
+  fe-2a + tokens fe-1a pour les tableaux de bord de Phase 3 et 4),
+  puis fe-3b (layouts dashboard responsive avec `KentePattern
+  position="top"` en header strip + sidebar glass-dark).
+
+### fe-2d — StatCard + README.md du Design System
+
+Task ID: fe-2d
+Date: 2025
+Contexte : Phase 2d — carte statistique unifiée + documentation du
+DS "Forêt EdTech". Phases fe-0/fe-1a/fe-1b/fe-1c/fe-2a/fe-2b/fe-2c
+terminées (voir sections précédentes du worklog). `ds/glass-card.tsx`
+créé en fe-2b (140 lignes, 5 variants glassmorphism, `usePrefersReduced
+Motion` + `getMotion`). `ds/kente-pattern.tsx` (65 lignes) et `ds/
+progress-circle.tsx` (88 lignes) créés en fe-2c. `kpi-card.tsx`
+existant dans `components/reports/` — NE PAS modifier (migration
+progressive en Phase 4/5).
+
+Work Log:
+- Lu worklog (fin, sections fe-0 + fe-1a + fe-1b + fe-1c + fe-2a +
+  fe-2b + fe-2c) :
+  • fe-0 : cadrage DS "Forêt EdTech" — thème Hybride, glassmorphism
+    adaptatif + motifs kente.
+  • fe-1a : `globals.css` étendu — 11 couleurs Forêt EdTech
+    (`--color-forest`, `--color-terracotta`, `--color-gold`,
+    `--color-gold-dark`, `--color-sand`, etc.) + 6 classes glass +
+    6 classes kente. Vérifié : `text-forest`, `text-terracotta`,
+    `text-gold-dark`, `bg-terracotta`, `bg-gold`, `bg-forest` sont
+    toutes des classes Tailwind 4 valides (résolues via les tokens
+    `--color-*` du `@theme`).
+  • fe-1b : hooks `use-media-query`/`use-prefers-reduced-motion` +
+    `lib/animations.ts` (`fadeInUp`, `scaleIn`, `slideInLeft/Right`,
+    `cardHover`, `buttonHover`, `buttonTap`, `staggerContainer`,
+    `staggerItem`, `pageTransition`, `getMotion(reduced)`).
+  • fe-1c : next-themes + Poppins/Inter injectés, classes
+    `.font-display`/`.font-body` disponibles.
+  • fe-2a : `button.tsx` étendu (+14 lignes) — 5 variants
+    (`success`, `premium`, `terracotta`, `gold`, `forest`) + size `xl`.
+  • fe-2b : `ds/glass-card.tsx` créé (140 lignes) — wrapper
+    `motion.div` avec 5 variants glass + `premiumBorder`/`noAnimation`/
+    `noHover`/`delay`, `usePrefersReducedMotion` + `getMotion`.
+    Interface `GlassCardProps extends Omit<HTMLMotionProps<"div">,
+    "ref">` — autorise `onClick`, `className`, etc.
+  • fe-2c : `ds/kente-pattern.tsx` (65 lignes) + `ds/progress-circle.
+    tsx` (88 lignes) créés. KentePattern = 4 variants (`strip`/`bg`/
+    `border`/`separator`) décoratifs `aria-hidden`. ProgressCircle =
+    SVG `<motion.circle>` gradient emerald→amber, `React.useId()`
+    pour `id` unique, `usePrefersReducedMotion` pour a11y.
+- Lu `ds/glass-card.tsx` (140 lignes) pour comprendre le pattern à
+  réutiliser : `GlassCard` est un wrapper `motion.div` qui gère déjà
+  l'animation d'entrée (`initial: {opacity:0,y:16} → animate: {opacity:
+  1,y:0}`, transition 0.4s ease cubic-bezier(0.22,1,0.36,1)), le hover
+  lift (`whileHover: {y:-2}`), et le `prefers-reduced-motion` via
+  `getMotion()` + hook. Props clés pour StatCard : `variant` (défaut
+  `"adaptive"`), `delay` (stagger), `noHover` (cartes non-interactives),
+  `className`, `onClick` (via `...props` spread sur `HTMLMotionProps
+  <"div">`). Pas besoin de gérer le reduced-motion dans StatCard :
+  GlassCard le fait déjà — mais on appelle quand même `usePrefersReduc
+  edMotion()` pour documenter l'intent et permettre une future
+  extension (variable `prefersReducedMotion` non consommée ici, OK car
+  `noUnusedLocals` est OFF dans le `tsconfig.json`).
+- Lu `components/reports/kpi-card.tsx` (109 lignes) — l'ancien composant
+  KPI. Pattern observé :
+  • Props : `label`, `value` (string), `icon` (LucideIcon), `accent`
+    (`emerald|amber|rose|sky|orange|slate`), `subtitle`, `trend` (string),
+    `trendUp` (bool), `className`.
+  • Structure : `<Card>` (shadcn) > `<CardContent p-5>` > ligne
+    `justify-between` avec badge icône à gauche + trend à droite, puis
+    `label` + `value` en bas.
+  • Limitations identifiées pour la nouvelle StatCard :
+    - `accent` inclut `rose`/`orange`/`slate` hors palette Forêt
+      EdTech ( StatCard utilise `emerald|amber|terracotta|gold|sky|
+      forest` uniquement).
+    - `trend` est un string libre (pas de sémantique de calcul) ;
+      StatCard prend `trend: number` (ex: 12.5) + `invertTrend: bool`
+      pour les métriques "inverses" (impayés = bonne baisse).
+    - Pas de glassmorphism, pas d'animations, pas de hover lift.
+    - `value` est `string` ; StatCard accepte `React.ReactNode`
+      (plus flexible pour icônes inline ou badges).
+  • Migration : NE PAS modifier `kpi-card.tsx` (migration progressive
+    Phase 4/5). StatCard sera le remplaçant cible.
+- Lu `lib/format.ts` (102 lignes) : `formatFCFA(amount)` retourne
+  `${fcfaFormatter.format(value)} FCFA` (Intl.NumberFormat fr-FR,
+  maximumFractionDigits: 0). À utiliser comme `value` de StatCard :
+  `<StatCard value={formatFCFA(1250000)} />` → "1 250 000 FCFA".
+  Aussi `formatDate`, `formatDateShort`, `formatDateTime`, `formatTime`
+  pour les `hint` des StatCards temporelles.
+- Vérifié `package.json` : `framer-motion ^12.23.2` + `lucide-react
+  ^0.525.0` déjà installés. `TrendingUp`/`TrendingDown`/`LucideIcon`
+  disponibles.
+- Vérifié `tsconfig.json` : `strict: true`. Pas de `noUnusedLocals`
+  ni `noUnusedParameters` (confirmé par fe-2c) — `prefersReducedMotion`
+  non consommé ne provoque pas d'erreur.
+- Vérifié `src/components/ds/` avant création : 3 fichiers existants
+  (`glass-card.tsx` fe-2b, `kente-pattern.tsx` fe-2c, `progress-circle.
+  tsx` fe-2c). Aucune collision avec `stat-card.tsx` ni `README.md`.
+- Vérifié que `kpi-card.tsx` ne serait PAS touché (task spec explicite) :
+  `git status --short src/components/reports/kpi-card.tsx` reste vide
+  pendant toute la tâche.
+
+- **Créé `src/components/ds/stat-card.tsx`** (102 lignes) :
+  • `"use client";` directive (utilise `usePrefersReducedMotion` +
+    spread props sur `<GlassCard>`).
+  • Imports : `React`, `motion` (framer-motion — import documentaire,
+    pas utilisé directement car GlassCard wrappe déjà dans un
+    `<motion.div>` ; conservé pour indiquer la filiation motion et
+    permettre une future migration), `TrendingUp`/`TrendingDown`/
+    `type LucideIcon` (lucide-react), `cn` (lib/utils), `GlassCard`
+    (./glass-card fe-2b), `usePrefersReducedMotion` (hooks/fe-1b).
+  • Type `StatTone = "emerald" | "amber" | "terracotta" | "gold" |
+    "sky" | "forest"` (inline, pas exporté — usage interne).
+  • Interface `StatCardProps` (pas d'extension — props spécifiques)
+    avec : `icon` (LucideIcon, requis), `label` (string, requis),
+    `value` (React.ReactNode, requis), `tone` (StatTone, défaut
+    `"emerald"`), `trend` (number, optionnel), `invertTrend` (bool,
+    défaut `false`), `hint` (ReactNode, optionnel), `delay` (number,
+    défaut `0`), `className` (optionnel), `onClick` (optionnel).
+    Chaque prop commentée inline.
+  • `toneClasses: Record<StatTone, {bg: string; text: string}>` :
+    - emerald → `bg-emerald-500/20` + `text-emerald-700`
+    - amber → `bg-amber-500/20` + `text-amber-700`
+    - terracotta → `bg-terracotta/20` + `text-terracotta` (token fe-1a)
+    - gold → `bg-gold/20` + `text-gold-dark` (tokens fe-1a)
+    - sky → `bg-sky-500/20` + `text-sky-700`
+    - forest → `bg-forest/15` + `text-forest` (tokens fe-1a)
+    Backgrounds en opacité 15-20% (alpha) pour rester discrets sur
+    le glass et préserver le contraste WCAG AA.
+  • Corps :
+    - `prefersReducedMotion = usePrefersReducedMotion()` — documente
+      l'intent a11y (GlassCard gère déjà le reduced-motion en
+      interne via son propre appel au hook).
+    - `toneClass = toneClasses[tone]`.
+    - `isPositiveTrend` : si `trend === undefined` → `null` (pas de
+      badge) ; sinon `invertTrend ? trend < 0 : trend > 0`. Couvre
+      le cas "impayés" où `trend = -8` est une BONNE nouvelle
+      (invertTrend=true → isPositiveTrend=true → vert).
+    - `TrendIcon` : `null` si pas de trend, sinon `TrendingUp` (positif)
+      ou `TrendingDown` (négatif).
+    - `trendColor` : `""` si pas de trend, sinon
+      `"bg-emerald-500/20 text-emerald-700"` (positif) ou
+      `"bg-terracotta/20 text-terracotta"` (négatif) — terracotta
+      pour le danger warm (pas de rose/red hors palette).
+  • Rendu : `<GlassCard variant="adaptive" delay={delay} noHover=
+    {!onClick} className={cn("p-5", onClick && "cursor-pointer",
+    className)} onClick={onClick}>` — passe `noHover={!onClick}` pour
+    n'activer le hover lift QUE sur les cartes cliqueables (sinon
+    l'utilisateur a l'impression que la carte est cliquable alors
+    qu'elle ne l'est pas — UX anti-pattern). `onClick` est transmis
+    via `...props` de GlassCard (HTMLMotionProps autorise `onClick`).
+    Contenu :
+    - `<div className="flex items-start justify-between gap-3">` :
+      - `<div className="flex flex-col gap-1 min-w-0 flex-1">` (colonne
+        gauche, `min-w-0` pour permettre le `truncate` sur l'enfant) :
+        - `<span className="text-xs font-medium text-muted-foreground
+          uppercase tracking-wide truncate">` avec `{label}` — uppercase
+          + tracking-wide pour le côté "metric label" (cohérent avec
+          les dashboards modernes type Vercel/Linear).
+        - `<span className="text-2xl font-bold font-display text-
+          foreground truncate">` avec `{value}` — `font-display`
+          (Poppins, fe-1c) pour la valeur, taille 2xl bold, contraste
+          `text-foreground` (classe shadcn) pour WCAG AA.
+        - Si `hint` : `<span className="text-xs text-muted-foreground">`
+          avec `{hint}` (sous-titre optionnel, ex: "ce mois", "vs N-1").
+      - `<div className={cn("flex size-10 items-center justify-center
+        rounded-lg shrink-0", toneClass.bg)}>` — badge icône carré
+        40×40 (`size-10`), `rounded-lg` (cohérent avec les badges
+        icônes du DS), `shrink-0` pour ne pas se faire compresser
+        quand le label est long. Enfants : `<Icon className={cn("size-
+        5", toneClass.text)} aria-hidden="true" />` — icône Lucide
+        20×20, `aria-hidden="true"` (décoratif — le label porte déjà
+        la sémantique).
+    - Si `trend !== undefined && TrendIcon` : `<div className="mt-3
+      flex items-center gap-2">` avec :
+      - `<span className={cn("inline-flex items-center gap-1 rounded-
+        full px-2 py-0.5 text-xs font-semibold", trendColor)}>` — badge
+        pill (`rounded-full`), `text-xs font-semibold`, fond coloré
+        selon la polarité. Enfants : `<TrendIcon className="size-3"
+        aria-hidden="true" />` (icône 12×12) + `{Math.abs(trend).
+        toFixed(1)}%` (valeur absolue, 1 décimale, format invariant
+        locale — pour la Côte d'Ivoire on reste en point décimal).
+      - `<span className="text-xs text-muted-foreground">vs période
+        précédente</span>` — légende explicative du trend.
+  • Exports : nommé `StatCard` + `export default StatCard;` (cohérence
+    avec GlassCard/KentePattern/ProgressCircle).
+
+- **Créé `src/components/ds/README.md`** (118 lignes) :
+  • Header : titre `# 🌿 Design System "Forêt EdTech"` + tagline
+    identifiant la palette africaine + périmètre (dashboards staff/
+    saas/prof/parent, exclusion landing/login).
+  • Section **🎨 Palette** : tableau 7 couleurs (Forest, Forest Deep,
+    Emerald, Amber, Gold, Terracotta, Sand) avec hex + usage. Aucune
+    mention de blue/indigo/rose (palettes interdites).
+  • Section **🪡 Motif Kente** : 5 usages stricts (`strip top` h-1,
+    `strip bottom` h-1.5, `bg` opacity 10%, `separator` ligne or,
+    `GlassCard premiumBorder` bordure gold) + 2 interdictions
+    explicites ("JAMAIS en fond de texte. JAMAIS opacity > 15% en
+    bg.") en ⚠️ rouge.
+  • Section **🧊 Glassmorphism adaptatif** : tableau 6 lignes (mobile/
+    tablet/desktop/premium/dark/adaptive) avec opacité + blur + classe
+    CSS associée. Note : `<GlassCard variant="adaptive">` gère tout
+    automatiquement.
+  • Section **🧩 Composants** : sous-sections Primitives (5 composants
+    avec exemples `TSX inline` — Button fe-2a, GlassCard fe-2b,
+    KentePattern fe-2c, ProgressCircle fe-2c, StatCard fe-2d), Hooks
+    (3 hooks fe-1b), Animations (7 variants `lib/animations.ts`).
+  • Section **🔤 Typographie** : `font-display` (Poppins 500-800) pour
+    titres, `font-body` (Inter 400-700) pour corps, Geist inchangé
+    pour landing/login.
+  • Section **✅ Règles strictes** : 7 règles numérotées (pas de blue/
+    indigo, contraste WCAG AA desktop, kente accent strict, animations
+    a11y, touch targets ≥44px mobile, radius `rounded-2xl`/`rounded-
+    lg`, shadows via tokens).
+  • Section **📐 Exemples** : référence à StatCard + un exemple
+    complet de `Dashboard layout type` en TSX (`<KentePattern strip
+    top>` + `<DashboardShell>` + `<main>` avec `grid grid-cols-4` de
+    StatCards stagger via `delay={0}`/`delay={0.05}` + seconde grille
+    `<GlassCard className="lg:col-span-2">` pour chart + `<GlassCard
+    variant="premium">` pour carte premium, footer + `<KentePattern
+    strip bottom>`).
+  • Section **🚀 Roadmap** : 6 phases (1 ✅ tokens, 2 ✅ primitives,
+    3 ⏳ chrome, 4 ⏳ dashboard vitrine, 5 ⏳ migration vues, 6 ⏳ audit
+    a11y) — statut cohérent avec le phasage fe-2d.
+  • Footer : signature `*Forêt EdTech Design System — Freelance
+    Technologies Côte d'Ivoire © 2026*`.
+
+- Vérifications :
+  • `head -40 stat-card.tsx` : directive `"use client"`, imports
+    (React, motion, TrendingUp/Down, LucideIcon, cn, GlassCard,
+    usePrefersReducedMotion), type `StatTone`, interface
+    `StatCardProps` (11 props commentées), début de `toneClasses` —
+    tous visibles et corrects.
+  • `head -30 README.md` : titre, tagline, périmètre, début du
+    tableau palette — conformes à la spec.
+  • `wc -l` : 102 lignes pour `stat-card.tsx`, 118 lignes pour
+    `README.md` (220 total).
+  • `grep "^export"` sur `stat-card.tsx` : 3 entrées (interface +
+    function + default) — exports nommés + default conformes à la
+    spec et cohérents avec fe-2b/fe-2c.
+  • `grep "GlassCard|font-display|toneClasses|usePrefersReducedMotion
+    \|aria-hidden"` sur `stat-card.tsx` :
+    - `import { GlassCard }` (l.7) + `<GlassCard ...>` (l.64) +
+      `</GlassCard>` (l.98) — consommation du wrapper glass fe-2b.
+    - `import { usePrefersReducedMotion }` (l.8) + appel (l.55) —
+      hook fe-1b présent (documentaire ; GlassCard gère déjà le
+      reduced-motion en interne).
+    - `font-display` (l.80) sur la valeur — cohérence typographique
+      DS (Poppins, fe-1c).
+    - `toneClasses` (l.34 declaration + l.56 lookup) — record 6
+      tones Forêt EdTech.
+    - `aria-hidden="true"` (l.86 icône, l.92 TrendIcon) — icônes
+      décoratives, le `label` porte déjà la sémantique.
+  • `grep -niE "indigo|blue"` sur les 2 fichiers : 1 seule
+    occurrence, dans `README.md` l.72 "pas de blue/indigo" — c'est
+    la règle stricte elle-même qui mentionne les palettes interdites
+    (méta-mention, pas d'usage). 0 usage réel des palettes interdites
+    dans le code TSX.
+  • `npx tsc --noEmit --skipLibCheck 2>&1 | grep -E "stat-card|ds/
+    stat"` : 0 erreur. Total erreurs TS inchangé (15 préexistantes
+    documentées en fe-1c/fe-2a/fe-2b/fe-2c, 0 nouvelle introduite
+    par cette tâche). `prefersReducedMotion` non consommé ne provoque
+    pas d'erreur car `noUnusedLocals: false` dans `tsconfig.json`.
+  • `git status --short src/components/ds/` : 2 nouveaux fichiers
+    non tracked (`??`) — `stat-card.tsx` et `README.md`.
+  • `git status --short src/components/reports/kpi-card.tsx` : vide
+    — `kpi-card.tsx` n'a PAS été touché (migration Phase 4/5).
+
+Stage Summary:
+- 2 fichiers créés (220 lignes total), 0 fichier modifié, 0 ligne
+  existante supprimée. TypeScript strict respecté (0 régression, 0
+  nouvelle erreur sur le nouveau fichier TSX ; README.md hors-scope
+  TS).
+- Composant `StatCard` (102 lignes) : carte statistique unifiée du
+  DS "Forêt EdTech", remplaçant progressivement `kpi-card.tsx`
+  (migration Phase 4/5 — `kpi-card.tsx` NON touché). Wrappe
+  `GlassCard` (fe-2b) comme base → hérite du glassmorphism adaptatif
+  (5 variants), des animations d'entrée Framer Motion (fade-in-up
+  0.4s ease cubic-bezier) et du hover lift (`whileHover: {y:-2}` sur
+  cartes cliqueables uniquement). Props : `icon` (LucideIcon),
+  `label` (string), `value` (ReactNode), `tone` (6 tons Forêt
+  EdTech — emerald/amber/terracotta/gold/sky/forest), `trend`
+  (number optionnel, ex: 12.5 pour +12.5%), `invertTrend` (bool,
+  pour métriques "inverses" comme les impayés), `hint` (ReactNode
+  optionnel), `delay` (stagger), `className`, `onClick` (carte
+  cliqueable → cursor-pointer + hover lift activé). Badge trend
+  `rounded-full px-2 py-0.5` avec `TrendingUp`/`TrendingDown` +
+  valeur absolue formatée `toFixed(1)%` + légende "vs période
+  précédente". Badge icône `size-10 rounded-lg` en alpha 15-20% sur
+  la couleur du tone. Typographie : `font-display` (Poppins fe-1c)
+  sur la valeur `text-2xl font-bold`, `text-xs uppercase tracking-
+  wide text-muted-foreground` sur le label. `aria-hidden="true"`
+  systématique sur les icônes (décoratives — le label porte la
+  sémantique). Exports : nommé + default (cohérent avec fe-2b/fe-2c).
+- Documentation `README.md` (118 lignes) : vue d'ensemble complète du
+  DS "Forêt EdTech". 9 sections : palette (tableau 7 couleurs Forêt
+  EdTech avec hex + usage), motif kente (5 usages stricts + 2
+  interdictions), glassmorphism adaptatif (tableau 6 breakpoints/
+  variants + classes CSS), composants (5 primitives + 3 hooks + 7
+  variants animations), typographie (Poppins/Inter/Geist), 7 règles
+  strictes (pas de blue/indigo, WCAG AA, kente accent strict, a11y
+  reduced-motion, touch targets 44px, radius tokens, shadow tokens),
+  exemples (dashboard layout type en TSX avec StatCards stagger +
+  GlassCard premium), roadmap (6 phases), signature Freelance
+  Technologies Côte d'Ivoire © 2026.
+- Respect `prefers-reduced-motion` : StatCard appelle
+  `usePrefersReducedMotion()` (hook fe-1b, SSR-safe) — la variable
+  est documentaire (GlassCard gère déjà le reduced-motion en interne
+  via son propre appel au hook + `getMotion()`), mais l'appel
+  documente l'intent a11y et permet une future extension. Aucun
+  mouvement ajouté par StatCard lui-même (tout est délégué à
+  GlassCard).
+- Pas d'usage des palettes interdites (blue/indigo) dans le code TSX
+  — vérifié par `grep`. Couleurs strictement Forêt EdTech :
+  emerald (`bg-emerald-500/20`, `text-emerald-700`), amber
+  (`bg-amber-500/20`, `text-amber-700`), terracotta (`bg-terracotta/
+  20`, `text-terracotta` — tokens fe-1a), gold (`bg-gold/20`,
+  `text-gold-dark` — tokens fe-1a), sky (`bg-sky-500/20`, `text-sky-
+  700` — variant froide pour données neutres), forest (`bg-forest/
+  15`, `text-forest` — tokens fe-1a). `text-foreground` (shadcn) et
+  `text-muted-foreground` pour les textes principaux/secondaires
+  (compatible dark mode futur).
+- TypeScript strict respecté : `strict: true` ok, 0 nouvelle erreur
+  TS (15 préexistantes inchangées). Interface `StatCardProps`
+  correctement typée (pas d'extension — props spécifiques). `React.
+  ReactNode` pour `value`/`hint` (flexible). `LucideIcon` type pour
+  `icon` (vs `ComponentType<{className?: string}>` — plus précis,
+  cohérent avec `kpi-card.tsx`). `Record<StatTone, {bg, text}>` pour
+  le lookup table — exhaustivité garantie par TS (si on ajoute un
+  tone au type sans l'ajouter au record, erreur de compilation).
+- Tokens fe-1a consommés par StatCard : `bg-emerald-500/20`,
+  `text-emerald-700`, `bg-amber-500/20`, `text-amber-700`,
+  `bg-terracotta/20` (token), `text-terracotta` (token),
+  `bg-gold/20` (token), `text-gold-dark` (token), `bg-sky-500/20`,
+  `text-sky-700`, `bg-forest/15` (token), `text-forest` (token) —
+  12 classes dont 6 consomment les tokens custom fe-1a.
+- Hooks fe-1b consommés : `usePrefersReducedMotion` (SSR-safe
+  matchMedia). Pas de `getMotion()` — délégation totale à GlassCard.
+- Composants fe-2b consommés : `GlassCard` (variant `"adaptive"`,
+  props `delay`/`noHover`/`className`/`onClick`).
+- Classes utilitaires fe-1c consommées : `font-display` (Poppins)
+  sur la valeur principale — cohérence typographique DS (titres
+  Poppins, corps Inter).
+- Fichiers créés :
+  • `Frontend/src/components/ds/stat-card.tsx` (102 lignes)
+  • `Frontend/src/components/ds/README.md` (118 lignes)
+- Aucun backend, DB, schema, ou .env touché. Aucun composant
+  existant impacté : `kpi-card.tsx` NON modifié (migration Phase 4/5),
+  `glass-card.tsx`/`kente-pattern.tsx`/`progress-circle.tsx` NON
+  modifiés (consommés en lecture seule).
+- Prochaine étape : fe-3a (chrome DS — sidebar/topbar "Forêt" dark
+  avec `bg-forest`/`bg-forest-deep`, `KentePattern strip top` en
+  header, `GlassCard variant="premium"` pour les cartes SaaS) qui
+  consommera `Button` fe-2a + `GlassCard` fe-2b + `KentePattern`
+  fe-2c + `StatCard` fe-2d + tokens fe-1a pour les layouts dashboard
+  de Phase 3, puis fe-3b (migration progressive `kpi-card.tsx` →
+  `StatCard` dans les vues rapports/caisse existantes — Phase 4/5).
