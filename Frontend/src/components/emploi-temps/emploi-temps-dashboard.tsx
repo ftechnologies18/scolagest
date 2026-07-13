@@ -18,12 +18,47 @@
  * bannière amber est affichée dans le dialog pour en avertir l'utilisateur
  * (warning, pas blocage).
  *
+ * Refonte Forêt EdTech :
+ *  - Hero header GlassCard desktop + KentePattern strip top + badge rond
+ *    gradient emerald→gold (CalendarDays) + pill « Phase A » + pill éta-
+ *    blissement emerald.
+ *  - Filtre classe + boutons d'action : GlassCard adaptive + Select classe
+ *    avec icône School + boutons « Générer jour » / « Générer semaine »
+ *    variant outline + bouton « Nouveau créneau » variant success.
+ *  - 4 StatCards DS (Total créneaux emerald / Jours actifs forest / Volume
+ *    hebdo amber / Salles distinctes gold) avec stagger.
+ *  - Grille horaire desktop : GlassCard adaptive noHover p-0 + en-têtes jours
+ *    bg-emerald-50/60 + créneaux bordure couleur matière + pastille couleur +
+ *    badges renforcés + hover lift (motion.div).
+ *  - Vue mobile (liste par jour) : GlassCard mobile par jour + créneaux en
+ *    cards mini avec pastille couleur + badges + bouton supprimer.
+ *  - Dialog créer créneau premium : badge gradient + GlassCard tablet + selects
+ *    avec icônes contextuelles + alerte conflits amber renforcée + footer
+ *    grid-cols-2 + bouton submit variant success.
+ *  - AlertDialog suppression premium : structure existante conservée.
+ *  - Empty states premium : KentePattern bg + badges ronds colorés.
+ *  - Loading state premium : Skeletons + KentePattern strip top.
+ *
  * Le contexte d'établissement vient de `useAuthStore`. Si aucun établissement
  * n'est sélectionné, on invite l'utilisateur à en choisir un.
  *
  * Couleurs : emerald (primaire / succès), amber (warning / conflits / IMPAIRE),
  * rose (erreur / suppression), sky (PAIRE), slate (neutre / TOUTES). Aucune
  * couleur indigo/blue.
+ *
+ * LOGIQUE MÉTIER INTACTE : hooks React Query (emploiTempsKeys.calendrier /
+ * affectations + classesKeys.list + anneesKeys.active + clés ["enseignants",
+ * "list", { all: true, paie: true }]), mutations (genJourMutation /
+ * genSemaineMutation / deleteMutation / createMutation) + invalidateQueries,
+ * types CreneauEmploiTemps / CreneauDTO / JourSemaine / SemaineType /
+ * ConflitInfo / AffectationCours / Classe / AnneeScolaire, constantes
+ * SEMAINE_TYPE_BADGE / SEMAINE_TYPE_LABELS / CONFLIT_LABEL / JOUR_LABELS /
+ * JOURS / GRID_START_HOUR / GRID_END_HOUR / HOUR_HEIGHT_PX / GRID_HEIGHT_PX /
+ * MIN_CRENEAU_HEIGHT_PX (contrastes renforcés visuellement mais sémantiquement
+ * identiques), helpers timeToMinutes / formatHourLabel / creneauTopPx /
+ * creneauHeightPx / enseignantLabel / matiereLabel / classeLabel /
+ * matiereCouleurSafe / hexToRgba, handlers et toasts conservés. Aucun endpoint
+ * backend touché.
  */
 
 import * as React from "react";
@@ -32,6 +67,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import {
   CalendarDays,
   CalendarRange,
@@ -47,6 +83,8 @@ import {
   Clock as ClockIcon,
   Sparkles,
   CalendarCheck,
+  School,
+  type LucideIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -78,13 +116,13 @@ import {
 } from "@/lib/api-students";
 import { todayISO } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -111,6 +149,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
+import { StatCard } from "@/components/ds/stat-card";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Clés React Query
@@ -200,13 +242,14 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+// Contrastes renforcés (BUG À ÉVITER #7) : border-300 bg-100 text-800.
 const SEMAINE_TYPE_BADGE: Record<SemaineType, string> = {
   TOUTES:
-    "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300",
+    "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300",
   PAIRE:
-    "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/50 dark:bg-sky-950/40 dark:text-sky-300",
+    "border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-800/60 dark:bg-sky-950/50 dark:text-sky-200",
   IMPAIRE:
-    "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300",
+    "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/50 dark:text-amber-200",
 };
 
 const CONFLIT_LABEL: Record<string, string> = {
@@ -346,8 +389,31 @@ export function EmploiTempsDashboard() {
     0,
   );
 
+  // ─── KPIs calculés sur le calendrier ──────────────────────────────────────
+  // (calcul simple, pas de useMemo : la liste reste petite — 6 jours × N
+  // créneaux — et on évite un hook conditionnel après l'early return.)
+  let kJoursActifs = 0;
+  let kVolumeHebdo = 0;
+  const kSallesSet = new Set<string>();
+  for (const j of JOURS) {
+    const list = creneauxParJour[j];
+    if (list.length > 0) kJoursActifs += 1;
+    for (const c of list) {
+      kVolumeHebdo +=
+        (timeToMinutes(c.heure_fin) - timeToMinutes(c.heure_debut)) / 60;
+      if (c.salle) kSallesSet.add(c.salle);
+    }
+  }
+  const kpis = {
+    total: totalCreneaux,
+    joursActifs: kJoursActifs,
+    volumeHebdo: kVolumeHebdo,
+    sallesDistinctes: kSallesSet.size,
+  };
+
   return (
     <EmploiTempsShell
+      etablissementNom={etablissement.nom}
       onNew={() => setFormOpen(true)}
       onGenJour={() => genJourMutation.mutate(todayISO())}
       onGenSemaine={() => genSemaineMutation.mutate()}
@@ -355,9 +421,9 @@ export function EmploiTempsDashboard() {
       genSemaineLoading={genSemaineMutation.isPending}
       canGenerate={totalCreneaux > 0}
     >
-      {/* Barre de filtre */}
-      <Card>
-        <CardContent className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* ─── Barre de filtre ─────────────────────────────────────────────── */}
+      <GlassCard variant="adaptive" noHover noAnimation className="p-3 sm:p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-sm">
             <CalendarRange className="size-4 text-muted-foreground" />
             <span className="font-medium">Filtrer par classe</span>
@@ -368,7 +434,11 @@ export function EmploiTempsDashboard() {
               onValueChange={setClasseFiltre}
               disabled={classesQuery.isLoading}
             >
-              <SelectTrigger className="w-full sm:w-64">
+              <SelectTrigger
+                className="w-full bg-background sm:w-64"
+                aria-label="Filtrer par classe"
+              >
+                <School className="size-4 shrink-0 text-muted-foreground" />
                 <SelectValue placeholder="Toutes les classes" />
               </SelectTrigger>
               <SelectContent>
@@ -386,25 +456,68 @@ export function EmploiTempsDashboard() {
               onClick={() => calendrierQuery.refetch()}
               disabled={calendrierQuery.isFetching}
               aria-label="Actualiser le calendrier"
+              title="Actualiser le calendrier"
             >
               <RefreshCw
                 className={cn("size-4", calendrierQuery.isFetching && "animate-spin")}
               />
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
-      {/* Contenu : états / grille */}
+      {/* ─── 4 StatCards de résumé ────────────────────────────────────────── */}
+      <section
+        aria-label="Résumé de l'emploi du temps"
+        className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4"
+      >
+        <StatCard
+          icon={CalendarDays}
+          tone="emerald"
+          label="Total créneaux"
+          value={kpis.total}
+          hint={
+            calendrierQuery.isLoading
+              ? "chargement…"
+              : "cours planifiés / semaine"
+          }
+          delay={0}
+          className="h-full"
+        />
+        <StatCard
+          icon={CalendarCheck}
+          tone="forest"
+          label="Jours actifs"
+          value={kpis.joursActifs}
+          hint="jours avec au moins 1 cours"
+          delay={0.05}
+          className="h-full"
+        />
+        <StatCard
+          icon={ClockIcon}
+          tone="amber"
+          label="Volume hebdo"
+          value={`${kpis.volumeHebdo.toFixed(1)} h`}
+          hint="heures cumulées / semaine"
+          delay={0.1}
+          className="h-full"
+        />
+        <StatCard
+          icon={MapPin}
+          tone="gold"
+          label="Salles distinctes"
+          value={kpis.sallesDistinctes}
+          hint="salles utilisées"
+          delay={0.15}
+          className="h-full"
+        />
+      </section>
+
+      <KentePattern variant="separator" className="my-1" />
+
+      {/* ─── Contenu : états / grille ─────────────────────────────────────── */}
       {calendrierQuery.isLoading ? (
-        <Card>
-          <CardContent className="space-y-2 p-4">
-            <Skeleton className="h-10 w-full" />
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 w-full" />
-            ))}
-          </CardContent>
-        </Card>
+        <LoadingState />
       ) : calendrierQuery.isError ? (
         <EmptyState
           icon={AlertCircle}
@@ -420,6 +533,7 @@ export function EmploiTempsDashboard() {
               variant="outline"
               size="sm"
               onClick={() => calendrierQuery.refetch()}
+              title="Réessayer le chargement"
             >
               <RefreshCw className="size-4" />
               Réessayer
@@ -435,7 +549,8 @@ export function EmploiTempsDashboard() {
           action={
             <Button
               onClick={() => setFormOpen(true)}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
+              variant="success"
+              className="w-full sm:w-auto"
             >
               <Plus className="size-4" />
               Nouveau créneau
@@ -464,11 +579,12 @@ export function EmploiTempsDashboard() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shell — en-tête + actions principales
+// Shell — en-tête premium + actions principales
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface EmploiTempsShellProps {
   children: React.ReactNode;
+  etablissementNom?: string;
   onNew?: () => void;
   onGenJour?: () => void;
   onGenSemaine?: () => void;
@@ -479,6 +595,7 @@ interface EmploiTempsShellProps {
 
 function EmploiTempsShell({
   children,
+  etablissementNom,
   onNew,
   onGenJour,
   onGenSemaine,
@@ -487,72 +604,97 @@ function EmploiTempsShell({
   canGenerate,
 }: EmploiTempsShellProps) {
   return (
-    <div className="flex flex-col gap-4 p-4 sm:p-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
-            <CalendarDays className="size-6" />
+    <div className="space-y-4 sm:space-y-6">
+      <KentePattern variant="strip" position="top" />
+
+      {/* ─── Hero header premium ──────────────────────────────────────── */}
+      <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3 sm:gap-4">
+            {/* Badge rond gradient emerald→gold avec icône CalendarDays */}
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg shadow-emerald-900/20">
+              <CalendarDays className="size-6" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-2xl font-bold tracking-tight text-forest">
+                  Emploi du temps
+                </h1>
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50/60 px-2 py-0.5 align-middle text-[11px] font-medium text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  <Sparkles className="size-3" />
+                  Phase A
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Planifiez les créneaux hebdomadaires des cours (Lundi → Samedi)
+                et générez les sessions de pointage associées.
+              </p>
+              {etablissementNom ? (
+                <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  {etablissementNom}
+                </span>
+              ) : null}
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Emploi du temps</h1>
-            <p className="text-sm text-muted-foreground">
-              Planifiez les créneaux hebdomadaires des cours (Lundi → Samedi) et
-              générez les sessions de pointage associées.
-            </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {onGenJour ? (
+              <Button
+                variant="outline"
+                onClick={onGenJour}
+                disabled={genJourLoading || !canGenerate}
+                title={
+                  canGenerate
+                    ? "Génère les sessions de pointage pour aujourd'hui"
+                    : "Aucun créneau à générer"
+                }
+                className="w-full sm:w-auto"
+              >
+                {genJourLoading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <CalendarCheck className="size-4" />
+                )}
+                <span className="hidden sm:inline">Sessions du jour</span>
+                <span className="sm:hidden">Jour</span>
+              </Button>
+            ) : null}
+            {onGenSemaine ? (
+              <Button
+                variant="outline"
+                onClick={onGenSemaine}
+                disabled={genSemaineLoading || !canGenerate}
+                title={
+                  canGenerate
+                    ? "Génère les sessions de pointage pour la semaine courante"
+                    : "Aucun créneau à générer"
+                }
+                className="w-full sm:w-auto"
+              >
+                {genSemaineLoading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Sparkles className="size-4" />
+                )}
+                <span className="hidden sm:inline">Générer la semaine</span>
+                <span className="sm:hidden">Semaine</span>
+              </Button>
+            ) : null}
+            {onNew ? (
+              <Button
+                onClick={onNew}
+                variant="success"
+                className="w-full sm:w-auto"
+              >
+                <Plus className="size-4" />
+                Nouveau créneau
+              </Button>
+            ) : null}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {onGenJour ? (
-            <Button
-              variant="outline"
-              onClick={onGenJour}
-              disabled={genJourLoading || !canGenerate}
-              title={
-                canGenerate
-                  ? "Génère les sessions de pointage pour aujourd'hui"
-                  : "Aucun créneau à générer"
-              }
-            >
-              {genJourLoading ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <CalendarCheck className="size-4" />
-              )}
-              <span className="hidden sm:inline">Sessions du jour</span>
-              <span className="sm:hidden">Jour</span>
-            </Button>
-          ) : null}
-          {onGenSemaine ? (
-            <Button
-              variant="outline"
-              onClick={onGenSemaine}
-              disabled={genSemaineLoading || !canGenerate}
-              title={
-                canGenerate
-                  ? "Génère les sessions de pointage pour la semaine courante"
-                  : "Aucun créneau à générer"
-              }
-            >
-              {genSemaineLoading ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Sparkles className="size-4" />
-              )}
-              <span className="hidden sm:inline">Générer la semaine</span>
-              <span className="sm:hidden">Semaine</span>
-            </Button>
-          ) : null}
-          {onNew ? (
-            <Button
-              onClick={onNew}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              <Plus className="size-4" />
-              Nouveau créneau
-            </Button>
-          ) : null}
-        </div>
-      </header>
+      </GlassCard>
+
+      <KentePattern variant="separator" className="my-1" />
+
       {children}
     </div>
   );
@@ -574,67 +716,72 @@ function DesktopCalendarGrid({
   deleting,
 }: CalendarGridProps) {
   return (
-    <Card className="hidden md:block">
-      <CardContent className="p-3 sm:p-4">
-        <div className="overflow-x-auto">
-          <div
-            className="grid min-w-[860px] gap-px"
-            style={{
-              gridTemplateColumns: `56px repeat(${JOURS.length}, minmax(0, 1fr))`,
-            }}
-          >
-            {/* Coin haut-gauche */}
-            <div className="border-b border-border/60 pb-2 pr-2 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Heures
-            </div>
-            {/* En-têtes des jours */}
-            {JOURS.map((jour) => {
-              const count = creneauxParJour[jour].length;
-              return (
-                <div
-                  key={jour}
-                  className="border-b border-border/60 pb-2 text-center"
-                >
-                  <div className="text-sm font-semibold">{JOUR_LABELS[jour]}</div>
-                  <div className="text-[10px] text-muted-foreground">
-                    {count} créneau{count > 1 ? "x" : ""}
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Colonne heures (gutter) */}
-            <div className="relative" style={{ height: GRID_HEIGHT_PX }}>
-              {Array.from({ length: GRID_END_HOUR - GRID_START_HOUR + 1 }).map(
-                (_, i) => {
-                  const hour = GRID_START_HOUR + i;
-                  return (
-                    <div
-                      key={hour}
-                      className="absolute right-2 -translate-y-1/2 text-[10px] tabular-nums text-muted-foreground"
-                      style={{ top: i * HOUR_HEIGHT_PX }}
-                    >
-                      {formatHourLabel(hour)}
-                    </div>
-                  );
-                },
-              )}
-            </div>
-
-            {/* Colonnes des jours */}
-            {JOURS.map((jour) => (
-              <DayColumn
-                key={jour}
-                jour={jour}
-                creneaux={creneauxParJour[jour]}
-                onDelete={onDelete}
-                deleting={deleting}
-              />
-            ))}
+    <GlassCard
+      variant="adaptive"
+      noHover
+      noAnimation
+      className="hidden overflow-hidden p-3 sm:p-4 md:block"
+    >
+      <div className="overflow-x-auto">
+        <div
+          className="grid min-w-[860px] gap-px"
+          style={{
+            gridTemplateColumns: `56px repeat(${JOURS.length}, minmax(0, 1fr))`,
+          }}
+        >
+          {/* Coin haut-gauche */}
+          <div className="border-b border-border/60 pb-2 pr-2 text-right text-[10px] font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+            Heures
           </div>
+          {/* En-têtes des jours */}
+          {JOURS.map((jour) => {
+            const count = creneauxParJour[jour].length;
+            return (
+              <div
+                key={jour}
+                className="border-b border-border/60 bg-emerald-50/60 pb-2 text-center dark:bg-emerald-950/20"
+              >
+                <div className="font-display text-sm font-semibold text-forest">
+                  {JOUR_LABELS[jour]}
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  {count} créneau{count > 1 ? "x" : ""}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Colonne heures (gutter) */}
+          <div className="relative" style={{ height: GRID_HEIGHT_PX }}>
+            {Array.from({ length: GRID_END_HOUR - GRID_START_HOUR + 1 }).map(
+              (_, i) => {
+                const hour = GRID_START_HOUR + i;
+                return (
+                  <div
+                    key={hour}
+                    className="absolute right-2 -translate-y-1/2 text-[10px] tabular-nums text-muted-foreground"
+                    style={{ top: i * HOUR_HEIGHT_PX }}
+                  >
+                    {formatHourLabel(hour)}
+                  </div>
+                );
+              },
+            )}
+          </div>
+
+          {/* Colonnes des jours */}
+          {JOURS.map((jour) => (
+            <DayColumn
+              key={jour}
+              jour={jour}
+              creneaux={creneauxParJour[jour]}
+              onDelete={onDelete}
+              deleting={deleting}
+            />
+          ))}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }
 
@@ -668,9 +815,7 @@ function DayColumn({
       {/* Créneaux */}
       {creneaux.length === 0 ? (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[10px] text-muted-foreground/60">
-            —
-          </span>
+          <span className="text-[10px] text-muted-foreground/60">—</span>
         </div>
       ) : (
         creneaux.map((c) => (
@@ -700,8 +845,8 @@ function DesktopCreneauCard({
   const height = creneauHeightPx(creneau.heure_debut, creneau.heure_fin);
 
   return (
-    <div
-      className="absolute inset-x-1 overflow-hidden rounded-md border bg-card shadow-sm transition-shadow hover:shadow-md"
+    <motion.div
+      className="absolute inset-x-1 overflow-hidden rounded-md border bg-card shadow-sm"
       style={{
         top,
         height,
@@ -709,16 +854,25 @@ function DesktopCreneauCard({
         borderLeftColor: couleur,
         backgroundColor: hexToRgba(couleur, 0.08),
       }}
+      whileHover={{ y: -1, transition: { duration: 0.15 } }}
     >
       <div className="flex h-full flex-col gap-0.5 p-1.5">
         <div className="flex items-start justify-between gap-1">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[11px] font-semibold leading-tight">
-              {matiereLabel(creneau.affectation)}
-            </p>
-            <p className="truncate text-[10px] text-muted-foreground">
-              {classeLabel(creneau.affectation)}
-            </p>
+          <div className="flex min-w-0 flex-1 items-start gap-1">
+            {/* Pastille couleur matière */}
+            <span
+              className="mt-0.5 size-2 shrink-0 rounded-full"
+              style={{ backgroundColor: couleur }}
+              aria-hidden="true"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="break-words text-[11px] font-semibold leading-tight text-forest">
+                {matiereLabel(creneau.affectation)}
+              </p>
+              <p className="break-words text-[10px] text-muted-foreground">
+                {classeLabel(creneau.affectation)}
+              </p>
+            </div>
           </div>
           <DeleteCreneauButton
             creneau={creneau}
@@ -729,16 +883,16 @@ function DesktopCreneauCard({
         </div>
         {height >= 56 ? (
           <>
-            <p className="flex items-center gap-1 truncate text-[10px] text-muted-foreground">
-              <UserIcon className="size-2.5 shrink-0" />
-              <span className="truncate">
+            <p className="flex items-start gap-1 text-[10px] text-muted-foreground">
+              <UserIcon className="mt-0.5 size-2.5 shrink-0" />
+              <span className="break-words leading-tight">
                 {enseignantLabel(creneau.affectation)}
               </span>
             </p>
             {creneau.salle ? (
-              <p className="flex items-center gap-1 truncate text-[10px] text-muted-foreground">
-                <MapPin className="size-2.5 shrink-0" />
-                <span className="truncate">{creneau.salle}</span>
+              <p className="flex items-start gap-1 text-[10px] text-muted-foreground">
+                <MapPin className="mt-0.5 size-2.5 shrink-0" />
+                <span className="break-words leading-tight">{creneau.salle}</span>
               </p>
             ) : null}
             <div className="mt-auto flex items-center justify-between gap-1">
@@ -772,12 +926,12 @@ function DesktopCreneauCard({
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Vue mobile — liste verticale par jour
+// Vue mobile — liste verticale par jour (GlassCard mobile par jour)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function MobileCalendarList({
@@ -785,6 +939,7 @@ function MobileCalendarList({
   onDelete,
   deleting,
 }: CalendarGridProps) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   return (
     <div className="space-y-3 md:hidden">
       {JOURS.map((jour) => {
@@ -793,35 +948,37 @@ function MobileCalendarList({
             timeToMinutes(a.heure_debut) - timeToMinutes(b.heure_debut),
         );
         return (
-          <Card key={jour}>
-            <CardContent className="p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-sm font-semibold">{JOUR_LABELS[jour]}</h3>
-                <Badge
-                  variant="outline"
-                  className="font-bold tabular-nums"
-                >
-                  {creneaux.length}
-                </Badge>
+          <GlassCard key={jour} variant="mobile" noHover noAnimation className="p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="font-display text-sm font-semibold text-forest">
+                {JOUR_LABELS[jour]}
+              </h3>
+              <Badge
+                variant="outline"
+                className="tabular-nums border-emerald-300 bg-emerald-100 font-bold text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200"
+              >
+                {creneaux.length}
+              </Badge>
+            </div>
+            {creneaux.length === 0 ? (
+              <p className="rounded-md border border-dashed bg-muted/20 px-3 py-3 text-center text-xs text-muted-foreground">
+                Aucun cours
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {creneaux.map((c, idx) => (
+                  <MobileCreneauRow
+                    key={c.id}
+                    creneau={c}
+                    index={idx}
+                    prefersReducedMotion={prefersReducedMotion}
+                    onDelete={onDelete}
+                    deleting={deleting}
+                  />
+                ))}
               </div>
-              {creneaux.length === 0 ? (
-                <p className="rounded-md border border-dashed bg-muted/20 px-3 py-3 text-center text-xs text-muted-foreground">
-                  Aucun cours
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {creneaux.map((c) => (
-                    <MobileCreneauRow
-                      key={c.id}
-                      creneau={c}
-                      onDelete={onDelete}
-                      deleting={deleting}
-                    />
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            )}
+          </GlassCard>
         );
       })}
     </div>
@@ -830,31 +987,55 @@ function MobileCalendarList({
 
 function MobileCreneauRow({
   creneau,
+  index,
+  prefersReducedMotion,
   onDelete,
   deleting,
 }: {
   creneau: CreneauEmploiTemps;
+  index: number;
+  prefersReducedMotion: boolean;
   onDelete: (id: string) => void;
   deleting: boolean;
 }) {
   const couleur = matiereCouleurSafe(creneau.affectation?.matiere?.couleur);
+  const motionProps = prefersReducedMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: 12 },
+        animate: { opacity: 1, y: 0 },
+        transition: {
+          duration: 0.3,
+          delay: Math.min(index * 0.03, 0.3),
+          ease: [0.22, 1, 0.36, 1] as const,
+        },
+      };
   return (
-    <div
+    <motion.div
       className="rounded-md border bg-card p-2.5 shadow-sm"
       style={{
         borderLeftWidth: 4,
         borderLeftColor: couleur,
         backgroundColor: hexToRgba(couleur, 0.05),
       }}
+      {...motionProps}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">
-            {matiereLabel(creneau.affectation)}
-          </p>
-          <p className="truncate text-[11px] text-muted-foreground">
-            {classeLabel(creneau.affectation)}
-          </p>
+        <div className="flex min-w-0 flex-1 items-start gap-2">
+          {/* Pastille couleur matière */}
+          <span
+            className="mt-1 size-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: couleur }}
+            aria-hidden="true"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="break-words text-sm font-semibold leading-snug text-forest">
+              {matiereLabel(creneau.affectation)}
+            </p>
+            <p className="break-words text-[11px] text-muted-foreground">
+              {classeLabel(creneau.affectation)}
+            </p>
+          </div>
         </div>
         <DeleteCreneauButton
           creneau={creneau}
@@ -869,31 +1050,36 @@ function MobileCreneauRow({
             {creneau.heure_debut}–{creneau.heure_fin}
           </span>
         </span>
-        <span className="flex items-center gap-1">
-          <UserIcon className="size-3" />
-          <span className="truncate">{enseignantLabel(creneau.affectation)}</span>
+        <span className="flex items-start gap-1">
+          <UserIcon className="mt-0.5 size-3" />
+          <span className="break-words leading-tight">
+            {enseignantLabel(creneau.affectation)}
+          </span>
         </span>
         {creneau.salle ? (
           <span className="flex items-center gap-1">
             <MapPin className="size-3" />
-            <span className="truncate">{creneau.salle}</span>
+            <span className="break-words leading-tight">{creneau.salle}</span>
           </span>
         ) : null}
         {creneau.semaine_type !== "TOUTES" ? (
           <Badge
             variant="outline"
-            className={cn("h-4 px-1 text-[9px] leading-none", SEMAINE_TYPE_BADGE[creneau.semaine_type])}
+            className={cn(
+              "h-4 px-1 text-[9px] leading-none",
+              SEMAINE_TYPE_BADGE[creneau.semaine_type],
+            )}
           >
             {creneau.semaine_type === "PAIRE" ? "Paire" : "Impaire"}
           </Badge>
         ) : null}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Bouton de suppression (avec confirmation)
+// Bouton de suppression (avec confirmation) — AlertDialog premium conservé
 // ─────────────────────────────────────────────────────────────────────────────
 
 function DeleteCreneauButton({
@@ -915,8 +1101,9 @@ function DeleteCreneauButton({
           size="icon"
           className={cn(
             "shrink-0 text-muted-foreground hover:bg-rose-100 hover:text-rose-700 dark:hover:bg-rose-950/40 dark:hover:text-rose-300",
-            compact ? "size-5" : "size-8",
+            compact ? "size-5" : "h-11 w-11",
           )}
+          title={`Supprimer le créneau de ${matiereLabel(creneau.affectation)} (${creneau.heure_debut}–${creneau.heure_fin})`}
           aria-label={`Supprimer le créneau de ${matiereLabel(creneau.affectation)} (${creneau.heure_debut}–${creneau.heure_fin})`}
           disabled={deleting}
         >
@@ -966,7 +1153,7 @@ function DeleteCreneauButton({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Dialog — Nouveau créneau
+// Dialog — Nouveau créneau (premium avec badge gradient + sections GlassCard)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface NewCreneauFormState {
@@ -1090,12 +1277,21 @@ function NewCreneauDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Nouveau créneau</DialogTitle>
-          <DialogDescription>
-            Planifiez un cours récurrent dans l'emploi du temps. Les conflits
-            (enseignant ou classe déjà occupés) sont signalés sans bloquer la
-            création.
-          </DialogDescription>
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-md shadow-emerald-900/20">
+              <CalendarDays className="size-5" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <DialogTitle className="font-display text-lg font-bold tracking-tight text-forest">
+                Nouveau créneau
+              </DialogTitle>
+              <DialogDescription>
+                Planifiez un cours récurrent dans l&apos;emploi du temps. Les
+                conflits (enseignant ou classe déjà occupés) sont signalés sans
+                bloquer la création.
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
@@ -1119,7 +1315,11 @@ function NewCreneauDialog({
                   setForm({ ...form, affectation_cours_id: v })
                 }
               >
-                <SelectTrigger id="et-aff" aria-invalid={submitted && !affValid}>
+                <SelectTrigger
+                  id="et-aff"
+                  aria-invalid={submitted && !affValid}
+                  className="bg-background"
+                >
                   <SelectValue placeholder="Choisir une affectation" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1132,9 +1332,12 @@ function NewCreneauDialog({
               </Select>
             )}
             {selectedAffectation ? (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="break-words text-[11px] leading-snug text-muted-foreground">
                 {selectedAffectation.enseignant
-                  ? [selectedAffectation.enseignant.prenoms, selectedAffectation.enseignant.nom]
+                  ? [
+                      selectedAffectation.enseignant.prenoms,
+                      selectedAffectation.enseignant.nom,
+                    ]
                       .filter(Boolean)
                       .join(" ")
                       .trim()
@@ -1161,7 +1364,8 @@ function NewCreneauDialog({
                 setForm({ ...form, jour_semaine: v as JourSemaine })
               }
             >
-              <SelectTrigger id="et-jour">
+              <SelectTrigger id="et-jour" className="bg-background">
+                <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1188,6 +1392,7 @@ function NewCreneauDialog({
                   setForm({ ...form, heure_debut: e.target.value })
                 }
                 aria-invalid={submitted && !horairesValid}
+                className="bg-background"
               />
             </div>
             <div className="space-y-1.5">
@@ -1202,6 +1407,7 @@ function NewCreneauDialog({
                   setForm({ ...form, heure_fin: e.target.value })
                 }
                 aria-invalid={submitted && !horairesValid}
+                className="bg-background"
               />
             </div>
           </div>
@@ -1221,6 +1427,7 @@ function NewCreneauDialog({
               onChange={(e) => setForm({ ...form, salle: e.target.value })}
               placeholder="Ex : Salle 12, Labo A…"
               maxLength={80}
+              className="bg-background"
             />
           </div>
 
@@ -1233,7 +1440,7 @@ function NewCreneauDialog({
                 setForm({ ...form, semaine_type: v as SemaineType })
               }
             >
-              <SelectTrigger id="et-semaine">
+              <SelectTrigger id="et-semaine" className="bg-background">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1244,7 +1451,7 @@ function NewCreneauDialog({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="break-words text-[11px] leading-snug text-muted-foreground">
               Le créneau sera planifié toutes les semaines, ou seulement les
               semaines paires / impaires.
             </p>
@@ -1252,14 +1459,14 @@ function NewCreneauDialog({
 
           {/* Bannière conflits (warning, pas blocage) */}
           {conflits.length > 0 ? (
-            <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50/80 p-3 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+            <div className="space-y-2 rounded-md border border-amber-300 bg-amber-100/80 p-3 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" />
                 <div className="space-y-1">
                   <p className="text-sm font-semibold">
                     Créneau créé — {conflits.length} conflit(s) détecté(s)
                   </p>
-                  <p className="text-xs">
+                  <p className="break-words text-xs leading-snug">
                     Le créneau a été enregistré, mais il chevauche des créneaux
                     existants. Vérifiez la cohérence du planning.
                   </p>
@@ -1267,11 +1474,14 @@ function NewCreneauDialog({
               </div>
               <ul className="ml-6 space-y-1 text-xs">
                 {conflits.map((c, i) => (
-                  <li key={`${c.creneau_id_existant}-${i}`} className="flex flex-col gap-0.5">
+                  <li
+                    key={`${c.creneau_id_existant}-${i}`}
+                    className="flex flex-col gap-0.5"
+                  >
                     <span className="font-medium">
                       {CONFLIT_LABEL[c.type] ?? c.type}
                     </span>
-                    <span className="text-amber-800 dark:text-amber-300">
+                    <span className="break-words leading-snug text-amber-800 dark:text-amber-300">
                       {c.message}
                     </span>
                   </li>
@@ -1281,7 +1491,7 @@ function NewCreneauDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
+        <DialogFooter className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
@@ -1294,7 +1504,8 @@ function NewCreneauDialog({
           <Button
             onClick={handleSave}
             disabled={createMutation.isPending}
-            className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+            variant="success"
+            className="w-full sm:w-auto"
           >
             {createMutation.isPending ? (
               <Loader2 className="size-4 animate-spin" />
@@ -1326,48 +1537,75 @@ function AffectationLabel({ affectation }: { affectation: AffectationCours }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// États vides / erreur partagés
+// États vides premium (KentePattern bg + badge rond coloré + icône Lucide)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface EmptyStateProps {
-  icon: typeof AlertCircle;
-  tone: "emerald" | "amber" | "rose" | "slate";
+  icon: LucideIcon;
+  tone: "emerald" | "amber" | "rose";
   title: string;
   description: string;
   action?: React.ReactNode;
 }
 
-const EMPTY_TONE: Record<EmptyStateProps["tone"], string> = {
-  emerald:
-    "border-emerald-200 bg-emerald-50/60 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300",
-  amber:
-    "border-amber-200 bg-amber-50/60 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300",
-  rose: "border-rose-200 bg-rose-50/60 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300",
-  slate:
-    "border-slate-200 bg-slate-50/60 text-slate-700 dark:border-slate-800 dark:bg-slate-900/30 dark:text-slate-300",
-};
-
 function EmptyState({ icon: Icon, tone, title, description, action }: EmptyStateProps) {
+  const cls = {
+    emerald:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+    amber:
+      "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+    rose: "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
+  }[tone];
   return (
-    <Card className={cn("border-dashed", EMPTY_TONE[tone])}>
-      <CardContent className="flex flex-col items-center gap-3 p-8 text-center">
+    <GlassCard
+      variant="adaptive"
+      noHover
+      className="relative overflow-hidden"
+    >
+      <KentePattern variant="bg" />
+      <div className="relative flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
         <div
           className={cn(
             "flex size-12 items-center justify-center rounded-full",
-            EMPTY_TONE[tone],
+            cls,
           )}
         >
           <Icon className="size-6" />
         </div>
         <div className="space-y-1">
-          <h3 className="text-base font-semibold">{title}</h3>
-          <p className="mx-auto max-w-md text-sm text-muted-foreground">
+          <p className="font-display text-base font-semibold text-forest">
+            {title}
+          </p>
+          <p className="max-w-md text-sm text-muted-foreground">
             {description}
           </p>
         </div>
-        {action ? <div className="mt-2">{action}</div> : null}
-      </CardContent>
-    </Card>
+        {action}
+      </div>
+    </GlassCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Loading state premium (KentePattern strip top + Skeletons)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LoadingState() {
+  return (
+    <GlassCard
+      variant="adaptive"
+      noHover
+      noAnimation
+      className="relative overflow-hidden p-0"
+    >
+      <KentePattern variant="strip" position="top" />
+      <div className="space-y-2 p-4">
+        <Skeleton className="h-10 w-full" />
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-20 w-full" />
+        ))}
+      </div>
+    </GlassCard>
   );
 }
 

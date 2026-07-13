@@ -12755,3 +12755,576 @@ Work Log:
    l'utilisateur préfère réduire les animations.
 
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+
+## Task 4 — Refonte modules /paie et /emploi-du-temps (agent frontend-styling-expert)
+
+Date : 2025-01 (Task 4 de la vague de refontes ScolaGest).
+
+### Fichiers modifiés (2)
+- `/home/z/my-project/scolagest/Frontend/src/components/paie/paie-dashboard.tsx`
+  (1909 → 2720 lignes, +811 lignes)
+- `/home/z/my-project/scolagest/Frontend/src/components/emploi-temps/emploi-temps-dashboard.tsx`
+  (1375 → 1612 lignes, +237 lignes)
+
+### Fichiers lus (référence DS + refontes précédentes)
+- `Frontend/src/components/ds/glass-card.tsx` (GlassCard : variants mobile/
+  tablet/desktop/premium/adaptive, props noHover/noAnimation/delay/
+  premiumBorder, role=button si onClick)
+- `Frontend/src/components/ds/kente-pattern.tsx` (KentePattern : variants
+  strip/bg/border/separator, positions top/bottom/custom)
+- `Frontend/src/components/ds/stat-card.tsx` (StatCard : tones emerald/amber/
+  terracotta/gold/sky/forest, hint delay onClick className)
+- `Frontend/src/components/discipline/discipline-dashboard.tsx` (1369 lignes,
+  DÉJÀ REFONTE — patterns repris : hero header GlassCard desktop + TabsList
+  premium + 4 StatCards + tableau GlassCard p-0 + motion.tr + EmptyState
+  premium KentePattern bg + LoadingState premium KentePattern strip top)
+- `Frontend/src/components/enseignants/enseignants-list.tsx` (1780 lignes,
+  DÉJÀ REFONTE — patterns repris : FormSectionTitle + EnseignantMobileCard
+  + boutons d'action ghost size="icon" h-11 w-11 + AlertDialog premium)
+- `Frontend/src/components/ui/button.tsx` (variant success : gradient
+  emerald from-emerald-600 to-emerald-700 + shadow-lg shadow-emerald-900/20 ;
+  variant terracotta/gold/forest/premium confirmés)
+- `Frontend/src/lib/api-paie.ts` (types BulletinPaie / AvanceSalaire /
+  StatutBulletin / StatutAvance / GenerateBulletinResult + fonctions
+  fetchBulletins / fetchBulletin / generateBulletin / validerBulletin /
+  payerBulletin / fetchAvances / createAvance / traiterAvance + labels
+  STATUT_BULLETIN_LABEL / STATUT_AVANCE_LABEL / MOIS_LABELS + helper
+  moisLabel — signatures conservées à l'identique)
+- `Frontend/src/lib/api-emploi-temps.ts` (types CreneauEmploiTemps /
+  CreneauDTO / JourSemaine / SemaineType / ConflitInfo + fonctions
+  fetchCalendrier / createCreneau / deleteCreneau / generateSessionsFromDate
+  / generateSemaine + constantes JOUR_LABELS / JOURS / SEMAINE_TYPE_LABELS
+  — signatures conservées)
+- `Frontend/src/lib/api-enseignant.ts` (types Enseignant / AffectationCours
+  + fonction fetchEnseignants / fetchAffectations — signatures conservées)
+- `Frontend/src/lib/api-students.ts` (fetchClasses / fetchActiveAnnee /
+  classesKeys / anneesKeys — signatures conservées)
+- `Frontend/src/lib/auth-store.ts` (Etablissement : id / nom / code_officiel
+  / ville / applique_categorie_affecte / actif — `etablissement.nom`
+  accessible pour le pill établissement dans le hero header)
+- `Frontend/src/lib/format.ts` (formatFCFA / formatDateShort /
+  formatDateTime / todayISO — signatures conservées)
+- `Frontend/src/app/(staff)/paie/page.tsx` et `app/(staff)/emploi-du-temps/
+  page.tsx` (routes RoleGuard — non modifiées)
+
+### Refonte `paie-dashboard.tsx` — améliorations
+- **Hero header premium** : KentePattern strip top + GlassCard desktop p-5
+  sm:p-6 + badge rond size-12 bg-gradient-to-br from-emerald-600 to-amber-500
+  text-white shadow-lg (Wallet size-6) + titre font-display text-2xl
+  font-bold text-forest "Paie enseignants" + pill "Phase C" border-emerald-300
+  bg-emerald-50/60 text-emerald-800 (Sparkles size-3) + description + pill
+  établissement emerald si sélectionné + KentePattern separator après le
+  hero header.
+- **TabsList premium** : `glass-desktop h-auto gap-1 border-0 p-1` + tab
+  actif `data-[state=active]:bg-emerald-600 data-[state=active]:text-white
+  data-[state=active]:shadow-sm` + icônes (Wallet pour Bulletins / HandCoins
+  pour Avances).
+- **Onglet Bulletins** :
+  • Filtre mois/année en GlassCard adaptive noHover noAnimation p-3 sm:p-4
+    avec icône CalendarDays + Select mois/année bg-background opaque +
+    Badge outline emerald renforcé (border-emerald-300 bg-emerald-100
+    text-emerald-800) comptant les bulletins + bouton Actualiser variant
+    outline size icon avec title natif + bouton "Générer un bulletin"
+    variant success w-full sm:w-auto (Plus).
+  • **4 StatCards DS** en grid grid-cols-2 md:grid-cols-4 avec stagger
+    delay 0/0.05/0.1/0.15 + items-stretch (h-full) : Total bulletins
+    (emerald/Wallet, hint "pour {mois} {annee}" ou "chargement…"),
+    Brouillons (amber/Clock, "en attente de validation"), Validés
+    (forest/CheckCircle2, "prêts à payer"), Payés (gold/Banknote,
+    hint "net : {formatFCFA(netTotal)}").
+  • **KPIs calculés** via useMemo sur la liste des bulletins : total /
+    valides / payes / brouillons / netTotal (somme des salaires_net).
+  • KentePattern separator entre les StatCards et le tableau.
+  • Loading state premium : GlassCard adaptive noHover noAnimation p-0 +
+    KentePattern strip top + 6 Skeletons h-14 w-full.
+  • Empty states premium : GlassCard adaptive noHover + KentePattern bg +
+    badges ronds colorés size-12 (rose AlertCircle pour erreur, emerald
+    Wallet pour aucun bulletin) + titres font-display text-base font-semibold
+    text-forest + descriptions max-w-md + bouton "Générer un bulletin"
+    variant success sur l'état vide.
+  • **Tableau desktop enrichi** (md:block, hidden on mobile) : GlassCard
+    adaptive noHover noAnimation p-0 overflow-hidden + header bg-emerald-50/60
+    + th text-emerald-900 text-xs font-semibold uppercase tracking-wide +
+    hover row bg-emerald-50/60 + colonne Enseignant avec avatar emerald-600
+    text-white size-9 + initiales + nom font-display text-sm font-semibold
+    text-forest break-words + matricule font-mono text-[11px] + Période
+    avec mois font-medium text-forest + annee muted + Heures pt. / pl.
+    tabular-nums + Taux moy. / Brut text-xs tabular-nums + Avances text-
+    amber-700 / Cotis. text-rose-700 + Net text-sm font-bold tabular-nums
+    text-gold-dark dark:text-gold (BUG À ÉVITER #7 gold family) + Statut
+    Badge renforcé (STATUT_BULLETIN_BADGE border-300 bg-100 text-800) +
+    date de paiement si PAYE + Actions 3 boutons ghost sm avec title natif
+    + aria-label + hidden lg:inline (icône seule md, icône + texte lg) :
+    Détail (Eye emerald), Valider (CheckCircle2 amber si BROUILLON),
+    Marquer payé (Banknote variant success si VALIDE). Rows motion.tr
+    avec stagger delay index*0.02 capé à 0.4s (composant BulletinRow
+    custom) + usePrefersReducedMotion respecté.
+  • **Cartes mobile** (nouveau, md:hidden) : motion.div wrapper avec stagger
+    delay index*0.05 capé à 0.4s + GlassCard mobile noHover noAnimation p-4
+    + en-tête avatar emerald-600 text-white size-11 + initiales + nom font-
+    display text-base font-semibold text-forest break-words + matricule
+    font-mono + Badge statut renforcé à droite + body InfoRows (période
+    emerald/15 avec icône CalendarDays, heures pt./pl. amber/15 avec icône
+    Clock, avances/cotis. rose/15 avec icône HandCoins, net à payer gold/15
+    + value text-gold-dark dark:text-gold font-mono font-bold) + footer
+    boutons ghost size="icon" h-11 w-11 (touch target ≥ 44px) avec title
+    natif + aria-label (icônes seules Eye / CheckCircle2 / Banknote).
+  • **Dialogs premium** (GenerateBulletinDialog, ValiderBulletinDialog,
+    PayerBulletinDialog, CreateAvanceDialog, RejeterAvanceDialog,
+    BulletinDetailDialog) : header badge rond size-10 gradient emerald→gold
+    (RejeterAvanceDialog utilise gradient rose→rose-700 pour la sémantique
+    danger) + icône Lucide size-5 + titre font-display text-lg font-bold
+    text-forest + description conservée. Inputs/Selects/Textarea avec
+    bg-background opaque. ValiderBulletinDialog et PayerBulletinDialog
+    utilisent GlassCard tablet noHover noAnimation p-3 pour les récaps
+    (brut/avances/net à payer). RejeterAvanceDialog utilise GlassCard
+    tablet pour le motif de la demande. BulletinDetailDialog utilise
+    GlassCard tablet pour l'en-tête enseignant (avatar emerald-600 +
+    GraduationCap + nom font-display + matricule) + GlassCard tablet p-0
+    pour le calcul du salaire (5 lignes) + GlassCard tablet pour les notes.
+    Alertes amber renforcées (border-amber-300 bg-amber-100/80 text-amber-800
+    + TriangleAlert) dans GenerateBulletinDialog, emerald renforcées
+    (border-emerald-300 bg-emerald-100/80 text-emerald-800) dans
+    ValiderBulletinDialog pour le net à payer, rose renforcées dans
+    BulletinDetailDialog pour les erreurs de chargement. Footer grid-cols-2
+    gap-2 sm:flex sm:justify-end + bouton Annuler variant outline w-full
+    sm:w-auto + bouton submit variant success w-full sm:w-auto (Loader2 si
+    pending). RejeterAvanceDialog bouton submit variant destructive (rose)
+    pour cohérence sémantique.
+- **Onglet Avances** : même pattern que Bulletins (filtre + 4 StatCards +
+  KPIs + KentePattern separator + LoadingState + EmptyStates premium +
+  tableau desktop GlassCard p-0 + cartes mobile). 4 StatCards : Total
+  avances (emerald/HandCoins), Demandées (amber/Clock, hint "montant :
+  {formatFCFA(montantDemandees)}"), Approuvées (sky/ThumbsUp), Rejetées
+  (terracotta/ThumbsDown). Tableau desktop enrichi avec avatar emerald-600
+  + nom font-display + matricule mono + Montant text-gold-dark dark:text-
+  gold font-bold + Date demande + Motif line-clamp-2 break-words + Badge
+  statut renforcé (STATUT_AVANCE_BADGE border-300 bg-100 text-800) + date
+  approbation + Actions Approuver (variant outline emerald renforcé +
+  ThumbsUp) / Rejeter (variant outline rose renforcé + ThumbsDown) avec
+  title natif + aria-label + hidden lg:inline. Cartes mobile avec actions
+  icône-seules h-11 w-11 (ThumbsUp emerald, ThumbsDown rose, Loader2 si
+  pending).
+- **DetailItem** : labels uppercase tracking-wide text-muted-foreground,
+  values text-sm font-medium text-forest (mono text-xs si `mono`).
+
+### Refonte `emploi-temps-dashboard.tsx` — améliorations
+- **Hero header premium** : KentePattern strip top + GlassCard desktop p-5
+  sm:p-6 + badge rond size-12 bg-gradient-to-br from-emerald-600 to-amber-500
+  text-white shadow-lg (CalendarDays size-6) + titre font-display text-2xl
+  font-bold text-forest "Emploi du temps" + pill "Phase A" border-emerald-300
+  bg-emerald-50/60 text-emerald-800 (Sparkles size-3) + description + pill
+  établissement emerald si sélectionné + boutons d'action à droite :
+  "Sessions du jour" variant outline w-full sm:w-auto (CalendarCheck ou
+  Loader2 si pending, title natif) + "Générer la semaine" variant outline
+  w-full sm:w-auto (Sparkles ou Loader2, title natif) + "Nouveau créneau"
+  variant success w-full sm:w-auto (Plus) + KentePattern separator après
+  le hero header.
+- **Filtre classe + boutons d'action** : GlassCard adaptive noHover
+  noAnimation p-3 sm:p-4 + CalendarRange + "Filtrer par classe" + Select
+  classe bg-background opaque avec icône School dans le SelectTrigger +
+  bouton Actualiser variant outline size icon avec title natif.
+- **4 StatCards DS** (nouveau) en grid grid-cols-2 md:grid-cols-4 avec
+  stagger delay 0/0.05/0.1/0.15 + items-stretch (h-full) : Total créneaux
+  (emerald/CalendarDays, hint "chargement…" si loading sinon "cours
+  planifiés / semaine"), Jours actifs (forest/CalendarCheck, "jours avec
+  au moins 1 cours"), Volume hebdo (amber/ClockIcon, value "{volumeHebdo
+  .toFixed(1)} h", "heures cumulées / semaine"), Salles distinctes
+  (gold/MapPin, "salles utilisées"). Calcul simple (pas de useMemo pour
+  éviter un hook conditionnel après l'early return `if (!etablissement)`)
+  itérant sur JOURS × creneauxParJour.
+- KentePattern separator entre les StatCards et la grille.
+- **Grille horaire desktop** (md:block, hidden on mobile) : GlassCard
+  adaptive noHover noAnimation p-3 sm:p-4 + en-têtes jours bg-emerald-50/60
+  dark:bg-emerald-950/20 + libellés font-display text-sm font-semibold
+  text-forest + compteur créneaux text-[10px] muted + coin haut-gauche
+  "Heures" text-emerald-900 uppercase tracking-wide + colonne heures
+  gutter 56px + colonnes jours avec bordure-l border-border/40 + lignes
+  d'heures dashed border-border/40 + créneaux absolus (top + height
+  calculés via creneauTopPx / creneauHeightPx).
+  • **DesktopCreneauCard** enrichi : motion.div (whileHover y: -1) +
+    bordure gauche couleur matière (borderLeftColor: couleur, 4px) +
+    backgroundColor hexToRgba(couleur, 0.08) + pastille couleur size-2
+    rounded-full en début de titre + libellé matière break-words text-[11px]
+    font-semibold text-forest + classe break-words text-[10px] muted +
+    icônes UserIcon / MapPin en mt-0.5 (BUG À ÉVITER #4) + horaires mono
+    tabular-nums + Badge SEMAINE_TYPE_BADGE renforcé (border-300 bg-100
+    text-800, P/Impaire) si semaine_type !== TOUTES + bouton supprimer
+    compact size-5 (icône size-3) avec title natif + aria-label.
+- **Vue mobile (liste par jour)** (nouveau rendu premium, md:hidden) :
+  GlassCard mobile noHover noAnimation p-3 par jour + en-tête avec
+  libellé font-display text-sm font-semibold text-forest + Badge count
+  emerald renforcé (border-emerald-300 bg-emerald-100 text-emerald-800) +
+  état vide "Aucun cours" border-dashed muted + créneaux en cards mini
+  (MobileCreneauRow) avec motion.div wrapper stagger delay index*0.03
+  capé à 0.3s + bordure gauche couleur matière + pastille couleur size-
+  2.5 rounded-full + libellé matière break-words text-sm font-semibold
+  text-forest + classe break-words text-[11px] muted + InfoRows (horaires
+  mono avec icône ClockIcon, enseignant avec icône UserIcon en mt-0.5,
+  salle avec icône MapPin, Badge SEMAINE_TYPE_BADGE renforcé "Paire"/
+  "Impaire") + bouton supprimer h-11 w-11 (touch target ≥ 44px) avec
+  title natif + aria-label.
+- **AlertDialog suppression premium** : structure existante conservée
+  (titre + description avec matières/classes/jours/horaires en font-medium
+  text-foreground + bouton Annuler + bouton Supprimer bg-rose-600 text-
+  white hover:bg-rose-700 avec Loader2 si deleting). Bouton trigger ghost
+  size icon avec title natif + aria-label complet (compact size-5 icône
+  size-3 sur desktop grille, h-11 w-11 icône size-4 sur mobile).
+- **Dialog créer créneau premium** : header badge rond size-10 gradient
+  emerald→gold (CalendarDays size-5) + titre font-display text-lg text-forest
+  + description conservée. Selects avec icônes contextuelles dans le
+  SelectTrigger (School pour la classe, CalendarDays pour le jour) + bg-
+  background opaque sur tous les Inputs/Selects. Aperçu de l'affectation
+  sélectionnée en break-words text-[11px] leading-snug muted. Alertes
+  conflits amber renforcée (border-amber-300 bg-amber-100/80 text-amber-900
+  + AlertTriangle mt-0.5 + liste des conflits avec CONFLIT_LABEL). Footer
+  grid-cols-2 gap-2 sm:flex sm:justify-end + bouton Annuler/Fermer variant
+  outline w-full sm:w-auto (icône X) + bouton Créer variant success w-full
+  sm:w-auto (Loader2 si pending, Plus sinon).
+- **Empty states premium** : GlassCard adaptive noHover + KentePattern bg
+  + badges ronds colorés size-12 (amber AlertCircle pour établissement
+  manquant, rose AlertCircle pour erreur de chargement, emerald
+  CalendarDays pour aucun créneau) + titres font-display text-base font-
+  semibold text-forest + descriptions max-w-md + bouton "Nouveau créneau"
+  variant success sur l'état vide.
+- **Loading state premium** : GlassCard adaptive noHover noAnimation p-0
+  relative overflow-hidden + KentePattern strip top + Skeleton h-10 w-full
+  (header) + 6 Skeletons h-20 w-full (lignes).
+
+### Bugs à éviter — VÉRIFIÉS
+- Aucun Tooltip Radix — toutes les actions utilisent l'attribut HTML natif
+  `title` (BUG À ÉVITER #1) : boutons Actualiser / Générer bulletin /
+  Nouvelle avance / Sessions du jour / Générer semaine / Nouveau créneau /
+  Détail / Valider / Marquer payé / Approuver / Rejeter / Supprimer
+  créneau (desktop + mobile).
+- Aucun `truncate` sur les libellés longs — `break-words leading-snug`
+  pour les noms d'enseignant et libellés de matière, `line-clamp-2 break-
+  words leading-snug` pour les motifs d'avance, `break-words leading-tight`
+  pour les créneaux desktop, `break-all leading-snug` non nécessaire ici
+  (pas d'emails longs) (BUG À ÉVITER #2).
+- Pas de `<button>` imbriqué dans un `<button>` — les AlertDialog utilisent
+  `AlertDialogTrigger asChild` qui rend un seul `<button>` via Slot (BUG
+  À ÉVITER #3).
+- Icônes InfoRow : `flex items-start` + `mt-0.5` sur les icônes
+  UserIcon/MapPin dans DesktopCreneauCard et MobileCreneauRow + `mt-0.5`
+  sur AlertTriangle dans la bannière conflits + `mt-0.5` sur HandCoins
+  dans BulletinMobileCard (BUG À ÉVITER #4).
+- Grid : `items-stretch` implicite via `h-full` sur les StatCard (BUG À
+  ÉVITER #5).
+- Avatar : `bg-emerald-600 text-white` pour les avatars enseignant (tableau
+  desktop size-9 + mobile size-11 + dialog détail bulletin size-10) —
+  BUG À ÉVITER #6.
+- Badges : `border-300 bg-100 text-800` (BUG À ÉVITER #7) : STATUT_BULLETIN_
+  BADGE (BROUILLON slate, VALIDE amber, PAYE emerald), STATUT_AVANCE_BADGE
+  (DEMANDEE amber, APPROUVEE sky, REJETEE rose, DEDUITE emerald),
+  SEMAINE_TYPE_BADGE (TOUTES slate, PAIRE sky, IMPAIRE amber), badges
+  compteurs (emerald renforcé), badges avances/cotis. (amber/rose en texte).
+- `toast` non déclaré VÉRIFIÉ : `const { toast } = useToast();` présent en
+  tête de BulletinsTab, AvancesTab, EmploiTempsDashboard et NewCreneauDialog
+  — les 4 composants qui utilisent `toast(...)` dans leurs mutations.
+  Aucune régression (BUG À ÉVITER #8).
+
+### Logique métier conservée à l'identique
+- Imports `@/lib/api-paie` (fetchBulletins / fetchBulletin / generateBulletin
+  / validerBulletin / payerBulletin / fetchAvances / createAvance /
+  traiterAvance / STATUT_BULLETIN_LABEL / STATUT_AVANCE_LABEL / MOIS_LABELS
+  / moisLabel + types BulletinPaie / AvanceSalaire / StatutBulletin /
+  StatutAvance / GenerateBulletinResult) intacts.
+- Imports `@/lib/api-emploi-temps` (fetchCalendrier / createCreneau /
+  deleteCreneau / generateSessionsFromDate / generateSemaine / JOUR_LABELS
+  / JOURS / SEMAINE_TYPE_LABELS + types CreneauEmploiTemps / CreneauDTO /
+  JourSemaine / SemaineType / ConflitInfo) intacts.
+- Imports `@/lib/api-enseignant` (fetchEnseignants + type Enseignant +
+  fetchAffectations + type AffectationCours) intacts.
+- Imports `@/lib/api-students` (fetchClasses / fetchActiveAnnee /
+  classesKeys / anneesKeys) intacts.
+- Imports `@/lib/format` (formatFCFA / formatDateShort / formatDateTime /
+  todayISO) intacts.
+- Hooks React Query conservés : `paieKeys.bulletins({mois, annee})` /
+  `paieKeys.bulletin(id)` / `paieKeys.avances(statut?)` + clés
+  `["enseignants", "list", { all: true, paie: true }]` (paie) ;
+  `emploiTempsKeys.calendrier(classeId?)` / `emploiTempsKeys.affectations
+  (anneeScolaireId?)` + `classesKeys.list(etablissement?.id)` + `anneesKeys
+  .active()` (emploi-temps). `enabled: !!etablissement` et `enabled: !!
+  etablissement && open` (paie) / `enabled: !!etablissement && open` et
+  `enabled: !!activeAnnee?.id && open` (emploi-temps) intacts.
+- Mutations `generateMutation` / `validerMutation` / `payerMutation` /
+  `createMutation` (avances) / `traiterMutation` (paie) +
+  `genJourMutation` / `genSemaineMutation` / `deleteMutation` /
+  `createMutation` (emploi-temps) + `invalidateQueries` sur `paieKeys.all`
+  / `emploiTempsKeys.all` conservées. Toasts `onSuccess` (génération
+  bulletin avec alerte_ecart éventuelle / validation / paiement / création
+  avance / traitement avance / génération sessions jour / génération
+  sessions semaine / suppression créneau / création créneau avec conflits
+  éventuels) et `onError` conservés.
+- Handlers `setGenerateOpen` / `setValiderTarget` / `setPayerTarget` /
+  `setDetailTarget` / `setCreateOpen` / `setRejeterTarget` (paie) /
+  `setFormOpen` / `setClasseFiltre` / `handleDelete` (emploi-temps)
+  conservés.
+- Constantes `paieKeys` / `STATUT_BULLETIN_BADGE` / `STATUT_AVANCE_BADGE`
+  / `STATUT_AVANCE_OPTIONS` (contrastes renforcés visuellement mais
+  sémantiquement identiques) / `emploiTempsKeys` / `GRID_START_HOUR` /
+  `GRID_END_HOUR` / `HOUR_HEIGHT_PX` / `GRID_HEIGHT_PX` /
+  `MIN_CRENEAU_HEIGHT_PX` / `SEMAINE_TYPE_BADGE` (contrast renforcé) /
+  `CONFLIT_LABEL` / `DEFAULT_FORM` conservées à l'identique.
+- Helpers `enseignantLabel` / `enseignantInitials` (nouveau, copié de
+  enseignants-list.tsx) / `currentMonthYear` (paie) / `timeToMinutes` /
+  `formatHourLabel` / `creneauTopPx` / `creneauHeightPx` / `enseignantLabel`
+  / `matiereLabel` / `classeLabel` / `matiereCouleurSafe` / `hexToRgba`
+  (emploi-temps) conservés à l'identique.
+- `NewCreneauFormState` (affectation_cours_id / jour_semaine / heure_debut
+  / heure_fin / salle / semaine_type) + validation `affValid` /
+  `horairesValid` / `formValid` conservées.
+- `EnseignantSelect` (props value/onChange/enseignants/loading/disabled/id)
+  conservé avec ajout de bg-background opaque.
+- `AffectationLabel` (rendu SelectItem avec matière + enseignant + classe)
+  conservé.
+- `DetailItem` (label/value/mono) conservé avec text-forest sur la value.
+- AlertDialog de suppression conservé à l'identique (textes et handlers).
+- Endpoints backend intacts : GET /api/paie/bulletins, GET /api/paie/
+  bulletins/:id, POST /api/paie/bulletins/generate, POST /api/paie/
+  bulletins/:id/valider, POST /api/paie/bulletins/:id/payer, GET /api/paie/
+  avances, POST /api/paie/avances, POST /api/paie/avances/:id/traiter,
+  GET /api/enseignants, GET /api/emploi-temps/calendrier, POST /api/
+  emploi-temps/creneaux, DELETE /api/emploi-temps/creneaux/:id, POST
+  /api/emploi-temps/sessions/jour, POST /api/emploi-temps/sessions/
+  semaine, GET /api/affectations, GET /api/classes, GET /api/annees-
+  scolaires/active.
+- Pages `app/(staff)/paie/page.tsx` et `app/(staff)/emploi-du-temps/
+  page.tsx` NON modifiées (routes RoleGuard intactes).
+
+### Responsive 100%
+- Mobile (<768px) : KPIs grid 2 colonnes, hero header flex-col (badge +
+  titre + pill + boutons d'action w-full en bas), filtres flex-col (Select
+  full-width), cartes mobile md:hidden avec actions icône-seules h-11 w-11
+  (touch target ≥ 44px), dialog footer grid-cols-2 (boutons full-width en
+  2 colonnes), padding p-4 via GlassCard adaptive, grille desktop hidden
+  md:block, vue mobile liste par jour visible.
+- Tablette (768-1023px) : KPIs grid 4 colonnes à md:768px, tableau desktop
+  visible md:block (boutons d'action "hidden lg:inline" → icône seule sur
+  md 768-1023), padding p-5 via GlassCard adaptive, filtres flex-row sm:
+  items-center, hero header flex-row sm:justify-between.
+- Desktop (1024px+) : KPIs grid 4 colonnes, tableau desktop avec boutons
+  d'action "hidden lg:inline" (icône + texte), GlassCard adaptive monte
+  en opacité 0.85, padding p-6, hero header p-6.
+
+### Palette Forêt EdTech
+- Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt EdTech :
+  - **emerald** (#047857) primaire : Total bulletins / Total avances /
+    Total créneaux KPI, badge rond gradient header emerald→gold, hover
+    row, boutons success, badges PAYE/DEDUITE, avatar emerald-600,
+    FormSectionTitle badge rond emerald/15 (paie), Jours actifs KPI
+    (emploi-temps, tone forest en fait — variant proche d'emerald),
+    boutons Marquer payé variant success, bouton Nouveau créneau variant
+    success, bouton Générer un bulletin variant success.
+  - **amber** (#F59E0B) secondaire : Brouillons KPI / Demandées KPI /
+    Volume hebdo KPI, badge VALIDE / DEMANDEE, alerte écart (TriangleAlert),
+    bouton Valider (border-amber-300 text-amber-700), alerte surcharge /
+    conflits (border-amber-300 bg-amber-100/80), pill Phase A/C (via
+    gradient emerald→gold du badge header), icônes InfoRow mobile.
+  - **gold** (#D4AF37) premium : Payés KPI / Salles distinctes KPI, salaire
+    net text-gold-dark dark:text-gold (paie), montant avance text-gold-dark
+    dark:text-gold, badge rond gradient header emerald→gold, badges net à
+    payer mobile gold/15.
+  - **terracotta** (#C2410C) danger chaud : Rejetées KPI (avances).
+  - **rose** (#e11d48) conservé pour badge REJETEE / RejeterAvanceDialog
+    (gradient rose→rose-700 pour la sémantique danger) / AlertDialog
+    suppression (bg-rose-600) / EmptyState erreur de chargement / alerte
+    erreur BulletinDetailDialog / bouton Rejeter (border-rose-300 text-
+    rose-700) / hover bg-rose-100 sur bouton supprimer (cohérent avec
+    /utilisateurs, /effectifs, /discipline, /enseignants).
+  - **forest** (#064E3B) profond : Validés KPI (paie) / Jours actifs KPI
+    (emploi-temps), text-forest sur titres font-display et valeurs
+    DetailItem et noms enseignant.
+  - **sky** conservé pour badge APPROUVEE / PAIRE (cohérent avec /emploi-
+    du-temps original — sémantique "semaine paire" / "avance approuvée").
+  - **slate** conservé pour badge BROUILLON / TOUTES (neutre).
+
+### TypeScript
+- **0 erreur sur paie-dashboard.tsx** (vérifié par `bunx tsc --noEmit 2>&1
+  | grep "paie-dashboard"` → 0 match).
+- **0 erreur sur emploi-temps-dashboard.tsx** (vérifié par `bunx tsc
+  --noEmit 2>&1 | grep "emploi-temps-dashboard"` → 0 match).
+- Les 15 erreurs tsc restantes sont toutes PRÉ-EXISTANTES sur d'autres
+  fichiers (login-form ×8, dashboard-shell ×3, view-parametres ×2,
+  etablissement-form-dialog ×1, instrumentation ×1) — aucune introduite
+  par cette refonte.
+
+### Lint
+- **0 erreur, 0 warning** sur les 2 fichiers (`bunx eslint src/components/
+  paie/paie-dashboard.tsx src/components/emploi-temps/emploi-temps-
+  dashboard.tsx` → EXIT=0).
+- **0 erreur, 0 warning** sur l'ensemble du projet (`bun run lint` →
+  EXIT=0).
+- NOTE : un warning `react-hooks/rules-of-hooks` a été détecté puis
+  corrigé pendant la refonte d'emploi-temps-dashboard (le `React.useMemo`
+  pour kpis était appelé après l'early return `if (!etablissement)`,
+  violant l'ordre des hooks). Fix : remplacement du `useMemo` par un
+  calcul inline (const kpis) — la liste reste petite (6 jours × N
+  créneaux), le coût est négligeable et on évite un hook conditionnel.
+  L'`eslint-disable react-hooks/exhaustive-deps` désormais inutile a été
+  retiré.
+
+### Points à vérifier par agent browser
+1. **Rendu /paie (onglet Bulletins)** :
+   - Hero header GlassCard desktop : KentePattern strip top en tête de
+     vue + badge rond size-12 gradient emerald→gold (Wallet size-6) +
+     titre font-display text-2xl font-bold text-forest "Paie enseignants"
+     + pill "Phase C" border-emerald-300 (Sparkles size-3) + description +
+     pill "{etablissement.nom}" emerald sous le sous-titre si un éta-
+     blissement est sélectionné + KentePattern separator après le hero
+     header.
+   - TabsList premium glass-desktop avec onglets Bulletins (Wallet) et
+     Avances (HandCoins), tab actif bg-emerald-600 text-white.
+   - Filtre mois/année GlassCard adaptive p-3 sm:p-4 avec icône
+     CalendarDays + Select mois/année bg-background + Badge emerald
+     renforcé compteur + bouton Actualiser + bouton "Générer un bulletin"
+     variant success.
+   - 4 StatCards en grid grid-cols-2 md:grid-cols-4 avec stagger :
+     Total bulletins (emerald/Wallet), Brouillons (amber/Clock), Validés
+     (forest/CheckCircle2), Payés (gold/Banknote, hint "net : {FCFA}").
+   - Tableau desktop (md:block) : GlassCard adaptive noHover noAnimation
+     p-0 + header bg-emerald-50/60 + colonne Enseignant avatar emerald-600
+     text-white size-9 + initiales + nom font-display + matricule mono +
+     Net text-gold-dark dark:text-gold font-bold + Statut Badge renforcé +
+     Actions 3 boutons ghost sm avec title natif + hidden lg:inline.
+   - Cartes mobile (md:hidden) : GlassCard mobile p-4 + avatar size-11 +
+     nom font-display + body InfoRows (période emerald/15, heures amber/15,
+     avances/cotis. rose/15, net à payer gold/15 + value text-gold-dark
+     font-mono font-bold) + footer boutons h-11 w-11.
+   - Dialogs premium : GenerateBulletinDialog (badge gradient emerald→gold
+     + Wallet + GlassCard tablet non + alerte amber + footer grid-cols-2 +
+     bouton Générer variant success), ValiderBulletinDialog (badge gradient
+     + CheckCircle2 + GlassCard tablet récap brut/avances + alerte emerald
+     net à payer + bouton Valider variant success), PayerBulletinDialog
+     (badge gradient + Banknote + GlassCard tablet récap net à payer +
+     bouton Confirmer variant success), BulletinDetailDialog (badge
+     gradient + Wallet + GlassCard tablet en-tête enseignant avatar
+     emerald-600 + GraduationCap + GlassCard tablet p-0 calcul salaire 5
+     lignes + salaire net text-gold-dark + DetailItems en grid sm:grid-
+     cols-4 + GlassCard tablet notes).
+2. **Rendu /paie (onglet Avances)** : même pattern que Bulletins.
+   - 4 StatCards : Total avances (emerald/HandCoins), Demandées (amber/
+     Clock, hint "montant : {FCFA}"), Approuvées (sky/ThumbsUp), Rejetées
+     (terracotta/ThumbsDown).
+   - Tableau desktop enrichi avec avatar emerald-600 + Montant text-gold-
+     dark font-bold + Actions Approuver (variant outline emerald renforcé
+     + ThumbsUp) / Rejeter (variant outline rose renforcé + ThumbsDown).
+   - Cartes mobile avec actions icône-seules ThumbsUp emerald / ThumbsDown
+     rose (Loader2 si approuverPending).
+   - Dialogs premium : CreateAvanceDialog (badge gradient + HandCoins +
+     EnseignantSelect bg-background + Input montant bg-background +
+     Textarea motif bg-background + bouton Enregistrer variant success),
+     RejeterAvanceDialog (badge gradient ROSE→rose-700 + ThumbsDown +
+     GlassCard tablet motif demande + Textarea motif rejet bg-background
+     + bouton Confirmer le rejet variant destructive).
+3. **Rendu /emploi-du-temps** :
+   - Hero header GlassCard desktop : KentePattern strip top + badge rond
+     size-12 gradient emerald→gold (CalendarDays size-6) + titre font-
+     display text-2xl font-bold text-forest "Emploi du temps" + pill
+     "Phase A" + description + pill établissement + boutons "Sessions du
+     jour" / "Générer la semaine" / "Nouveau créneau" (variant success)
+     + KentePattern separator.
+   - Filtre classe GlassCard adaptive avec icône CalendarRange + Select
+     classe bg-background avec icône School + bouton Actualiser.
+   - 4 StatCards : Total créneaux (emerald/CalendarDays), Jours actifs
+     (forest/CalendarCheck), Volume hebdo (amber/Clock, value "{vol} h"),
+     Salles distinctes (gold/MapPin).
+   - Grille desktop (md:block) : GlassCard adaptive noHover noAnimation
+     p-3 sm:p-4 + en-têtes jours bg-emerald-50/60 + libellés font-display
+     + créneaux absolus avec bordure couleur matière + pastille couleur
+     + libellé matière break-words text-forest + icônes UserIcon/MapPin
+     en mt-0.5 + horaires mono + Badge SEMAINE_TYPE_BADGE (P/I) + bouton
+     supprimer compact size-5 + hover lift (motion.div y: -1).
+   - Vue mobile (md:hidden) : GlassCard mobile par jour + créneaux en
+     cards mini avec pastille couleur size-2.5 + libellé matière break-
+     words text-forest + InfoRows (horaires ClockIcon, enseignant
+     UserIcon mt-0.5, salle MapPin, Badge Paire/Impaire) + bouton
+     supprimer h-11 w-11.
+   - AlertDialog suppression : structure existante conservée avec
+     boutons Annuler / Supprimer (bg-rose-600 text-white hover:bg-rose-700
+     + Loader2 si deleting + Trash2 sinon).
+   - Dialog créer créneau premium : badge gradient + CalendarDays +
+     Select affectation bg-background (Skeleton si loading, message si
+     aucune affectation) + aperçu affectation en break-words muted +
+     Select jour bg-background avec icône CalendarDays + Inputs heure
+     début/fin bg-background + Input salle bg-background + Select semaine
+     type bg-background + alerte conflits amber renforcée (border-amber-300
+     bg-amber-100/80 + AlertTriangle + liste CONFLIT_LABEL) + footer grid-
+     cols-2 + bouton Annuler/Fermer variant outline + bouton Créer variant
+     success.
+4. **Empty states premium** (3 cas × 2 fichiers) :
+   - Pas d'établissement : GlassCard adaptive + KentePattern bg + badge
+     rond amber size-12 + AlertCircle size-6 + titre font-display
+     "Sélectionnez un établissement" + description (sans pill éta-
+     blissement dans le hero header, sans bouton d'action).
+   - Erreur de chargement : GlassCard adaptive + KentePattern bg + badge
+     rond rose size-12 + AlertCircle size-6 + titre "Erreur de chargement"
+     + description = error.message + bouton "Réessayer" variant outline
+     avec icône RefreshCw.
+   - Aucun bulletin / Aucune avance / Aucun créneau : GlassCard adaptive
+     + KentePattern bg + badge rond emerald size-12 + Wallet/HandCoins/
+     CalendarDays size-6 + titre + description + bouton contextuel
+     variant success (Générer un bulletin / Nouvelle avance / Nouveau
+     créneau).
+5. **Loading state premium** : GlassCard adaptive noHover noAnimation p-0
+   + KentePattern strip top + Skeletons (paie : 6 × h-14 ; emploi-temps :
+   1 × h-10 + 6 × h-20).
+6. **Mobile (<768px)** : KPIs grid 2 colonnes, filtres flex-col, hero
+   header flex-col avec boutons d'action w-full en bas, cartes mobile
+   md:hidden avec actions icône-seules h-11 w-11, dialog footer grid-
+   cols-2 (boutons full-width en 2 colonnes), padding p-4 via GlassCard
+   adaptive.
+7. **Desktop (1024px+)** : KPIs grid 4 colonnes, filtres flex-row sm:
+   items-center, hero header flex-row sm:justify-between (boutons sm:w-
+   auto à droite), tableau desktop md:block avec boutons d'action "hidden
+   lg:inline" (icône + texte), GlassCard adaptive monte en opacité 0.85,
+   padding p-6, hero header p-6.
+8. **Contrastes** : badges border-300 bg-100 text-800 (PAS border-200 bg-50
+   text-700) pour STATUT_BULLETIN_BADGE (BROUILLON slate, VALIDE amber,
+   PAYE emerald), STATUT_AVANCE_BADGE (DEMANDEE amber, APPROUVEE sky,
+   REJETEE rose, DEDUITE emerald), SEMAINE_TYPE_BADGE (TOUTES slate, PAIRE
+   sky, IMPAIRE amber), badges compteurs (emerald renforcé) ; boutons
+   success (gradient emerald from-emerald-600 to-emerald-700) sur Générer
+   un bulletin / Nouvelle avance / Nouveau créneau / submit dialogs ;
+   bouton Rejeter variant destructive (rose) ; salaire net et montant
+   avance text-gold-dark dark:text-gold (gold family, contraste AA en
+   mode clair grâce à gold-dark #B8941F).
+9. **Animation** : StatCards avec stagger delay 0/0.05/0.1/0.15 (via DS) ;
+   BulletinRow / AvanceRow (motion.tr) avec stagger delay index*0.02 capé
+   à 0.4s ; BulletinMobileCard / AvanceMobileCard (motion.div wrapper)
+   avec stagger delay index*0.05 capé à 0.4s ; DesktopCreneauCard
+   (motion.div) avec whileHover y: -1 ; MobileCreneauRow (motion.div
+   wrapper) avec stagger delay index*0.03 capé à 0.3s ; usePrefersReduced-
+   Motion respecté — animations désactivées si l'utilisateur préfère
+   réduire les animations (motionProps = {} si prefersReducedMotion).
+10. **Comportement métier** : filtre mois/année (BulletinsTab) avec
+    défaut = période courante ; filtre statut (AvancesTab) avec "all" par
+    défaut ; bouton "Générer un bulletin" ouvre GenerateBulletinDialog →
+    generateMutation.mutate → POST /api/paie/bulletins/generate (toast
+    warning si alerte_ecart) ; bouton Valider ouvre ValiderBulletinDialog
+    → validerMutation.mutate (POST /api/paie/bulletins/:id/valider) ;
+    bouton Marquer payé ouvre PayerBulletinDialog → payerMutation.mutate
+    (POST /api/paie/bulletins/:id/payer) ; bouton Détail ouvre
+    BulletinDetailDialog (useQuery fetchBulletin si bulletin non null) ;
+    bouton "Nouvelle avance" ouvre CreateAvanceDialog → createMutation
+    .mutate (POST /api/paie/avances) ; bouton Approuver → traiterMutation
+    .mutate (POST /api/paie/avances/:id/traiter avec approuver: true) ;
+    bouton Rejeter ouvre RejeterAvanceDialog → traiterMutation.mutate
+    (approuver: false + motif_rejet). Emploi-temps : bouton "Sessions du
+    jour" → genJourMutation.mutate (POST /api/emploi-temps/sessions/jour
+    avec todayISO) ; bouton "Générer la semaine" → genSemaineMutation
+    .mutate (POST /api/emploi-temps/sessions/semaine) ; bouton "Nouveau
+    créneau" ouvre NewCreneauDialog → createMutation.mutate (POST /api/
+    emploi-temps/creneaux, toast warning si conflits) ; bouton supprimer
+    créneau → AlertDialog → deleteMutation.mutate (DELETE /api/emploi-
+    temps/creneaux/:id) ; filtre classe (classeFiltre = "all" ou classe
+    id) → useQuery fetchCalendrier(classeId). Préselection automatique
+    du formulaire à l'ouverture (DEFAULT_FORM). Validation : affectation
+    requise + horaire fin > heure début (emploi-temps) ; enseignant +
+    montant > 0 (avance) ; cotisations >= 0 (valider bulletin) ;
+    référence >= 2 caractères (payer bulletin) ; motif rejet >= 3
+    caractères (rejeter avance).
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.
