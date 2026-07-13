@@ -14831,3 +14831,463 @@ Total : 3758 → 4080 lignes (+322 lignes).
     slate renforcés (Ouverture grand livre).
 
 ### NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+
+## Task 22 — Refonte formulaire public /pre-inscription (ScolaGest — Forêt EdTech)
+
+Date : 2025-01 (Task 22 — vague de refontes ScolaGest, agent frontend-styling-expert).
+
+### Fichier modifié (1)
+- `/home/z/my-project/scolagest/Frontend/src/components/pre-inscription/pre-inscription-form.tsx`
+  (1089 → 2291 lignes, +1202 lignes). Refonte complète : transformation
+  du formulaire long mono-page en **wizard 5 étapes** engageant
+  mobile-first, avec hero incarné, stepper visuel, validation par étape,
+  animations Framer Motion, écran de succès soigné.
+
+### Fichiers lus (référence DS + refontes précédentes)
+- `/home/z/my-project/scolagest/worklog.md` (dernières ~2500 lignes) —
+  rapports Task 4 view-comptabilite / Task 19 caisse / patterns hero
+  header GlassCard desktop + KentePattern strip + badge rond gradient
+  emerald→gold + StatCards + TabsList premium + motion.tr stagger +
+  EmptyState premium + LoadingState premium + bugs à éviter (pas de
+  Tooltip Radix → title natif / pas de truncate → break-words leading-
+  snug / pas de bouton dans bouton / font-size 16px minimum / toast
+  useToast() / cascade Cycle→Niveau→Classe intacte / détection fratrie
+  debounce 500ms intact / construction DTO intacte).
+- `/home/z/my-project/scolagest/Frontend/src/components/pre-inscription/
+  pre-inscription-form.tsx` (1089 lignes, fichier original) — lu
+  intégralement.
+- `/home/z/my-project/scolagest/Frontend/src/components/ds/glass-card.tsx`
+  (GlassCard : variants mobile/tablet/desktop/premium/adaptive, props
+  noHover/noAnimation/delay/premiumBorder, role=button si onClick).
+- `/home/z/my-project/scolagest/Frontend/src/components/ds/kente-pattern.tsx`
+  (KentePattern : variants strip/bg/border/separator, positions
+  top/bottom/custom).
+- `/home/z/my-project/scolagest/Frontend/src/components/inscription/
+  inscription-wizard.tsx` (713 lignes — pattern de référence : wizard
+  multi-étapes + StepIndicator avec cercles Done/Current/Pending +
+  lignes gradient emerald→amber + AnimatePresence motion.div slide +
+  navigation sticky mobile + SuccessView premium avec GlassCard
+  premiumBorder + KentePattern bg + bandeau gradient + PartyPopper
+  animé spring + InfoRow 2 colonnes).
+- `/home/z/my-project/scolagest/Frontend/src/hooks/use-prefers-reduced-
+  motion.ts` (SSR-safe, retourne `false` au premier rendu).
+- `/home/z/my-project/scolagest/Frontend/src/lib/api-pre-inscription.ts`
+  (types PreInscription / PreInscriptionDTO / SubmitResult /
+  TuteurFratrieResult / searchTuteurByPhone / submitPreInscription —
+  intacts).
+- `/home/z/my-project/scolagest/Frontend/src/components/ui/button.tsx`
+  (variants success/premium/terracotta/gold/forest + size xl).
+
+### Refonte `pre-inscription-form.tsx` — 7 axes d'amélioration
+
+#### 1. Hero engageant (le hook)
+- Remplacement du header plat par un **hero plein largeur** avec :
+  - `KentePattern variant="strip" position="top"` en bandeau supérieur.
+  - Fond dégradé emerald-600 → emerald-700 → amber-600 (gradient
+    diagonal) + `KentePattern variant="bg"` en surcouche décorative.
+  - **Rang 1** : logo ScolaGest (40×40, ring blanc, shadow) + label
+    "ScolaGest / Pré-inscription en ligne" + pill "⏱ 3 min" en haut à
+    droite (border-white/30 bg-white/15 backdrop-blur + icône Clock).
+  - **Rang 2** : titre incarné `font-display text-2xl font-bold tracking-
+    tight sm:text-3xl` "Offrez à votre enfant une rentrée réussie" +
+    sous-titre court rassurant "Pré-inscrivez votre enfant en quelques
+    minutes. Le secrétariat étudie votre demande et vous répond sous
+    48h.".
+  - **Rang 3** : 3 badges de réassurance via composant `ReassuranceBadge`
+    (border-white/30 bg-white/15 backdrop-blur + Check amber + icône
+    contextuelle + label) : "Réponse sous 48h" (Clock) · "100% en ligne"
+    (CheckCircle2) · "Gratuit" (ShieldCheck).
+
+#### 2. Wizard 5 étapes (levier n°1 d'engagement)
+- Transformation des 6 Card mono-page en **5 étapes** :
+  1. **Établissement** (School) — Sélection + info catégorie Affecté/Non
+     affecté.
+  2. **Élève** (User) — Nom, prénoms, date/lieu naissance, sexe,
+     catégorie.
+  3. **Tuteur** (Users) — Nom, prénoms, téléphone, email, lien parenté
+     + détection fratrie.
+  4. **Classe & infos** (BookOpen) — Cascade cycle/niveau/classe
+     visuelle + ancien établissement + allergies + notes santé + notes
+     parent.
+  5. **Confirmation** (ClipboardCheck) — Récapitulatif + soumission.
+- **Stepper visuel** (composant `Stepper`) : GlassCard desktop
+  noHover noAnimation p-3 sm:p-4 + 5 cercles numérotés (size-9 mobile /
+  size-10 desktop) avec états Done (border-emerald-600 bg-emerald-600
+  text-white + Check), Current (border-emerald-600 bg-emerald-50 text-
+  emerald-700 ring-4 ring-emerald-500/15 + pulse animate-ping), Pending
+  (border-muted bg-background text-muted-foreground). Lignes de
+  progression `bg-gradient-to-r from-emerald-500 to-amber-500` entre
+  étapes done. Mobile : mode compact (cercles + labels courts
+  "Étab./Élève/Tuteur/Classe/Récap"). **Scrollable horizontalement** sur
+  mobile (overflow-x-auto). Badge établissement emerald affiché dans le
+  stepper dès l'étape 2 si sélectionné (custom "Établissement : [nom]"
+  en badge emerald renforcé avec icône School).
+- **Barre de progression** sous le stepper : "Étape X sur 5 — [Label]" à
+  gauche + pourcentage à droite + barre `h-1.5` avec segment `bg-
+  gradient-to-r from-emerald-500 to-amber-500` animé via Framer Motion
+  (width: `${(step/5)*100}%`, transition 0.4s ease — effet Zeigarnik).
+- **Une seule section visible à la fois** via `AnimatePresence mode=
+  "wait" initial={false}` + `motion.div key={step}` avec animation
+  slide horizontal + fade (`initial: { opacity: 0, x: 24 }`, `animate:
+  { opacity: 1, x: 0 }`, `exit: { opacity: 0, x: -24 }`, transition
+  0.3s ease). Respect `prefersReducedMotion` (seul le fade reste).
+- **Validation par étape** : `step1Valid` (etablissementId), `step2Valid`
+  (eleveNom + eleveSexe + catégorie si applicable), `step3Valid`
+  (tuteurNom + tuteurTelephone), `step4Valid` (true, tous champs
+  optionnels), `step5Valid` (isValid global). Bouton "Continuer"
+  `disabled={!stepValidMap[step]}` — l'utilisateur ne peut pas avancer
+  tant que l'étape courante n'est pas valide (erreurs immédiates, pas à
+  la soumission finale). `isValid` global (memo) conservé à l'identique
+  pour la soumission finale (étape 5).
+- **Navigation** : bouton "Précédent" (variant outline + ChevronLeft)
+  disabled si step===1 ; indicateur "Étape X sur 5" centré ; bouton
+  "Continuer" (variant success + ChevronRight) sur étapes 1-4 ; bouton
+  "Soumettre la pré-inscription" (variant success + Send ou Loader2 si
+  pending) sur étape 5. **Auto scroll-to-top** sur changement d'étape
+  (window.scrollTo smooth).
+- **Sticky mobile** : la barre de navigation est `sticky bottom-0 z-20
+  -mx-4 border-t border-emerald-100/60 bg-background/85 px-4 py-3
+  backdrop-blur-md sm:static sm:mx-0 sm:border-0 sm:bg-transparent
+  sm:px-0 sm:py-0 sm:backdrop-blur-none` — visible en permanence en bas
+  sur mobile, intégrée au flux sur desktop.
+
+#### 3. Micro-interactions et feedback visuel
+- **Composant `ValidatedInput`** : Input wrapper avec `pr-9` + coche
+  verte `CheckCircle2` (text-emerald-600) en absolute right-2.5 quand
+  `isValid && value.trim().length > 0`. Utilisé sur les champs requis
+  (eleveNom, tuteurNom) — validation en temps réel visible.
+- **Champs avec icônes** : Calendar (date naissance), MapPin (lieu
+  naissance + ville établissement), Phone (téléphone), Mail (email),
+  School (ancien établissement), HeartPulse (allergies) — tous en
+  `pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-
+  1/2 text-muted-foreground`.
+- **Téléphone tuteur** : icône Phone à gauche + zone droite dynamique
+  (Loader2 animé si fratrieFetching, sinon CheckCircle2 emerald si
+  ≥ 8 caractères valides).
+- **États de focus soignés** : tous les inputs/selects utilisent `h-11
+  text-base sm:h-10 sm:text-sm` (16px minimum mobile pour éviter le
+  zoom iOS).
+- **Clavier adapté** : `type="tel" inputMode="tel"` (téléphone),
+  `type="email" inputMode="email"` (email), `inputMode="numeric"`
+  (date naissance), `autoComplete` approprié (family-name, given-name,
+  tel, email).
+- **Pulse subtil** sur l'étape courante du stepper
+  (`animate-ping rounded-full border-2 border-emerald-500/40`) —
+  désactivé si prefersReducedMotion.
+
+#### 4. Rassurer sur les données sensibles (santé)
+- Section santé dans un bloc dédié avec :
+  - `border border-emerald-200 bg-emerald-50/40 dark:border-emerald-
+    900/40 dark:bg-emerald-950/15` (fond légèrement emerald/5-10% pour
+    rassurer).
+  - Badge rond size-8 bg-emerald-100 text-emerald-700 avec icône **Lock**
+    (cadenas).
+  - Titre "Informations de santé (confidentielles)" + phrase courte :
+    "Ces informations restent confidentielles et ne sont accessibles
+    qu'à l'infirmerie et à la direction." (text-[11px] text-emerald-
+    800/80).
+  - 3 champs : ancien établissement (School), allergies (HeartPulse),
+    notes santé (Textarea).
+
+#### 5. Personnalisation contextuelle
+- **Badge établissement dans le stepper** : une fois l'établissement
+  choisi (étape ≥ 2), affichage dans le Stepper d'un badge emerald
+  renforcé "Établissement : [nom]" avec icône School (border-emerald-300
+  bg-emerald-100 text-emerald-800).
+- **Sélection établissement en cartes visuelles** (étape 1) : liste de
+  boutons radio-cards (un par établissement) avec icône School dans
+  badge rond size-11 (bg-emerald-600 text-white si sélectionné, sinon
+  bg-emerald-100 text-emerald-700), nom font-display text-sm font-
+  semibold text-forest, ville avec MapPin, CheckCircle2 emerald à
+  droite si sélectionné. Border-2 + ring-2 ring-emerald-500/20 sur
+  sélection.
+- **Classes en cartes visuelles** (étape 4) : la cascade Cycle/Niveau
+  reste en Select (2 colonnes sm:grid-cols-2), mais la sélection de la
+  classe se fait via une **grille de cartes visuelles** (sm:grid-cols-2)
+  plutôt qu'un select plat. Chaque carte affiche : icône BookOpen dans
+  badge coloré selon le cycle (palette `CYCLE_TONES` : emerald / amber /
+  terracotta / sky / gold par index de cycle), libellé classe (font-
+  medium), "Niveau X · Examen" si applicable. Une carte "Non précisée"
+  en pointillés est proposée en première option. CheckCircle2 emerald à
+  droite si sélectionné. Compteur "X classes disponibles" au-dessus.
+- **Hint catégorie** : si l'établissement applique la distinction
+  Affecté/Non affecté, hint visuel en étape 1 (border-amber-300 bg-
+  amber-100/80 text-amber-800 avec icône Sparkles) + InfoRow dédiée en
+  étape 5 "Distinction Affecté/Non affecté active pour cet
+  établissement".
+
+#### 6. Écran de confirmation (étape 5) soigné
+- Récapitulatif structuré en 4 blocs `RecapBlock` (GlassCard-like avec
+  border-emerald-100 bg-background/60) :
+  1. **Élève** (User) — Nom complet, date/lieu naissance, sexe, catégorie
+     si applicable.
+  2. **Tuteur / Parent** (Users) — Nom complet, téléphone, email, lien
+     parenté.
+  3. **Établissement & classe** (School) — Établissement (nom + ville),
+     classe souhaitée, distinction si applicable.
+  4. **Santé & notes** (HeartPulse) — Affiché uniquement si au moins un
+     champ renseigné (ancien établissement, allergies, notes santé,
+     notes parent).
+- Chaque bloc a un bouton **"Modifier"** (variant outline border-
+  emerald-300 text-emerald-800 h-8) qui ramène à l'étape concernée
+  (`goToStep(2/3/1/4)`). Désactivé pendant la soumission.
+- Alerte finale emerald (border-emerald-300 bg-emerald-100/70) avec
+  ShieldCheck : "En soumettant, vous acceptez que vos données soient
+  traitées pour instruire votre demande. Le secrétariat vous contactera
+  au [téléphone] sous 48h."
+
+#### 7. Écran de succès soigné (SuccessScreen enrichi)
+- **Fond décoratif** : `KentePattern variant="strip" position="top"` +
+  `KentePattern variant="bg"` en surcouche de la GlassCard.
+- **GlassCard desktop premiumBorder noHover noAnimation p-0** (effet
+  carte de réussite gold).
+- **Bandeau succès** : gradient emerald-600 → emerald-600 → amber-500
+  + icône `CheckCircle2` (size-10) dans un badge rond size-20
+  bg-white/25 ring-4 ring-white/30 backdrop-blur avec **animation
+  spring Framer Motion** (`initial: { scale: 0 }`, `animate: { scale:
+  1 }`, `transition: { delay: 0.2, type: "spring", stiffness: 200,
+  damping: 12 }` — scale + bounce).
+- Titre `font-display text-2xl font-bold sm:text-3xl` "Pré-inscription
+  envoyée !" + message personnalisé avec nom de l'enfant.
+- **Récap court** : carte emerald (border-emerald-200 bg-emerald-50/60)
+  avec grille 2 colonnes d'InfoRow (Élève / Établissement / Classe
+  souhaitée / Soumise le).
+- **Message rassurant** : bloc amber (border-amber-300 bg-amber-100/80)
+  avec icône Phone : "Le secrétariat vous contactera au [téléphone]
+  sous 48h pour finaliser l'inscription."
+- **Numéro de dossier** (token de suivi) bien mis en évidence : bloc
+  border-2 border-dashed border-emerald-300 bg-emerald-50/40 p-3 avec
+  icône IdCard + token en `font-mono text-base font-semibold text-
+  emerald-800 select-all` (le parent peut le sélectionner/copier
+  facilement).
+- **Boutons** : "Suivre ma demande" (variant success, h-11 flex-1,
+  asChild + Link) + "Copier le lien" (variant outline, h-11, title
+  natif). Lien de suivi affiché en `break-all bg-muted/30 p-2 text-[11px]`
+  en bas.
+- Lien retour "Faire une nouvelle pré-inscription" (variant ghost).
+
+#### 8. Mobile-first
+- **Boutons larges** : tous les boutons de navigation sont `h-11` sur
+  mobile (44px, conforme Apple HIG) `text-base`, `sm:h-10 sm:text-sm`
+  sur desktop.
+- **Inputs 16px** : tous les Input/SelectTrigger sont `h-11 text-base
+  sm:h-10 sm:text-sm` (16px minimum mobile → pas de zoom iOS au focus).
+- **Types clavier adaptés** : `type="tel" inputMode="tel"`,
+  `type="email" inputMode="email"`, `inputMode="numeric"` pour la date.
+- **Stepper scrollable** : `overflow-x-auto` sur le conteneur du
+  Stepper mobile.
+- **Navigation sticky** : `sticky bottom-0 z-20 -mx-4 border-t border-
+  emerald-100/60 bg-background/85 px-4 py-3 backdrop-blur-md` sur
+  mobile, `sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0
+  sm:py-0 sm:backdrop-blur-none` sur desktop. Boutons full-width sur
+  mobile (`w-full`), auto sur desktop (`sm:w-auto`).
+- **Pas de débordement horizontal** : conteneur principal `overflow-x-
+  hidden`, max-w-3xl mx-auto, px-4 mobile / px-6 desktop. Tous les
+  textes longs utilisent `break-words leading-snug` (pas de truncate,
+  conforme BUGS À ÉVITER #2).
+
+### Conservations obligatoires (logique métier) — toutes préservées
+- **Imports API** : `@/lib/api-pre-inscription` (searchTuteurByPhone,
+  submitPreInscription, CategorieEleve, LienParente, PreInscriptionDTO,
+  SexeEleve, SubmitResult, TuteurFratrieResult) ; `@/lib/api-students`
+  (classesKeys, cyclesKeys) ; `@/lib/api-client` (apiGet, ApiError) ;
+  `@/lib/auth-store` (type Etablissement uniquement, pas de useAuth-
+  Store) ; `@/lib/types` (Classe, Cycle). Tous intacts.
+- **Hooks React Query** : `["public-etablissements"]` (fetchEtablisse-
+  ments, skipAuth, staleTime 5min), `cyclesKeys.list(etablissementId)`
+  (skipAuth, enabled etablissementId, retry false), `classesKeys.list(
+  etablissementId)` (skipAuth, enabled etablissementId, retry false),
+  `["public-fratrie", debouncedTelephone]` (searchTuteurByPhone,
+  enabled debouncedTelephone ≥ 8, retry false, staleTime 60s). Tous
+  intacts.
+- **Cascade Cycle → Niveau → Classe** : refs `prevCycle` / `prevNiveau`
+  + useEffect de reset niveau/classe quand cycle change, reset classe
+  quand niveau change. `availableNiveaux` (sorted unique) +
+  `filteredClasses` (filtre cycle + niveau). Tous intacts.
+- **Détection fratrie** : debounce 500ms sur `tuteurTelephone` →
+  `debouncedTelephone` → `fratrieQuery` (enabled ≥ 8 chars, retry
+  false) → `FratrieBanner` affiché si `fratrieResult.found && tuteur`.
+  `handlePrefillTuteur` remplit tuteurNom/tuteurPrenoms/tuteurEmail/
+  tuteurLienParente (validation lien_parente contre liste PERE/MERE/
+  TUTEUR_LEGAL/AUTRE) + toast. Tous intacts.
+- **Mutation submitPreInscription** : `mutationFn: (dto) =>
+  submitPreInscription(dto)`, `onSuccess` (setSuccess + scroll-to-top
+  + toast), `onError` (ApiError → toast destructif). Intacte.
+- **Validation `isValid`** : memo React.useMemo avec conditions
+  originales (etablissementId + eleveNom + eleveSexe + catégorie si
+  applicable + tuteurNom + tuteurTelephone). Conservé à l'identique,
+  utilisé pour la soumission finale (étape 5) et `step5Valid`.
+- **DTO `PreInscriptionDTO`** : construction à l'identique dans
+  `handleSubmit` (etablissement_id, eleve_nom, eleve_prenoms,
+  eleve_date_naissance, eleve_lieu_naissance, eleve_sexe, eleve_catego-
+  rie, eleve_ancien_etablissement, eleve_allergies, eleve_notes_sante,
+  tuteur_nom, tuteur_prenoms, tuteur_telephone, tuteur_email,
+  tuteur_lien_parente, classe_id, notes_parent). Tous les champs
+  optionnels utilisent `.trim() || undefined` comme l'original.
+- **Handlers** : `handleSubmit`, `handlePrefillTuteur`, `handleCopyLien`
+  strictement conservés. Ajout de `next`, `prev`, `goToStep` pour la
+  navigation wizard.
+- **`FratrieBanner`** : signature `(result, onPrefill)` conservée,
+  style enrichi (badge rond emerald-600 au lieu de emerald-100, badge
+  renforcé border-300/bg-100/text-800, button h-9 border-emerald-300).
+- **`SuccessScreen`** : signature `(result, onCopy)` conservée, visuel
+  enrichi (GlassCard premiumBorder + KentePattern bg + bandeau gradient
+  + icône animée spring + récap InfoRow + message rassurant + numéro
+  de dossier dashed + boutons h-11).
+- **Page `app/pre-inscription/page.tsx`** : NON modifiée (intacte).
+- **Endpoints backend** : `/api/etablissements`, `/api/cycles`,
+  `/api/classes`, `/api/public/pre-inscriptions`,
+  `/api/public/pre-inscriptions/search-tuteur` — tous intacts.
+
+### Bugs à éviter — vérifications
+1. ✅ **Pas de Tooltip Radix** → tous les éléments interactifs utilisent
+   `title` natif (cartes établissement, cartes classe, bouton Modifier,
+   bouton Copier le lien, pill "3 min", bouton Pré-remplir).
+2. ✅ **Pas de truncate** → tous les libellés utilisent `break-words
+   leading-snug` (titres hero, descriptions SectionHeader, noms
+   d'établissements, libellés de classes, token de suivi, messages
+   d'alerte, notes).
+3. ✅ **Pas de bouton imbriqué dans un bouton** → les cartes établisse-
+   ment/classe sont des `<button type="button">` indépendants (pas
+   dans un bouton parent), le bouton "Modifier" du RecapBlock est dans
+   un `<div>` header séparé du body.
+4. ✅ **font-size 16px minimum sur inputs** → tous les Input/Select-
+   Trigger/Textarea utilisent `h-11 text-base sm:h-10 sm:text-sm` (ou
+   `text-base sm:text-sm` pour le Textarea) — 16px sur mobile, 14px
+   sur desktop.
+5. ✅ **toast useToast()** → `const { toast } = useToast();` présent
+   dans PreInscriptionForm (utilisé dans handlePrefillTuteur,
+   mutation onSuccess/onError, handleCopyLien).
+6. ✅ **Cascade Cycle → Niveau → Classe** → refs prevCycle/prevNiveau
+   + useEffect de reset + availableNiveaux + filteredClasses + cycle-
+   ToneById (map cycle_id → tone) — tous préservés.
+7. ✅ **Détection fratrie** → debounce 500ms + fratrieQuery (enabled
+   ≥ 8, retry false) + FratrieBanner + handlePrefillTuteur — tous
+   préservés.
+8. ✅ **Construction DTO PreInscriptionDTO** → identique à l'original,
+   tous les champs avec `.trim() || undefined` pour les optionnels.
+9. ✅ **Imports DS** : `GlassCard` (composants Stepper, conteneur
+   étape, SuccessScreen), `KentePattern` (strip top hero, bg hero, bg
+   SuccessScreen), `motion` + `AnimatePresence` (transitions étapes,
+   barre de progression, SuccessScreen), `usePrefersReducedMotion`
+   (Stepper, PreInscriptionForm, SuccessScreen). Tous utilisés.
+10. ✅ **`import * as React from "react"`** conservé.
+11. ✅ **Pas de `any`** ajouté. Type `Record<string, (typeof CYCLE_
+    TONES)[number]>` pour cycleToneById. Types `LucideIcon` pour les
+    icônes des SectionHeader / InfoRow / ReassuranceBadge / RecapBlock.
+
+### TypeScript
+- **0 erreur** sur le fichier refondu (vérifié par `bunx tsc --noEmit
+  2>&1 | grep "pre-inscription-form"` → 0 match). Les 13 erreurs tsc
+  restantes sont toutes pré-existantes sur d'autres fichiers (login-
+  form ×8, dashboard-shell ×3, etablissement-form-dialog ×1,
+  instrumentation ×1) — aucune introduite par cette refonte.
+
+### Lint
+- **0 erreur, 0 warning** sur le fichier (`bunx eslint --max-warnings=0
+  src/components/pre-inscription/pre-inscription-form.tsx` → EXIT=0).
+- **0 erreur, 0 warning** sur l'ensemble du projet (`bun run lint` →
+  EXIT=0).
+
+### Points à vérifier par agent browser
+1. **Hero header engageant** : KentePattern strip top + bandeau
+   gradient emerald-600 → emerald-700 → amber-600 + KentePattern bg
+   décoratif + logo ScolaGest 40×40 + pill "⏱ 3 min" border-white/30
+   bg-white/15 backdrop-blur en haut à droite + titre `font-display
+   text-2xl font-bold sm:text-3xl` "Offrez à votre enfant une rentrée
+   réussie" + sous-titre + 3 ReassuranceBadges (Réponse sous 48h /
+   100% en ligne / Gratuit) avec icônes Clock / CheckCircle2 /
+   ShieldCheck.
+2. **Stepper visuel** : 5 cercles numérotés (School/User/Users/
+   BookOpen/ClipboardCheck) avec états Done (emerald-600 plein +
+   Check), Current (border emerald + ring-4 + pulse animate-ping),
+   Pending (border-muted). Lignes gradient emerald→amber entre étapes
+   done. Scrollable horizontalement sur mobile (overflow-x-auto).
+   Badge "Établissement : [nom]" en emerald renforcé visible dès
+   l'étape 2 si établissement sélectionné.
+3. **Barre de progression** : "Étape X sur 5 — [Label]" + pourcentage +
+   barre h-1.5 animée gradient emerald→amber (Framer Motion width
+   animé à chaque changement d'étape).
+4. **Étape 1 — Établissement** : liste de cartes-boutons (une par
+   établissement) avec icône School dans badge rond size-11 (emerald-600
+   si sélectionné, sinon emerald-100), nom font-display, ville avec
+   MapPin, CheckCircle2 emerald si sélectionné. Hint amber renforcé
+   si applique_categorie_affecte.
+5. **Étape 2 — Élève** : SectionHeader User + grille 2 colonnes sm +
+   champs Nom (ValidatedInput avec coche verte) / Prénoms / Date
+   naissance (Input type=date inputMode=numeric + icône Calendar) /
+   Lieu naissance (Input + icône MapPin) / Sexe (Select required) /
+   Catégorie (Select required si appliqueCategorie). Tous les inputs
+   h-11 text-base sm:h-10 sm:text-sm.
+6. **Étape 3 — Tuteur** : SectionHeader Users + grille 2 colonnes +
+   champs Nom (ValidatedInput) / Prénoms / Téléphone (Input type=tel
+   inputMode=tel + icône Phone + zone droite dynamique : Loader2 si
+   recherche fratrie en cours, sinon CheckCircle2 emerald si ≥ 8
+   caractères) / Email (Input type=email inputMode=email + icône Mail)
+   / Lien de parenté (Select PERE/MERE/TUTEUR_LEGAL/AUTRE) +
+   FratrieBanner premium (badge rond emerald-600 + Sparkles + badges
+   enfants renforcés + bouton "Pré-remplir mes informations" h-9
+   border-emerald-300) si tuteur reconnu.
+7. **Étape 4 — Classe & infos** : SectionHeader BookOpen + cascade
+   Cycle/Niveau en 2 Selects (h-11 text-base) + grille de cartes
+   visuelles pour la classe (carte "Non précisée" en pointillés +
+   cartes classes avec icône BookOpen colorée selon CYCLE_TONES
+   [emerald/amber/terracotta/sky/gold] + libellé + "Niveau X · Examen"
+   + CheckCircle2 si sélectionné). Section santé en bloc dédié (border
+   emerald-200 bg-emerald-50/40 + badge rond emerald avec icône Lock
+   + titre "Informations de santé (confidentielles)" + phrase "Ces
+   informations restent confidentielles…") avec champs ancien
+   établissement / allergies / notes santé (Textarea). Notes parent
+   (Textarea) en bas.
+8. **Étape 5 — Confirmation** : 4 RecapBlock (Élève / Tuteur /
+   Établissement & classe / Santé & notes conditionnel) avec chacun
+   bouton "Modifier" + grille 2 colonnes d'InfoRow (icône + label +
+   valeur break-words). Alerte finale emerald (border-emerald-300 bg-
+   emerald-100/70) avec ShieldCheck + message rappelant téléphone et
+   délai 48h.
+9. **Navigation sticky mobile** : barre `sticky bottom-0 z-20 -mx-4
+   border-t border-emerald-100/60 bg-background/85 px-4 py-3
+   backdrop-blur-md` sur mobile, `sm:static sm:mx-0 sm:border-0
+   sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none` sur
+   desktop. Bouton Précédent (outline + ChevronLeft) disabled si
+   step===1. Indicateur "Étape X sur 5" centré. Bouton Continuer
+   (variant success + ChevronRight) sur étapes 1-4 disabled si étape
+   invalide. Bouton Soumettre (variant success + Send ou Loader2 si
+   pending) sur étape 5. Tous les boutons `h-11 w-full text-base
+   sm:h-10 sm:w-auto sm:text-sm`.
+10. **Animations** : transition entre étapes via AnimatePresence +
+    motion.div (slide horizontal 24px + fade, 0.3s ease). Barre de
+    progression animée. Pulse subtil sur l'étape courante du stepper.
+    Respect prefersReducedMotion (animations désactivées si l'OS le
+    demande).
+11. **Écran de succès** : KentePattern strip top + KentePattern bg +
+    GlassCard desktop premiumBorder noHover p-0 + bandeau gradient
+    emerald-600 → amber-500 + icône CheckCircle2 size-10 dans badge
+    rond size-20 avec **animation spring Framer Motion** (scale 0 → 1
+    avec delay 0.2, stiffness 200, damping 12 = scale + bounce) +
+    titre "Pré-inscription envoyée !" + récap court 4 InfoRow (Élève /
+    Établissement / Classe / Soumise le) + message rassurant amber
+    avec Phone "Le secrétariat vous contactera au [téléphone] sous
+    48h" + numéro de dossier en bloc border-2 border-dashed border-
+    emerald-300 + IdCard + token font-mono text-base font-semibold
+    select-all + boutons "Suivre ma demande" (variant success, asChild
+    + Link) + "Copier le lien" (variant outline, title natif) + lien
+    retour "Faire une nouvelle pré-inscription" (variant ghost).
+12. **Responsive mobile (<640px)** : hero header pleine largeur avec
+    rangées empilées, stepper scrollable horizontalement, conteneur
+    étape max-w-3xl px-4, navigation sticky bottom avec boutons full-
+    width empilés en flex-col, RecapBlock en grid-cols-1, InfoRow en
+    grid-cols-1, footer flex-col. Aucun débordement horizontal sur
+    375px (overflow-x-hidden sur le conteneur principal).
+13. **Contrastes** : tous les badges lisibles en mode clair ET sombre —
+    emerald renforcé (border-emerald-300 bg-emerald-100 text-emerald-
+    800 / dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-
+    emerald-200), amber renforcé (border-amber-300 bg-amber-100/80
+    text-amber-800 / dark:border-amber-800/60 dark:bg-amber-950/40
+    dark:text-amber-200), cartes sélectionnées (border-emerald-500
+    bg-emerald-50/80 ring-2 ring-emerald-500/20 dark:border-emerald-
+    400 dark:bg-emerald-950/30).
+
+### NE PAS commit/push — l'utilisateur gère le commit après vérification.

@@ -3,28 +3,35 @@
 /**
  * ScolaGest — Formulaire PUBLIC de pré-inscription en ligne (Phase 3, Innovation 3).
  *
- * Accessible sans authentification sur la route `/pre-inscription`. Le parent
- * y saisit l'identité de son enfant, ses propres coordonnées et la classe
- * souhaitée. La soumission appelle `submitPreInscription` (route publique,
- * `skipAuth: true`).
+ * Refonte Forêt EdTech (v2) — wizard engageant 5 étapes :
+ *  1. Établissement  — sélection + info catégorie Affecté/Non affecté
+ *  2. Élève          — nom, prénoms, date/lieu naissance, sexe, catégorie
+ *  3. Tuteur         — nom, prénoms, téléphone, email, lien parenté + détection fratrie
+ *  4. Classe & infos — cascade cycle/niveau/classe visuelle + santé + notes parent
+ *  5. Confirmation   — récapitulatif + soumission
  *
- * Sections :
- *  - Sélecteur d'établissement (fetchEtablissements sans auth, liste des actifs)
- *  - Élève : nom, prénoms, date/lieu naissance, sexe, catégorie
- *    (catégorie masquée si l'établissement n'applique pas la distinction)
- *  - Tuteur : nom, prénoms, téléphone, email, lien de parenté
- *    + Détection fratrie : debounce 500ms sur le téléphone → recherche
- *      `searchTuteurByPhone` (route publique) → bannière emerald + bouton
- *      « Pré-remplir mes informations » si le tuteur est déjà connu.
- *  - Classe souhaitée : cascade Cycle → Niveau → Classe
- *  - Informations complémentaires (optionnel) : ancien établissement
- *    (transfert), allergies, notes santé
- *  - Notes : message optionnel au secrétariat
+ * Leverage engagement :
+ *  - Hero incarné "Offrez à votre enfant une rentrée réussie" + 3 badges de
+ *    réassurance (48h · 100% en ligne · Gratuit) + pill "Temps estimé : 3 min".
+ *  - Stepper visuel 5 cercles avec progression emerald→amber (effet Zeigarnik).
+ *  - Une seule section visible à la fois → moins de charge cognitive.
+ *  - Validation par étape (erreurs immédiates, bouton Suivant disabled tant
+ *    que l'étape courante n'est pas valide).
+ *  - Animation Framer Motion : slide horizontal + fade entre étapes.
+ *  - Champs avec icônes + validation temps réel (coche verte).
+ *  - Section santé avec icône cadenas + mention de confidentialité.
+ *  - Écran de succès soigné : icône animée (spring scale + bounce), récap,
+ *    numéro de dossier bien visible, message rassurant, KentePattern bg.
  *
- * Écran de succès : carte avec token de suivi + lien vers la page de suivi
- * `/pre-inscription/suivi?token=XXX` + bouton « Copier le lien ».
+ * Accessible sans authentification sur la route `/pre-inscription`. La
+ * soumission appelle `submitPreInscription` (route publique, `skipAuth: true`).
  *
- * Design moderne : dégradé emerald, glassmorphism léger, responsive.
+ * LOGIQUE MÉTIER INTACTE : hooks React Query (etablissements / cycles /
+ * classes / fratrie), mutation submitPreInscription, handlers
+ * `handleSubmit` / `handlePrefillTuteur` / `handleCopyLien`, validation
+ * `isValid`, construction du DTO `PreInscriptionDTO`, détection fratrie
+ * (debounce 500ms), cascade Cycle → Niveau → Classe (refs prevCycle /
+ * prevNiveau), composants `FratrieBanner` et `SuccessScreen`.
  *
  * IMPORTANT : ce formulaire ne doit PAS utiliser useAuthStore (pas de login
  * requis) ni RoleGuard.
@@ -36,20 +43,32 @@ import Link from "next/link";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
+  BookOpen,
+  Calendar,
   CalendarDays,
+  Check,
   CheckCircle2,
+  ClipboardCheck,
   ClipboardCopy,
+  Clock,
   GraduationCap,
   HeartPulse,
+  IdCard,
   Loader2,
+  Lock,
   Mail,
+  MapPin,
   Phone,
   School,
   Send,
+  ShieldCheck,
   Sparkles,
   User,
   Users,
   Wand2,
+  ChevronLeft,
+  ChevronRight,
+  type LucideIcon,
 } from "lucide-react";
 
 import {
@@ -70,11 +89,11 @@ import {
   type TuteurFratrieResult,
 } from "@/lib/api-pre-inscription";
 import { useToast } from "@/hooks/use-toast";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { cn } from "@/lib/utils";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -86,6 +105,80 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
+import { motion, AnimatePresence } from "framer-motion";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Constantes du wizard
+// ─────────────────────────────────────────────────────────────────────────────
+
+const STEPS = [
+  {
+    id: 1,
+    label: "Établissement",
+    short: "Étab.",
+    icon: School,
+    description: "Choisir l'école",
+  },
+  {
+    id: 2,
+    label: "Élève",
+    short: "Élève",
+    icon: User,
+    description: "Identité de l'enfant",
+  },
+  {
+    id: 3,
+    label: "Tuteur",
+    short: "Tuteur",
+    icon: Users,
+    description: "Parent / responsable",
+  },
+  {
+    id: 4,
+    label: "Classe & infos",
+    short: "Classe",
+    icon: BookOpen,
+    description: "Classe & santé",
+  },
+  {
+    id: 5,
+    label: "Confirmation",
+    short: "Récap",
+    icon: ClipboardCheck,
+    description: "Vérifier & envoyer",
+  },
+] as const;
+
+const TOTAL_STEPS = STEPS.length;
+
+/** Palette de tons par index de cycle (pour les cartes de classe visuelles). */
+const CYCLE_TONES = [
+  {
+    badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+    border: "border-emerald-300 dark:border-emerald-800",
+  },
+  {
+    badge: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+    border: "border-amber-300 dark:border-amber-800",
+  },
+  {
+    badge: "bg-terracotta/15 text-terracotta dark:bg-terracotta/20 dark:text-terracotta-light",
+    border: "border-terracotta/40 dark:border-terracotta/40",
+  },
+  {
+    badge: "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
+    border: "border-sky-300 dark:border-sky-800",
+  },
+  {
+    badge: "bg-gold/15 text-gold-dark dark:bg-gold/20 dark:text-gold",
+    border: "border-gold/40 dark:border-gold/40",
+  },
+] as const;
+
+const DEFAULT_TONE = CYCLE_TONES[0];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers de rendu
@@ -104,12 +197,16 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium">
+      <Label className="text-sm font-medium leading-snug">
         {label}
         {required && <span className="ml-0.5 text-rose-500">*</span>}
       </Label>
       {children}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {hint && (
+        <p className="break-words text-xs leading-snug text-muted-foreground">
+          {hint}
+        </p>
+      )}
     </div>
   );
 }
@@ -119,22 +216,159 @@ function SectionHeader({
   title,
   description,
 }: {
-  icon: React.ElementType;
+  icon: LucideIcon;
   title: string;
   description?: string;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-        <Icon className="size-5" />
+    <div className="flex items-start gap-3">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/15 to-amber-500/15 text-emerald-700 dark:text-emerald-300">
+        <Icon className="size-5" aria-hidden="true" />
       </div>
-      <div>
-        <h2 className="text-base font-semibold leading-tight">{title}</h2>
+      <div className="min-w-0 space-y-0.5">
+        <h2 className="break-words font-display text-base font-semibold leading-tight text-forest sm:text-lg">
+          {title}
+        </h2>
         {description && (
-          <p className="text-xs text-muted-foreground">{description}</p>
+          <p className="break-words text-xs leading-snug text-muted-foreground sm:text-sm">
+            {description}
+          </p>
         )}
       </div>
     </div>
+  );
+}
+
+/** Ligne d'info compacte pour l'écran de récapitulatif et de succès. */
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+  mono,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: React.ReactNode;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+        <Icon className="size-3.5" aria-hidden="true" />
+      </div>
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </p>
+        <p
+          className={cn(
+            "break-words text-sm leading-snug text-foreground",
+            mono && "font-mono",
+          )}
+        >
+          {value || "—"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stepper visuel 5 étapes
+// ─────────────────────────────────────────────────────────────────────────────
+
+function Stepper({
+  currentStep,
+  etablissementNom,
+}: {
+  currentStep: number;
+  etablissementNom?: string;
+}) {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  return (
+    <GlassCard variant="desktop" noHover noAnimation className="p-3 sm:p-4">
+      <div className="flex items-center justify-between gap-1.5 overflow-x-auto sm:gap-2">
+        {STEPS.map((s, idx) => {
+          const Icon = s.icon;
+          const isDone = currentStep > s.id;
+          const isCurrent = currentStep === s.id;
+          return (
+            <React.Fragment key={s.id}>
+              <div className="flex shrink-0 flex-col items-center gap-1.5">
+                <div
+                  className={[
+                    "relative flex size-9 items-center justify-center rounded-full border-2 transition-all sm:size-10",
+                    isDone
+                      ? "border-emerald-600 bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
+                      : isCurrent
+                        ? "border-emerald-600 bg-emerald-50 text-emerald-700 ring-4 ring-emerald-500/15 dark:bg-emerald-950/40 dark:text-emerald-300"
+                        : "border-muted bg-background text-muted-foreground",
+                  ].join(" ")}
+                >
+                  {isCurrent && !prefersReducedMotion ? (
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-0 animate-ping rounded-full border-2 border-emerald-500/40"
+                    />
+                  ) : null}
+                  {isDone ? (
+                    <Check className="size-4 sm:size-5" aria-hidden="true" />
+                  ) : (
+                    <Icon className="size-4 sm:size-5" aria-hidden="true" />
+                  )}
+                  <span className="sr-only">Étape {s.id}</span>
+                </div>
+                <div className="text-center">
+                  <p
+                    className={[
+                      "hidden text-[11px] font-medium leading-tight sm:block",
+                      isCurrent || isDone
+                        ? "text-foreground"
+                        : "text-muted-foreground",
+                    ].join(" ")}
+                  >
+                    {s.label}
+                  </p>
+                  <p
+                    className={[
+                      "text-[10px] font-medium leading-tight sm:hidden",
+                      isCurrent ? "text-emerald-700" : "text-muted-foreground",
+                    ].join(" ")}
+                  >
+                    {s.short}
+                  </p>
+                </div>
+              </div>
+              {idx < TOTAL_STEPS - 1 ? (
+                <div
+                  className={[
+                    "h-0.5 flex-1 rounded-full transition-colors",
+                    isDone
+                      ? "bg-gradient-to-r from-emerald-500 to-amber-500"
+                      : "bg-muted",
+                  ].join(" ")}
+                  aria-hidden="true"
+                />
+              ) : null}
+            </React.Fragment>
+          );
+        })}
+      </div>
+      {etablissementNom && currentStep > 1 ? (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-emerald-100/60 pt-3 dark:border-emerald-900/30">
+          <span className="text-[11px] font-medium text-muted-foreground">
+            Établissement :
+          </span>
+          <Badge
+            variant="outline"
+            className="border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+          >
+            <School className="mr-1 size-3" aria-hidden="true" />
+            <span className="break-words leading-snug">{etablissementNom}</span>
+          </Badge>
+        </div>
+      ) : null}
+    </GlassCard>
   );
 }
 
@@ -144,6 +378,10 @@ function SectionHeader({
 
 export function PreInscriptionForm() {
   const { toast } = useToast();
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  // ─── Étape courante du wizard ──────────────────────────────────────────────
+  const [step, setStep] = React.useState(1);
 
   // ─── Établissements (route publique, skipAuth) ────────────────────────────
   const [etablissementId, setEtablissementId] = React.useState<string>("");
@@ -164,12 +402,6 @@ export function PreInscriptionForm() {
     !!selectedEtablissement?.applique_categorie_affecte;
 
   // ─── Cycles & Classes (cascade) ───────────────────────────────────────────
-  // Sur la page publique, on appelle /api/cycles et /api/classes avec
-  // `skipAuth: true` pour éviter l'effet de bord « 401 → refresh → logout() »
-  // du client API générique (qui viderait la session parent si le visiteur
-  // est connecté par ailleurs). Si le backend renvoie 401 (routes actuellement
-  // protégées), la cascade restera vide et le champ classe_id sera facultatif.
-  // Les clés de cache React Query sont partagées avec le reste de l'app.
   const [cycleId, setCycleId] = React.useState<string>("all");
   const [niveau, setNiveau] = React.useState<string>("all");
   const [classeId, setClasseId] = React.useState<string>("");
@@ -228,6 +460,21 @@ export function PreInscriptionForm() {
     });
   }, [classes, cycleId, niveau]);
 
+  /** Map cycle_id → tone (palette emerald/amber/terracotta/sky/gold). */
+  const cycleToneById = React.useMemo(() => {
+    const map: Record<string, (typeof CYCLE_TONES)[number]> = {};
+    cycles?.forEach((c, i) => {
+      map[c.id] = CYCLE_TONES[i % CYCLE_TONES.length];
+    });
+    return map;
+  }, [cycles]);
+
+  /** Libellé de la classe sélectionnée (pour récap / stepper). */
+  const selectedClasse = React.useMemo(
+    () => classes?.find((c) => c.id === classeId),
+    [classes, classeId],
+  );
+
   // ─── État du formulaire ───────────────────────────────────────────────────
   const [eleveNom, setEleveNom] = React.useState("");
   const [elevePrenoms, setElevePrenoms] = React.useState("");
@@ -253,12 +500,6 @@ export function PreInscriptionForm() {
   const [eleveNotesSante, setEleveNotesSante] = React.useState("");
 
   // ─── Détection fratrie (debounce téléphone) ───────────────────────────────
-  // On debounce le téléphone 500 ms avant de lancer la recherche fratrie
-  // (route publique `searchTuteurByPhone`) pour éviter une requête par frappe.
-  // Si un tuteur existant est trouvé, on affiche une bannière emerald et un
-  // bouton « Pré-remplir mes informations » qui remplit les champs tuteur.
-  // `retry: false` évite les retries sur 404 (tuteur inconnu = comportement
-  // normal, silencieux).
   const [debouncedTelephone, setDebouncedTelephone] = React.useState("");
   React.useEffect(() => {
     const handle = setTimeout(
@@ -332,7 +573,7 @@ export function PreInscriptionForm() {
     },
   });
 
-  // ─── Validation ───────────────────────────────────────────────────────────
+  // ─── Validation (globale — conservée à l'identique pour la soumission) ────
   const isValid = React.useMemo(() => {
     if (!etablissementId) return false;
     if (!eleveNom.trim()) return false;
@@ -350,6 +591,52 @@ export function PreInscriptionForm() {
     tuteurNom,
     tuteurTelephone,
   ]);
+
+  // ─── Validation par étape (découpe de isValid pour le wizard) ─────────────
+  const step1Valid = !!etablissementId;
+  const step2Valid =
+    !!eleveNom.trim() &&
+    !!eleveSexe &&
+    (!appliqueCategorie || eleveCategorie !== "NON_APPLICABLE");
+  const step3Valid = !!tuteurNom.trim() && !!tuteurTelephone.trim();
+  // Étape 4 : tous les champs sont optionnels (classe souhaitée + santé + notes)
+  const step4Valid = true;
+  // Étape 5 : validation globale (toutes les conditions cumulées)
+  const step5Valid = isValid;
+
+  const stepValidMap: Record<number, boolean> = {
+    1: step1Valid,
+    2: step2Valid,
+    3: step3Valid,
+    4: step4Valid,
+    5: step5Valid,
+  };
+
+  // ─── Navigation ───────────────────────────────────────────────────────────
+  function next() {
+    if (step >= TOTAL_STEPS) return;
+    if (!stepValidMap[step]) return;
+    setStep(step + 1);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function prev() {
+    if (step <= 1) return;
+    setStep(step - 1);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function goToStep(target: number) {
+    if (target < 1 || target > TOTAL_STEPS) return;
+    setStep(target);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
 
   // ─── Soumission ───────────────────────────────────────────────────────────
   function handleSubmit(e: React.FormEvent) {
@@ -411,447 +698,309 @@ export function PreInscriptionForm() {
   }
 
   // ─── Formulaire ───────────────────────────────────────────────────────────
+  const canGoNext = stepValidMap[step];
+  const canGoPrev = step > 1;
+
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-gradient-to-br from-emerald-50 via-background to-amber-50">
+    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-gradient-to-br from-emerald-50 via-background to-amber-50">
       {/* Orbes décoratifs (glassmorphism léger) */}
       <div
-        aria-hidden
+        aria-hidden="true"
         className="pointer-events-none absolute -top-24 -right-24 size-96 rounded-full bg-emerald-200/40 blur-3xl"
       />
       <div
-        aria-hidden
+        aria-hidden="true"
         className="pointer-events-none absolute -bottom-32 -left-24 size-96 rounded-full bg-amber-200/30 blur-3xl"
       />
 
-      {/* En-tête */}
-      <header className="relative z-10 border-b border-emerald-100/60 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/50">
-        <div className="mx-auto flex h-16 max-w-4xl items-center gap-3 px-4 sm:px-6">
-          <Image
-            src="/logo.png"
-            alt="ScolaGest"
-            width={36}
-            height={36}
-            className="rounded-lg shadow-sm"
-          />
-          <div className="min-w-0">
-            <p className="text-sm font-bold leading-tight">ScolaGest</p>
-            <p className="truncate text-[10px] text-muted-foreground leading-tight">
-              Pré-inscription en ligne
+      {/* Bande kente */}
+      <KentePattern variant="strip" position="top" />
+
+      {/* Hero header engageant */}
+      <header className="relative z-10 overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-700 to-amber-600 text-white">
+        <KentePattern variant="bg" />
+        <div className="relative mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+          {/* Rang 1 : logo + pill temps estimé */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <Image
+                src="/logo.png"
+                alt="ScolaGest"
+                width={40}
+                height={40}
+                className="rounded-lg bg-white/95 p-0.5 shadow-md ring-1 ring-white/40"
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-bold leading-tight">ScolaGest</p>
+                <p className="break-words text-[10px] leading-tight text-emerald-50/90">
+                  Pré-inscription en ligne
+                </p>
+              </div>
+            </div>
+            <span
+              title="Temps estimé pour remplir le formulaire"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur"
+            >
+              <Clock className="size-3.5" aria-hidden="true" />
+              <span className="whitespace-nowrap">3 min</span>
+            </span>
+          </div>
+
+          {/* Rang 2 : titre incarné + sous-titre */}
+          <div className="mt-5 space-y-2">
+            <h1 className="break-words font-display text-2xl font-bold leading-tight tracking-tight sm:text-3xl">
+              Offrez à votre enfant une rentrée réussie
+            </h1>
+            <p className="break-words text-sm leading-snug text-emerald-50/95 sm:max-w-2xl sm:text-base">
+              Pré-inscrivez votre enfant en quelques minutes. Le secrétariat
+              étudie votre demande et vous répond sous 48h.
             </p>
+          </div>
+
+          {/* Rang 3 : 3 badges de réassurance */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <ReassuranceBadge icon={Clock} label="Réponse sous 48h" />
+            <ReassuranceBadge icon={CheckCircle2} label="100% en ligne" />
+            <ReassuranceBadge icon={ShieldCheck} label="Gratuit" />
           </div>
         </div>
       </header>
 
       {/* Contenu */}
-      <main className="relative z-10 mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
-        {/* Hero */}
-        <div className="mb-8 text-center sm:mb-10">
-          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
-            <GraduationCap className="size-7" />
+      <main className="relative z-10 mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        {/* Stepper */}
+        <Stepper
+          currentStep={step}
+          etablissementNom={selectedEtablissement?.nom}
+        />
+
+        {/* Barre de progression "Étape X/Y" + barre animée */}
+        <div className="mt-4 space-y-2">
+          <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+            <span>
+              Étape{" "}
+              <span className="font-semibold text-forest">{step}</span> sur{" "}
+              {TOTAL_STEPS} — {STEPS[step - 1].label}
+            </span>
+            <span className="text-[11px]">
+              {Math.round((step / TOTAL_STEPS) * 100)}%
+            </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Pré-inscription en ligne
-          </h1>
-          <p className="mx-auto mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
-            Remplissez ce formulaire pour pré-inscrire votre enfant. Le
-            secrétariat de l&apos;établissement étudiera votre demande et
-            confirmera l&apos;inscription sous 48h.
-          </p>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <motion.div
+              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-amber-500"
+              initial={prefersReducedMotion ? {} : { width: 0 }}
+              animate={{
+                width: `${(step / TOTAL_STEPS) * 100}%`,
+              }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            />
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* ─── Établissement ───────────────────────────────────────────────── */}
-          <Card className="border-emerald-100">
-            <CardContent className="space-y-4 py-6">
-              <SectionHeader
-                icon={School}
-                title="Établissement souhaité"
-                description="Choisissez l'établissement auprès duquel vous pré-inscrivez votre enfant."
-              />
-              <Separator />
-              <Field
-                label="Établissement"
-                required
-                hint="Liste des établissements actifs du groupe ScolaGest."
+        {/* Formulaire (une seule section visible à la fois) */}
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <GlassCard
+            variant="adaptive"
+            noHover
+            noAnimation
+            className="min-h-[280px] p-5 sm:p-6"
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={step}
+                initial={
+                  prefersReducedMotion
+                    ? { opacity: 0 }
+                    : { opacity: 0, x: 24 }
+                }
+                animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
+                exit={
+                  prefersReducedMotion
+                    ? { opacity: 0 }
+                    : { opacity: 0, x: -24 }
+                }
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                className="space-y-5"
               >
-                <Select
-                  value={etablissementId || "none"}
-                  onValueChange={(v) =>
-                    setEtablissementId(v === "none" ? "" : v)
-                  }
-                  disabled={etabsLoading}
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        etabsLoading
-                          ? "Chargement…"
-                          : "Sélectionnez un établissement"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sélectionnez…</SelectItem>
-                    {etablissements?.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>
-                        {e.nom}
-                        {e.ville ? ` — ${e.ville}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              {selectedEtablissement?.applique_categorie_affecte && (
-                <div className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
-                  Cet établissement applique la distinction{" "}
-                  <strong>Affecté / Non affecté</strong>. Vous devrez renseigner
-                  la catégorie de votre enfant.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* ─── Élève ───────────────────────────────────────────────────────── */}
-          <Card>
-            <CardContent className="space-y-4 py-6">
-              <SectionHeader
-                icon={User}
-                title="Identité de l'élève"
-                description="Renseignez l'état civil de votre enfant."
-              />
-              <Separator />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Nom" required>
-                  <Input
-                    value={eleveNom}
-                    onChange={(e) => setEleveNom(e.target.value)}
-                    placeholder="Ex : Kouassi"
-                    autoComplete="family-name"
+                {/* ─── Étape 1 : Établissement ──────────────────────────── */}
+                {step === 1 && (
+                  <StepEtablissement
+                    etablissements={etablissements}
+                    etabsLoading={etabsLoading}
+                    etablissementId={etablissementId}
+                    setEtablissementId={setEtablissementId}
+                    selectedEtablissement={selectedEtablissement}
+                    appliqueCategorie={appliqueCategorie}
                   />
-                </Field>
-                <Field label="Prénoms">
-                  <Input
-                    value={elevePrenoms}
-                    onChange={(e) => setElevePrenoms(e.target.value)}
-                    placeholder="Ex : Jean-Marc"
-                    autoComplete="given-name"
-                  />
-                </Field>
-                <Field label="Date de naissance">
-                  <Input
-                    type="date"
-                    value={eleveDateNaissance}
-                    onChange={(e) => setEleveDateNaissance(e.target.value)}
-                  />
-                </Field>
-                <Field label="Lieu de naissance">
-                  <Input
-                    value={eleveLieuNaissance}
-                    onChange={(e) => setEleveLieuNaissance(e.target.value)}
-                    placeholder="Ex : Abidjan"
-                  />
-                </Field>
-                <Field label="Sexe" required>
-                  <Select
-                    value={eleveSexe || "none"}
-                    onValueChange={(v) =>
-                      setEleveSexe(v === "none" ? "" : (v as SexeEleve))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionnez…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sélectionnez…</SelectItem>
-                      <SelectItem value="M">Masculin</SelectItem>
-                      <SelectItem value="F">Féminin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-                {appliqueCategorie && (
-                  <Field
-                    label="Catégorie"
-                    required
-                    hint="Affecté = élève de l'État (exonéré). Non affecté = élève ordinaire."
-                  >
-                    <Select
-                      value={eleveCategorie}
-                      onValueChange={(v) =>
-                        setEleveCategorie(v as CategorieEleve)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="AFFECTE">Affecté (État)</SelectItem>
-                        <SelectItem value="NON_AFFECTE">
-                          Non affecté
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
                 )}
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* ─── Tuteur ──────────────────────────────────────────────────────── */}
-          <Card>
-            <CardContent className="space-y-4 py-6">
-              <SectionHeader
-                icon={Users}
-                title="Tuteur / Parent"
-                description="Vos coordonnées pour que l'établissement vous contacte."
-              />
-              <Separator />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Nom" required>
-                  <Input
-                    value={tuteurNom}
-                    onChange={(e) => setTuteurNom(e.target.value)}
-                    placeholder="Ex : Kouassi"
-                    autoComplete="family-name"
+                {/* ─── Étape 2 : Élève ─────────────────────────────────── */}
+                {step === 2 && (
+                  <StepEleve
+                    eleveNom={eleveNom}
+                    setEleveNom={setEleveNom}
+                    elevePrenoms={elevePrenoms}
+                    setElevePrenoms={setElevePrenoms}
+                    eleveDateNaissance={eleveDateNaissance}
+                    setEleveDateNaissance={setEleveDateNaissance}
+                    eleveLieuNaissance={eleveLieuNaissance}
+                    setEleveLieuNaissance={setEleveLieuNaissance}
+                    eleveSexe={eleveSexe}
+                    setEleveSexe={setEleveSexe}
+                    eleveCategorie={eleveCategorie}
+                    setEleveCategorie={setEleveCategorie}
+                    appliqueCategorie={appliqueCategorie}
                   />
-                </Field>
-                <Field label="Prénoms">
-                  <Input
-                    value={tuteurPrenoms}
-                    onChange={(e) => setTuteurPrenoms(e.target.value)}
-                    placeholder="Ex : Marc"
-                    autoComplete="given-name"
-                  />
-                </Field>
-                <Field label="Téléphone" required>
-                  <div className="relative">
-                    <Phone className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      type="tel"
-                      value={tuteurTelephone}
-                      onChange={(e) => setTuteurTelephone(e.target.value)}
-                      placeholder="Ex : +225 07 00 00 00 00"
-                      className="pl-9"
-                      autoComplete="tel"
-                    />
-                    {fratrieFetching && (
-                      <Loader2
-                        aria-label="Recherche d'une fratrie existante en cours"
-                        className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 animate-spin text-emerald-600"
-                      />
-                    )}
-                  </div>
-                </Field>
-                <Field label="Email">
-                  <div className="relative">
-                    <Mail className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      type="email"
-                      value={tuteurEmail}
-                      onChange={(e) => setTuteurEmail(e.target.value)}
-                      placeholder="Ex : parent@example.com"
-                      className="pl-9"
-                      autoComplete="email"
-                    />
-                  </div>
-                </Field>
-                <Field label="Lien de parenté">
-                  <Select
-                    value={tuteurLienParente || "AUTRE"}
-                    onValueChange={(v) => setTuteurLienParente(v as LienParente)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PERE">Père</SelectItem>
-                      <SelectItem value="MERE">Mère</SelectItem>
-                      <SelectItem value="TUTEUR_LEGAL">
-                        Tuteur légal
-                      </SelectItem>
-                      <SelectItem value="AUTRE">Autre</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </div>
-              {fratrieResult?.found && fratrieResult.tuteur && (
-                <FratrieBanner
-                  result={fratrieResult}
-                  onPrefill={handlePrefillTuteur}
-                />
-              )}
-            </CardContent>
-          </Card>
+                )}
 
-          {/* ─── Classe souhaitée ────────────────────────────────────────────── */}
-          <Card>
-            <CardContent className="space-y-4 py-6">
-              <SectionHeader
-                icon={GraduationCap}
-                title="Préférence de classe"
-                description="Indiquez votre préférence (facultatif, non engageant — la classe définitive est attribuée par l'établissement et communiquée après paiement)."
-              />
-              <Separator />
-              {!etablissementId ? (
-                <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
-                  <AlertCircle className="size-4 shrink-0" />
-                  Sélectionnez d&apos;abord un établissement pour voir les
-                  classes disponibles.
-                </div>
+                {/* ─── Étape 3 : Tuteur ────────────────────────────────── */}
+                {step === 3 && (
+                  <StepTuteur
+                    tuteurNom={tuteurNom}
+                    setTuteurNom={setTuteurNom}
+                    tuteurPrenoms={tuteurPrenoms}
+                    setTuteurPrenoms={setTuteurPrenoms}
+                    tuteurTelephone={tuteurTelephone}
+                    setTuteurTelephone={setTuteurTelephone}
+                    tuteurEmail={tuteurEmail}
+                    setTuteurEmail={setTuteurEmail}
+                    tuteurLienParente={tuteurLienParente}
+                    setTuteurLienParente={setTuteurLienParente}
+                    fratrieFetching={fratrieFetching}
+                    fratrieResult={fratrieResult}
+                    onPrefillTuteur={handlePrefillTuteur}
+                  />
+                )}
+
+                {/* ─── Étape 4 : Classe & infos ────────────────────────── */}
+                {step === 4 && (
+                  <StepClasseInfos
+                    etablissementId={etablissementId}
+                    cycles={cycles}
+                    classes={classes}
+                    cycleId={cycleId}
+                    setCycleId={setCycleId}
+                    niveau={niveau}
+                    setNiveau={setNiveau}
+                    classeId={classeId}
+                    setClasseId={setClasseId}
+                    availableNiveaux={availableNiveaux}
+                    filteredClasses={filteredClasses}
+                    cycleToneById={cycleToneById}
+                    eleveAncienEtablissement={eleveAncienEtablissement}
+                    setEleveAncienEtablissement={setEleveAncienEtablissement}
+                    eleveAllergies={eleveAllergies}
+                    setEleveAllergies={setEleveAllergies}
+                    eleveNotesSante={eleveNotesSante}
+                    setEleveNotesSante={setEleveNotesSante}
+                    notesParent={notesParent}
+                    setNotesParent={setNotesParent}
+                  />
+                )}
+
+                {/* ─── Étape 5 : Confirmation ──────────────────────────── */}
+                {step === 5 && (
+                  <StepConfirmation
+                    selectedEtablissement={selectedEtablissement}
+                    eleveNom={eleveNom}
+                    elevePrenoms={elevePrenoms}
+                    eleveDateNaissance={eleveDateNaissance}
+                    eleveLieuNaissance={eleveLieuNaissance}
+                    eleveSexe={eleveSexe}
+                    eleveCategorie={eleveCategorie}
+                    appliqueCategorie={appliqueCategorie}
+                    tuteurNom={tuteurNom}
+                    tuteurPrenoms={tuteurPrenoms}
+                    tuteurTelephone={tuteurTelephone}
+                    tuteurEmail={tuteurEmail}
+                    tuteurLienParente={tuteurLienParente}
+                    selectedClasse={selectedClasse}
+                    eleveAncienEtablissement={eleveAncienEtablissement}
+                    eleveAllergies={eleveAllergies}
+                    eleveNotesSante={eleveNotesSante}
+                    notesParent={notesParent}
+                    goToStep={goToStep}
+                    isPending={mutation.isPending}
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </GlassCard>
+
+          {/* Navigation — sticky sur mobile */}
+          <div className="sticky bottom-0 z-20 -mx-4 border-t border-emerald-100/60 bg-background/85 px-4 py-3 backdrop-blur-md dark:border-emerald-900/30 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={prev}
+                disabled={!canGoPrev || mutation.isPending}
+                className="h-11 w-full text-base sm:h-10 sm:w-auto sm:text-sm"
+              >
+                <ChevronLeft className="size-4" aria-hidden="true" />
+                Précédent
+              </Button>
+
+              <span className="order-first text-center text-xs text-muted-foreground sm:order-none sm:text-sm">
+                Étape{" "}
+                <span className="font-semibold text-forest">{step}</span> sur{" "}
+                {TOTAL_STEPS}
+              </span>
+
+              {step < TOTAL_STEPS ? (
+                <Button
+                  type="button"
+                  onClick={next}
+                  disabled={!canGoNext}
+                  variant="success"
+                  className="h-11 w-full text-base shadow-lg shadow-emerald-900/20 sm:h-10 sm:w-auto sm:text-sm"
+                >
+                  Continuer
+                  <ChevronRight className="size-4" aria-hidden="true" />
+                </Button>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <Field label="Cycle">
-                    <Select value={cycleId} onValueChange={setCycleId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Tous cycles" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tous cycles</SelectItem>
-                        {cycles?.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.libelle}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="Niveau">
-                    <Select value={niveau} onValueChange={setNiveau}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Tous niveaux" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tous niveaux</SelectItem>
-                        {availableNiveaux.map((n) => (
-                          <SelectItem key={n} value={String(n)}>
-                            Niveau {n}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="Classe">
-                    <Select
-                      value={classeId || "none"}
-                      onValueChange={(v) =>
-                        setClasseId(v === "none" ? "" : v)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Non précisée</SelectItem>
-                        {filteredClasses.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.libelle}
-                            {c.est_classe_examen ? " (examen)" : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                </div>
+                <Button
+                  type="submit"
+                  disabled={!isValid || mutation.isPending}
+                  variant="success"
+                  className="h-11 w-full text-base shadow-lg shadow-emerald-900/20 sm:h-10 sm:w-auto sm:text-sm"
+                >
+                  {mutation.isPending ? (
+                    <>
+                      <Loader2
+                        className="size-4 animate-spin"
+                        aria-hidden="true"
+                      />
+                      Envoi en cours…
+                    </>
+                  ) : (
+                    <>
+                      <Send className="size-4" aria-hidden="true" />
+                      Soumettre la pré-inscription
+                    </>
+                  )}
+                </Button>
               )}
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* ─── Informations complémentaires ─────────────────────────────────── */}
-          <Card>
-            <CardContent className="space-y-4 py-6">
-              <SectionHeader
-                icon={HeartPulse}
-                title="Informations complémentaires"
-                description="Optionnel : renseignements de transfert et de santé de l'enfant."
-              />
-              <Separator />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field
-                  label="Ancien établissement (si transfert)"
-                  hint="Précédent établissement fréquenté par l'enfant."
-                >
-                  <Input
-                    value={eleveAncienEtablissement}
-                    onChange={(e) =>
-                      setEleveAncienEtablissement(e.target.value)
-                    }
-                    placeholder="Ex: Collège Saint-Michel"
-                    autoComplete="off"
-                  />
-                </Field>
-                <Field
-                  label="Allergies connues"
-                  hint="Séparez les allergies par une virgule."
-                >
-                  <Input
-                    value={eleveAllergies}
-                    onChange={(e) => setEleveAllergies(e.target.value)}
-                    placeholder="Ex: arachides, pénicilline"
-                    autoComplete="off"
-                  />
-                </Field>
-                <div className="sm:col-span-2">
-                  <Field label="Notes santé (maladies chroniques, traitements…)">
-                    <Textarea
-                      value={eleveNotesSante}
-                      onChange={(e) => setEleveNotesSante(e.target.value)}
-                      placeholder="Ex: asthme, port de lunettes"
-                      rows={2}
-                    />
-                  </Field>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ─── Notes ───────────────────────────────────────────────────────── */}
-          <Card>
-            <CardContent className="space-y-4 py-6">
-              <SectionHeader
-                icon={ClipboardCopy}
-                title="Message au secrétariat"
-                description="Précisions éventuelles (classe demandée en seconde intention, infos utiles…)."
-              />
-              <Separator />
-              <Field label="Notes (optionnel)">
-                <Textarea
-                  value={notesParent}
-                  onChange={(e) => setNotesParent(e.target.value)}
-                  placeholder="Ex : Nous souhaiterions une classe de 6e A si possible. Merci de nous contacter le soir."
-                  rows={3}
-                />
-              </Field>
-            </CardContent>
-          </Card>
-
-          {/* ─── Action ──────────────────────────────────────────────────────── */}
-          <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-end">
-            <p className="text-xs text-muted-foreground sm:mr-auto">
+            {/* Légal + temps estimé restant (mobile seulement) */}
+            <p className="mt-2 text-center text-[11px] text-muted-foreground sm:hidden">
               En soumettant, vous acceptez que vos données soient traitées pour
               instruire votre demande.
             </p>
-            <Button
-              type="submit"
-              disabled={!isValid || mutation.isPending}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 sm:w-auto"
-            >
-              {mutation.isPending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Envoi en cours…
-                </>
-              ) : (
-                <>
-                  <Send className="size-4" />
-                  Soumettre la pré-inscription
-                </>
-              )}
-            </Button>
           </div>
+
+          {/* Légal desktop */}
+          <p className="hidden text-center text-xs text-muted-foreground sm:block">
+            En soumettant, vous acceptez que vos données soient traitées pour
+            instruire votre demande.
+          </p>
         </form>
       </main>
 
       {/* Pied de page */}
-      <footer className="relative z-10 mt-auto border-t border-emerald-100/60 bg-white/70 backdrop-blur">
+      <footer className="relative z-10 mt-auto border-t border-emerald-100/60 bg-white/70 backdrop-blur dark:border-emerald-900/30 dark:bg-emerald-950/20">
         <div className="mx-auto flex max-w-4xl flex-col items-center justify-between gap-1.5 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:px-6">
           <p>ScolaGest · Pré-inscription en ligne</p>
           <p className="text-[11px]">
@@ -859,6 +1008,1000 @@ export function PreInscriptionForm() {
           </p>
         </div>
       </footer>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Badge de réassurance (hero)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ReassuranceBadge({
+  icon: Icon,
+  label,
+}: {
+  icon: LucideIcon;
+  label: string;
+}) {
+  return (
+    <span
+      title={label}
+      className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur"
+    >
+      <Check
+        className="size-3 shrink-0 text-amber-200"
+        aria-hidden="true"
+      />
+      <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+      <span className="whitespace-nowrap">{label}</span>
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Étape 1 — Établissement
+// ─────────────────────────────────────────────────────────────────────────────
+
+function StepEtablissement({
+  etablissements,
+  etabsLoading,
+  etablissementId,
+  setEtablissementId,
+  selectedEtablissement,
+  appliqueCategorie,
+}: {
+  etablissements?: Etablissement[];
+  etabsLoading: boolean;
+  etablissementId: string;
+  setEtablissementId: (v: string) => void;
+  selectedEtablissement?: Etablissement;
+  appliqueCategorie: boolean;
+}) {
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        icon={School}
+        title="Établissement souhaité"
+        description="Sélectionnez l'école ScolaGest auprès de laquelle vous pré-inscrivez votre enfant."
+      />
+      <Separator />
+
+      {etabsLoading ? (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-100 bg-emerald-50/40 p-4 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-200">
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          Chargement des établissements…
+        </div>
+      ) : etablissements && etablissements.length > 0 ? (
+        <div className="space-y-2">
+          {etablissements.map((e) => {
+            const isSelected = e.id === etablissementId;
+            return (
+              <button
+                key={e.id}
+                type="button"
+                onClick={() => setEtablissementId(e.id)}
+                aria-pressed={isSelected}
+                title={`Sélectionner l'établissement ${e.nom}`}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-xl border-2 p-3 text-left transition-all",
+                  isSelected
+                    ? "border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-emerald-950/30"
+                    : "border-border bg-background hover:border-emerald-300 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/10",
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex size-11 shrink-0 items-center justify-center rounded-xl",
+                    isSelected
+                      ? "bg-emerald-600 text-white"
+                      : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+                  )}
+                >
+                  <School className="size-5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <p className="break-words leading-snug font-display text-sm font-semibold text-forest">
+                    {e.nom}
+                  </p>
+                  {e.ville && (
+                    <p className="flex items-center gap-1 break-words text-xs text-muted-foreground">
+                      <MapPin className="size-3 shrink-0" aria-hidden="true" />
+                      {e.ville}
+                    </p>
+                  )}
+                </div>
+                {isSelected ? (
+                  <CheckCircle2
+                    className="size-5 shrink-0 text-emerald-600"
+                    aria-hidden="true"
+                  />
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <p className="break-words leading-snug">
+            Aucun établissement n&apos;est actuellement disponible à la
+            pré-inscription. Veuillez réessayer plus tard.
+          </p>
+        </div>
+      )}
+
+      {selectedEtablissement && appliqueCategorie && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-100/80 p-3 text-xs text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
+        >
+          <Sparkles className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          <p className="break-words leading-snug">
+            Cet établissement applique la distinction{" "}
+            <strong>Affecté / Non affecté</strong>. Vous devrez renseigner la
+            catégorie de votre enfant à l&apos;étape 2.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Étape 2 — Élève
+// ─────────────────────────────────────────────────────────────────────────────
+
+function StepEleve({
+  eleveNom,
+  setEleveNom,
+  elevePrenoms,
+  setElevePrenoms,
+  eleveDateNaissance,
+  setEleveDateNaissance,
+  eleveLieuNaissance,
+  setEleveLieuNaissance,
+  eleveSexe,
+  setEleveSexe,
+  eleveCategorie,
+  setEleveCategorie,
+  appliqueCategorie,
+}: {
+  eleveNom: string;
+  setEleveNom: (v: string) => void;
+  elevePrenoms: string;
+  setElevePrenoms: (v: string) => void;
+  eleveDateNaissance: string;
+  setEleveDateNaissance: (v: string) => void;
+  eleveLieuNaissance: string;
+  setEleveLieuNaissance: (v: string) => void;
+  eleveSexe: SexeEleve;
+  setEleveSexe: (v: SexeEleve) => void;
+  eleveCategorie: CategorieEleve;
+  setEleveCategorie: (v: CategorieEleve) => void;
+  appliqueCategorie: boolean;
+}) {
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        icon={User}
+        title="Identité de l'élève"
+        description="Renseignez l'état civil de votre enfant."
+      />
+      <Separator />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Nom" required>
+          <ValidatedInput
+            value={eleveNom}
+            onChange={(e) => setEleveNom(e.target.value)}
+            placeholder="Ex : Kouassi"
+            autoComplete="family-name"
+            isValid={eleveNom.trim().length > 0}
+          />
+        </Field>
+        <Field label="Prénoms">
+          <Input
+            value={elevePrenoms}
+            onChange={(e) => setElevePrenoms(e.target.value)}
+            placeholder="Ex : Jean-Marc"
+            autoComplete="given-name"
+            className="h-11 text-base sm:h-10 sm:text-sm"
+          />
+        </Field>
+
+        <Field label="Date de naissance">
+          <div className="relative">
+            <Calendar
+              className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              type="date"
+              value={eleveDateNaissance}
+              onChange={(e) => setEleveDateNaissance(e.target.value)}
+              inputMode="numeric"
+              className="h-11 pl-9 text-base sm:h-10 sm:text-sm"
+            />
+          </div>
+        </Field>
+        <Field label="Lieu de naissance">
+          <div className="relative">
+            <MapPin
+              className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              value={eleveLieuNaissance}
+              onChange={(e) => setEleveLieuNaissance(e.target.value)}
+              placeholder="Ex : Abidjan"
+              className="h-11 pl-9 text-base sm:h-10 sm:text-sm"
+            />
+          </div>
+        </Field>
+
+        <Field label="Sexe" required>
+          <Select
+            value={eleveSexe || "none"}
+            onValueChange={(v) =>
+              setEleveSexe(v === "none" ? "" : (v as SexeEleve))
+            }
+          >
+            <SelectTrigger className="h-11 w-full text-base sm:h-10 sm:text-sm">
+              <SelectValue placeholder="Sélectionnez…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Sélectionnez…</SelectItem>
+              <SelectItem value="M">Masculin</SelectItem>
+              <SelectItem value="F">Féminin</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+        {appliqueCategorie && (
+          <Field
+            label="Catégorie"
+            required
+            hint="Affecté = élève de l'État (exonéré). Non affecté = élève ordinaire."
+          >
+            <Select
+              value={eleveCategorie}
+              onValueChange={(v) => setEleveCategorie(v as CategorieEleve)}
+            >
+              <SelectTrigger className="h-11 w-full text-base sm:h-10 sm:text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="AFFECTE">Affecté (État)</SelectItem>
+                <SelectItem value="NON_AFFECTE">Non affecté</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Étape 3 — Tuteur
+// ─────────────────────────────────────────────────────────────────────────────
+
+function StepTuteur({
+  tuteurNom,
+  setTuteurNom,
+  tuteurPrenoms,
+  setTuteurPrenoms,
+  tuteurTelephone,
+  setTuteurTelephone,
+  tuteurEmail,
+  setTuteurEmail,
+  tuteurLienParente,
+  setTuteurLienParente,
+  fratrieFetching,
+  fratrieResult,
+  onPrefillTuteur,
+}: {
+  tuteurNom: string;
+  setTuteurNom: (v: string) => void;
+  tuteurPrenoms: string;
+  setTuteurPrenoms: (v: string) => void;
+  tuteurTelephone: string;
+  setTuteurTelephone: (v: string) => void;
+  tuteurEmail: string;
+  setTuteurEmail: (v: string) => void;
+  tuteurLienParente: LienParente;
+  setTuteurLienParente: (v: LienParente) => void;
+  fratrieFetching: boolean;
+  fratrieResult?: TuteurFratrieResult;
+  onPrefillTuteur: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        icon={Users}
+        title="Tuteur / Parent"
+        description="Vos coordonnées pour que l'établissement vous contacte sous 48h."
+      />
+      <Separator />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Nom" required>
+          <ValidatedInput
+            value={tuteurNom}
+            onChange={(e) => setTuteurNom(e.target.value)}
+            placeholder="Ex : Kouassi"
+            autoComplete="family-name"
+            isValid={tuteurNom.trim().length > 0}
+          />
+        </Field>
+        <Field label="Prénoms">
+          <Input
+            value={tuteurPrenoms}
+            onChange={(e) => setTuteurPrenoms(e.target.value)}
+            placeholder="Ex : Marc"
+            autoComplete="given-name"
+            className="h-11 text-base sm:h-10 sm:text-sm"
+          />
+        </Field>
+
+        <Field label="Téléphone" required>
+          <div className="relative">
+            <Phone
+              className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              type="tel"
+              inputMode="tel"
+              value={tuteurTelephone}
+              onChange={(e) => setTuteurTelephone(e.target.value)}
+              placeholder="Ex : +225 07 00 00 00 00"
+              autoComplete="tel"
+              className="h-11 pl-9 pr-9 text-base sm:h-10 sm:text-sm"
+            />
+            {fratrieFetching ? (
+              <Loader2
+                aria-label="Recherche d'une fratrie existante en cours"
+                className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 animate-spin text-emerald-600"
+              />
+            ) : tuteurTelephone.trim().length >= 8 ? (
+              <CheckCircle2
+                aria-hidden="true"
+                className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-emerald-600"
+              />
+            ) : null}
+          </div>
+        </Field>
+        <Field label="Email">
+          <div className="relative">
+            <Mail
+              className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              type="email"
+              inputMode="email"
+              value={tuteurEmail}
+              onChange={(e) => setTuteurEmail(e.target.value)}
+              placeholder="Ex : parent@example.com"
+              autoComplete="email"
+              className="h-11 pl-9 text-base sm:h-10 sm:text-sm"
+            />
+          </div>
+        </Field>
+
+        <Field label="Lien de parenté">
+          <Select
+            value={tuteurLienParente || "AUTRE"}
+            onValueChange={(v) => setTuteurLienParente(v as LienParente)}
+          >
+            <SelectTrigger className="h-11 w-full text-base sm:h-10 sm:text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="PERE">Père</SelectItem>
+              <SelectItem value="MERE">Mère</SelectItem>
+              <SelectItem value="TUTEUR_LEGAL">Tuteur légal</SelectItem>
+              <SelectItem value="AUTRE">Autre</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+      </div>
+
+      {fratrieResult?.found && fratrieResult.tuteur && (
+        <FratrieBanner
+          result={fratrieResult}
+          onPrefill={onPrefillTuteur}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Étape 4 — Classe & infos complémentaires
+// ─────────────────────────────────────────────────────────────────────────────
+
+function StepClasseInfos({
+  etablissementId,
+  cycles,
+  classes,
+  cycleId,
+  setCycleId,
+  niveau,
+  setNiveau,
+  classeId,
+  setClasseId,
+  availableNiveaux,
+  filteredClasses,
+  cycleToneById,
+  eleveAncienEtablissement,
+  setEleveAncienEtablissement,
+  eleveAllergies,
+  setEleveAllergies,
+  eleveNotesSante,
+  setEleveNotesSante,
+  notesParent,
+  setNotesParent,
+}: {
+  etablissementId: string;
+  cycles?: Cycle[];
+  classes?: Classe[];
+  cycleId: string;
+  setCycleId: (v: string) => void;
+  niveau: string;
+  setNiveau: (v: string) => void;
+  classeId: string;
+  setClasseId: (v: string) => void;
+  availableNiveaux: number[];
+  filteredClasses: Classe[];
+  cycleToneById: Record<string, (typeof CYCLE_TONES)[number]>;
+  eleveAncienEtablissement: string;
+  setEleveAncienEtablissement: (v: string) => void;
+  eleveAllergies: string;
+  setEleveAllergies: (v: string) => void;
+  eleveNotesSante: string;
+  setEleveNotesSante: (v: string) => void;
+  notesParent: string;
+  setNotesParent: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-5">
+      <SectionHeader
+        icon={BookOpen}
+        title="Classe souhaitée & informations complémentaires"
+        description="Tous ces champs sont optionnels. La classe définitive est attribuée par l'établissement après paiement."
+      />
+      <Separator />
+
+      {/* Cascade Cycle / Niveau / Classe visuelle */}
+      {!etablissementId ? (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <p className="break-words leading-snug">
+            Sélectionnez d&apos;abord un établissement (étape 1) pour voir les
+            classes disponibles.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Cycle">
+              <Select value={cycleId} onValueChange={setCycleId}>
+                <SelectTrigger className="h-11 w-full text-base sm:h-10 sm:text-sm">
+                  <SelectValue placeholder="Tous cycles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous cycles</SelectItem>
+                  {cycles?.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.libelle}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Niveau">
+              <Select value={niveau} onValueChange={setNiveau}>
+                <SelectTrigger className="h-11 w-full text-base sm:h-10 sm:text-sm">
+                  <SelectValue placeholder="Tous niveaux" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous niveaux</SelectItem>
+                  {availableNiveaux.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      Niveau {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+
+          {/* Classes affichées en cartes visuelles (icônes par cycle) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Classe souhaitée</Label>
+              <span className="text-[11px] text-muted-foreground">
+                {filteredClasses.length} classe
+                {filteredClasses.length > 1 ? "s" : ""} disponible
+                {filteredClasses.length > 1 ? "s" : ""}
+              </span>
+            </div>
+            {filteredClasses.length === 0 ? (
+              <div className="flex items-start gap-2 rounded-lg border border-muted bg-muted/30 p-3 text-xs text-muted-foreground">
+                <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                <p className="break-words leading-snug">
+                  Aucune classe ne correspond aux filtres. Essayez un autre
+                  cycle ou niveau.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {/* Option "Non précisée" */}
+                <button
+                  type="button"
+                  onClick={() => setClasseId("")}
+                  aria-pressed={classeId === ""}
+                  title="Ne pas préciser de classe — l'établissement attribuera la classe définitive"
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl border-2 border-dashed p-3 text-left transition-all",
+                    classeId === ""
+                      ? "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30"
+                      : "border-border bg-background hover:border-emerald-300 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/10",
+                  )}
+                >
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                    <Sparkles className="size-4" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="break-words leading-snug text-sm font-medium text-foreground">
+                      Non précisée
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      L&apos;établissement choisira pour vous
+                    </p>
+                  </div>
+                  {classeId === "" ? (
+                    <CheckCircle2
+                      className="size-5 shrink-0 text-emerald-600"
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                </button>
+
+                {/* Classes disponibles */}
+                {filteredClasses.map((c) => {
+                  const tone = cycleToneById[c.cycle_id] ?? DEFAULT_TONE;
+                  const isSelected = c.id === classeId;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setClasseId(c.id)}
+                      aria-pressed={isSelected}
+                      title={`Sélectionner la classe ${c.libelle}`}
+                      className={cn(
+                        "flex items-center gap-3 rounded-xl border-2 p-3 text-left transition-all",
+                        isSelected
+                          ? "border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-emerald-950/30"
+                          : "border-border bg-background hover:border-emerald-300 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/10",
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                          tone.badge,
+                        )}
+                      >
+                        <BookOpen className="size-4" aria-hidden="true" />
+                      </div>
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <p className="break-words leading-snug text-sm font-medium text-foreground">
+                          {c.libelle}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Niveau {c.niveau}
+                          {c.est_classe_examen ? " · Examen" : ""}
+                        </p>
+                      </div>
+                      {isSelected ? (
+                        <CheckCircle2
+                          className="size-5 shrink-0 text-emerald-600"
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Section santé — confidentielle */}
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/15">
+        <div className="mb-3 flex items-start gap-2.5">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+            <Lock className="size-4" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 space-y-0.5">
+            <p className="break-words leading-snug text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+              Informations de santé (confidentielles)
+            </p>
+            <p className="break-words text-[11px] leading-snug text-emerald-800/80 dark:text-emerald-200/80">
+              Ces informations restent confidentielles et ne sont accessibles
+              qu&apos;à l&apos;infirmerie et à la direction.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field
+            label="Ancien établissement (si transfert)"
+            hint="Précédent établissement fréquenté par l'enfant."
+          >
+            <div className="relative">
+              <School
+                className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                value={eleveAncienEtablissement}
+                onChange={(e) =>
+                  setEleveAncienEtablissement(e.target.value)
+                }
+                placeholder="Ex: Collège Saint-Michel"
+                autoComplete="off"
+                className="h-11 pl-9 text-base sm:h-10 sm:text-sm"
+              />
+            </div>
+          </Field>
+          <Field
+            label="Allergies connues"
+            hint="Séparez les allergies par une virgule."
+          >
+            <div className="relative">
+              <HeartPulse
+                className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                value={eleveAllergies}
+                onChange={(e) => setEleveAllergies(e.target.value)}
+                placeholder="Ex: arachides, pénicilline"
+                autoComplete="off"
+                className="h-11 pl-9 text-base sm:h-10 sm:text-sm"
+              />
+            </div>
+          </Field>
+        </div>
+        <Field
+          label="Notes santé (maladies chroniques, traitements…)"
+        >
+          <Textarea
+            value={eleveNotesSante}
+            onChange={(e) => setEleveNotesSante(e.target.value)}
+            placeholder="Ex: asthme, port de lunettes"
+            rows={2}
+            className="text-base sm:text-sm"
+          />
+        </Field>
+      </div>
+
+      {/* Notes au secrétariat */}
+      <div className="space-y-2">
+        <Field
+          label="Message au secrétariat (optionnel)"
+          hint="Précisions éventuelles : classe demandée en seconde intention, infos utiles…"
+        >
+          <Textarea
+            value={notesParent}
+            onChange={(e) => setNotesParent(e.target.value)}
+            placeholder="Ex : Nous souhaiterions une classe de 6e A si possible. Merci de nous contacter le soir."
+            rows={3}
+            className="text-base sm:text-sm"
+          />
+        </Field>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Étape 5 — Confirmation / Récapitulatif
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SEXE_LABEL: Record<SexeEleve, string> = {
+  M: "Masculin",
+  F: "Féminin",
+  "": "—",
+};
+
+const CATEGORIE_LABEL: Record<CategorieEleve, string> = {
+  AFFECTE: "Affecté (État)",
+  NON_AFFECTE: "Non affecté",
+  NON_APPLICABLE: "Non applicable",
+};
+
+const LIEN_PARENTE_LABEL: Record<LienParente, string> = {
+  PERE: "Père",
+  MERE: "Mère",
+  TUTEUR_LEGAL: "Tuteur légal",
+  AUTRE: "Autre",
+  "": "Autre",
+};
+
+function StepConfirmation({
+  selectedEtablissement,
+  eleveNom,
+  elevePrenoms,
+  eleveDateNaissance,
+  eleveLieuNaissance,
+  eleveSexe,
+  eleveCategorie,
+  appliqueCategorie,
+  tuteurNom,
+  tuteurPrenoms,
+  tuteurTelephone,
+  tuteurEmail,
+  tuteurLienParente,
+  selectedClasse,
+  eleveAncienEtablissement,
+  eleveAllergies,
+  eleveNotesSante,
+  notesParent,
+  goToStep,
+  isPending,
+}: {
+  selectedEtablissement?: Etablissement;
+  eleveNom: string;
+  elevePrenoms: string;
+  eleveDateNaissance: string;
+  eleveLieuNaissance: string;
+  eleveSexe: SexeEleve;
+  eleveCategorie: CategorieEleve;
+  appliqueCategorie: boolean;
+  tuteurNom: string;
+  tuteurPrenoms: string;
+  tuteurTelephone: string;
+  tuteurEmail: string;
+  tuteurLienParente: LienParente;
+  selectedClasse?: Classe;
+  eleveAncienEtablissement: string;
+  eleveAllergies: string;
+  eleveNotesSante: string;
+  notesParent: string;
+  goToStep: (n: number) => void;
+  isPending: boolean;
+}) {
+  const eleveNomComplet = [elevePrenoms, eleveNom].filter(Boolean).join(" ").trim();
+  const tuteurNomComplet = [tuteurPrenoms, tuteurNom].filter(Boolean).join(" ").trim();
+  const dateNaissanceFormatted = eleveDateNaissance
+    ? new Date(eleveDateNaissance).toLocaleDateString("fr-FR", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })
+    : null;
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        icon={ClipboardCheck}
+        title="Vérifiez vos informations"
+        description="Parcourez le récapitulatif ci-dessous. Cliquez sur « Modifier » pour retourner à une étape."
+      />
+      <Separator />
+
+      {/* Bloc Élève */}
+      <RecapBlock
+        title="Élève"
+        icon={User}
+        onEdit={() => goToStep(2)}
+        disabled={isPending}
+      >
+        <InfoRow icon={User} label="Nom complet" value={eleveNomComplet || "—"} />
+        {dateNaissanceFormatted && (
+          <InfoRow
+            icon={CalendarDays}
+            label="Date de naissance"
+            value={dateNaissanceFormatted}
+          />
+        )}
+        {eleveLieuNaissance.trim() && (
+          <InfoRow
+            icon={MapPin}
+            label="Lieu de naissance"
+            value={eleveLieuNaissance}
+          />
+        )}
+        <InfoRow icon={IdCard} label="Sexe" value={SEXE_LABEL[eleveSexe]} />
+        {appliqueCategorie && (
+          <InfoRow
+            icon={ClipboardCheck}
+            label="Catégorie"
+            value={CATEGORIE_LABEL[eleveCategorie]}
+          />
+        )}
+      </RecapBlock>
+
+      {/* Bloc Tuteur */}
+      <RecapBlock
+        title="Tuteur / Parent"
+        icon={Users}
+        onEdit={() => goToStep(3)}
+        disabled={isPending}
+      >
+        <InfoRow icon={Users} label="Nom complet" value={tuteurNomComplet || "—"} />
+        <InfoRow icon={Phone} label="Téléphone" value={tuteurTelephone} />
+        {tuteurEmail.trim() && (
+          <InfoRow icon={Mail} label="Email" value={tuteurEmail} />
+        )}
+        <InfoRow
+          icon={IdCard}
+          label="Lien de parenté"
+          value={LIEN_PARENTE_LABEL[tuteurLienParente]}
+        />
+      </RecapBlock>
+
+      {/* Bloc Établissement + Classe */}
+      <RecapBlock
+        title="Établissement & classe"
+        icon={School}
+        onEdit={() => goToStep(1)}
+        disabled={isPending}
+      >
+        <InfoRow
+          icon={School}
+          label="Établissement"
+          value={
+            selectedEtablissement
+              ? `${selectedEtablissement.nom}${selectedEtablissement.ville ? ` — ${selectedEtablissement.ville}` : ""}`
+              : "—"
+          }
+        />
+        <InfoRow
+          icon={BookOpen}
+          label="Classe souhaitée"
+          value={selectedClasse?.libelle ?? "Non précisée"}
+        />
+        {appliqueCategorie && (
+          <InfoRow
+            icon={Sparkles}
+            label="Distinction Affecté/Non affecté"
+            value="Active pour cet établissement"
+          />
+        )}
+      </RecapBlock>
+
+      {/* Bloc Santé + notes (si renseignés) */}
+      {(eleveAncienEtablissement.trim() ||
+        eleveAllergies.trim() ||
+        eleveNotesSante.trim() ||
+        notesParent.trim()) && (
+        <RecapBlock
+          title="Santé & notes"
+          icon={HeartPulse}
+          onEdit={() => goToStep(4)}
+          disabled={isPending}
+        >
+          {eleveAncienEtablissement.trim() && (
+            <InfoRow
+              icon={School}
+              label="Ancien établissement"
+              value={eleveAncienEtablissement}
+            />
+          )}
+          {eleveAllergies.trim() && (
+            <InfoRow
+              icon={HeartPulse}
+              label="Allergies"
+              value={eleveAllergies}
+            />
+          )}
+          {eleveNotesSante.trim() && (
+            <InfoRow
+              icon={HeartPulse}
+              label="Notes santé"
+              value={eleveNotesSante}
+            />
+          )}
+          {notesParent.trim() && (
+            <InfoRow
+              icon={ClipboardCopy}
+              label="Message au secrétariat"
+              value={notesParent}
+            />
+          )}
+        </RecapBlock>
+      )}
+
+      {/* Alerte finale */}
+      <div
+        role="status"
+        className="flex items-start gap-2 rounded-lg border border-emerald-300 bg-emerald-100/70 p-3 text-xs text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-200"
+      >
+        <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <p className="break-words leading-snug">
+          En soumettant, vous acceptez que vos données soient traitées pour
+          instruire votre demande. Le secrétariat vous contactera au{" "}
+          <strong>{tuteurTelephone || "numéro renseigné"}</strong> sous 48h.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function RecapBlock({
+  title,
+  icon: Icon,
+  onEdit,
+  disabled,
+  children,
+}: {
+  title: string;
+  icon: LucideIcon;
+  onEdit: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-emerald-100 bg-background/60 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/10">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+            <Icon className="size-3.5" aria-hidden="true" />
+          </div>
+          <h3 className="font-display text-sm font-semibold text-forest">
+            {title}
+          </h3>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={onEdit}
+          disabled={disabled}
+          title={`Modifier l'étape « ${title} »`}
+          className="h-8 border-emerald-300 text-emerald-800 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-200 dark:hover:bg-emerald-950/40"
+        >
+          Modifier
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Input avec validation temps réel (coche verte)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ValidatedInput({
+  value,
+  isValid,
+  className,
+  ...props
+}: {
+  value: string;
+  isValid: boolean;
+} & React.ComponentProps<typeof Input>) {
+  return (
+    <div className="relative">
+      <Input
+        value={value}
+        className={cn("h-11 pr-9 text-base sm:h-10 sm:text-sm", className)}
+        {...props}
+      />
+      {isValid && value.trim().length > 0 ? (
+        <CheckCircle2
+          aria-hidden="true"
+          className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-emerald-600"
+        />
+      ) : null}
     </div>
   );
 }
@@ -882,17 +2025,17 @@ function FratrieBanner({
   return (
     <div
       role="status"
-      className="rounded-lg border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20"
+      className="rounded-xl border border-emerald-300 bg-emerald-100/70 p-4 dark:border-emerald-800/60 dark:bg-emerald-950/30"
     >
       <div className="flex items-start gap-3">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-          <Sparkles className="size-4" />
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-600/20">
+          <Sparkles className="size-4" aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1 space-y-2">
-          <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+          <p className="break-words text-sm font-semibold leading-snug text-emerald-900 dark:text-emerald-100">
             Tuteur reconnu ! {nomComplet || "Ce tuteur"} a déjà {nb}{" "}
-            enfant{nb > 1 ? "s" : ""} inscrit{nb > 1 ? "s" : ""} à cet
-            établissement.
+            enfant{nb > 1 ? "s" : ""} inscrit{nb > 1 ? "s" : ""} dans le groupe
+            ScolaGest.
           </p>
           {nb > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -907,8 +2050,8 @@ function FratrieBanner({
                     variant="outline"
                     className="border-emerald-300 bg-white/80 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
                   >
-                    <Users className="mr-1 size-3" />
-                    {nom}
+                    <Users className="mr-1 size-3" aria-hidden="true" />
+                    <span className="break-words leading-snug">{nom}</span>
                   </Badge>
                 );
               })}
@@ -920,9 +2063,10 @@ function FratrieBanner({
               size="sm"
               variant="outline"
               onClick={onPrefill}
-              className="border-emerald-300 bg-white/80 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/40 dark:hover:text-emerald-100"
+              title="Pré-remplir les informations du tuteur depuis la base existante"
+              className="h-9 border-emerald-300 bg-white/80 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/40 dark:hover:text-emerald-100"
             >
-              <Wand2 className="size-3.5" />
+              <Wand2 className="size-3.5" aria-hidden="true" />
               Pré-remplir mes informations
             </Button>
           </div>
@@ -933,7 +2077,7 @@ function FratrieBanner({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Écran de succès
+// Écran de succès soigné
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SuccessScreen({
@@ -943,6 +2087,7 @@ function SuccessScreen({
   result: SubmitResult;
   onCopy: () => void;
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const suiviUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}${result.suivi_url}`
@@ -953,129 +2098,187 @@ function SuccessScreen({
     .join(" ")
     .trim();
 
+  const dateSoumissionFormatted = new Date(
+    pre.date_soumission,
+  ).toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-gradient-to-br from-emerald-50 via-background to-amber-50">
+    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-gradient-to-br from-emerald-50 via-background to-amber-50">
       <div
-        aria-hidden
+        aria-hidden="true"
         className="pointer-events-none absolute -top-24 -right-24 size-96 rounded-full bg-emerald-200/40 blur-3xl"
       />
       <div
-        aria-hidden
+        aria-hidden="true"
         className="pointer-events-none absolute -bottom-32 -left-24 size-96 rounded-full bg-amber-200/30 blur-3xl"
       />
 
-      <main className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-4 py-12 sm:px-6">
-        <Card className="overflow-hidden border-emerald-200 shadow-lg shadow-emerald-600/10 dark:border-emerald-900/50">
-          <CardContent className="space-y-6 py-8">
-            {/* Icône + titre */}
-            <div className="flex flex-col items-center text-center">
-              <div className="flex size-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                <CheckCircle2 className="size-9" />
-              </div>
-              <h1 className="mt-4 text-2xl font-bold tracking-tight">
-                Pré-inscription envoyée
+      <KentePattern variant="strip" position="top" />
+
+      <main className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-4 py-8 sm:px-6 sm:py-12">
+        <motion.div
+          initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <GlassCard
+            variant="desktop"
+            premiumBorder
+            noHover
+            noAnimation
+            className="relative overflow-hidden p-0"
+          >
+            {/* Kente bg décoratif subtil */}
+            <KentePattern variant="bg" />
+
+            {/* Bandeau succès avec icône animée */}
+            <div className="relative bg-gradient-to-r from-emerald-600 via-emerald-600 to-amber-500 px-6 py-8 text-center text-white">
+              <motion.div
+                initial={prefersReducedMotion ? {} : { scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{
+                  delay: 0.2,
+                  type: "spring",
+                  stiffness: 200,
+                  damping: 12,
+                }}
+                className="mx-auto mb-3 flex size-20 items-center justify-center rounded-full bg-white/25 ring-4 ring-white/30 backdrop-blur"
+              >
+                <CheckCircle2 className="size-10" aria-hidden="true" />
+              </motion.div>
+              <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
+                Pré-inscription envoyée !
               </h1>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className="mt-2 break-words text-sm leading-snug text-emerald-50">
                 Votre demande pour{" "}
-                <span className="font-semibold text-foreground">
+                <span className="font-semibold">
                   {eleveNomComplet || "votre enfant"}
                 </span>{" "}
-                a bien été transmise à l&apos;établissement. Le secrétariat
-                l&apos;étudiera dans les meilleurs délais.
+                a bien été transmise à l&apos;établissement.
               </p>
             </div>
 
-            <Separator />
-
-            {/* Récap rapide */}
-            <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
-                <CalendarDays className="size-3.5" />
-                Soumise le{" "}
-                {new Date(pre.date_soumission).toLocaleDateString("fr-FR", {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <Badge
-                  variant="outline"
-                  className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
-                >
-                  Statut : Soumise
-                </Badge>
-                {pre.classe && (
-                  <Badge variant="outline" className="border-emerald-200">
-                    Classe souhaitée : {pre.classe.libelle}
-                  </Badge>
-                )}
+            {/* Récap court + message rassurant + token */}
+            <div className="relative space-y-5 p-5 sm:p-6">
+              {/* Récap court */}
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+                  <InfoRow
+                    icon={User}
+                    label="Élève"
+                    value={eleveNomComplet || "—"}
+                  />
+                  {pre.etablissement && (
+                    <InfoRow
+                      icon={School}
+                      label="Établissement"
+                      value={pre.etablissement.nom}
+                    />
+                  )}
+                  {pre.classe && (
+                    <InfoRow
+                      icon={BookOpen}
+                      label="Classe souhaitée"
+                      value={pre.classe.libelle}
+                    />
+                  )}
+                  <InfoRow
+                    icon={CalendarDays}
+                    label="Soumise le"
+                    value={dateSoumissionFormatted}
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Token de suivi */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Votre jeton de suivi
-              </p>
-              <div className="flex items-center gap-2 rounded-md border bg-muted/40 p-2.5 font-mono text-sm">
-                <span className="flex-1 truncate select-all">
-                  {result.token_suivi}
-                </span>
+              {/* Message rassurant */}
+              <div
+                role="status"
+                className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-100/80 p-3 text-xs text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
+              >
+                <Phone className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                <p className="break-words leading-snug">
+                  Le secrétariat vous contactera au{" "}
+                  <strong className="break-words">
+                    {pre.tuteur_telephone || "numéro renseigné"}
+                  </strong>{" "}
+                  sous 48h pour finaliser l&apos;inscription.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Conservez ce jeton : il vous permet de suivre l&apos;état de
-                votre demande sans compte.
-              </p>
-            </div>
 
-            {/* Lien de suivi */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Lien de suivi
-              </p>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button
-                  asChild
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                >
-                  <Link href={result.suivi_url}>
-                    <GraduationCap className="size-4" />
-                    Suivre ma demande
+              {/* Numéro de dossier */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Numéro de dossier
+                </p>
+                <div className="flex items-center gap-2 rounded-lg border-2 border-dashed border-emerald-300 bg-emerald-50/40 p-3 dark:border-emerald-800 dark:bg-emerald-950/30">
+                  <IdCard
+                    className="size-5 shrink-0 text-emerald-700 dark:text-emerald-300"
+                    aria-hidden="true"
+                  />
+                  <span className="flex-1 break-all font-mono text-base font-semibold leading-snug text-emerald-800 select-all dark:text-emerald-200">
+                    {result.token_suivi}
+                  </span>
+                </div>
+                <p className="break-words text-xs leading-snug text-muted-foreground">
+                  Conservez ce numéro : il vous permet de suivre l&apos;état de
+                  votre demande sans compte.
+                </p>
+              </div>
+
+              {/* Lien de suivi */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Lien de suivi
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    asChild
+                    variant="success"
+                    className="h-11 flex-1 text-base sm:h-10 sm:text-sm"
+                  >
+                    <Link href={result.suivi_url}>
+                      <GraduationCap className="size-4" aria-hidden="true" />
+                      Suivre ma demande
+                    </Link>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onCopy}
+                    title="Copier le lien de suivi dans le presse-papiers"
+                    className="h-11 flex-1 text-base sm:h-10 sm:flex-none sm:text-sm"
+                  >
+                    <ClipboardCopy className="size-4" aria-hidden="true" />
+                    Copier le lien
+                  </Button>
+                </div>
+                <p className="break-all rounded-md bg-muted/30 p-2 text-[11px] leading-snug text-muted-foreground">
+                  {suiviUrl}
+                </p>
+              </div>
+
+              <Separator />
+
+              {/* Lien retour */}
+              <div className="text-center">
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/pre-inscription">
+                    Faire une nouvelle pré-inscription
                   </Link>
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onCopy}
-                  className="flex-1 sm:flex-none"
-                >
-                  <ClipboardCopy className="size-4" />
-                  Copier le lien
-                </Button>
               </div>
-              <p className="break-all rounded-md bg-muted/30 p-2 text-[11px] text-muted-foreground">
-                {suiviUrl}
-              </p>
             </div>
-
-            <Separator />
-
-            {/* Lien retour */}
-            <div className="text-center">
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/pre-inscription">
-                  Faire une nouvelle pré-inscription
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          </GlassCard>
+        </motion.div>
       </main>
 
-      <footer className="relative z-10 mt-auto border-t border-emerald-100/60 bg-white/70 backdrop-blur">
+      <footer className="relative z-10 mt-auto border-t border-emerald-100/60 bg-white/70 backdrop-blur dark:border-emerald-900/30 dark:bg-emerald-950/20">
         <div className="mx-auto flex max-w-2xl flex-col items-center justify-between gap-1.5 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:px-6">
           <p>ScolaGest · Pré-inscription en ligne</p>
           <p className="text-[11px]">
