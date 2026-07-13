@@ -12289,3 +12289,469 @@ Date : 2025-01 (Task 4 de la vague de refontes ScolaGest).
    animations désactivées si l'utilisateur préfère réduire les animations.
 
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+Task ID: 4
+Agent: frontend-styling-expert
+Task: Refonte des modules /pointage-ecran et /discipline (Forêt EdTech, glassmorphism, kente, responsive)
+
+Work Log:
+- Lecture du worklog.md (dernières ~1500 lignes) — extraction des BUGS À
+  ÉVITER (Tooltip Radix → `title` natif ; `truncate` → `break-words`/
+  `break-all leading-snug` ou `line-clamp-1` ; boutons imbriqués → aucun
+  bouton dans bouton ; icônes InfoRow `flex items-start` + `mt-0.5` ; grid
+  `items-stretch` + `h-full` ; avatar `bg-emerald-600 text-white` ; contrastes
+  `border-300 bg-100 text-800` au lieu de `border-200 bg-50 text-700` ; `toast`
+  déclaré via `const { toast } = useToast();`).
+- Lecture intégrale des 2 fichiers cibles :
+  • `ecran-pointage.tsx` (706 lignes) : Shell simple header `<h1>` + bandeau
+    filtre `<Card>` + grille de SessionCard (Card shadcn basique + bouton
+    bg-orange-600) + 2 empty states (Card + CardContent) + loading skeletons.
+  • `discipline-dashboard.tsx` (1065 lignes) : Shell simple header + Tabs
+    (TabsList shadcn) + 2 onglets (ElevesRisqueTab, TicketsTab) avec chacun un
+    filtre période/statut + tableau (Card p-0) + dialog traiter + dialog
+    détails élève + 3 empty states (Card + CardContent).
+- Lecture des composants DS :
+  • `glass-card.tsx` : variants `mobile` / `tablet` / `desktop` / `premium`
+    / `adaptive` + props `premiumBorder` / `noAnimation` / `noHover` / `delay`
+    + support `onClick` interactif (role=button, tabindex=0).
+  • `kente-pattern.tsx` : variants `strip` (top/bottom/custom) / `bg` (absolute
+    opacity-10) / `separator` (kente-separator) / `border`.
+  • `stat-card.tsx` : tones `emerald` / `amber` / `terracotta` / `gold` / `sky`
+    / `forest` + `delay` pour stagger + `hint` + `onClick` optionnel +
+    `className` pour égalisation `h-full`. NB : pas de tone `rose` — la spec
+    demandait « Critiques (rose/AlertCircle) » mais le DS StatCard ne supporte
+    pas rose. Arbitrage : `gold` utilisé pour Critiques (distinct de terracotta
+    déjà pris par « À convoquer »), `AlertCircle` comme icône. Rose conservé
+    uniquement dans les badges GRAVITE_BADGE[CRITIQUE] et le badge "À convoquer"
+    du tableau + les rows en surbrillance rose (cohérent avec la palette Forêt
+    EdTech — rose réservé aux badges/heatmap, terracotta pour les StatCards
+    danger chaud).
+- Lecture des exemples de refontes réussies :
+  • `enseignants-list.tsx` (1780 lignes) : pattern hero header GlassCard
+    desktop + KentePattern strip top + badge rond gradient emerald→gold + pill
+    "Phase A" + pill établissement + 4 StatCards DS (emerald/forest/amber/
+    terracotta) en grid md:grid-cols-4 avec stagger delay 0/0.05/0.1/0.15 +
+    KentePattern separator + tableau desktop GlassCard adaptive noHover
+    noAnimation p-0 + header bg-emerald-50/60 + hover row bg-emerald-50/60 +
+    avatar emerald-600 text-white + libellés font-display text-forest break-
+    words + badges renforcés + boutons title natif + motion.tr stagger delay
+    index*0.02 capé à 0.4s + EmptyState premium KentePattern bg + LoadingState
+    KentePattern strip top + 5 Skeletons.
+  • `effectifs-dashboard.tsx` (727 lignes) : pattern hero header GlassCard
+    desktop + 4 StatCards DS + tableau + heatmap + empty states premium +
+    loading state premium.
+
+### Refonte `ecran-pointage.tsx` — améliorations
+- **Hero header premium** : KentePattern strip top + GlassCard desktop p-5
+  sm:p-6 + badge rond size-12 bg-gradient-to-br from-emerald-600 to-amber-500
+  text-white shadow-lg (Clock size-6) + titre font-display text-2xl font-bold
+  text-forest "Écran de pointage" + pill "Phase B" border-emerald-300 bg-
+  emerald-50/60 text-emerald-800 (Sparkles size-3) + description + pill éta-
+  blissement emerald (si sélectionné) + boutons Actualiser (outline, title
+  natif) + Générer (variant success, title natif) en flex-col full-width
+  mobile + flex-row desktop + KentePattern separator après le hero header.
+- **4 StatCards DS** (nouveau) en grid grid-cols-2 md:grid-cols-4 avec stagger
+  delay 0/0.05/0.1/0.15 + items-stretch (h-full) : Total sessions
+  (emerald/Clock, hint "session(s) aujourd'hui"), Présents (forest/Check-
+  Circle2, "pointages validés"), À valider (amber/AlertTriangle, "régularisa-
+  tion requise"), Absents (terracotta/XCircle, "sans pointage valide").
+- **KPIs calculés** via React.useMemo sur la liste des sessions :
+  total/vert/jaune/rouge/orange (déjà présents dans le code original sous
+  `compteurs` — réutilisés tels quels pour les StatCards).
+- **Bandeau filtre premium** : GlassCard adaptive noHover noAnimation p-3 sm:p-4
+  + layout flex-col sm:flex-row sm:items-center sm:justify-between + date
+  CalendarDays avec badge total renforcé (border-emerald-300 bg-emerald-100
+  text-emerald-800) + chips filtre renforcés (border-300 bg-100 text-800 pour
+  emerald/amber/rose/orange/slate) hidden on mobile (sm:flex) + Select mobile
+  (sm:hidden) avec bg-background opaque.
+- **StatutChip renforcé** : contrastes border-300 bg-100 text-800 au lieu de
+  border-200 bg-50 text-700 (BUG À ÉVITER #7) + hover bg-200 + ring-2 ring-
+  emerald-500/40 sur actif + dark variants harmonisées.
+- **SessionCard enrichie** : motion.div wrapper h-full avec stagger delay
+  index*0.05 capé à 0.4s + GlassCard adaptive AVEC hover lift (par défaut) +
+  bordure gauche colorée selon statut (border-l-4 + STATUT_BORDER conservé) +
+  flex h-full flex-col gap-3 + en-tête heure (Clock + formatHeure) + salle
+  (MapPin inline) + badge statut renforcé (STATUT_BADGE border-300 bg-100
+  text-800) shrink-0 + matière avec pastille couleur size-3 + libellé font-
+  medium text-forest break-words line-clamp-1 + classe (GraduationCap) +
+  enseignant (User) + pied mt-auto bouton "Valider manuellement" variant
+  success (au lieu de bg-orange-600) avec title natif + aria-label + Loader2
+  si isValiding OU badge "Absent" animate-pulse rose renforcé OU span "Cours
+  en cours / terminé / à venir".
+- **Empty states premium** : GlassCard adaptive noHover relative overflow-
+  hidden + KentePattern bg + badges ronds colorés size-12 (amber AlertCircle
+  établissement manquant, rose AlertCircle erreur de chargement, emerald Clock
+  aucune session, amber Clock filtre vide) + titres font-display text-base
+  font-semibold text-forest + descriptions max-w-md + boutons "Générer les
+  sessions du jour" / "Réessayer" variant success / outline avec title natif.
+- **Loading state premium** : GlassCard adaptive noHover noAnimation p-0
+  relative overflow-hidden + KentePattern strip top + 8 Skeletons h-44 w-full
+  rounded-xl en grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4.
+
+### Refonte `discipline-dashboard.tsx` — améliorations
+- **Hero header premium** : KentePattern strip top + GlassCard desktop p-5
+  sm:p-6 + badge rond size-12 bg-gradient-to-br from-emerald-600 to-amber-500
+  text-white shadow-lg (ShieldAlert size-6) + titre font-display text-2xl
+  font-bold text-forest "Discipline" + pill "Phase B" border-emerald-300 bg-
+  emerald-50/60 text-emerald-800 (Sparkles size-3) + description + pill éta-
+  blissement emerald (si sélectionné) + KentePattern separator après le hero
+  header.
+- **TabsList premium** : className="glass-desktop h-auto gap-1 border-0 p-1"
+  (utilise le token glass-desktop subtil sur le TabsList shadcn) + TabsTrigger
+  avec icônes (Users / Ticket) + tab actif stylé via `data-[state=active]:bg-
+  emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm`.
+- **Onglet Élèves à risque** :
+  • **Filtre période premium** : GlassCard adaptive noHover noAnimation p-3
+    sm:p-4 + layout flex-col sm:flex-row + icône CalendarClock + Select période
+    w-full sm:w-52 bg-background opaque + bouton Actualiser size="icon" outline
+    avec title natif + aria-label.
+  • **4 StatCards DS** (nouveau) en grid grid-cols-2 md:grid-cols-4 avec
+    stagger delay 0/0.05/0.1/0.15 + items-stretch (h-full) : Total signalés
+    (emerald/Users, hint "élève(s) sur la période"), À convoquer (terracotta/
+    UserX, "en attente de convocation"), Multi-profs (amber/Flame, "≥ 2 ensei-
+    gnants différents"), Critiques (gold/AlertCircle, "tickets graves cumulés"
+    — gold utilisé car StatCard ne supporte pas rose ; terracotta déjà pris
+    par « À convoquer »).
+  • **KPIs calculés** (nouveau) via React.useMemo sur la liste des élèves :
+    total/aConvoquer/multiProfs/critiques.
+  • **Tableau Élèves à risque enrichi** : GlassCard adaptive noHover
+    noAnimation p-0 overflow-hidden + header bg-emerald-50/60 border-emerald-
+    100 + th text-emerald-900 text-xs font-semibold uppercase tracking-wide +
+    hover row bg-emerald-50/60 + colonne Élève avec avatar emerald-600 text-
+    white size-9 + initiales (helper `eleveInitials` ajouté) + nom font-
+    display text-sm font-semibold text-forest break-words + ID font-mono text-
+    [11px] + colonne Classe text-sm + colonne Tickets badge slate renforcé
+    (border-300 bg-100 text-800) + colonne Profs diff. badge conditionnel
+    renforcé (slate < 2, amber ≥ 2, rose ≥ 3) avec title natif explicatif +
+    colonne Critiques badge rose renforcé avec Flame si > 0 + colonne Dernier
+    ticket formatDateShort + colonne Statut badge "À convoquer" rose renforcé
+    avec UserX OU "Suivi normal" emerald renforcé + colonne Actions bouton
+    "Voir détails" outline avec title natif + aria-label. Rows motion.tr avec
+    stagger delay index*0.02 capé à 0.4s (composant EleveRisqueRow custom) +
+    row "à convoquer" en surbrillance bg-rose-50/40 dark:bg-rose-950/20 +
+    usePrefersReducedMotion respecté.
+  • **Dialog détails élève premium** : header badge rond size-10 gradient
+    emerald→gold (Users size-5) + titre font-display text-lg font-bold text-
+    forest + DialogDescription avec détails (classe, nb tickets, nb critiques)
+    + 3 états internes (loading 4 Skeletons h-16, erreur rose renforcée,
+    tickets en cards mini). Liste des tickets en TicketLine cards mini
+    premium (border-emerald-200 + badges renforcés) avec scroll max-h-[55vh].
+- **Onglet Tickets** :
+  • **Filtre statut premium** : GlassCard adaptive noHover noAnimation p-3
+    sm:p-4 + layout flex-col sm:flex-row + icône Ticket + compteur dynamique +
+    Select statut w-full sm:w-52 bg-background opaque + bouton Actualiser
+    size="icon" outline avec title natif + aria-label.
+  • **Tableau Tickets enrichi** : GlassCard adaptive noHover noAnimation p-0
+    overflow-hidden + header bg-emerald-50/60 border-emerald-100 + th text-
+    emerald-900 text-xs font-semibold uppercase tracking-wide + hover row bg-
+    emerald-50/60 + colonne Date formatDateShort + colonne Élève avec nom
+    font-display text-sm font-semibold text-forest break-words + classe en
+    sous-ligne + colonne Catégorie badge CATEGORIE_BADGE renforcé (border-
+    slate-300 bg-slate-100 text-slate-800) + colonne Gravité badge GRAVITE_
+    BADGE renforcé avec Flame si CRITIQUE + colonne Enseignant (anonyme italic
+    OU nom line-clamp-1 OU —) + colonne Statut badge STATUT_BADGE renforcé +
+    colonne Actions bouton "Traiter" variant success si ouvert/en_cours/traité
+    OU outline si clôturé/rejeté + title natif + aria-label. Rows motion.tr
+    avec stagger delay index*0.02 capé à 0.4s (composant TicketRow custom) +
+    row critique+ouvert en surbrillance bg-rose-100/70 dark:bg-rose-950/40 +
+    usePrefersReducedMotion respecté.
+  • **Dialog traiter incident premium** : header badge rond size-10 gradient
+    emerald→gold (Hand size-5) + titre font-display text-lg font-bold text-
+    forest + DialogDescription avec ticket #id + catégorie + gravité. Corps :
+    récap élève + description dans GlassCard tablet noHover noAnimation p-3
+    (nom font-medium text-forest break-words + badge classe slate renforcé +
+    date + description line-clamp-3 break-words) + Select statut bg-background
+    + Textarea action bg-background avec compteur caractères. Footer grid-
+    cols-2 gap-2 sm:flex sm:justify-end + bouton Annuler variant outline w-
+    full sm:w-auto + bouton Enregistrer variant success w-full sm:w-auto
+    (Loader2 si pending, Hand sinon).
+- **TicketLine** (cards mini dans dialog détails) : bordure border-emerald-200
+  dark:border-emerald-900/40 + badges GRAVITE/CATEGORIE/STATUT renforcés +
+  description break-words leading-snug (line-clamp-2 si compact) + action
+  prise (si non compact) avec icône MessageSquare mt-0.5 + footer signalé par
+  X / anonyme.
+
+### Bugs à éviter — VÉRIFIÉS
+- Aucun Tooltip Radix — toutes les actions utilisent l'attribut HTML natif
+  `title` (BUG À ÉVITER #1) : boutons Actualiser (header + filtres), boutons
+  Générer, boutons Valider manuellement (SessionCard), boutons Voir détails
+  (tableau élèves), boutons Traiter (tableau tickets), bouton Réessayer
+  (empty states erreur), badge "Profs diff." (title explicatif).
+- Aucun `truncate` sur les libellés longs — `break-words leading-snug` ou
+  `line-clamp-1` (court) ou `line-clamp-2`/`line-clamp-3` (descriptions)
+  (BUG À ÉVITER #2) : noms d'élèves, libellés matière, salles, descriptions
+  de tickets, actions prises.
+- Pas de `<button>` imbriqué dans un `<button>` (BUG À ÉVITER #3) — aucune
+  action cliquable dans les SessionCard autre que le bouton Valider (la carte
+  elle-même n'est pas cliqueable, juste hover lift).
+- Icônes InfoRow : `flex items-start` + `mt-0.5` (BUG À ÉVITER #4) sur
+  l'icône MessageSquare dans TicketLine (action prise) + `flex items-start`
+  sur les en-têtes SessionCard (heure + salle) + `mt-0.5` sur l'avatar
+  MessageSquare.
+- Grid : `items-stretch` (via `h-full` sur les StatCard) + `h-full` sur les
+  motion.div wrappers des SessionCard (BUG À ÉVITER #5) pour égaliser les
+  hauteurs en grid.
+- Avatar : `bg-emerald-600 text-white` pour les avatars élève size-9 (BUG À
+  ÉVITER #6).
+- Badges : `border-300 bg-100 text-800` (BUG À ÉVITER #7) : STATUT_BADGE
+  (4 statuts pointage), STATUT_BADGE (5 statuts ticket), GRAVITE_BADGE (4
+  gravités), CATEGORIE_BADGE (5 catégories), badges compteurs (Tickets,
+  Profs diff., Critiques), badge "À convoquer" / "Suivi normal", badge total
+  sessions, badge classe dans dialog traiter, StatutChip (5 tones emerald/
+  amber/rose/orange/slate).
+- `toast` non déclaré VÉRIFIÉ : `const { toast } = useToast();` présent en
+  tête du composant principal `EcranPointage` (l. 195) ET en tête du composant
+  `TicketsTab` (l. 605) — les deux composants qui utilisent `toast(...)` dans
+  leurs mutations. Aucune régression (BUG À ÉVITER #8).
+
+### Logique métier conservée à l'identique
+- Imports `@/lib/api-pointage` (fetchSessionsEcran / generateSessions /
+  validePointageManuel / types SessionAvecStatut / StatutAffichage) intacts.
+- Imports `@/lib/api-incident` (fetchIncidents / fetchElevesRisque /
+  fetchIncidentsEleve / traiterIncident / CATEGORIE_LABEL / GRAVITE_LABEL /
+  STATUT_TICKET_LABEL / types TicketIncident / EleveRisque / StatutTicket /
+  GraviteIncident / CategorieIncident / TraiterBody) intacts.
+- Hooks React Query conservés : `pointageKeys.ecran(today)` / `disciplineKeys.
+  elevesRisque(periode)` / `disciplineKeys.incidents({statut})` /
+  `disciplineKeys.incidentsEleve(eleve_id)` + `enabled: !!etablissement` +
+  `refetchInterval: 30_000` (pointage) + `refetchOnWindowFocus: true` (tous).
+- Mutations `generateMutation` (pointage) / `validerMutation` (pointage) /
+  `traiterMutation` (discipline) + `invalidateQueries` conservées. Toasts
+  `onSuccess` / `onError` conservés à l'identique.
+- Handlers conservés : `refetch`, `setFiltre`, `setPeriode`, `setStatut`,
+  `setDetailEleve`, `setTraiterTarget`, `handleSubmit` (dialog traiter).
+- Constantes conservées à l'identique (contrastes renforcés visuellement mais
+  sémantiquement identiques) : `STATUT_LABEL` / `STATUT_ICO` / `STATUT_BORDER`
+  / `STATUT_BADGE` (pointage — border-300 bg-100 text-800) / `GRAVITE_BADGE`
+  / `STATUT_BADGE` / `CATEGORIE_BADGE` (discipline — border-300 bg-100
+  text-800) / `STATUT_OPTIONS` / `PERIODE_OPTIONS`.
+- Helpers conservés : `coursCommence` / `formatHeure` / `eleveOuEnseignantNom`
+  (pointage) / `eleveFullName` (discipline) + helper `eleveInitials` AJOUTÉ
+  (discipline — copié de enseignants-list pattern, signature compatible avec
+  `EleveRisque`).
+- État local `TraiterTicketDialog` (statut + action + canSubmit + handleSubmit
+  + reset via useEffect) conservé à l'identique.
+- Endpoints backend intacts : GET /api/pointage/ecran, POST /api/pointage/:id
+  /valider, POST /api/pointage/generate-sessions, GET /api/incidents, PUT
+  /api/incidents/:id/traiter, GET /api/discipline/eleves-risque, GET /api/
+  eleves/:id/incidents.
+- Pages `app/(staff)/pointage-ecran/page.tsx` et `app/(staff)/discipline/
+  page.tsx` NON modifiées (routes RoleGuard intactes).
+
+### Responsive 100%
+- Mobile (<640px) : hero header flex-col (badge + titre + pill + boutons
+  Actualiser/Générer w-full en flex-col), StatCards grid 2 colonnes, bandeau
+  filtre flex-col (date + chips hidden sm:flex + Select mobile sm:hidden),
+  boutons Actualiser/Générer w-full sm:w-auto, dialog footer grid-cols-2
+  (boutons full-width en 2 colonnes), tableau scroll-x, padding p-4 via
+  GlassCard adaptive, SessionCard grid 1 colonne (sm:grid-cols-2 active à
+  640px+).
+- Tablette (640-767px) : SessionCard grid 2 colonnes, padding p-5 via
+  GlassCard adaptive, bandeau filtre flex-row.
+- Desktop (768-1023px) : StatCards grid 4 colonnes à md:768px, SessionCard
+  grid 3 colonnes à lg:1024px, tableau desktop visible (toujours visible —
+  pas de cartes mobile dédiées pour ces modules), padding p-5 via GlassCard
+  adaptive.
+- Desktop large (1024px+) : SessionCard grid 4 colonnes à xl:1280px, GlassCard
+  adaptive monte en opacité 0.85, padding p-6, hero header p-6.
+
+### Palette Forêt EdTech
+- Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt EdTech :
+  - **emerald** (#047857) primaire : Total sessions / Total signalés KPI,
+    badge rond gradient header emerald→gold, hover row, boutons success
+    (Valider manuellement, Traiter, Générer, Enregistrer), badges Présent
+    (pointage), Traité (discipline), Suivi normal, badge total sessions,
+    tab actif bg-emerald-600, FormSectionTitle badge rond emerald/15 (non
+    applicable ici), badge "Profs diff." niveau 1.
+  - **amber** (#F59E0B) secondaire : À valider KPI, Multi-profs KPI, badge
+    En attente synchro (pointage), badge En cours (discipline), badge
+    Sévère (discipline), chips amber, pill Phase B (via gradient emerald→
+    gold du badge header).
+  - **gold** (#D4AF37) premium : Critiques KPI (à la place de rose non
+    disponible dans StatCard), badge rond gradient header emerald→gold,
+    badge rond gradient dialog traiter + dialog détails élève.
+  - **terracotta** (#C2410C) danger chaud : Absents KPI, À convoquer KPI.
+  - **rose** (#e11d48) conservé pour badges "Absent" (pointage ROUGE),
+    "À convoquer" (discipline), Gravité CRITIQUE, Statut OUVERT, badge
+    "Profs diff." niveau 3 (≥3 enseignants), row "à convoquer" bg-rose-50/40,
+    row critique+ouvert bg-rose-100/70, alerte erreur dans dialog détails
+    élève, empty state erreur de chargement.
+  - **forest** (#064E3B) profond : Présents KPI, text-forest sur titres
+    font-display, noms d'élèves et libellés matière.
+  - **slate** conservé pour badges neutres (Tickets count, CATEGORIE_BADGE,
+    Statut Clôturé, badge "Profs diff." niveau 1, badge classe dans dialog
+    traiter).
+  - **sky** conservé pour Gravité MODÉRÉ (existant dans le code original).
+  - **orange** conservé pour Statut ORANGE (pointage) — chips orange + badge
+    STATUT_BADGE[ORANGE] orange renforcé + bordure gauche STATUT_BORDER
+    [ORANGE] border-l-orange-500. Bouton "Valider manuellement" passe de
+    bg-orange-600 à variant success (gradient emerald) — cohérent avec la
+    palette Forêt EdTech (l'action de validation = emerald primaire).
+
+### TypeScript
+- **0 erreur sur ecran-pointage.tsx** (vérifié par `bunx tsc --noEmit 2>&1 |
+  grep "ecran-pointage"` → 0 match).
+- **0 erreur sur discipline-dashboard.tsx** (vérifié par `bunx tsc --noEmit
+  2>&1 | grep "discipline-dashboard"` → 0 match).
+- Les 15 erreurs tsc restantes sont toutes PRÉ-EXISTANTES sur d'autres
+  fichiers (login-form ×8, dashboard-shell ×3, view-parametres ×2,
+  etablissement-form-dialog ×1, instrumentation ×1) — aucune introduite
+  par cette refonte.
+
+### Lint
+- **0 erreur, 0 warning** sur les 2 fichiers (`bunx eslint src/components/
+  pointage/ecran-pointage.tsx src/components/discipline/discipline-dashboard.
+  tsx --max-warnings 0` → EXIT=0).
+- **0 erreur, 0 warning** sur l'ensemble du projet (`bun run lint` →
+  EXIT=0).
+
+### Points à vérifier par agent browser
+1. **Rendu /pointage-ecran** :
+   - Hero header GlassCard desktop : KentePattern strip top en tête de
+     vue + badge rond size-12 gradient emerald→gold (Clock size-6) +
+     titre font-display text-2xl font-bold text-forest "Écran de pointage"
+     + pill "Phase B" border-emerald-300 (Sparkles size-3) + pill éta-
+     blissement emerald (si sélectionné) + boutons Actualiser (outline) +
+     Générer (variant success) à droite.
+   - 4 StatCards en grid grid-cols-2 md:grid-cols-4 (mobile 2 colonnes,
+     desktop 4 colonnes) avec stagger : Total sessions (emerald/Clock) ;
+     Présents (forest/CheckCircle2) ; À valider (amber/AlertTriangle) ;
+     Absents (terracotta/XCircle). Sur mobile, vérifier items-stretch +
+     h-full (hauteurs alignées).
+   - Bandeau filtre GlassCard adaptive : date CalendarDays + badge total
+     emerald renforcé + chips filtre renforcés (border-300 bg-100 text-800)
+     hidden on mobile + Select mobile (sm:hidden) bg-background opaque +
+     bouton Actualiser size="icon" outline avec title natif.
+   - Grille SessionCard en grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3
+     xl:grid-cols-4 : chaque carte est une GlassCard adaptive AVEC hover
+     lift (y: -2) + bordure gauche colorée selon statut (border-l-4 +
+     STATUT_BORDER) + pastille couleur matière size-3 + libellé font-
+     medium text-forest break-words line-clamp-1 + badge statut renforcé
+     (STATUT_BADGE border-300 bg-100 text-800) + bouton "Valider
+     manuellement" variant success (si ORANGE) avec title natif + aria-
+     label + Loader2 si isValiding OU badge "Absent" animate-pulse rose
+     renforcé (si ROUGE + cours commencé) OU span "Cours en cours /
+     terminé / à venir". Animation stagger sur les cartes (motion.div
+     delay index*0.05 capé à 0.4s).
+   - Empty states premium :
+     - Pas d'établissement : GlassCard adaptive + KentePattern bg +
+       badge rond amber size-12 + AlertCircle size-6 + titre font-display
+       "Sélectionnez un établissement".
+     - Erreur de chargement : GlassCard adaptive + KentePattern bg +
+       badge rond rose size-12 + AlertCircle size-6 + titre "Erreur de
+       chargement" + description = error.message + bouton "Réessayer"
+       outline avec title natif.
+     - Aucune session : GlassCard adaptive + KentePattern bg + badge
+       rond emerald size-12 + Clock size-6 + titre "Aucune session pour
+       aujourd'hui" + bouton "Générer les sessions du jour" variant
+       success (Sparkles / Loader2).
+     - Filtre vide : GlassCard adaptive + KentePattern bg + badge rond
+       amber size-12 + Clock size-6 + titre "Aucune session ne correspond
+       au filtre".
+   - Loading state : GlassCard adaptive noHover noAnimation p-0 + Kente
+     Pattern strip top + 8 Skeletons h-44 w-full rounded-xl en grid
+     grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4.
+
+2. **Rendu /discipline** :
+   - Hero header GlassCard desktop : KentePattern strip top en tête de
+     vue + badge rond size-12 gradient emerald→gold (ShieldAlert size-6)
+     + titre font-display text-2xl font-bold text-forest "Discipline" +
+     pill "Phase B" border-emerald-300 (Sparkles size-3) + pill éta-
+     blissement emerald (si sélectionné).
+   - TabsList premium : glass-desktop subtil + tab actif bg-emerald-600
+     text-white shadow-sm + icônes (Users / Ticket) sur les tabs.
+   - Onglet Élèves à risque :
+     - Filtre période GlassCard adaptive : CalendarClock + Select période
+       (7/30/90 jours) w-full sm:w-52 bg-background + bouton Actualiser
+       size="icon" outline title natif.
+     - 4 StatCards en grid grid-cols-2 md:grid-cols-4 avec stagger :
+       Total signalés (emerald/Users) ; À convoquer (terracotta/UserX) ;
+       Multi-profs (amber/Flame) ; Critiques (gold/AlertCircle — à la
+       place de rose non disponible dans StatCard DS).
+     - Tableau Élèves à risque : GlassCard adaptive noHover noAnimation
+       p-0 + header bg-emerald-50/60 + th text-emerald-900 uppercase
+       tracking-wide + hover row bg-emerald-50/60 + colonne Élève avec
+       avatar emerald-600 text-white size-9 + initiales + nom font-
+       display text-sm font-semibold text-forest break-words + ID
+       font-mono + colonne Classe text-sm + colonne Tickets badge slate
+       renforcé + colonne Profs diff. badge conditionnel (slate < 2,
+       amber ≥ 2, rose ≥ 3) avec title natif + colonne Critiques badge
+       rose renforcé avec Flame si > 0 + colonne Dernier ticket + colonne
+       Statut badge "À convoquer" rose renforcé avec UserX OU "Suivi
+       normal" emerald renforcé + colonne Actions bouton "Voir détails"
+       outline avec title natif + aria-label. Animation stagger sur les
+       rows (motion.tr delay index*0.02 capé à 0.4s). Row "à convoquer"
+       en surbrillance bg-rose-50/40 dark:bg-rose-950/20.
+     - Dialog détails élève : header badge rond size-10 gradient emerald→
+       gold (Users size-5) + titre font-display text-lg font-bold text-
+       forest + liste des tickets en TicketLine cards mini premium
+       (border-emerald-200 + badges renforcés) avec scroll max-h-[55vh].
+   - Onglet Tickets :
+     - Filtre statut GlassCard adaptive : Ticket + compteur + Select
+       statut w-full sm:w-52 bg-background + bouton Actualiser size=
+       "icon" outline title natif.
+     - Tableau Tickets : GlassCard adaptive noHover noAnimation p-0 +
+       header bg-emerald-50/60 + th text-emerald-900 uppercase tracking-
+       wide + hover row bg-emerald-50/60 + colonne Date + colonne Élève
+       (nom font-display text-sm font-semibold text-forest break-words
+       + classe sous-ligne) + colonne Catégorie badge CATEGORIE_BADGE
+       renforcé + colonne Gravité badge GRAVITE_BADGE renforcé avec Flame
+       si CRITIQUE + colonne Enseignant (anonyme italic OU nom line-clamp-
+       1 OU —) + colonne Statut badge STATUT_BADGE renforcé + colonne
+       Actions bouton "Traiter" variant success si ouvert/en_cours/traité
+       OU outline si clôturé/rejeté + title natif + aria-label. Row
+       critique+ouvert en surbrillance bg-rose-100/70 dark:bg-rose-950/40.
+     - Dialog traiter ticket : header badge rond size-10 gradient emerald→
+       gold (Hand size-5) + titre font-display text-lg font-bold text-
+       forest + récap élève + description dans GlassCard tablet p-3 +
+       Select statut bg-background + Textarea action bg-background avec
+       compteur caractères + footer grid-cols-2 sm:flex sm:justify-end +
+       bouton Annuler outline w-full sm:w-auto + bouton Enregistrer
+       variant success w-full sm:w-auto (Loader2 si pending, Hand sinon).
+   - Empty states premium (dans chaque onglet) :
+     - Pas d'établissement : GlassCard adaptive + KentePattern bg +
+       badge rond amber size-12 + AlertCircle + titre "Sélectionnez un
+       établissement".
+     - Erreur de chargement : GlassCard adaptive + KentePattern bg +
+       badge rond rose size-12 + AlertCircle + titre "Erreur de
+       chargement" + bouton "Réessayer" outline title natif.
+     - Aucun élève à risque / Aucun ticket : GlassCard adaptive + Kente
+       Pattern bg + badge rond emerald size-12 + Users / Ticket + titre
+       "Aucun élève à risque" / "Aucun ticket".
+   - Loading state (chaque onglet) : GlassCard adaptive noHover
+     noAnimation p-0 + KentePattern strip top + 6 Skeletons h-14 w-full.
+
+3. **Comportement métier** : bouton "Générer les sessions du jour" (POST
+   /api/pointage/generate-sessions) → toast succès "Sessions générées" +
+   invalidate pointageKeys.all + refetch auto (polling 30s) ; bouton
+   "Actualiser" → refetch manuel ; bouton "Valider manuellement" sur
+   SessionCard ORANGE (POST /api/pointage/:id/valider) → toast succès
+   "Pointage validé" + invalidate pointageKeys.all ; chips filtre / Select
+   mobile → filtrage local par statut ; Select période (discipline) →
+   refetch fetchElevesRisque(periode) ; Select statut (discipline) →
+   refetch fetchIncidents({statut}) ; bouton "Voir détails" (élève) →
+   ouvre Dialog avec fetchIncidentsEleve(eleve_id) ; bouton "Traiter"
+   (ticket) → ouvre Dialog avec form (statut + action_prise) → PUT /api/
+   incidents/:id/traiter → toast succès "Ticket traité" + invalidate
+   disciplineKeys.all + fermeture dialog. Tabs navigation entre Élèves à
+   risque et Tickets. Polling 30s sur l'écran de pointage (refetchInterval).
+
+4. **Contrastes** : badges border-300 bg-100 text-800 (PAS border-200 bg-50
+   text-700) pour STATUT_BADGE (pointage 4 statuts), STATUT_BADGE (discipline
+   5 statuts), GRAVITE_BADGE (4 gravités), CATEGORIE_BADGE (5 catégories),
+   badges compteurs (Tickets, Profs diff., Critiques), badge "À convoquer"
+   / "Suivi normal", badge total sessions, badge classe dialog traiter,
+   StatutChip (5 tones) ; boutons variant success (gradient emerald from-
+   emerald-600 to-emerald-700) pour Valider manuellement / Traiter / Générer
+   / Enregistrer ; boutons outline + title natif pour Actualiser / Voir
+   détails / Réessayer.
+
+5. **Animation** : StatCards avec stagger delay 0/0.05/0.1/0.15 (via DS) ;
+   SessionCard (motion.div wrapper h-full) avec stagger delay index*0.05
+   capé à 0.4s ; EleveRisqueRow (motion.tr) avec stagger delay index*0.02
+   capé à 0.4s ; TicketRow (motion.tr) avec stagger delay index*0.02 capé
+   à 0.4s ; usePrefersReducedMotion respecté — animations désactivées si
+   l'utilisateur préfère réduire les animations.
+
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.

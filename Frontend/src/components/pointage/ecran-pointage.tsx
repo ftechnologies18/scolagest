@@ -21,8 +21,31 @@
  *  - Bouton « Actualiser » manuel.
  *  - États : chargement (skeletons), erreur, vide (avec CTA « Générer »).
  *
+ * Refonte Forêt EdTech :
+ *  - Hero header GlassCard desktop + KentePattern strip top + badge rond
+ *    gradient emerald→gold (Clock) + pill « Phase B » outline + boutons
+ *    Actualiser / Générer (variant success).
+ *  - 4 StatCards DS (emerald / forest / amber / terracotta) avec stagger.
+ *  - Bandeau filtre : GlassCard adaptive + chips renforcés (border-300 bg-100
+ *    text-800) + Select mobile.
+ *  - SessionCard : GlassCard adaptive AVEC hover lift + bordure gauche colorée
+ *    selon statut + motion.div stagger + pastille matière + badges renforcés
+ *    + bouton « Valider manuellement » variant success.
+ *  - Empty states premium : KentePattern bg + badges ronds colorés + bouton
+ *    Générer variant success.
+ *  - Loading state premium : Skeletons + KentePattern strip top.
+ *
  * Le contexte d'établissement vient de `useAuthStore`. Si aucun établissement
  * n'est sélectionné, on invite l'utilisateur à en choisir un.
+ *
+ * LOGIQUE MÉTIER INTACTE : hooks React Query (pointageKeys.ecran / fetch-
+ * SessionsEcran / generateSessions / validePointageManuel / refetchInterval
+ * 30s / refetchOnWindowFocus), types SessionAvecStatut / StatutAffichage,
+ * mutations (generateMutation / validerMutation) + invalidateQueries, handlers
+ * et toasts conservés, constantes STATUT_LABEL / STATUT_ICO / STATUT_BORDER /
+ * STATUT_BADGE (contrastes renforcés visuellement mais sémantiquement
+ * identiques), helpers coursCommence / formatHeure / eleveOuEnseignantNom.
+ * Aucun endpoint backend touché.
  */
 
 import * as React from "react";
@@ -31,6 +54,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import {
   Clock,
   RefreshCw,
@@ -45,6 +69,7 @@ import {
   Hourglass,
   Loader2,
   CalendarDays,
+  type LucideIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -58,11 +83,11 @@ import {
 } from "@/lib/api-pointage";
 import { formatDate, todayISO } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -70,6 +95,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
+import { StatCard } from "@/components/ds/stat-card";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Clés React Query
@@ -110,15 +139,16 @@ const STATUT_BORDER: Record<StatutAffichage, string> = {
     "border-l-orange-500 dark:border-l-orange-400",
 };
 
+// Contrast renforcé (BUG À ÉVITER #7) : border-300 bg-100 text-800.
 const STATUT_BADGE: Record<StatutAffichage, string> = {
   VERT:
-    "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300",
+    "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200",
   JAUNE:
-    "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300",
+    "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/50 dark:text-amber-200",
   ROUGE:
-    "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300",
+    "border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-800/60 dark:bg-rose-950/50 dark:text-rose-200",
   ORANGE:
-    "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-300",
+    "border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800/60 dark:bg-orange-950/50 dark:text-orange-200",
 };
 
 /**
@@ -251,7 +281,7 @@ export function EcranPointage() {
     return liste.filter((s) => s.statut_affichage === filtre);
   }, [sessions, filtre]);
 
-  // Compteurs rapides par statut (pour les pastilles du filtre)
+  // Compteurs rapides par statut (pour les pastilles du filtre + StatCards)
   const compteurs = React.useMemo(() => {
     const liste = sessions ?? [];
     return {
@@ -279,6 +309,7 @@ export function EcranPointage() {
 
   return (
     <EcranPointageShell
+      etablissementNom={etablissement.nom}
       headerRight={
         <>
           <Button
@@ -288,6 +319,8 @@ export function EcranPointage() {
             onClick={() => refetch()}
             disabled={isFetching}
             aria-label="Actualiser"
+            title="Actualiser l'écran de pointage"
+            className="w-full sm:w-auto"
           >
             <RefreshCw
               className={cn("size-4", isFetching && "animate-spin")}
@@ -296,10 +329,12 @@ export function EcranPointage() {
           </Button>
           <Button
             type="button"
+            variant="success"
             size="sm"
             onClick={() => generateMutation.mutate()}
             disabled={generateMutation.isPending}
-            className="bg-emerald-600 hover:bg-emerald-700"
+            title="Générer les sessions de cours du jour à partir de l'emploi du temps"
+            className="w-full sm:w-auto"
           >
             {generateMutation.isPending ? (
               <Loader2 className="size-4 animate-spin" />
@@ -312,19 +347,69 @@ export function EcranPointage() {
         </>
       }
     >
-      {/* Bandeau date + filtre */}
-      <Card>
-        <CardContent className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* ─── 4 StatCards de résumé ────────────────────────────────────────── */}
+      <section
+        aria-label="Résumé des pointages"
+        className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4"
+      >
+        <StatCard
+          icon={Clock}
+          tone="emerald"
+          label="Total sessions"
+          value={compteurs.total}
+          hint={isLoading ? "chargement…" : "session(s) aujourd'hui"}
+          delay={0}
+          className="h-full"
+        />
+        <StatCard
+          icon={CheckCircle2}
+          tone="forest"
+          label="Présents"
+          value={compteurs.vert}
+          hint="pointages validés"
+          delay={0.05}
+          className="h-full"
+        />
+        <StatCard
+          icon={AlertTriangle}
+          tone="amber"
+          label="À valider"
+          value={compteurs.orange}
+          hint="régularisation requise"
+          delay={0.1}
+          className="h-full"
+        />
+        <StatCard
+          icon={XCircle}
+          tone="terracotta"
+          label="Absents"
+          value={compteurs.rouge}
+          hint="sans pointage valide"
+          delay={0.15}
+          className="h-full"
+        />
+      </section>
+
+      <KentePattern variant="separator" className="my-1" />
+
+      {/* ─── Bandeau date + filtre ─────────────────────────────────────────── */}
+      <GlassCard variant="adaptive" noHover noAnimation className="p-3 sm:p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-sm">
             <CalendarDays className="size-4 text-muted-foreground" />
             <span className="font-medium capitalize">
               {formatDate(today)}
             </span>
-            <Badge variant="outline" className="ml-1">
+            <Badge
+              variant="outline"
+              className="ml-1 border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200"
+            >
               {compteurs.total} session{compteurs.total > 1 ? "s" : ""}
             </Badge>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+
+          {/* ─── Chips filtre (hidden on mobile, replaced by Select) ─────── */}
+          <div className="hidden flex-wrap items-center gap-2 sm:flex">
             <StatutChip
               active={filtre === "all"}
               onClick={() => setFiltre("all")}
@@ -361,12 +446,14 @@ export function EcranPointage() {
               tone="amber"
             />
           </div>
+
+          {/* ─── Select mobile (sm:hidden) ───────────────────────────────── */}
           <div className="sm:hidden">
             <Select
               value={filtre}
               onValueChange={(v) => setFiltre(v as StatutAffichage | "all")}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full bg-background" aria-label="Filtrer par statut">
                 <SelectValue placeholder="Filtrer par statut" />
               </SelectTrigger>
               <SelectContent>
@@ -378,16 +465,12 @@ export function EcranPointage() {
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Contenu : grille / skeletons / empty / error */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-44 w-full rounded-xl" />
-          ))}
         </div>
+      </GlassCard>
+
+      {/* ─── Contenu : grille / skeletons / empty / error ─────────────────── */}
+      {isLoading ? (
+        <LoadingState />
       ) : isError ? (
         <EmptyState
           icon={AlertCircle}
@@ -403,6 +486,7 @@ export function EcranPointage() {
               variant="outline"
               size="sm"
               onClick={() => refetch()}
+              title="Réessayer le chargement"
             >
               <RefreshCw className="size-4" />
               Réessayer
@@ -419,10 +503,11 @@ export function EcranPointage() {
             description="Générez les sessions de cours du jour à partir de l'emploi du temps. Vous pourrez ensuite suivre le pointage en temps réel."
             action={
               <Button
+                variant="success"
                 size="sm"
                 onClick={() => generateMutation.mutate()}
                 disabled={generateMutation.isPending}
-                className="bg-emerald-600 hover:bg-emerald-700"
+                title="Générer les sessions du jour"
               >
                 {generateMutation.isPending ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -436,17 +521,18 @@ export function EcranPointage() {
         ) : (
           <EmptyState
             icon={Clock}
-            tone="slate"
+            tone="amber"
             title="Aucune session ne correspond au filtre"
             description="Modifiez le filtre de statut pour voir d'autres sessions."
           />
         )
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {sessionsFiltrees.map((s) => (
+          {sessionsFiltrees.map((s, idx) => (
             <SessionCard
               key={s.id}
               session={s}
+              index={idx}
               onValider={() => validerMutation.mutate(s.id)}
               isValiding={
                 validerMutation.isPending &&
@@ -461,156 +547,211 @@ export function EcranPointage() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Sous-composants
+// Shell (hero header premium + KentePattern strip / separator)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface EcranPointageShellProps {
   children: React.ReactNode;
   headerRight?: React.ReactNode;
+  etablissementNom?: string;
 }
 
 function EcranPointageShell({
   children,
   headerRight,
+  etablissementNom,
 }: EcranPointageShellProps) {
   return (
-    <div className="flex flex-col gap-4 p-4 sm:p-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <Clock className="size-6 text-emerald-600" />
-            Écran de pointage
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Suivi temps réel des pointages enseignants · rafraîchissement
-            automatique toutes les 30 secondes.
-          </p>
+    <div className="space-y-4 sm:space-y-6">
+      <KentePattern variant="strip" position="top" />
+
+      {/* ─── Hero header premium ──────────────────────────────────────── */}
+      <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3 sm:gap-4">
+            {/* Badge rond gradient emerald→gold avec icône Clock */}
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg shadow-emerald-900/20">
+              <Clock className="size-6" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-2xl font-bold tracking-tight text-forest">
+                  Écran de pointage
+                </h1>
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50/60 px-2 py-0.5 align-middle text-[11px] font-medium text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  <Sparkles className="size-3" />
+                  Phase B
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Suivi temps réel des pointages enseignants · rafraîchissement
+                automatique toutes les 30 secondes.
+              </p>
+              {etablissementNom ? (
+                <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  {etablissementNom}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          {headerRight ? (
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
+              {headerRight}
+            </div>
+          ) : null}
         </div>
-        {headerRight ? (
-          <div className="flex items-center gap-2">{headerRight}</div>
-        ) : null}
-      </header>
+      </GlassCard>
+
+      <KentePattern variant="separator" className="my-1" />
+
       {children}
     </div>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Carte session (GlassCard adaptive + hover lift + bordure gauche colorée)
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface SessionCardProps {
   session: SessionAvecStatut;
+  index: number;
   onValider: () => void;
   isValiding: boolean;
 }
 
-function SessionCard({ session, onValider, isValiding }: SessionCardProps) {
+function SessionCard({
+  session,
+  index,
+  onValider,
+  isValiding,
+}: SessionCardProps) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const statut = session.statut_affichage;
   const StatutIco = STATUT_ICO[statut];
   const matiere = session.affectation?.matiere;
   const classe = session.affectation?.classe;
   const absentEnCours = statut === "ROUGE" && coursCommence(session);
 
+  const motionProps = prefersReducedMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: 16 },
+        animate: { opacity: 1, y: 0 },
+        transition: {
+          duration: 0.35,
+          delay: Math.min(index * 0.05, 0.4),
+          ease: [0.22, 1, 0.36, 1] as const,
+        },
+      };
+
   return (
-    <Card
-      className={cn(
-        "relative overflow-hidden border-l-4 transition-shadow hover:shadow-md",
-        STATUT_BORDER[statut],
-      )}
-    >
-      <CardContent className="flex flex-col gap-3 p-4">
-        {/* En-tête : heure + statut */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex flex-col">
-            <span className="flex items-center gap-1.5 text-sm font-semibold tabular-nums">
-              <Clock className="size-3.5 text-muted-foreground" />
-              {formatHeure(session.heure_debut)} – {formatHeure(session.heure_fin)}
-            </span>
-            <span className="mt-0.5 text-xs text-muted-foreground">
-              Salle {session.salle || "—"}
-            </span>
-          </div>
-          <Badge
-            variant="outline"
-            className={cn("gap-1 font-medium", STATUT_BADGE[statut])}
-          >
-            <StatutIco className="size-3" />
-            {STATUT_LABEL[statut]}
-          </Badge>
-        </div>
-
-        {/* Matière + classe */}
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2">
-            <span
-              aria-hidden
-              className="size-3 shrink-0 rounded-full border border-black/10"
-              style={{
-                backgroundColor: matiere?.couleur || "#94a3b8",
-              }}
-            />
-            <span className="line-clamp-1 text-sm font-medium">
-              {matiere?.libelle || "Matière inconnue"}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <GraduationCap className="size-3.5" />
-            <span className="line-clamp-1">
-              {classe?.libelle || "Classe inconnue"}
-            </span>
-          </div>
-        </div>
-
-        {/* Enseignant */}
-        <div className="flex items-center gap-1.5 text-xs">
-          <User className="size-3.5 text-muted-foreground" />
-          <span className="line-clamp-1 font-medium">
-            {eleveOuEnseignantNom(session)}
-          </span>
-        </div>
-
-        {/* Salle (mobile, redondant sur desktop) */}
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground sm:hidden">
-          <MapPin className="size-3.5" />
-          <span className="line-clamp-1">{session.salle || "—"}</span>
-        </div>
-
-        {/* Pied : action / badge */}
-        <div className="mt-1 flex items-center justify-between gap-2 border-t pt-3">
-          {statut === "ORANGE" ? (
-            <Button
-              type="button"
-              size="sm"
-              onClick={onValider}
-              disabled={isValiding}
-              className="bg-orange-600 hover:bg-orange-700"
-            >
-              {isValiding ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <CheckCircle2 className="size-3.5" />
-              )}
-              Valider manuellement
-            </Button>
-          ) : absentEnCours ? (
+    <motion.div className="h-full" {...motionProps}>
+      <GlassCard
+        variant="adaptive"
+        className={cn(
+          "h-full border-l-4 p-4",
+          STATUT_BORDER[statut],
+        )}
+      >
+        <div className="flex h-full flex-col gap-3">
+          {/* ─── En-tête : heure + statut ─────────────────────────────────── */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-col">
+              <span className="flex items-center gap-1.5 text-sm font-semibold tabular-nums">
+                <Clock className="size-3.5 text-muted-foreground" />
+                {formatHeure(session.heure_debut)} – {formatHeure(session.heure_fin)}
+              </span>
+              <span className="mt-0.5 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <MapPin className="size-3" />
+                <span className="line-clamp-1">{session.salle || "—"}</span>
+              </span>
+            </div>
             <Badge
               variant="outline"
-              className="animate-pulse border-rose-300 bg-rose-100 font-bold uppercase tracking-wide text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/60 dark:text-rose-300"
+              className={cn("shrink-0 gap-1 font-medium", STATUT_BADGE[statut])}
             >
-              <XCircle className="size-3" />
-              Absent
+              <StatutIco className="size-3" />
+              {STATUT_LABEL[statut]}
             </Badge>
-          ) : (
-            <span className="text-xs text-muted-foreground">
-              {coursCommence(session)
-                ? "Cours en cours"
-                : session.statut === "TERMINEE"
-                  ? "Cours terminé"
-                  : "Cours à venir"}
+          </div>
+
+          {/* ─── Matière + classe ─────────────────────────────────────────── */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden
+                className="size-3 shrink-0 rounded-full border border-black/10"
+                style={{
+                  backgroundColor: matiere?.couleur || "#94a3b8",
+                }}
+              />
+              <span className="line-clamp-1 break-words text-sm font-medium leading-snug text-forest">
+                {matiere?.libelle || "Matière inconnue"}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <GraduationCap className="size-3.5" />
+              <span className="line-clamp-1">
+                {classe?.libelle || "Classe inconnue"}
+              </span>
+            </div>
+          </div>
+
+          {/* ─── Enseignant ───────────────────────────────────────────────── */}
+          <div className="flex items-center gap-1.5 text-xs">
+            <User className="size-3.5 text-muted-foreground" />
+            <span className="line-clamp-1 break-words font-medium leading-snug">
+              {eleveOuEnseignantNom(session)}
             </span>
-          )}
+          </div>
+
+          {/* ─── Pied : action / badge ────────────────────────────────────── */}
+          <div className="mt-auto flex items-center justify-between gap-2 border-t pt-3">
+            {statut === "ORANGE" ? (
+              <Button
+                type="button"
+                variant="success"
+                size="sm"
+                onClick={onValider}
+                disabled={isValiding}
+                title="Valider manuellement ce pointage (régularisation)"
+                aria-label="Valider manuellement le pointage"
+              >
+                {isValiding ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="size-3.5" />
+                )}
+                Valider manuellement
+              </Button>
+            ) : absentEnCours ? (
+              <Badge
+                variant="outline"
+                className="animate-pulse border-rose-300 bg-rose-100 font-bold uppercase tracking-wide text-rose-800 dark:border-rose-800/60 dark:bg-rose-950/60 dark:text-rose-200"
+              >
+                <XCircle className="size-3" />
+                Absent
+              </Badge>
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                {coursCommence(session)
+                  ? "Cours en cours"
+                  : session.statut === "TERMINEE"
+                    ? "Cours terminé"
+                    : "Cours à venir"}
+              </span>
+            )}
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </GlassCard>
+    </motion.div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Chip de filtre (badges renforcés border-300 bg-100 text-800)
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface StatutChipProps {
   active: boolean;
@@ -627,17 +768,18 @@ function StatutChip({
   count,
   tone,
 }: StatutChipProps) {
+  // Contrast renforcé (BUG À ÉVITER #7) : border-300 bg-100 text-800.
   const toneCls: Record<StatutChipProps["tone"], string> = {
     emerald:
-      "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300",
+      "border-emerald-300 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200 dark:hover:bg-emerald-950/70",
     amber:
-      "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300",
+      "border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-200 dark:border-amber-800/60 dark:bg-amber-950/50 dark:text-amber-200 dark:hover:bg-amber-950/70",
     rose:
-      "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300",
+      "border-rose-300 bg-rose-100 text-rose-800 hover:bg-rose-200 dark:border-rose-800/60 dark:bg-rose-950/50 dark:text-rose-200 dark:hover:bg-rose-950/70",
     orange:
-      "border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-300",
+      "border-orange-300 bg-orange-100 text-orange-800 hover:bg-orange-200 dark:border-orange-800/60 dark:bg-orange-950/50 dark:text-orange-200 dark:hover:bg-orange-950/70",
     slate:
-      "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300",
+      "border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200 dark:hover:bg-slate-900/70",
   };
   return (
     <button
@@ -659,48 +801,73 @@ function StatutChip({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// États vides / erreur partagés
+// États vides premium (KentePattern bg + badge rond coloré + icône Lucide)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface EmptyStateProps {
-  icon: typeof AlertCircle;
-  tone: "emerald" | "amber" | "rose" | "slate";
+  icon: LucideIcon;
+  tone: "emerald" | "amber" | "rose";
   title: string;
   description: string;
   action?: React.ReactNode;
 }
 
-const EMPTY_TONE: Record<EmptyStateProps["tone"], string> = {
-  emerald:
-    "border-emerald-200 bg-emerald-50/60 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300",
-  amber:
-    "border-amber-200 bg-amber-50/60 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300",
-  rose:
-    "border-rose-200 bg-rose-50/60 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300",
-  slate:
-    "border-slate-200 bg-slate-50/60 text-slate-700 dark:border-slate-800 dark:bg-slate-900/30 dark:text-slate-300",
-};
-
 function EmptyState({ icon: Icon, tone, title, description, action }: EmptyStateProps) {
+  const cls = {
+    emerald:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+    amber:
+      "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+    rose: "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
+  }[tone];
   return (
-    <Card className={cn("border-dashed", EMPTY_TONE[tone])}>
-      <CardContent className="flex flex-col items-center gap-3 p-8 text-center">
+    <GlassCard
+      variant="adaptive"
+      noHover
+      className="relative overflow-hidden"
+    >
+      <KentePattern variant="bg" />
+      <div className="relative flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
         <div
           className={cn(
             "flex size-12 items-center justify-center rounded-full",
-            EMPTY_TONE[tone],
+            cls,
           )}
         >
           <Icon className="size-6" />
         </div>
         <div className="space-y-1">
-          <h3 className="text-base font-semibold">{title}</h3>
-          <p className="mx-auto max-w-md text-sm text-muted-foreground">
+          <p className="font-display text-base font-semibold text-forest">
+            {title}
+          </p>
+          <p className="max-w-md text-sm text-muted-foreground">
             {description}
           </p>
         </div>
-        {action ? <div className="mt-2">{action}</div> : null}
-      </CardContent>
-    </Card>
+        {action}
+      </div>
+    </GlassCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Loading state premium (KentePattern strip top + 8 Skeletons en grille)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LoadingState() {
+  return (
+    <GlassCard
+      variant="adaptive"
+      noHover
+      noAnimation
+      className="relative overflow-hidden p-0"
+    >
+      <KentePattern variant="strip" position="top" />
+      <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3 xl:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-44 w-full rounded-xl" />
+        ))}
+      </div>
+    </GlassCard>
   );
 }
