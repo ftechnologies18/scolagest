@@ -43,15 +43,12 @@ import {
   Wallet,
   CalendarClock,
   Receipt,
-  Phone,
   Download,
   ChevronRight,
   CheckCircle2,
   AlertTriangle,
   Loader2,
   AlertCircle,
-  Building2,
-  Mail,
   RefreshCw,
   Heart,
   Smartphone,
@@ -634,60 +631,6 @@ export function ParentPortal() {
           )}
         </section>
       </main>
-
-      {/* Footer enrichi : KentePattern strip top + 3 colonnes + bordure gold */}
-      <footer className="relative mt-12 shrink-0 overflow-hidden border-t border-gold/30 bg-gradient-to-b from-white/95 to-emerald-50/40 backdrop-blur supports-[backdrop-filter]:bg-white/85">
-        <KentePattern variant="strip" position="top" />
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-          <div className="grid grid-cols-1 items-stretch gap-6 sm:grid-cols-3">
-            <FooterBlock
-              icon={<Building2 className="size-5 text-emerald-600" />}
-              title="Votre établissement"
-            >
-              <p className="break-words font-medium leading-snug">
-                {etablissement?.nom ?? "Groupe Le Chandelier"}
-              </p>
-              <p className="break-words text-xs text-muted-foreground">
-                {etablissement?.ville ? `${etablissement.ville}, ` : ""}
-                Côte d&apos;Ivoire
-              </p>
-            </FooterBlock>
-
-            <FooterBlock
-              icon={<Phone className="size-5 text-emerald-600" />}
-              title="Besoin d'aide ?"
-            >
-              <p className="break-words text-sm leading-snug">
-                Contactez le secrétariat ou la comptabilité de
-                l&apos;établissement pour toute question concernant les
-                paiements ou les soldes.
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Du lundi au vendredi, 8h à 16h.
-              </p>
-            </FooterBlock>
-
-            <FooterBlock
-              icon={<Mail className="size-5 text-emerald-600" />}
-              title="ScolaGest"
-            >
-              <p className="break-words text-xs leading-snug text-muted-foreground">
-                Application de Gestion &amp; Caisse Scolaire.
-              </p>
-              <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
-                <Heart className="size-3 text-rose-500" />
-                Conçu pour les familles
-              </p>
-            </FooterBlock>
-          </div>
-
-          <KentePattern variant="separator" className="my-6" />
-
-          <div className="flex flex-col items-center justify-between gap-2 text-[11px] text-muted-foreground sm:flex-row">
-            <p>Document non contractuel. En cas de litige, le registre de caisse fait foi.</p>
-          </div>
-        </div>
-      </footer>
 
       <Footer className="shrink-0" />
 
@@ -1470,29 +1413,5 @@ function EmptyState({
         </div>
       </div>
     </GlassCard>
-  );
-}
-
-function FooterBlock({
-  icon,
-  title,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="h-full">
-      <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-        <span className="flex size-7 items-center justify-center rounded-md bg-emerald-50 ring-1 ring-emerald-200/60 dark:bg-emerald-950/40 dark:ring-emerald-900/40">
-          {icon}
-        </span>
-        {title}
-      </div>
-      <div className="space-y-0.5 break-words text-sm leading-snug text-muted-foreground">
-        {children}
-      </div>
-    </div>
   );
 }

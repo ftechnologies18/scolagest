@@ -100,6 +100,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { GlassCard } from "@/components/ds/glass-card";
 import { KentePattern } from "@/components/ds/kente-pattern";
+import { Footer } from "@/components/ds/footer";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers (logique métier préservée à l'identique)
@@ -456,73 +457,10 @@ function PublicShell({
         {children}
       </main>
 
-      {/* ─── Footer enrichi ─────────────────────────────────────────────────── */}
-      <footer
-        id="contact"
-        className="relative z-10 mt-auto overflow-hidden border-t border-gold/30 bg-gradient-to-b from-white/95 to-emerald-50/40 backdrop-blur supports-[backdrop-filter]:bg-white/85"
-      >
-        <KentePattern variant="strip" position="top" />
-        <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-          <div className="grid grid-cols-1 items-stretch gap-6 sm:grid-cols-3">
-            <FooterBlock
-              icon={<Landmark className="size-5 text-emerald-600" />}
-              title="Établissement"
-            >
-              <p className="break-words font-medium leading-snug">
-                {etablissementNom ?? "Groupe Scolaire Le Chandelier"}
-              </p>
-              <p className="break-words text-xs text-muted-foreground">
-                {etablissementVille ? `${etablissementVille}, ` : "Dabou, "}
-                Côte d&apos;Ivoire
-              </p>
-            </FooterBlock>
-
-            <FooterBlock
-              icon={<Phone className="size-5 text-emerald-600" />}
-              title="Besoin d&apos;aide ?"
-            >
-              <p className="break-words text-sm leading-snug">
-                Contactez le secrétariat pour toute question sur l&apos;étude
-                de votre dossier ou les prochaines étapes.
-              </p>
-              <Button
-                asChild
-                size="sm"
-                className="mt-2 bg-emerald-600 hover:bg-emerald-700"
-                title="Contacter le secrétariat"
-              >
-                <a href="#contact">
-                  <MessageSquare className="size-4" />
-                  Contacter le secrétariat
-                </a>
-              </Button>
-            </FooterBlock>
-
-            <FooterBlock
-              icon={<Mail className="size-5 text-emerald-600" />}
-              title="ScolaGest"
-            >
-              <p className="break-words text-xs leading-snug text-muted-foreground">
-                Application de Gestion &amp; Caisse Scolaire — Pré-inscription
-                en ligne.
-              </p>
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Du lundi au vendredi, 8h à 16h.
-              </p>
-            </FooterBlock>
-          </div>
-
-          <KentePattern variant="separator" className="my-6" />
-
-          <div className="flex flex-col items-center justify-between gap-2 text-[11px] text-muted-foreground sm:flex-row">
-            <p>
-              ScolaGest · Pré-inscription en ligne · Page publique sans
-              authentification
-            </p>
-            <p>Groupe Scolaire Le Chandelier — Dabou, Côte d&apos;Ivoire</p>
-          </div>
-        </div>
-      </footer>
+      {/* Pied de page minimaliste */}
+      <div id="contact" className="mt-auto">
+        <Footer />
+      </div>
 
       {/* ─── Bouton « Contacter le secrétariat » sticky mobile ─────────────── */}
       {/* Filet de sécurité à chaque statut — sticky en bas sur mobile uniquement */}
@@ -548,34 +486,6 @@ function PublicShell({
             </a>
           </Button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Footer block (3 colonnes)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function FooterBlock({
-  icon,
-  title,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="h-full">
-      <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-        <span className="flex size-7 items-center justify-center rounded-md bg-emerald-50 ring-1 ring-emerald-200/60 dark:bg-emerald-950/40 dark:ring-emerald-900/40">
-          {icon}
-        </span>
-        <span className="break-words leading-snug">{title}</span>
-      </div>
-      <div className="space-y-1 break-words text-sm leading-snug text-muted-foreground">
-        {children}
       </div>
     </div>
   );
