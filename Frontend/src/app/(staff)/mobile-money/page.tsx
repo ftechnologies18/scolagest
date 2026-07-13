@@ -1,19 +1,19 @@
 "use client";
 
 /**
- * ScolaGest — Page Mobile Money (route `/mobile-money`).
+ * ScolaGest — Redirection /mobile-money → /encaissements?tab=momo.
  *
- * Accessible au CAISSIER seul (guichet MoMo : initier, réconcilier des
- * transactions). La direction n'y accède pas.
+ * Ancienne route conservée pour la rétrocompatibilité. Redirige vers la page
+ * unifiée avec l'onglet Mobile Money actif.
  */
 
-import { RoleGuard } from "@/components/auth/role-guard";
-import MobileMoneyView from "@/components/dashboard/views/view-mobile-money";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default function MobileMoneyPage() {
-  return (
-    <RoleGuard allow={["CAISSIER"]}>
-      <MobileMoneyView />
-    </RoleGuard>
-  );
+export default function MobileMoneyRedirectPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/encaissements?tab=momo");
+  }, [router]);
+  return null;
 }

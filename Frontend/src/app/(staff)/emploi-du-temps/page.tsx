@@ -1,27 +1,19 @@
 "use client";
 
 /**
- * ScolaGest — Page emploi du temps (route `/emploi-du-temps`).
+ * ScolaGest — Redirection /emploi-du-temps → /temps-pedagogique?tab=edt.
  *
- * Rend la vue `EmploiTempsDashboard` (module Phase A étendue), protégée par un
- * RoleGuard réservé à la direction, aux directeurs (études / superviseur) et
- * au secrétariat.
+ * Ancienne route conservée pour la rétrocompatibilité. Redirige vers la page
+ * unifiée avec l'onglet Emploi du temps actif.
  */
 
-import { RoleGuard } from "@/components/auth/role-guard";
-import { EmploiTempsDashboard } from "@/components/emploi-temps/emploi-temps-dashboard";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-const ALLOWED_ROLES = [
-  "DIRECTION",
-  "DIRECTEUR_ETUDES",
-  "DIRECTEUR_SUPERVISEUR",
-  "SECRETARIAT",
-] as const;
-
-export default function EmploiDuTempsPage() {
-  return (
-    <RoleGuard allow={[...ALLOWED_ROLES]}>
-      <EmploiTempsDashboard />
-    </RoleGuard>
-  );
+export default function EmploiDuTempsRedirectPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/temps-pedagogique?tab=edt");
+  }, [router]);
+  return null;
 }

@@ -1,26 +1,19 @@
 "use client";
 
 /**
- * ScolaGest — Page écran de pointage temps réel (route `/pointage-ecran`).
+ * ScolaGest — Redirection /pointage-ecran → /temps-pedagogique?tab=pointage.
  *
- * Rend la vue `EcranPointage` (module Phase B), protégée par un RoleGuard
- * réservé à la direction, aux directeurs et au secrétariat.
+ * Ancienne route conservée pour la rétrocompatibilité. Redirige vers la page
+ * unifiée avec l'onglet Pointage temps réel actif.
  */
 
-import { RoleGuard } from "@/components/auth/role-guard";
-import { EcranPointage } from "@/components/pointage/ecran-pointage";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-const ALLOWED_ROLES = [
-  "DIRECTION",
-  "DIRECTEUR_ETUDES",
-  "DIRECTEUR_SUPERVISEUR",
-  "SECRETARIAT",
-] as const;
-
-export default function PointageEcranPage() {
-  return (
-    <RoleGuard allow={[...ALLOWED_ROLES]}>
-      <EcranPointage />
-    </RoleGuard>
-  );
+export default function PointageEcranRedirectPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/temps-pedagogique?tab=pointage");
+  }, [router]);
+  return null;
 }

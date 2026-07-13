@@ -29,16 +29,16 @@ import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   School,
-  UserPlus,
   Wallet,
   AlertTriangle,
   FileBarChart,
   Coins,
-  CalendarDays,
   CalendarRange,
   UserCog,
   BookOpen,
-  Smartphone,
+  ClipboardList,
+  HandCoins,
+  Timer,
   Settings,
   Menu,
   Search,
@@ -51,9 +51,7 @@ import {
   LifeBuoy,
   ScrollText,
   CreditCard,
-  MailOpen,
   GraduationCap,
-  Clock,
   ShieldAlert,
   PanelLeftClose,
   PanelLeftOpen,
@@ -137,20 +135,25 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         roles: ["CAISSIER", "COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT", "EDUCATEUR"],
       },
       {
-        // Nouvelle inscription (wizard 4 étapes) : réservé au secrétariat
-        // et à la direction (le caissier/comptable gèrent la caisse, pas les
-        // inscriptions).
-        href: "/inscription",
-        label: "Nouvelle inscription",
-        icon: UserPlus,
+        // Page unifiée Inscriptions (fusion UX) : un seul point d'entrée
+        // pour le cycle complet d'admission. Onglet Pré-inscriptions en
+        // ligne (validation demandes parents) + onglet Nouvelle inscription
+        // (wizard 4 étapes au guichet). Anciennes routes /inscription et
+        // /pre-inscriptions redirigent ici.
+        href: "/inscriptions",
+        label: "Inscriptions",
+        icon: ClipboardList,
         roles: ["SECRETARIAT", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
       {
-        // Caisse : réservée au CAISSIER et au COMPTABLE (encaissement,
-        // clôture, reçus). La direction n'y accède pas.
-        href: "/caisse",
-        label: "Caisse",
-        icon: Wallet,
+        // Page unifiée Encaissements (fusion UX) : un seul point d'entrée
+        // pour le guichet d'encaissement. Onglet Caisse (espèces, chèque,
+        // virement) + onglet Mobile Money (Orange/MTN/Wave, masqué au
+        // COMPTABLE). Anciennes routes /caisse et /mobile-money redirigent
+        // ici.
+        href: "/encaissements",
+        label: "Encaissements",
+        icon: HandCoins,
         roles: ["CAISSIER", "COMPTABLE"],
       },
       {
@@ -164,15 +167,6 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         label: "Rapports",
         icon: FileBarChart,
         roles: ["CAISSIER", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "COMPTABLE", "SECRETARIAT", "EDUCATEUR"],
-      },
-      {
-        // Pré-inscriptions en ligne : demandes soumises par les parents via
-        // le formulaire public /pre-inscription. Le secrétariat et la
-        // direction valident ou rejettent chaque demande.
-        href: "/pre-inscriptions",
-        label: "Pré-inscriptions",
-        icon: MailOpen,
-        roles: ["SECRETARIAT", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
     ],
   },
@@ -227,12 +221,15 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
       },
       {
-        // Écran de pointage temps réel (Phase B) : suivi des pointages
-        // enseignants avec statut couleur (VERT / JAUNE / ROUGE / ORANGE) et
-        // régularisation manuelle. Réservé à la direction et au secrétariat.
-        href: "/pointage-ecran",
-        label: "Pointage (temps réel)",
-        icon: Clock,
+        // Page unifiée Temps pédagogique (fusion UX) : un seul point d'entrée
+        // pour la gestion du temps pédagogique. Onglet Emploi du temps
+        // (planning hebdomadaire) + onglet Pointage temps réel (suivi
+        // enseignants). Workflow séquentiel : l'EDT génère les sessions de
+        // pointage. Anciennes routes /pointage-ecran et /emploi-du-temps
+        // redirigent ici.
+        href: "/temps-pedagogique",
+        label: "Temps pédagogique",
+        icon: Timer,
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
       },
       {
@@ -254,15 +251,6 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         icon: Wallet,
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
-      {
-        // Emploi du temps (Phase A étendue) : planning hebdomadaire des
-        // créneaux (Lundi → Samedi) et génération des sessions de pointage.
-        // Accessible à la direction, aux directeurs et au secrétariat.
-        href: "/emploi-du-temps",
-        label: "Emploi du temps",
-        icon: CalendarDays,
-        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
-      },
     ],
   },
   {
@@ -274,14 +262,6 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         label: "Comptabilité",
         icon: BookOpen,
         roles: ["COMPTABLE"],
-      },
-      {
-        // Mobile Money : réservé au CAISSIER (guichet MoMo). La direction
-        // n'y accède pas.
-        href: "/mobile-money",
-        label: "Mobile Money",
-        icon: Smartphone,
-        roles: ["CAISSIER"],
       },
       {
         href: "/parametres",

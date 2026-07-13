@@ -1,25 +1,19 @@
 "use client";
 
 /**
- * ScolaGest — Page d'inscription (route `/inscription`).
+ * ScolaGest — Redirection /inscription → /inscriptions?tab=nouvelle.
  *
- * Rend le wizard d'inscription complet (4 étapes) qui crée en une passe :
- * élève + tuteur + inscription dans une classe pour une année scolaire.
- *
- * Accessible au SECRETARIAT, DIRECTION, DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR.
- * Le caissier et le comptable n'y accèdent pas (ils gèrent la caisse, pas les
- * inscriptions).
+ * Ancienne route conservée pour la rétrocompatibilité. Redirige vers la page
+ * unifiée avec l'onglet Nouvelle inscription actif.
  */
 
-import { RoleGuard } from "@/components/auth/role-guard";
-import { InscriptionWizard } from "@/components/inscription/inscription-wizard";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default function InscriptionPage() {
-  return (
-    <RoleGuard
-      allow={["SECRETARIAT", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"]}
-    >
-      <InscriptionWizard />
-    </RoleGuard>
-  );
+export default function InscriptionRedirectPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/inscriptions?tab=nouvelle");
+  }, [router]);
+  return null;
 }

@@ -1,19 +1,19 @@
 "use client";
 
 /**
- * ScolaGest — Page caisse (route `/caisse`).
+ * ScolaGest — Redirection /caisse → /encaissements?tab=caisse.
  *
- * Accessible au CAISSIER et au COMPTABLE (encaissement, clôture, reçus).
- * La direction n'y accède pas (le `RoleGuard` bloque l'accès par URL directe).
+ * Ancienne route conservée pour la rétrocompatibilité. Redirige vers la page
+ * unifiée avec l'onglet Caisse actif.
  */
 
-import { RoleGuard } from "@/components/auth/role-guard";
-import CaisseView from "@/components/dashboard/views/view-caisse";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default function CaissePage() {
-  return (
-    <RoleGuard allow={["CAISSIER", "COMPTABLE"]}>
-      <CaisseView />
-    </RoleGuard>
-  );
+export default function CaisseRedirectPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/encaissements?tab=caisse");
+  }, [router]);
+  return null;
 }
