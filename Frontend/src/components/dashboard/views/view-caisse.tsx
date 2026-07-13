@@ -32,7 +32,6 @@ import {
   Lock,
   LayoutDashboard,
   Users,
-  Sparkles,
 } from "lucide-react";
 
 import { useAuthStore } from "@/lib/auth-store";
@@ -87,10 +86,6 @@ export default function CaisseView() {
                 <h1 className="font-display text-2xl font-bold tracking-tight text-forest">
                   Caisse
                 </h1>
-                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50/60 px-2 py-0.5 align-middle text-[11px] font-medium text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
-                  <Sparkles className="size-3" />
-                  Phase 3
-                </span>
               </div>
               <p className="text-sm text-muted-foreground">
                 Tableau de bord, file d&apos;attente, encaissement, historique

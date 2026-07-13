@@ -76,7 +76,6 @@ import {
   Eye,
   CalendarClock,
   Flame,
-  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -309,10 +308,6 @@ function DisciplineShell({
                 <h1 className="font-display text-2xl font-bold tracking-tight text-forest">
                   Discipline
                 </h1>
-                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50/60 px-2 py-0.5 align-middle text-[11px] font-medium text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
-                  <Sparkles className="size-3" />
-                  Phase B
-                </span>
               </div>
               <p className="text-sm text-muted-foreground">
                 Suivi des tickets d&apos;incident disciplinaire et identification
