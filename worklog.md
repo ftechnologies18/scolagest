@@ -8836,3 +8836,346 @@ Stage Summary:
   10. BarChart "Taux de recouvrement par classe" : barres emerald pour
       "Encaissé" et amber pour "Attendu" (cohérence palette Forêt EdTech).
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+Task ID: 4
+Agent: frontend-styling-expert
+Task: Refonte du module /pre-inscriptions (Forêt EdTech, glassmorphism, kente, responsive)
+
+Work Log:
+- Lecture du worklog.md (contexte Forêt EdTech, refontes précédentes
+  /eleves, /inscription, /impayes, /rapports — identité visuelle et bugs à
+  éviter : Tooltip Radix, truncate, boutons imbriqués, contrastes, `toast`
+  non déclaré) intégrés.
+- Lecture intégrale du fichier à refondre (1084 lignes) :
+  `src/components/pre-inscription/pre-inscriptions-list.tsx` — repérage du
+  header minimaliste, FilterTabs en boutons ronds, tableau desktop sans vue
+  mobile, dialogs fonctionnels mais sans premium (pas de badge rond gradient,
+  pas de GlassCard pour les sections du DetailDialog, badges en border-200
+  bg-50 text-700 — contraste insuffisant), empty states basiques sans
+  KentePattern, pas de StatCards de résumé.
+- Lecture des composants DS de référence :
+  • `components/ds/glass-card.tsx` — variants (mobile/tablet/desktop/premium/
+    adaptive), `premiumBorder`, `noHover`, `noAnimation`, `delay`. Composant
+    interactif (role=button + tabIndex=0 + onKeyDown Enter/Space) quand
+    `onClick` passé — utilisé pour les cartes mobile cliquables.
+  • `components/ds/kente-pattern.tsx` — variants (strip/bg/border/separator),
+    position (top/bottom/custom). `strip position="top"` déjà dans le layout
+    staff (mais view-impayes/view-rapports en ajoutent un second pour le
+    section header — pattern repris ici).
+  • `components/ds/stat-card.tsx` — tones (emerald/amber/terracotta/gold/sky/
+    forest), `icon`, `hint`, `delay` pour stagger.
+- Lecture des exemples de refontes réussies :
+  • `components/eleves/eleves-list.tsx` — hero header GlassCard desktop +
+    badge rond gradient + ListHeader, filtres avec icônes dans SelectTrigger,
+    tableau desktop (hover bg-emerald-50/60, avatar initials bg-emerald-600
+    text-white), cartes mobile (`md:hidden` GlassCard mobile), EmptyState
+    premium avec KentePattern bg.
+  • `components/dashboard/views/view-impayes.tsx` — pattern EmptyStateEtablissement/
+    EmptyStateErreur/EmptyStateAucun* avec KentePattern bg, FilterTabs premium
+    (button bg-emerald-600 text-white + icônes), boutons `title` natif (BUG
+    À ÉVITER #1), cartes mobile avec stop-click.
+- Lecture de `lib/api-pre-inscription.ts` (types PreInscription /
+  StatutPreInscription / ValiderBody / ValiderResult, fetchPreInscriptions,
+  preInscriptionsKeys, validerPreInscription, rejeterPreInscription),
+  `lib/api-students.ts` (fetchActiveAnnee, fetchClasses, fetchCycles,
+  classesKeys, cyclesKeys, anneesKeys), `lib/types.ts` (AnneeScolaire, Classe,
+  Cycle), `lib/format.ts` (formatDate, formatDateTime), `lib/auth-store.ts`
+  (etablissement {id, nom, ville, applique_categorie_affecte}).
+- Vérification du `tailwind.config.ts` + `globals.css` (lignes 1-120) :
+  tokens `--color-forest`, `--color-gold`, `--color-terracotta`, `--color-sand`
+  déclarés dans `@theme inline` (Tailwind 4) → utilitaires `bg-forest`,
+  `text-forest`, `bg-gold`, `text-gold-dark`, `bg-terracotta`, `bg-sand`,
+  `from-emerald-600`, `to-amber-500`, etc. tous valides.
+- Vérification du `components/ui/button.tsx` : variant `success` (gradient
+  emerald) existe — utilisé pour le bouton submit du ValiderDialog.
+- Refonte complète du fichier `pre-inscriptions-list.tsx` (1084 → 1637 lignes,
+  +553 lignes) via `Write` (fichier entier réécrit — les changements touchaient
+  ~90% du fichier). Toutes les règles strictes respectées :
+  • Bug `toast` VÉRIFIÉ : `const { toast } = useToast();` est bien présent
+    dans `PreInscriptionsList` (déjà le cas dans le fichier d'origine). Aucun
+    sous-composant n'utilise `toast` directement, donc pas de bug potentiel.
+  • Hero header premium : `GlassCard variant="desktop" noHover p-5 sm:p-6` +
+    badge rond gradient emerald→gold (`bg-gradient-to-br from-emerald-600
+    to-amber-500`) avec icône `MailOpen` + titre `font-display text-2xl
+    font-bold text-forest` + pill "Phase 3" outline (icône Sparkles, border
+    emerald-300 bg-emerald-50/60 text-emerald-800) + pill établissement
+    emerald (icône School, border emerald-200 bg-emerald-50 text-emerald-800)
+    + bouton Actualiser (variant outline border-emerald-300 text-emerald-800
+    hover:bg-emerald-50, icône RefreshCw/Loader2, libellé masqué sous sm).
+  • KentePattern strip top : `<KentePattern variant="strip" position="top" />`
+    juste avant le hero header (pattern identique à view-impayes/view-rapports,
+    même si le layout staff en ajoute déjà un global — second strip = section
+    header).
+  • FilterTabs premium : `GlassCard variant="desktop" noHover noAnimation
+    p-2`. Container `flex gap-1.5 overflow-x-auto pb-1 sm:flex-wrap
+    sm:overflow-visible sm:pb-0` (scrollable horizontal mobile, flex-wrap
+    desktop). Tab actif `border-emerald-600 bg-emerald-600 text-white
+    shadow-sm` + `aria-pressed={isActive}`. Tab inactif `border-border
+    bg-background text-muted-foreground hover:bg-emerald-50
+    hover:text-emerald-700`. Icônes contextuelles (Inbox/Send/Eye/
+    CheckCircle2/XCircle) via map `STATUT_ICON`. Compteurs en pills
+    (`bg-white/20 text-white` sur actif, `bg-muted text-muted-foreground`
+    sur inactif).
+  • 4 StatCards de résumé en grid `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`
+    entre les FilterTabs et le tableau :
+    - "Total demandes" (emerald, Inbox, value = allPres.length).
+    - "En attente" (amber, Send, value = counts.SOUMISE + counts.EN_REVUE).
+    - "Validées" (gold, CheckCircle2, value = counts.VALIDEE).
+    - "Rejetées" (terracotta, XCircle, value = counts.REJETEE).
+    Stagger `delay={0, 0.05, 0.1, 0.15}`. Hints contextuels sur chaque card.
+  • KentePattern separator entre StatCards et tableau (`<KentePattern
+    variant="separator" className="my-1" />`).
+  • Tableau desktop enrichi : `GlassCard variant="adaptive" noHover p-0
+    overflow-hidden` (au lieu de `<Card>` + `<CardContent p-0>`). Header row
+    `bg-emerald-50/60 dark:bg-emerald-950/20` + `text-emerald-900
+    dark:text-emerald-200` sur les th. Hover row `bg-emerald-50/60
+    dark:bg-emerald-950/20`. Colonne "Élève" : avatar size-8 rounded-full
+    bg-emerald-600 text-white ring-1 ring-emerald-200/60 avec initiales
+    (`initialsOf(pre.eleve_nom, pre.eleve_prenoms)`) — BUG À ÉVITER #5
+    (avatar fallback bg-600 text-white). Colonne "Tuteur" : avatar size-8
+    rounded-full bg-amber-600 text-white ring-1 ring-amber-200/60. Colonne
+    "Classe souhaitée" : badge `border-emerald-200 bg-emerald-50/60
+    text-emerald-800` avec icône `School`. Colonne "Statut" : badges
+    renforcés `STATUT_BADGE_CLS` passe en `border-300 bg-100 text-800
+    dark:border-700 dark:bg-950/50 dark:text-200` (au lieu de border-200
+    bg-50 text-700) — BUG À ÉVITER #6. Colonne "Actions" : boutons avec
+    `title` natif HTML (PAS de Tooltip Radix — BUG À ÉVITER #1), `aria-label`
+    complet ("Voir le détail de X"), icônes seules sous lg, icône + texte
+    sur lg+. Row VALIDEE : `bg-emerald-50/30` subtil (marque le succès).
+    Row REJETEE : `opacity-60` (marque l'archivage). Colonne date : icône
+    Calendar emerald/70 + `whitespace-nowrap`. Noms d'élèves/tuteurs :
+    `break-words text-sm font-medium leading-snug` (PAS de `truncate` —
+    BUG À ÉVITER #2). Téléphone : `break-all` pour gérer les longs numéros.
+  • Cartes mobile (`md:hidden`) : nouveau composant `PreRowMobile`. GlassCard
+    `variant="mobile" noHover noAnimation delay={min(idx*0.03, 0.3)}`.
+    Carte cliquable via `onClick={onDetail}` (GlassCard gère role=button +
+    tabIndex=0 + onKeyDown Enter/Space automatiquement, evite le bug bouton
+    imbriqué — BUG À ÉVITER #3). `aria-label` complet. Header : avatar élève
+    size-10 (emerald) + nom `break-words text-sm font-semibold leading-snug`
+    + infos (sexe · catégorie) + statut badge à droite. Body : tuteur
+    (icône Users amber + nom + lien parenté), tuteur téléphone (icône Phone
+    amber + `break-all`), classe souhaitée (icône School emerald), date
+    soumission (icône Calendar emerald/70). Footer : grid-cols-2 (2 boutons
+    si SOUMISE/EN_REVUE — Valider emerald + Rejeter rose, h-11 = ≥44px) ou
+    bouton unique full-width "Voir le détail" (si VALIDEE/REJETEE). Tous les
+    boutons du footer appellent `e.stopPropagation()` avant leur action
+    (évite l'ouverture du détail au clic sur une action). `title` natif sur
+    tous les boutons. Row REJETEE : `opacity-70` subtil.
+  • ValiderDialog premium :
+    - Header avec badge rond gradient emerald→gold (`bg-gradient-to-br
+      from-emerald-600 to-amber-500`) + icône CheckCircle2 (au lieu de juste
+      icône dans le titre).
+    - Cascade Cycle → Niveau → Classe dans `grid gap-3 sm:grid-cols-3` avec
+      icônes contextuelles dans les SelectTrigger (`Layers` text-emerald-600
+      pour Cycle, `BarChart3` pour Niveau, `School` pour Classe). Tous les
+      Select ont un `id` + un `Label htmlFor` (accessibilité). SelectTrigger
+      `h-10` (≥44px sur tablette/desktop).
+    - Année scolaire : SelectTrigger avec icône Calendar emerald. Hint
+      `inline-flex items-center gap-1` avec icône Sparkles emerald + texte
+      "Année active présélectionnée : {libelle}".
+    - Notes staff : Textarea avec `id="valider-notes"` + Label htmlFor. Hint
+      "Optionnel — visible par le parent sur la page de suivi.".
+    - Footer : `flex-col gap-2 sm:flex-row` (boutons full-width sur mobile,
+      inline sur desktop). Bouton Annuler (variant outline, h-10). Bouton
+      submit `variant="success"` (gradient emerald) avec icône CheckCircle2
+      (au lieu de `bg-emerald-600 hover:bg-emerald-700` custom — utilise le
+      variant DS dédié).
+  • RejeterDialog premium :
+    - Header avec badge rond gradient rose (`bg-gradient-to-br from-rose-500
+      to-rose-700`) + icône XCircle (au lieu de juste icône).
+    - Textarea `id="rejeter-motif"` avec Label htmlFor + `autoFocus` +
+      `focus-visible:ring-rose-500/40` (ring rose au focus).
+    - Hint : "Minimum 5 caractères. Ce motif sera visible par le parent sur
+      la page de suivi.".
+    - Footer : `flex-col gap-2 sm:flex-row` (boutons full-width sur mobile).
+      Bouton submit `variant="destructive"` (inchangé).
+  • DetailDialog premium :
+    - Header avec badge rond gradient emerald→gold + icône Eye (au lieu de
+      juste icône).
+    - Statut en haut : `flex items-center justify-between` dans une card
+      `border border-emerald-200/60 bg-emerald-50/40 p-3` avec badge
+      `STATUT_BADGE_CLS` renforcé à droite.
+    - 3 sections (Élève, Tuteur/Parent, Classe souhaitée & notes) en
+      `GlassCard variant="mobile" noHover noAnimation p-4` (au lieu de
+      simples divs). `DetailSection` accepte `tone: "emerald" | "amber"`
+      pour colorer le badge SectionHeader.
+    - SectionHeader : icône dans badge rond size-7 (`bg-emerald-100
+      text-emerald-700` ou `bg-amber-100 text-amber-700`) + titre
+      `font-display text-sm font-semibold text-forest`.
+    - DetailRow : `icon` obligatoire (icône contextuelle : User, Calendar,
+      School, Layers, Phone, MailOpen, Users). Layout `flex items-start
+      gap-2.5` (PAS items-center — BUG À ÉVITER #4) avec `mt-0.5` sur le
+      badge icône `size-6 rounded-md bg-emerald-50 text-emerald-600`. Label
+      `text-[11px] font-medium uppercase tracking-wide text-muted-foreground`.
+      Value `break-words text-sm font-medium leading-snug text-foreground`
+      (PAS de truncate — BUG À ÉVITER #2).
+    - Section Élève étendue : ajout du champ "Ancien établissement"
+      (icône School) si `pre.eleve_ancien_etablissement` est présent (champ
+      ajouté en Phase 3 au type PreInscription mais non affiché dans la
+      version d'origine — désormais visible).
+    - Notes parent : card avec icône MessageSquare dans badge rond amber-100
+      text-amber-700 + fond `bg-amber-50/60 border-amber-200/60` + label
+      "Message du parent" en amber-800.
+    - Notes staff : card avec icône StickyNote dans badge rond emerald-100
+      text-emerald-700 + fond `bg-emerald-50/60 border-emerald-200/60` +
+      label "Notes staff" en emerald-800.
+    - Élève créé : badge emerald inline-flex avec icône CheckCircle2 "✓ Élève
+      créé (ID : xxx)" (au lieu de simple `<p>` text-emerald-700).
+    - Footer : bouton Fermer `h-10 w-full sm:w-auto` (full-width sur mobile).
+  • Empty states premium :
+    - `EmptyStateEtablissement` : `GlassCard variant="adaptive" noHover
+      border border-dashed` + `KentePattern variant="bg"` en fond + badge
+      rond amber (`bg-amber-100 text-amber-700`) avec AlertCircle + message
+      "Sélectionnez un établissement".
+    - `EmptyStateErreur` : `GlassCard variant="adaptive" noHover border
+      border-dashed` + `KentePattern variant="bg"` + badge rond rose
+      (`bg-rose-100 text-rose-700`) avec AlertCircle + message contextuel
+      (erreur dynamique) + bouton Réessayer (variant outline border-rose-300
+      text-rose-800 hover:bg-rose-50, icône RefreshCw).
+    - `EmptyState` (aucune pré-inscription) : `KentePattern variant="bg"` +
+      badge rond emerald (`bg-emerald-100 text-emerald-700`) avec Inbox +
+      message contextuel selon le statut filtré ("Aucune demande {label}
+      pour le moment. Les nouvelles pré-inscriptions soumises par les
+      parents apparaîtront ici.").
+  • Imports enrichis : ajout de `GlassCard`, `KentePattern`, `StatCard` (DS)
+    + nouveaux icônes Lucide : `BarChart3`, `Calendar`, `Layers`,
+    `MessageSquare`, `School`, `Sparkles`, `StickyNote`, et
+    `type LucideIcon` (pour les maps STATUT_ICON typées).
+    Imports retirés : `Card`, `CardContent` (remplacés par GlassCard partout)
+    et `Separator` (remplacé par le layout interne de DetailSection dans
+    GlassCard mobile).
+  • Accessibilité : `aria-label` sur tous les boutons icône (Actualiser,
+    Voir détail, Valider, Rejeter), `Label htmlFor` + `id` sur tous les
+    Select du ValiderDialog et tous les Textarea, `aria-pressed` sur les
+    boutons FilterTabs, `aria-label` complet sur les cartes mobile
+    cliquables. Contrastes WCAG AA respectés (badges border-300 bg-100
+    text-800, avatars bg-600 text-white).
+  • Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt EdTech :
+    emerald (#047857) primaire, amber (#F59E0B) pour SOUMISE/secondaire,
+    gold (#D4AF37) pour VALIDEE/premium, terracotta (#C2410C) pour
+    StatCard "Rejetées", rose (#e11d48) pour REJETEE/RejeterDialog
+    (cohérent avec les autres modules), sky (#0ea5e9) pour EN_REVUE (existant
+    — conservé).
+  • Aucune logique métier modifiée : hooks React Query (fetchPreInscriptions
+    avec statutFilter / preInscriptionsKeys.list(statutFilter) /
+    preInscriptionsKeys.list(undefined) pour les compteurs / enabled=
+    !!etablissement), mutations valider/rejeter avec onSuccess (toast +
+    invalidateQueries preInscriptionsKeys.all + closeDialogs) et onError
+    (toast variant destructive), compteurs via `counts` (useMemo sur allPres),
+    cascade Cycle → Niveau → Classe du ValiderDialog avec refs `prevCycle`/
+    `prevNiveau`/`didPreset` et useEffect de reset, auto-présélection de
+    l'année active, validation du motif ≥5 caractères, constante STATUTS,
+    STATUT_LABEL, helpers eleveNomComplet/tuteurNomComplet/classeLibelle/
+    categorieLabel/sexeLabel/lienParenteLabel tous intacts.
+- Compile-check : `bunx tsc --noEmit 2>&1 | grep pre-inscriptions-list` →
+  **0 erreur** sur pre-inscriptions-list.tsx (1 erreur de syntaxe
+  `</Select>` au lieu de `</SelectContent>` à la ligne 1226 initialement,
+  corrigée via Edit). Les ~10 erreurs tsc restantes sont toutes
+  PRÉ-EXISTANTES sur d'autres fichiers (login-form, dashboard-shell,
+  view-parametres, view-utilisateurs, etablissement-form-dialog,
+  utilisateur-form-dialog, instrumentation) — aucune sur pre-inscriptions-list.
+- Lint-check : `bunx eslint src/components/pre-inscription/pre-inscriptions-list.tsx`
+  → **0 erreur, 0 warning** (EXIT=0). `bun run lint` (full project) →
+  **0 erreur, 0 warning** (EXIT=0).
+
+Stage Summary:
+- Fichier modifié : `Frontend/src/components/pre-inscription/pre-inscriptions-list.tsx`
+  (1084 → 1637 lignes, +553 lignes).
+- Identité "Forêt EdTech" enrichie :
+  • Hero header : GlassCard desktop + badge rond gradient emerald→gold
+    (MailOpen) + pill "Phase 3" outline + pill établissement emerald.
+  • FilterTabs premium : GlassCard desktop noHover noAnimation + tabs
+    bg-emerald-600 text-white + icônes contextuelles (Inbox/Send/Eye/
+    CheckCircle2/XCircle) + scrollable horizontal mobile.
+  • 4 StatCards de résumé (Total emerald, En attente amber, Validées gold,
+    Rejetées terracotta) avec stagger delay.
+  • Tableau desktop : GlassCard adaptive p-0 + header bg-emerald-50/60 +
+    hover row bg-emerald-50/60 + avatar élève emerald + avatar tuteur amber
+    + badge classe School + statut border-300 bg-100 text-800 + actions
+    `title` natif + icônes seules mobile/icône+texte desktop + row VALIDEE
+    bg-emerald-50/30 + row REJETEE opacity-60.
+  • Cartes mobile (nouveau) : GlassCard mobile cliquable (ouvre détail),
+    avatar élève + nom + statut, tuteur + classe + date, boutons
+    Valider/Rejeter/Détail h-11 (≥44px) avec stopPropagation.
+  • ValiderDialog premium : badge rond gradient emerald→gold + cascade
+    Cycle→Niveau→Classe avec icônes (Layers/BarChart3/School) + hint année
+    active + bouton submit variant="success".
+  • RejeterDialog premium : badge rond gradient rose + Textarea focus ring
+    rose + hint "Minimum 5 caractères…".
+  • DetailDialog premium : badge rond gradient emerald→gold + 3 sections en
+    GlassCard mobile + DetailRow avec icône contextuelle + notes parent
+    (amber/10) + notes staff (emerald/10) + badge "✓ Élève créé".
+  • Empty states premium : KentePattern bg + badges ronds colorés (amber
+    établissement, emerald aucune demande, rose erreur).
+- Responsive 100% : mobile (FilterTabs scrollable horizontal, cartes mobile
+  md:hidden avec boutons h-11 full-width, libellés masqués sous sm sur
+  bouton Actualiser, libellés masqués sous lg sur boutons d'action du
+  tableau) / tablette (tableau desktop visible `hidden md:block`) / desktop
+  (tableau complet avec colonne Actions large w-[280px], icônes + texte
+  sur lg+).
+- Touch targets ≥ 44px sur mobile (boutons d'action cartes mobile h-11,
+  boutons dialogs h-10 w-full, SelectTrigger h-10).
+- Aucune couleur indigo/bleu ajoutée. Aucun Tooltip Radix. Aucun `truncate`
+  sur les valeurs longues (noms, téléphones, emails — utilisation de
+  `break-words leading-snug` et `break-all` pour les téléphones).
+  Contrastes renforcés sur badges (border-300 bg-100 text-800). Avatar
+  fallback `bg-emerald-600 text-white` / `bg-amber-600 text-white` (PAS
+  bg-100 text-700).
+- Bug `toast` non déclaré VÉRIFIÉ : `const { toast } = useToast();` est
+  bien présent dans `PreInscriptionsList` (déjà le cas dans le fichier
+  d'origine). Aucun sous-composant n'utilise `toast` directement.
+- TypeScript : **0 erreur sur pre-inscriptions-list.tsx** (vérifié par
+  `bunx tsc --noEmit 2>&1 | grep pre-inscriptions-list` → 0 match). Les
+  erreurs tsc restantes sont toutes pré-existantes sur d'autres fichiers.
+- Lint : **0 erreur, 0 warning** sur l'ensemble du projet (`bun run lint`
+  EXIT=0). Fichier pre-inscriptions-list.tsx individuellement : EXIT=0.
+- Aucune logique métier modifiée. Aucun endpoint backend touché. Fichiers
+  DS (glass-card, kente-pattern, stat-card), globals.css, api-pre-inscription.ts,
+  api-students.ts, api-client.ts, types.ts, auth-store.ts, format.ts,
+  components/ui/*, components/ds/*, components/pre-inscription/pre-inscription-form.tsx
+  (formulaire public parent — hors scope), app/(staff)/pre-inscriptions/page.tsx
+  (route wrapper RoleGuard), app/pre-inscription/page.tsx et
+  app/pre-inscription/suivi/page.tsx (pages publiques — hors scope) —
+  TOUS INTACTS.
+- Points à vérifier par agent browser :
+  1. Rendu du hero header GlassCard desktop (gradient emerald→gold du
+     badge rond MailOpen, titre font-display text-2xl text-forest, pill
+     "Phase 3" outline à droite du titre, pill établissement emerald sous
+     le sous-titre).
+  2. Rendu des FilterTabs premium (GlassCard desktop wrapper + tab actif
+     bg-emerald-600 text-white + icônes contextuelles Inbox/Send/Eye/
+     CheckCircle2/XCircle + compteurs en pills bg-white/20 sur actif).
+  3. Rendu des 4 StatCards en grid lg:grid-cols-4 (Total emerald, En
+     attente amber, Validées gold, Rejetées terracotta) avec stagger
+     animation (delay 0/0.05/0.1/0.15).
+  4. Tableau desktop : hover row bg-emerald-50/60, header bg-emerald-50/60,
+     avatar élève emerald (initiales) + avatar tuteur amber (initiales),
+     badge classe School emerald, badge statut border-300 bg-100 text-800.
+  5. Row VALIDEE : bg-emerald-50/30 subtil (marque le succès). Row REJETEE :
+     opacity-60 (marque l'archivage).
+  6. Boutons d'action : `title` natif au hover (pas de Tooltip Radix),
+     icônes seules sous lg, icône + texte sur lg+.
+  7. Mobile (<768px) : FilterTabs scrollable horizontalement (overflow-x-auto),
+     tableau caché, cartes mobile GlassCard cliquables (tap ouvre le détail),
+     boutons Valider/Rejeter h-11 (≥44px) avec stopPropagation.
+  8. ValiderDialog : badge rond gradient emerald→gold en header + cascade
+     Cycle→Niveau→Classe avec icônes (Layers/BarChart3/School) dans les
+     SelectTrigger + hint "Année active présélectionnée : …" + bouton submit
+     variant="success" (gradient emerald).
+  9. RejeterDialog : badge rond gradient rose en header + Textarea focus
+     ring rose + hint "Minimum 5 caractères. Ce motif sera visible par le
+     parent sur la page de suivi.".
+  10. DetailDialog : badge rond gradient emerald→gold en header + 3
+      sections en GlassCard mobile (Élève emerald, Tuteur amber, Classe &
+      notes emerald) + DetailRow avec icône contextuelle dans badge
+      emerald/10 + notes parent (card amber/10 icône MessageSquare) +
+      notes staff (card emerald/10 icône StickyNote) + badge "✓ Élève créé"
+      emerald si eleve_cree_id.
+  11. Empty state "Pas d'établissement" : KentePattern bg + badge rond
+      amber + AlertCircle. Empty state "Erreur" : KentePattern bg + badge
+      rond rose + AlertCircle + bouton Réessayer. Empty state "Aucune
+      pré-inscription" : KentePattern bg + badge rond emerald + Inbox.
+  12. KentePattern strip top en haut de page (section header) + KentePattern
+      separator entre les StatCards et le tableau.
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.
