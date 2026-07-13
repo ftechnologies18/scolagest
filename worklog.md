@@ -10404,3 +10404,395 @@ Stage Summary:
       (le paramètre `search` était passé à `fetchUtilisateurs` qui ne
       l'acceptait pas).
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+Task ID: 4
+Agent: frontend-styling-expert
+Task: Refonte du module /effectifs (Forêt EdTech, glassmorphism, kente, responsive)
+
+Work Log:
+- Lecture du worklog.md (contexte Forêt EdTech, refontes précédentes
+  /eleves, /inscription, /impayes, /rapports, /pre-inscriptions, /frais,
+  /annees, /utilisateurs — identité visuelle et bugs à éviter : Tooltip
+  Radix, truncate, boutons imbriqués, contrastes, `toast` non déclaré)
+  intégré dans la refonte. Note : aucune erreur tsc pré-existante sur
+  effectifs-dashboard.tsx avant la refonte (fichier d'origine compile
+  sans erreur) — la refonte ne doit pas en introduire.
+- Lecture intégrale du fichier cible `src/components/effectifs/
+  effectifs-dashboard.tsx` (629 lignes) — vue de pilotage du remplissage
+  des classes avec 4 KpiCards custom (Card shadcn basique + icône carrée
+  + accent emerald/amber/rose/slate) + tableau détaillé (Card shadcn +
+  Table shadcn sans hover bg + badges border-200 bg-50 text-700 —
+  contraste faible) + carte thermique (tuiles div border-200 + hover:
+  scale-[1.02] + effectif text-2xl + Pleine bg-rose-600/90) + en-tête
+  minimaliste (h1 text-xl + p text-sm) + empty states basiques (Card
+  shadcn sans KentePattern) + loading state Skeleton sans KentePattern.
+  Vérification que `toast` n'est pas utilisé dans ce fichier (aucun
+  import `useToast`, aucune mutation) — aucun bug `toast` non déclaré à
+  vérifier.
+- Lecture des composants DS de référence :
+  • `components/ds/glass-card.tsx` — variants (mobile/tablet/desktop/
+    premium/adaptive), `premiumBorder`, `noHover`, `noAnimation`,
+    `delay`. Wrapper `motion.div` (Framer Motion) avec `initial={{opacity:
+    0,y:16}} animate={{opacity:1,y:0}} transition={{duration:0.4, delay,
+    ease:[0.22,1,0.36,1]}}`. `noAnimation` désactive l'animation d'entrée
+    (utile pour les conteneurs de tableau/carte thermique qui contiennent
+    déjà leurs propres animations enfants).
+  • `components/ds/kente-pattern.tsx` — variants (strip/bg/border/
+    separator), position (top/bottom/custom). `bg` = absolute inset-0
+    pointer-events-none opacity-10. `separator` = kente-separator w-full
+    (4px mini-bande kente 4 sections colorées + accents gold). `strip
+    position="top"` = kente-strip-top h-6 w-full (16px motif riche opaque).
+  • `components/ds/stat-card.tsx` — tones (emerald/amber/terracotta/gold/
+    sky/forest), `icon: LucideIcon`, `hint`, `delay` pour stagger.
+    Wrapper GlassCard adaptive. `className` permet d'ajouter `h-full`
+    pour égaliser les hauteurs en grid (BUG À ÉVITER #5). La valeur est
+    rendue dans `<span className="text-2xl font-bold font-display
+    text-foreground truncate">` — donc les valeurs longues sont
+    ellipsées (utiliser des valeurs courtes).
+- Lecture des exemples de refontes réussies :
+  • `components/dashboard/views/view-frais.tsx` — pattern hero header
+    GlassCard desktop + badge rond gradient emerald→gold (Coins size-6)
+    + pill "Phase 3" outline (Sparkles) + pill "Année active : {libelle}"
+    emerald + 4 StatCards en grid lg:grid-cols-4 (Coins emerald /
+    CheckCircle2 forest / Wallet gold / CalendarDays amber) avec stagger
+    delay 0/0.05/0.1/0.15 + KentePattern separator entre sections +
+    EmptyState premium avec KentePattern bg + badges ronds colorés
+    (amber/emerald/rose) + bouton contextuel variant success. Shell
+    `FraisShell` enveloppe le hero + children.
+  • `components/dashboard/views/view-impayes.tsx` — pattern hero header
+    GlassCard desktop + badge rond gradient amber→terracotta
+    (AlertTriangle) + pill "Phase 4" outline (Sparkles) + pill
+    établissement amber + EmptyStateEtablissement (KentePattern bg +
+    badge rond amber + Filter size-6 + message contextuel) + tableau
+    desktop avec header bg-amber-50/60 + hover row bg-amber-50/60.
+- Vérification du type `Etablissement` dans `lib/auth-store.ts` (l. 57) :
+  `id`, `nom`, `code_officiel?`, `ville?`, `applique_categorie_affecte?`,
+  `actif?`. Le `etablissement.nom` est accessible pour le pill
+  établissement dans le hero header.
+- Vérification que `usePrefersReducedMotion` est bien exporté depuis
+  `@/hooks/use-prefers-reduced-motion` (l. 19) — hook SSR-safe qui
+  retourne false côté serveur et au premier rendu, puis se met à jour
+  via useEffect.
+- Vérification des types `EffectifClasse` / `EffectifsKPIs` /
+  `EffectifsResult` dans `lib/api-effectifs.ts` — `kpis.total_eleves`,
+  `kpis.total_classes`, `kpis.garcons`, `kpis.filles`, `kpis.redoublants`,
+  `kpis.taux_remplissage_global`, `kpis.classes_pleines` ; `EffectifClasse`
+  a `classe_id`, `classe_libelle`, `cycle_libelle`, `niveau`, `effectif`,
+  `effectif_max`, `quota_etablissement`, `taux_remplissage`, `garcons`,
+  `filles`, `redoublants`, `est_classe_examen`. La fonction
+  `fetchEffectifs(anneeId?: string)` accepte un `anneeId` optionnel —
+  le hook React Query appelle `fetchEffectifs()` sans argument (utilise
+  l'année active côté backend), conservé à l'identique.
+
+Refonte de `effectifs-dashboard.tsx` (629 → 727 lignes, +98 lignes) via
+`Write` (fichier entier réécrit — les changements touchaient ~70% du
+fichier, mais toutes les fonctions helpers et la logique métier ont été
+recopiées à l'identique). Toutes les règles strictes respectées :
+  • Bug `toast` VÉRIFIÉ : aucune utilisation de `toast` dans ce fichier
+    (aucun import `useToast`, aucune mutation, lecture seule via React
+    Query `fetchEffectifs`). Aucun bug potentiel.
+  • Hero header premium (nouveau composant `EffectifsShell`) :
+    `KentePattern variant="strip" position="top"` en tête de vue (au lieu
+    de rien) + `GlassCard variant="desktop" noHover className="p-5 sm:p-6"`
+    (au lieu d'un simple `<div>` flex) + badge rond gradient emerald→gold
+    (`bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg
+    shadow-emerald-900/20`) avec icône `BarChart3` size-6 (au lieu de
+    rien) + titre `font-display text-2xl font-bold tracking-tight
+    text-forest` "Effectifs" (au lieu de text-xl sans font-display) +
+    pill "Phase 3" outline à droite du titre (`Sparkles` + border-
+    emerald-300 bg-emerald-50/60 text-emerald-800) (au lieu de rien) +
+    sous-titre descriptif conservé + pill établissement en emerald
+    (`border-emerald-200 bg-emerald-50 text-emerald-800`) visible si
+    `etablissementNom` est fourni (au lieu de rien) + `KentePattern
+    variant="separator"` après le hero header.
+  • 4 StatCards DS (remplacement du composant `KpiCard` custom par le
+    composant `StatCard` du design system) en grid `grid-cols-2 gap-3
+    sm:gap-4 md:grid-cols-4 items-stretch` (au lieu de `grid-cols-1
+    sm:grid-cols-2 lg:grid-cols-4`) avec `className="h-full"` sur chaque
+    StatCard pour égaliser les hauteurs (BUG À ÉVITER #5) :
+    - "Total élèves" (tone emerald, icon Users, value = kpis.total_eleves,
+      hint = "{classes} classes · {pleines} pleines", delay 0)
+    - "Garçons / Filles" (tone amber, icon GraduationCap, value = "{g} G
+      / {f} F" string, hint = "{pctG} % G · {pctF} % F", delay 0.05)
+    - "Redoublants" (tone terracotta, icon TrendingDown, value =
+      kpis.redoublants, hint = "{pctR} % de l'effectif", delay 0.1)
+    - "Taux de remplissage" (tone gold, icon BarChart3, value =
+      formatTaux(kpis.taux_remplissage_global), hint = "Moyenne pondérée
+      tous cycles", delay 0.15)
+    Note : la valeur "Garçons / Filles" est rendue en string simple
+    "{g} G / {f} F" (au lieu d'un JSX avec spans colorés emerald/rose)
+    pour éviter les problèmes avec le `truncate` du parent StatCard
+    (text-2xl) — les couleurs G/F sont déjà visibles dans le tableau et
+    les tuiles via les badges G/F renforcés.
+  • Tableau détaillé enrichi :
+    - `GlassCard variant="adaptive" noHover noAnimation className=
+      "overflow-hidden p-0"` (au lieu de `<Card>` shadcn avec
+      CardContent p-0). `noAnimation` évite la double animation
+      (GlassCard + enfants tuiles).
+    - Header row : `bg-emerald-50/60 hover:bg-emerald-50/60 dark:bg-
+      emerald-950/20` (au lieu de default) + `th` avec `text-xs font-
+      semibold uppercase tracking-wide text-emerald-900 dark:text-
+      emerald-200` (au lieu de texte par défaut).
+    - Hover row : `hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20`
+      (au lieu de default).
+    - Colonne "Classe" : libellé `font-display text-sm font-semibold
+      leading-snug text-forest break-words` (au lieu de font-medium sans
+      break) + badge "Examen" renforcé `border-violet-300 bg-violet-100
+      text-violet-800` (au lieu de border-violet-200 bg-violet-50
+      text-violet-700 — BUG À ÉVITER #7).
+    - Colonne "Cycle" : `break-words leading-snug` (pas de truncate —
+      BUG À ÉVITER #2).
+    - Colonne "Effectif" : `text-base font-bold text-foreground
+      tabular-nums` (au lieu de font-medium) pour la valeur + `/ max` en
+      muted.
+    - Colonne "Remplissage" : barre + badge taux renforcés via
+      TAUX_BADGE_CLS mis à jour (border-300 bg-100 text-800 au lieu de
+      border-200 bg-50 text-700 — BUG À ÉVITER #7).
+    - Colonne "Genre" : badges G/F renforcés (border-emerald-300 bg-
+      emerald-100 text-emerald-800 pour G, border-rose-300 bg-rose-100
+      text-rose-800 pour F — au lieu de border-200 bg-50 text-700 — BUG
+      À ÉVITER #7) + `title` natif "Garçons" / "Filles" conservé.
+    - Colonne "Redoublants" : si > 0, `font-semibold text-terracotta`
+      (au lieu de font-medium text-rose-600) pour cohérence palette
+      africaine (terracotta = danger chaud spécifié par la spec).
+    - Compteur "X classes" : badge emerald renforcé (border-300 bg-100
+      text-800) à droite du titre de section (au lieu de texte simple).
+  • Carte thermique enrichie :
+    - `GlassCard variant="adaptive" noHover noAnimation` (au lieu de
+      div simple) avec titre `font-display text-base font-semibold
+      tracking-tight text-forest` (au lieu de text-base font-semibold
+      sans font-display).
+    - Légende (vert/amber/rouge) : badges ronds colorés `size-2.5
+      rounded-full border border-{color}-400 bg-{color}-500` (au lieu
+      de size-2.5 rounded-full bg-{color}-500 sans border — visibilité
+      renforcée). Layout `flex-col sm:flex-row` pour empiler sur mobile.
+    - Tuiles HeatmapTile : `motion.div` avec `initial={{ opacity: 0,
+      y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration:
+      0.35, delay: Math.min(index * 0.03, 0.6), ease: [0.22, 1, 0.36,
+      1] }}` (au lieu de div sans animation). `usePrefersReducedMotion`
+      respecté — animation désactivée si l'utilisateur préfère réduire
+      les animations.
+    - Bordures renforcées (border-300 au lieu de border-200 via
+      HEATMAP_TILE_CLS mis à jour).
+    - Effet hover plus prononcé `hover:scale-[1.03]` (au lieu de
+      hover:scale-[1.02]).
+    - Libellé `break-words leading-tight` (pas de truncate — BUG À
+      ÉVITER #2).
+    - Effectif en `text-3xl font-bold leading-none tabular-nums` (au
+      lieu de text-2xl font-bold leading-none).
+    - Badge "Pleine" en `bg-terracotta` (au lieu de bg-rose-600/90)
+      pour cohérence palette africaine (terracotta = danger chaud).
+    - `title` natif conservé sur la tuile (tooltip natif — BUG À
+      ÉVITER #1, pas de Tooltip Radix).
+  • Empty states premium (nouveau composant `EmptyState`) : `GlassCard
+    variant="adaptive" noHover relative overflow-hidden` + `KentePattern
+    variant="bg"` en fond décoratif + badge rond coloré (amber pour
+    établissement manquant, rose pour erreur, emerald pour "Aucune
+    classe configurée") + icône Lucide size-6 + titre `font-display
+    text-base font-semibold text-forest` + description `max-w-md text-sm
+    text-muted-foreground`. 3 cas gérés :
+    - Pas d'établissement : AlertCircle amber "Sélectionnez un
+      établissement" (sans etablissementNom dans le shell).
+    - Erreur : AlertCircle rose "Impossible de charger les effectifs"
+      avec `error.message` (sans etablissementNom dans le shell).
+    - Vide (0 classe) : BarChart3 emerald "Aucune classe configurée"
+      (avec etablissementNom dans le shell).
+  • Loading state premium (nouveau composant `LoadingState`) : 4
+    Skeletons `h-28` en grid `grid-cols-2 md:grid-cols-4` (au lieu de
+    `h-24 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`) + 4 Skeletons
+    additionnels (titre/tableau/séparateur/carte thermique) + `GlassCard
+    variant="adaptive" noHover noAnimation relative overflow-hidden p-0`
+    + `KentePattern variant="strip" position="top"` (au lieu de rien) +
+    `Loader2 size-8 animate-spin text-emerald-600 dark:text-emerald-400`
+    centré (au lieu de rien — le loading state original n'avait que des
+    Skeletons, sans spinner centré).
+  • Imports enrichis : ajout de `motion` (framer-motion), `Sparkles`
+    (pill "Phase 3"), `GlassCard` (DS), `KentePattern` (DS), `StatCard`
+    (DS), `usePrefersReducedMotion` (hooks). Imports retirés : `Card`/
+    `CardContent` (remplacés par GlassCard pour tous les contenants),
+    composant custom `KpiCard` (remplacé par StatCard DS), composant
+    custom `DashboardHeader` (remplacé par `EffectifsShell` avec hero
+    header premium), `KpiCardProps` / `KPI_ICON_CLS` (plus nécessaires).
+  • Accessibilité : `aria-label` sur la section KPIs / tableau / carte
+    thermique + `role="progressbar"` avec `aria-valuenow`/`aria-valuemin`/
+    `aria-valuemax` sur RemplissageBar (conservé) + `aria-label="Classe
+    pleine"` sur le badge Pleine (conservé) + `aria-hidden` sur les
+    séparateurs `·` dans les tuiles (conservé) + `title` natif sur les
+    badges G/F et les tuiles HeatmapTile (PAS de Tooltip Radix — BUG À
+    ÉVITER #1). Contrastes WCAG AA respectés (badges border-300 bg-100
+    text-800, badge Pleine bg-terracotta text-white).
+  • Aucune logique métier modifiée : hook React Query
+    (`queryKey: effectifsKeys.detail()` / `queryFn: () => fetchEffectifs()`
+    / `enabled: !!etablissement`) conservé à l'identique, types
+    EffectifClasse / EffectifsKPIs / EffectifsResult conservés, helpers
+    `niveauRemplissage` et `formatTaux` conservés à l'identique,
+    constantes `HEATMAP_TILE_CLS` / `PROGRESS_CLS` / `TAUX_BADGE_CLS`
+    conservées sémantiquement (couleurs des keys identiques, mais
+    contrastes renforcés : border-300 au lieu de border-200 pour
+    HEATMAP_TILE_CLS, border-300 bg-100 text-800 au lieu de border-200
+    bg-50 text-700 pour TAUX_BADGE_CLS), composant `RemplissageBar`
+    conservé à l'identique (style déjà correct), export
+    `EffectifsDashboardFallback` conservé à l'identique, calculs
+    pctGarcons / pctFilles / pctRedoublants conservés à l'identique.
+
+Compile-check : `bunx tsc --noEmit 2>&1 | grep -c "effectifs-dashboard"`
+→ **0 erreur** sur le fichier refondu (avant : 0 erreur — la refonte
+n'a pas introduit de régression). Les 15 erreurs tsc restantes sont
+toutes PRÉ-EXISTANTES sur d'autres fichiers (login-form ×8, dashboard-
+shell ×3, view-parametres ×2, etablissement-form-dialog ×1,
+instrumentation ×1) — aucune sur effectifs-dashboard.tsx.
+Lint-check : `bunx eslint src/components/effectifs/effectifs-dashboard.tsx`
+→ **0 erreur, 0 warning** (EXIT=0). `bun run lint` (full project) →
+**0 erreur, 0 warning** (EXIT=0).
+
+Stage Summary:
+- Fichier modifié (1) :
+  • `Frontend/src/components/effectifs/effectifs-dashboard.tsx`
+    (629 → 727 lignes, +98 lignes).
+- Identité "Forêt EdTech" enrichie :
+  • Hero header GlassCard desktop + KentePattern strip top + badge rond
+    gradient emerald→gold (BarChart3 size-6) + pill "Phase 3" outline
+    (Sparkles) + pill établissement emerald (si sélectionné) +
+    KentePattern separator après le hero header.
+  • 4 StatCards DS en grid md:grid-cols-4 (Total élèves emerald/Users,
+    Garçons/Filles amber/GraduationCap, Redoublants terracotta/
+    TrendingDown, Taux de remplissage gold/BarChart3) avec stagger
+    delay 0/0.05/0.1/0.15 + items-stretch + h-full pour égaliser les
+    hauteurs.
+  • Tableau détaillé : GlassCard adaptive noHover noHover p-0 +
+    header bg-emerald-50/60 + hover row bg-emerald-50/60 + libellé
+    classe font-display text-sm font-semibold text-forest break-words +
+    badge Examen renforcé (border-violet-300 bg-violet-100 text-
+    violet-800) + cycle break-words + effectif text-base font-bold +
+    badges taux renforcés (border-300 bg-100 text-800) + badges G/F
+    renforcés (border-emerald-300/rose-300 bg-emerald-100/rose-100
+    text-emerald-800/rose-800) + redoublants text-terracotta font-
+    semibold + compteur "X classes" badge emerald renforcé en haut de
+    section.
+  • Carte thermique : GlassCard adaptive noHover + tuiles motion.div
+    (stagger delay index*0.03, capped à 0.6s) + bordures border-300 +
+    hover:scale-[1.03] + libellé break-words leading-tight + effectif
+    text-3xl font-bold + badge Pleine bg-terracotta (au lieu de
+    bg-rose-600/90) + légende badges ronds colorés avec bordure.
+  • Empty states premium : GlassCard adaptive + KentePattern bg +
+    badges ronds colorés (amber AlertCircle établissement, rose
+    AlertCircle erreur, emerald BarChart3 aucune classe) + titres
+    font-display text-base + descriptions max-w-md.
+  • Loading state premium : 4 Skeletons h-28 en grid md:grid-cols-4 +
+    4 Skeletons additionnels + GlassCard adaptive + KentePattern strip
+    top + Loader2 size-8 animate-spin text-emerald-600 centré.
+- Responsive 100% : mobile (KPIs grid 2 colonnes, carte thermique grid
+  2 colonnes, légende empilée flex-col, tableau scroll-x, padding p-4
+  via GlassCard adaptive, hero header p-5) / tablette (KPIs grid 4
+  colonnes à md:768px, carte thermique grid 3-4 colonnes, légende
+  flex-row, padding p-5) / desktop (KPIs grid 4 colonnes, carte
+  thermique grid 6 colonnes à lg:1024px, lisibilité optimale, padding
+  p-6 via GlassCard adaptive qui monte en opacité 0.85 sur desktop).
+- Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt EdTech
+  : emerald (#047857) primaire (Total élèves, header, hover row,
+  boutons, badges G), amber (#F59E0B) secondaire (Garçons/Filles,
+  légende 70-90%, pill Phase 3), gold (#D4AF37) premium (Taux de
+  remplissage, badge rond gradient header emerald→gold), terracotta
+  (#C2410C) danger chaud (Redoublants dans le tableau, badge Pleine
+  dans les tuiles — au lieu de rose-600/90), rose conservé pour le
+  niveau "rouge" de la carte thermique (cohérent avec /impayes /pre-
+  inscriptions /frais), violet conservé pour le badge Examen (existant
+  dans le code original — spécifié par la spec). Sky non utilisé.
+- Aucun Tooltip Radix — attributs `title` natifs sur les badges G/F et
+  les tuiles HeatmapTile (BUG À ÉVITER #1). Aucun `truncate` sur les
+  libellés longs (classes, cycles) — `break-words leading-snug` pour
+  les libellés de classes dans le tableau, `break-words leading-tight`
+  pour les libellés dans les tuiles (BUG À ÉVITER #2). Pas de
+  `<button>` imbriqué dans un `<button>` (BUG À ÉVITER #3 — aucune
+  action cliquable dans ce module, lecture seule). `items-stretch` +
+  `h-full` sur les StatCards en grid pour égaliser les hauteurs (BUG
+  À ÉVITER #5). Contrastes renforcés sur tous les badges (border-300
+  bg-100 text-800 — BUG À ÉVITER #7) : TAUX_BADGE_CLS, HEATMAP_TILE_CLS
+  (border-300), badges G/F, badge Examen, badge compteur classes.
+- Bug `toast` non déclaré VÉRIFIÉ : aucune utilisation de `toast` dans
+  ce fichier (aucun import `useToast`, aucune mutation, lecture seule
+  via React Query `fetchEffectifs`). Aucun bug potentiel.
+- TypeScript : **0 erreur sur effectifs-dashboard.tsx** (vérifié par
+  `bunx tsc --noEmit 2>&1 | grep -c "effectifs-dashboard"` → 0 match).
+  Les 15 erreurs tsc restantes sont toutes pré-existantes sur d'autres
+  fichiers (login-form ×8, dashboard-shell ×3, view-parametres ×2,
+  etablissement-form-dialog ×1, instrumentation ×1) — aucune introduite
+  par cette refonte.
+- Lint : **0 erreur, 0 warning** sur l'ensemble du projet
+  (`bun run lint` EXIT=0). Fichier effectifs-dashboard.tsx
+  individuellement : EXIT=0.
+- Aucune logique métier modifiée. Aucun endpoint backend touché.
+  Fichiers DS (glass-card, kente-pattern, stat-card), globals.css,
+  api-effectifs.ts (signatures des fonctions conservées : effectifsKeys,
+  fetchEffectifs, types EffectifClasse / EffectifsKPIs / EffectifsResult
+  inchangés), auth-store.ts, components/ui/*, components/ds/*, app/
+  (staff)/effectifs/page.tsx (route wrapper RoleGuard non modifiée) —
+  TOUS INTACTS.
+- Points à vérifier par agent browser :
+  1. Rendu du hero header GlassCard desktop (KentePattern strip top en
+     tête de vue + badge rond gradient emerald→gold avec BarChart3
+     size-6 + titre font-display text-2xl font-bold text-forest
+     "Effectifs" + pill "Phase 3" outline à droite du titre avec
+     Sparkles + pill "{etablissement.nom}" emerald sous le sous-titre
+     si un établissement est sélectionné).
+  2. Rendu des 4 StatCards en grid md:grid-cols-4 (mobile grid-cols-2)
+     avec stagger animation (delay 0/0.05/0.1/0.15) : Total élèves
+     emerald/Users + hint "{classes} classes · {pleines} pleines" ;
+     Garçons/Filles amber/GraduationCap + value "{g} G / {f} F" + hint
+     "{pctG} % G · {pctF} % F" ; Redoublants terracotta/TrendingDown +
+     hint "{pctR} % de l'effectif" ; Taux de remplissage gold/BarChart3
+     + hint "Moyenne pondérée tous cycles". Sur mobile, les 4 cartes
+     sont sur 2 colonnes — vérifier que les hauteurs sont alignées
+     (items-stretch + h-full).
+  3. Tableau détaillé : GlassCard adaptive noHover p-0 + header bg-
+     emerald-50/60 + hover row bg-emerald-50/60 + libellé classe font-
+     display text-sm font-semibold text-forest break-words + badge
+     "Examen" violet renforcé (border-violet-300 bg-violet-100 text-
+     violet-800) si est_classe_examen + cycle break-words + effectif
+     text-base font-bold + barre de progression + badge taux renforcé
+     (border-300 bg-100 text-800 selon niveau vert/amber/rouge) +
+     badges G (emerald) / F (rose) renforcés avec title natif +
+     redoublants text-terracotta font-semibold si > 0 + compteur "X
+     classes" badge emerald renforcé en haut de section.
+  4. Carte thermique : GlassCard adaptive noHover + titre font-display
+     text-base font-semibold text-forest + légende vert/amber/rouge
+     avec badges ronds border-400 bg-500 + tuiles motion.div avec
+     stagger (delay index*0.03, capé à 0.6s) + bordures border-300 +
+     hover:scale-[1.03] + libellé break-words leading-tight + effectif
+     text-3xl font-bold + badge "Pleine" bg-terracotta (au lieu de
+     bg-rose-600/90) si effectif >= effectif_max + title natif sur la
+     tuile "{libelle} — {effectif}/{max} ({taux})".
+  5. Empty states premium :
+     - Pas d'établissement : GlassCard adaptive + KentePattern bg +
+       badge rond amber + AlertCircle size-6 + titre font-display
+       "Sélectionnez un établissement" + description (sans pill
+       établissement dans le hero header).
+     - Erreur : GlassCard adaptive + KentePattern bg + badge rond rose
+       + AlertCircle size-6 + titre "Impossible de charger les
+       effectifs" + description = error.message.
+     - Vide (0 classe) : GlassCard adaptive + KentePattern bg + badge
+       rond emerald + BarChart3 size-6 + titre "Aucune classe
+       configurée" + description + pill établissement dans le hero
+       header.
+  6. Loading state : 4 Skeletons h-28 en grid md:grid-cols-4 + 4
+     Skeletons additionnels (titre h-10, tableau h-72, séparateur h-10,
+     carte thermique h-48) + GlassCard adaptive + KentePattern strip
+     top + Loader2 size-8 animate-spin text-emerald-600 centré.
+  7. Mobile (<768px) : KPIs grid 2 colonnes, carte thermique grid 2
+     colonnes, légende empilée flex-col, tableau scroll-x, padding p-4
+     via GlassCard adaptive, hero header p-5, badge rond gradient size-
+     12 (48px).
+  8. Desktop (1024px+) : KPIs grid 4 colonnes, carte thermique grid 6
+     colonnes, légende flex-row, GlassCard adaptive monte en opacité
+     0.85, padding p-6, hero header p-6.
+  9. Contrastes : badges border-300 bg-100 text-800 (PAS border-200
+     bg-50 text-700) ; badge Pleine bg-terracotta (PAS bg-rose-600/90) ;
+     redoublants text-terracotta (PAS text-rose-600) ; violet conservé
+     pour badge Examen ; rose conservé pour niveau rouge de la carte
+     thermique et badge F.
+  10. Animation : StatCards avec stagger delay 0/0.05/0.1/0.15 ;
+      HeatmapTile avec stagger delay index*0.03 (capé à 0.6s) ;
+      usePrefersReducedMotion respecté — animations désactivées si
+      l'utilisateur préfère réduire les animations.
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.

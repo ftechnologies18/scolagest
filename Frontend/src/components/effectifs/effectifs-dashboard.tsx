@@ -11,20 +11,43 @@
  *  - Carte thermique (grille de cartes colorées vert → amber → rouge avec
  *    l'effectif en grand).
  *
+ * Refonte Forêt EdTech :
+ *  - Hero header GlassCard desktop + badge rond gradient emerald→gold
+ *    (BarChart3) + pill « Phase 3 » outline + pill « Établissement » emerald.
+ *  - 4 StatCards DS (emerald / amber / terracotta / gold) avec stagger.
+ *  - Tableau détaillé : GlassCard adaptive noHover p-0 + header bg-emerald-
+ *    50/60 + hover row bg-emerald-50/60 + libellés font-display + badges
+ *    renforcés (border-300 bg-100 text-800) + redoublants text-terracotta.
+ *  - Carte thermique : GlassCard adaptive noHover + tuiles motion.div
+ *    (stagger delay index*0.03) + bordures border-300 + hover:scale-[1.03]
+ *    + effectif text-3xl font-bold + badge « Pleine » bg-terracotta.
+ *  - Empty states premium : KentePattern bg + badges ronds colorés + icône
+ *    contextuelle (AlertCircle amber / BarChart3 emerald / AlertCircle rose).
+ *  - Loading state : KentePattern strip top + Loader2 size-8 centré.
+ *
  * Le contexte d'établissement vient de `useAuthStore`. Si aucun établissement
  * n'est sélectionné, on invite l'utilisateur à en choisir un (UX identique à
- * `eleves-list.tsx`).
+ * `eleves-list.tsx` / `view-impayes.tsx`).
  *
- * États : pas d'établissement, chargement (skeleton), erreur, vide.
+ * États : pas d'établissement, chargement, erreur, vide.
+ *
+ * LOGIQUE MÉTIER INTACTE : hook React Query (effectifsKeys.detail() /
+ * fetchEffectifs() / enabled: !!etablissement), types EffectifClasse /
+ * EffectifsKPIs / EffectifsResult, helpers niveauRemplissage / formatTaux,
+ * constantes HEATMAP_TILE_CLS / PROGRESS_CLS / TAUX_BADGE_CLS (renforcées
+ * visuellement mais sémantiquement identiques), calculs pctGarcons /
+ * pctFilles / pctRedoublants. Aucun endpoint backend touché.
  */
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import {
   AlertCircle,
   BarChart3,
   GraduationCap,
   Loader2,
+  Sparkles,
   TrendingDown,
   Users,
 } from "lucide-react";
@@ -38,7 +61,6 @@ import {
 } from "@/lib/api-effectifs";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -48,6 +70,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
+import { StatCard } from "@/components/ds/stat-card";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers de couleur (vert / amber / rose — jamais indigo ni bleu)
@@ -67,13 +93,14 @@ function niveauRemplissage(taux: number, pleine: boolean): RemplissageNiveau {
   return "vert";
 }
 
-/** Classes Tailwind pour les tuiles de la carte thermique. */
+/** Classes Tailwind pour les tuiles de la carte thermique.
+ *  Refonte : bordures renforcées (border-300 au lieu de border-200). */
 const HEATMAP_TILE_CLS: Record<RemplissageNiveau, string> = {
-  vert: "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100",
+  vert: "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-100",
   amber:
-    "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100",
+    "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100",
   rouge:
-    "border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-100",
+    "border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100",
 };
 
 /** Couleur de la barre de progression (fond + indicateur). */
@@ -95,13 +122,14 @@ const PROGRESS_CLS: Record<
   },
 };
 
-/** Couleur d'un badge « taux » affiché à droite de la barre de progression. */
+/** Couleur d'un badge « taux » affiché à droite de la barre de progression.
+ *  Refonte : contrastes renforcés (border-300 bg-100 text-800). */
 const TAUX_BADGE_CLS: Record<RemplissageNiveau, string> = {
-  vert: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300",
+  vert: "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200",
   amber:
-    "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300",
+    "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/50 dark:text-amber-200",
   rouge:
-    "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300",
+    "border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-800/60 dark:bg-rose-950/50 dark:text-rose-200",
 };
 
 /** Formate un taux (0-100) en entier %. */
@@ -112,55 +140,6 @@ function formatTaux(taux: number): string {
 // ─────────────────────────────────────────────────────────────────────────────
 // Sous-composants
 // ─────────────────────────────────────────────────────────────────────────────
-
-interface KpiCardProps {
-  icon: React.ElementType;
-  label: string;
-  value: React.ReactNode;
-  hint?: React.ReactNode;
-  accent: "emerald" | "amber" | "rose" | "slate";
-}
-
-const KPI_ICON_CLS: Record<KpiCardProps["accent"], string> = {
-  emerald:
-    "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
-  amber:
-    "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
-  rose: "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
-  slate:
-    "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300",
-};
-
-function KpiCard({ icon: Icon, label, value, hint, accent }: KpiCardProps) {
-  return (
-    <Card className="overflow-hidden">
-      <CardContent className="flex items-center gap-4">
-        <div
-          className={cn(
-            "flex size-11 shrink-0 items-center justify-center rounded-xl",
-            KPI_ICON_CLS[accent],
-          )}
-          aria-hidden
-        >
-          <Icon className="size-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {label}
-          </p>
-          <p className="mt-0.5 text-2xl font-bold leading-tight tabular-nums">
-            {value}
-          </p>
-          {hint ? (
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {hint}
-            </p>
-          ) : null}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 /** Barre de progression personnalisée (couleur par niveau de remplissage). */
 function RemplissageBar({
@@ -210,44 +189,23 @@ export function EffectifsDashboard() {
   // ─── Pas d'établissement sélectionné ──────────────────────────────────────
   if (!etablissement) {
     return (
-      <div className="space-y-4">
-        <DashboardHeader />
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-              <AlertCircle className="size-6" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-base font-medium">
-                Sélectionnez un établissement
-              </p>
-              <p className="max-w-md text-sm text-muted-foreground">
-                Les effectifs sont calculés par établissement. Choisissez un
-                établissement dans la barre latérale pour visualiser le
-                remplissage des classes.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <EffectifsShell>
+        <EmptyState
+          icon={AlertCircle}
+          tone="amber"
+          title="Sélectionnez un établissement"
+          description="Les effectifs sont calculés par établissement. Choisissez un établissement dans la barre latérale pour visualiser le remplissage des classes."
+        />
+      </EffectifsShell>
     );
   }
 
   // ─── Chargement ────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <DashboardHeader />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-xl" />
-          ))}
-        </div>
-        <Skeleton className="h-10 w-40 rounded-lg" />
-        <Skeleton className="h-72 w-full rounded-xl" />
-        <Skeleton className="h-10 w-40 rounded-lg" />
-        <Skeleton className="h-48 w-full rounded-xl" />
-      </div>
+      <EffectifsShell>
+        <LoadingState />
+      </EffectifsShell>
     );
   }
 
@@ -256,24 +214,14 @@ export function EffectifsDashboard() {
     const message =
       error instanceof Error ? error.message : "Une erreur est survenue.";
     return (
-      <div className="space-y-4">
-        <DashboardHeader />
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
-              <AlertCircle className="size-6" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-base font-medium">
-                Impossible de charger les effectifs
-              </p>
-              <p className="max-w-md text-sm text-muted-foreground">
-                {message}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <EffectifsShell>
+        <EmptyState
+          icon={AlertCircle}
+          tone="rose"
+          title="Impossible de charger les effectifs"
+          description={message}
+        />
+      </EffectifsShell>
     );
   }
 
@@ -283,23 +231,14 @@ export function EffectifsDashboard() {
   // ─── Vide (aucune classe configurée) ───────────────────────────────────────
   if (!kpis || classes.length === 0) {
     return (
-      <div className="space-y-4">
-        <DashboardHeader />
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              <BarChart3 className="size-6" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-base font-medium">Aucune classe configurée</p>
-              <p className="max-w-md text-sm text-muted-foreground">
-                Aucune classe n&apos;a été trouvée pour cet établissement.
-                Configurez vos cycles et classes pour visualiser les effectifs.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <EffectifsShell etablissementNom={etablissement.nom}>
+        <EmptyState
+          icon={BarChart3}
+          tone="emerald"
+          title="Aucune classe configurée"
+          description="Aucune classe n’a été trouvée pour cet établissement. Configurez vos cycles et classes pour visualiser les effectifs."
+        />
+      </EffectifsShell>
     );
   }
 
@@ -318,17 +257,15 @@ export function EffectifsDashboard() {
       : 0;
 
   return (
-    <div className="space-y-6">
-      <DashboardHeader />
-
-      {/* ─── KPIs ─────────────────────────────────────────────────────────── */}
+    <EffectifsShell etablissementNom={etablissement.nom}>
+      {/* ─── KPIs (4 StatCards DS avec stagger) ──────────────────────────── */}
       <section
         aria-label="Indicateurs globaux"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4"
       >
-        <KpiCard
+        <StatCard
           icon={Users}
-          accent="emerald"
+          tone="emerald"
           label="Total élèves"
           value={kpis.total_eleves}
           hint={`${kpis.total_classes} classe${
@@ -336,245 +273,337 @@ export function EffectifsDashboard() {
           } · ${kpis.classes_pleines} pleine${
             kpis.classes_pleines > 1 ? "s" : ""
           }`}
+          delay={0}
+          className="h-full"
         />
-        <KpiCard
+        <StatCard
           icon={GraduationCap}
-          accent="amber"
+          tone="amber"
           label="Garçons / Filles"
-          value={
-            <span>
-              <span className="text-emerald-600 dark:text-emerald-400">
-                {kpis.garcons}
-              </span>
-              <span className="mx-1 text-muted-foreground">/</span>
-              <span className="text-rose-600 dark:text-rose-400">
-                {kpis.filles}
-              </span>
-            </span>
-          }
+          value={`${kpis.garcons} G / ${kpis.filles} F`}
           hint={`${pctGarcons} % G · ${pctFilles} % F`}
+          delay={0.05}
+          className="h-full"
         />
-        <KpiCard
+        <StatCard
           icon={TrendingDown}
-          accent="rose"
+          tone="terracotta"
           label="Redoublants"
           value={kpis.redoublants}
           hint={`${pctRedoublants} % de l’effectif`}
+          delay={0.1}
+          className="h-full"
         />
-        <KpiCard
+        <StatCard
           icon={BarChart3}
-          accent="slate"
+          tone="gold"
           label="Taux de remplissage"
           value={formatTaux(kpis.taux_remplissage_global)}
           hint="Moyenne pondérée tous cycles"
+          delay={0.15}
+          className="h-full"
         />
       </section>
+
+      <KentePattern variant="separator" className="my-1" />
 
       {/* ─── Tableau détaillé par classe ──────────────────────────────────── */}
       <section aria-label="Détail par classe" className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-base font-semibold tracking-tight">
+          <h2 className="font-display text-base font-semibold tracking-tight text-forest">
             Détail par classe
           </h2>
-          <span className="text-xs text-muted-foreground">
+          <Badge
+            variant="outline"
+            className="border-emerald-300 bg-emerald-100 text-[10px] font-medium text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200"
+          >
             {classes.length} classe{classes.length > 1 ? "s" : ""}
-          </span>
+          </Badge>
         </div>
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[180px]">Classe</TableHead>
-                    <TableHead className="min-w-[140px]">Cycle</TableHead>
-                    <TableHead className="min-w-[120px] text-right">
-                      Effectif
-                    </TableHead>
-                    <TableHead className="min-w-[200px]">
-                      Remplissage
-                    </TableHead>
-                    <TableHead className="min-w-[120px] text-center">
-                      Genre
-                    </TableHead>
-                    <TableHead className="min-w-[110px] text-right">
-                      Redoublants
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {classes.map((c) => {
-                    const pleine = c.effectif >= c.effectif_max;
-                    const niveau = niveauRemplissage(
-                      c.taux_remplissage,
-                      pleine,
-                    );
-                    return (
-                      <TableRow key={c.classe_id}>
-                        <TableCell>
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-medium">
-                              {c.classe_libelle}
+        <GlassCard
+          variant="adaptive"
+          noHover
+          noAnimation
+          className="overflow-hidden p-0"
+        >
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-emerald-100 bg-emerald-50/60 hover:bg-emerald-50/60 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                  <TableHead className="min-w-[180px] text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    Classe
+                  </TableHead>
+                  <TableHead className="min-w-[140px] text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    Cycle
+                  </TableHead>
+                  <TableHead className="min-w-[120px] text-right text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    Effectif
+                  </TableHead>
+                  <TableHead className="min-w-[200px] text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    Remplissage
+                  </TableHead>
+                  <TableHead className="min-w-[120px] text-center text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    Genre
+                  </TableHead>
+                  <TableHead className="min-w-[110px] text-right text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    Redoublants
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {classes.map((c) => {
+                  const pleine = c.effectif >= c.effectif_max;
+                  const niveau = niveauRemplissage(
+                    c.taux_remplissage,
+                    pleine,
+                  );
+                  return (
+                    <TableRow
+                      key={c.classe_id}
+                      className="hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20"
+                    >
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <span className="break-words font-display text-sm font-semibold leading-snug text-forest">
+                            {c.classe_libelle}
+                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-[11px] text-muted-foreground">
+                              Niveau {c.niveau}
                             </span>
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="text-[11px] text-muted-foreground">
-                                Niveau {c.niveau}
-                              </span>
-                              {c.est_classe_examen ? (
-                                <Badge
-                                  variant="outline"
-                                  className="border-violet-200 bg-violet-50 px-1.5 py-0 text-[10px] text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-300"
-                                >
-                                  Examen
-                                </Badge>
-                              ) : null}
-                            </div>
+                            {c.est_classe_examen ? (
+                              <Badge
+                                variant="outline"
+                                className="border-violet-300 bg-violet-100 px-1.5 py-0 text-[10px] font-medium text-violet-800 dark:border-violet-800/60 dark:bg-violet-950/50 dark:text-violet-200"
+                              >
+                                Examen
+                              </Badge>
+                            ) : null}
                           </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        <span className="break-words leading-snug">
                           {c.cycle_libelle || "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className="font-medium tabular-nums">
-                            {c.effectif}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        <span className="text-base font-bold text-foreground">
+                          {c.effectif}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {" "}
+                          / {c.effectif_max}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <RemplissageBar
+                            taux={c.taux_remplissage}
+                            niveau={niveau}
+                            className="max-w-[140px]"
+                          />
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "shrink-0 tabular-nums",
+                              TAUX_BADGE_CLS[niveau],
+                            )}
+                          >
+                            {formatTaux(c.taux_remplissage)}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Badge
+                            variant="outline"
+                            className="border-emerald-300 bg-emerald-100 px-1.5 py-0 text-[11px] font-medium tabular-nums text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200"
+                            title="Garçons"
+                          >
+                            G·{c.garcons}
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className="border-rose-300 bg-rose-100 px-1.5 py-0 text-[11px] font-medium tabular-nums text-rose-800 dark:border-rose-800/60 dark:bg-rose-950/50 dark:text-rose-200"
+                            title="Filles"
+                          >
+                            F·{c.filles}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {c.redoublants > 0 ? (
+                          <span className="font-semibold text-terracotta dark:text-terracotta">
+                            {c.redoublants}
                           </span>
-                          <span className="text-muted-foreground">
-                            {" "}
-                            / {c.effectif_max}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <RemplissageBar
-                              taux={c.taux_remplissage}
-                              niveau={niveau}
-                              className="max-w-[140px]"
-                            />
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "shrink-0 tabular-nums",
-                                TAUX_BADGE_CLS[niveau],
-                              )}
-                            >
-                              {formatTaux(c.taux_remplissage)}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-center gap-1.5">
-                            <Badge
-                              variant="outline"
-                              className="border-emerald-200 bg-emerald-50 px-1.5 py-0 text-[11px] tabular-nums text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
-                              title="Garçons"
-                            >
-                              G·{c.garcons}
-                            </Badge>
-                            <Badge
-                              variant="outline"
-                              className="border-rose-200 bg-rose-50 px-1.5 py-0 text-[11px] tabular-nums text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300"
-                              title="Filles"
-                            >
-                              F·{c.filles}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {c.redoublants > 0 ? (
-                            <span className="font-medium text-rose-600 dark:text-rose-400">
-                              {c.redoublants}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">0</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                        ) : (
+                          <span className="text-muted-foreground">0</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </GlassCard>
       </section>
+
+      <KentePattern variant="separator" className="my-1" />
 
       {/* ─── Carte thermique ──────────────────────────────────────────────── */}
       <section aria-label="Carte thermique des effectifs" className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-base font-semibold tracking-tight">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="font-display text-base font-semibold tracking-tight text-forest">
             Carte thermique
           </h2>
-          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-emerald-500" />
+              <span className="size-2.5 rounded-full border border-emerald-400 bg-emerald-500" />
               &lt; 70 %
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-amber-500" />
+              <span className="size-2.5 rounded-full border border-amber-400 bg-amber-500" />
               70-90 %
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-rose-500" />
+              <span className="size-2.5 rounded-full border border-rose-400 bg-rose-500" />
               &gt; 90 %
             </span>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-          {classes.map((c) => {
-            const pleine = c.effectif >= c.effectif_max;
-            const niveau = niveauRemplissage(c.taux_remplissage, pleine);
-            return (
-              <HeatmapTile
-                key={c.classe_id}
-                classe={c}
-                niveau={niveau}
-                pleine={pleine}
-              />
-            );
-          })}
-        </div>
+        <GlassCard variant="adaptive" noHover noAnimation>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {classes.map((c, idx) => {
+              const pleine = c.effectif >= c.effectif_max;
+              const niveau = niveauRemplissage(
+                c.taux_remplissage,
+                pleine,
+              );
+              return (
+                <HeatmapTile
+                  key={c.classe_id}
+                  classe={c}
+                  niveau={niveau}
+                  pleine={pleine}
+                  index={idx}
+                />
+              );
+            })}
+          </div>
+        </GlassCard>
       </section>
+    </EffectifsShell>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shell (hero header premium + KentePattern strip / separator)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function EffectifsShell({
+  children,
+  etablissementNom,
+}: {
+  children: React.ReactNode;
+  etablissementNom?: string;
+}) {
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <KentePattern variant="strip" position="top" />
+
+      {/* ─── Hero header premium ──────────────────────────────────────── */}
+      <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3 sm:gap-4">
+            {/* Badge rond gradient emerald→gold avec icône BarChart3 */}
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg shadow-emerald-900/20">
+              <BarChart3 className="size-6" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-2xl font-bold tracking-tight text-forest">
+                  Effectifs
+                </h1>
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50/60 px-2 py-0.5 align-middle text-[11px] font-medium text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  <Sparkles className="size-3" />
+                  Phase 3
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Tableau de bord de remplissage des classes par cycle et par
+                niveau.
+              </p>
+              {etablissementNom ? (
+                <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  {etablissementNom}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </GlassCard>
+
+      <KentePattern variant="separator" className="my-1" />
+
+      {children}
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tuile de carte thermique + en-tête
+// Tuile de carte thermique (motion.div avec stagger delay index*0.03)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function HeatmapTile({
   classe,
   niveau,
   pleine,
+  index = 0,
 }: {
   classe: EffectifClasse;
   niveau: RemplissageNiveau;
   pleine: boolean;
+  index?: number;
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const animationProps = prefersReducedMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: 16 },
+        animate: { opacity: 1, y: 0 },
+        transition: {
+          duration: 0.35,
+          delay: Math.min(index * 0.03, 0.6),
+          ease: [0.22, 1, 0.36, 1] as const,
+        },
+      };
   return (
-    <div
+    <motion.div
       className={cn(
-        "flex flex-col gap-1 rounded-xl border p-3 shadow-sm transition-transform hover:scale-[1.02]",
+        "flex flex-col gap-1 rounded-xl border p-3 shadow-sm transition-transform hover:scale-[1.03]",
         HEATMAP_TILE_CLS[niveau],
       )}
       title={`${classe.classe_libelle} — ${classe.effectif}/${classe.effectif_max} (${formatTaux(
         classe.taux_remplissage,
       )})`}
+      {...animationProps}
     >
       <div className="flex items-start justify-between gap-1">
-        <p className="truncate text-xs font-semibold leading-tight">
+        <p className="break-words text-xs font-semibold leading-tight">
           {classe.classe_libelle}
         </p>
         {pleine ? (
           <span
-            className="shrink-0 rounded-full bg-rose-600/90 px-1.5 py-0 text-[9px] font-bold uppercase tracking-wide text-white"
+            className="shrink-0 rounded-full bg-terracotta px-1.5 py-0 text-[9px] font-bold uppercase tracking-wide text-white"
             aria-label="Classe pleine"
           >
             Pleine
           </span>
         ) : null}
       </div>
-      <p className="text-2xl font-bold leading-none tabular-nums">
+      <p className="text-3xl font-bold leading-none tabular-nums">
         {classe.effectif}
         <span className="text-sm font-medium opacity-70">
           {" "}
@@ -595,19 +624,87 @@ function HeatmapTile({
           </>
         ) : null}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
-function DashboardHeader() {
+// ─────────────────────────────────────────────────────────────────────────────
+// États vides premium (KentePattern bg + badge rond coloré + icône Lucide)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function EmptyState({
+  icon: Icon,
+  tone,
+  title,
+  description,
+}: {
+  icon: React.ElementType;
+  tone: "emerald" | "amber" | "rose";
+  title: string;
+  description: string;
+}) {
+  const cls = {
+    emerald:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+    amber: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+    rose: "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
+  }[tone];
   return (
-    <div className="flex flex-col gap-1">
-      <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-        Effectifs
-      </h1>
-      <p className="text-sm text-muted-foreground">
-        Tableau de bord de remplissage des classes par cycle et par niveau.
-      </p>
+    <GlassCard
+      variant="adaptive"
+      noHover
+      className="relative overflow-hidden"
+    >
+      <KentePattern variant="bg" />
+      <div className="relative flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
+        <div
+          className={cn(
+            "flex size-12 items-center justify-center rounded-full",
+            cls,
+          )}
+        >
+          <Icon className="size-6" />
+        </div>
+        <div className="space-y-1">
+          <p className="font-display text-base font-semibold text-forest">
+            {title}
+          </p>
+          <p className="max-w-md text-sm text-muted-foreground">
+            {description}
+          </p>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Loading state premium (KentePattern strip top + Loader2 centré)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LoadingState() {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-28 w-full rounded-xl" />
+        ))}
+      </div>
+      <Skeleton className="h-10 w-40 rounded-lg" />
+      <Skeleton className="h-72 w-full rounded-xl" />
+      <Skeleton className="h-10 w-40 rounded-lg" />
+      <Skeleton className="h-48 w-full rounded-xl" />
+      <GlassCard
+        variant="adaptive"
+        noHover
+        noAnimation
+        className="relative overflow-hidden p-0"
+      >
+        <KentePattern variant="strip" position="top" />
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="size-8 animate-spin text-emerald-600 dark:text-emerald-400" />
+        </div>
+      </GlassCard>
     </div>
   );
 }
