@@ -14475,3 +14475,359 @@ Total : 3758 → 4080 lignes (+322 lignes).
     le header/footer du dialog (.no-print).
 
 ### NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+
+## Task 4 — Refonte module /comptabilite (ScolaGest — Forêt EdTech)
+
+### Fichiers modifiés (3)
+1. `/home/z/my-project/scolagest/Frontend/src/components/dashboard/views/view-comptabilite.tsx`
+   (1654 → 1448 lignes, fichier principal à 5 onglets)
+2. `/home/z/my-project/scolagest/Frontend/src/components/comptabilite/exercice-form-dialog.tsx`
+   (228 → 240 lignes, dialog création d'exercice)
+3. `/home/z/my-project/scolagest/Frontend/src/components/comptabilite/compte-form-dialog.tsx`
+   (268 → 280 lignes, dialog création de compte)
+
+### Résumé des améliorations par fichier
+
+#### 1. view-comptabilite.tsx — Refonte complète des 5 onglets
+- **Hero header premium** : KentePattern strip top + GlassCard desktop
+  noHover p-5 sm:p-6 + badge rond size-12 gradient emerald→gold (BookOpen
+  size-6) + titre `font-display text-2xl font-bold tracking-tight text-forest`
+  + pill "Phase 5" outline (border-emerald-300 bg-emerald-50/60 text-
+  emerald-800) avec Sparkles + description + pill établissement (border-
+  emerald-200 bg-emerald-50 text-emerald-800).
+- **TabsList premium** : `glass-desktop h-auto w-full gap-1 overflow-x-auto
+  border-0 p-1 sm:w-auto` + 5 tabs (CalendarRange/ListTree/FileText/BookOpen/
+  Scale size-4) avec `data-[state=active]:bg-emerald-600 data-[state=
+  active]:text-white data-[state=active]:shadow-sm` + scrollable mobile.
+- **Onglet Exercices enrichi** :
+  - 3 StatCards (Total exercices emerald CalendarRange / Ouverts forest
+    CheckCircle2 / Clôturés terracotta Lock) en grid 3 colonnes desktop,
+    delay 0 → 0.05 → 0.1s + className h-full + items-stretch.
+  - Tableau : GlassCard adaptive noHover noAnimation overflow-hidden p-0 +
+    header `border-emerald-100 bg-emerald-50/60 hover:bg-emerald-50/60` +
+    th `text-xs font-semibold uppercase tracking-wide text-emerald-900` +
+    hover row `bg-emerald-50/60`.
+  - Cellule Libellé : avatar size-9 bg-emerald-100 text-emerald-700 avec
+    CalendarRange size-4 + nom `break-words font-display text-sm font-
+   -semibold leading-snug text-forest` + sous-titre "Année scolaire
+    rattachée".
+  - StatutExerciceBadge renforcé : OUVERT `border-emerald-300 bg-emerald-
+    100 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/50
+    dark:text-emerald-200`, CLOTURE `border-rose-300 bg-rose-100 text-rose-
+    800 dark:border-rose-800/60 dark:bg-rose-950/50 dark:text-rose-200`.
+  - Bouton Clôturer : variant outline border-amber-300 text-amber-800 +
+    icône Lock + title natif "Clôturer l'exercice « X »" + aria-label +
+    span responsive (hidden lg:inline / lg:hidden).
+  - Rows `motion.tr` avec stagger `delay: Math.min(index * 0.02, 0.4)` +
+    usePrefersReducedMotion respecté (composant ExerciceRow).
+  - AlertDialog footer `grid grid-cols-2 gap-2 sm:flex sm:justify-end` +
+    bouton Clôturer définitivement bg-amber-600 hover:bg-amber-700 avec
+    icône Loader2/Lock.
+- **Onglet Plan comptable enrichi** :
+  - 4 StatCards par type (Actif emerald Wallet / Passif amber Scale /
+    Produit sky TrendingUp / Charge terracotta TrendingDown) en grid
+    `grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-4` + delay
+    `i * 0.05` + className h-full.
+  - GlassCard par type : header `border-b border-emerald-100 bg-emerald-
+    50/60 dark:border-emerald-900/40 dark:bg-emerald-950/20` avec badge
+    rond size-8 bg-emerald-500/15 + icône + titre font-display text-sm
+    font-semibold text-forest + badge type renforcé (TYPE_COMPTE_CLS).
+  - CompteTreeList : Table header `bg-emerald-50/60` + th `text-[11px]
+    font-semibold uppercase tracking-wide text-emerald-900` + libellé
+    `break-words leading-snug` (pas de truncate) + badge Actif/Inactif
+    renforcé (border-emerald-300/bg-emerald-100/text-emerald-800 ou
+    border-slate-300/bg-slate-100/text-slate-800) + rows motion.tr stagger
+    `delay: Math.min(index * 0.02, 0.4)` + usePrefersReducedMotion.
+  - Bouton "Nouveau compte" variant success + title natif.
+- **Onglet Écritures enrichi** :
+  - Filtres GlassCard adaptive noHover noAnimation p-4 sm:p-5 + grid
+    `sm:grid-cols-2 lg:grid-cols-5` + SelectTrigger avec icônes
+    contextuelles (CalendarRange pour exercice, BookOpen pour journal) +
+    bg-background opaque + Inputs date avec icône Calendar en overlay
+    (pointer-events-none absolute left-2.5) + bouton Réinitialiser variant
+    outline avec RotateCcw + title natif.
+  - Tableau écritures : header `bg-emerald-50/60` + th uppercase text-
+    emerald-900 + hover row `bg-emerald-50/60` + cellule Date `whitespace-
+    nowrap` + badge journal renforcé (border-emerald-300 bg-emerald-100
+    text-emerald-800) + libellé `break-words leading-snug` (pas de
+    truncate) + StatutEcritureBadge renforcé (VALIDEE emerald / BROUILLON
+    amber) + lignes motion.tr stagger capé 0.4s.
+  - Pagination : boutons Précédent/Suivant avec title natif "Page
+    précédente/suivante" + span "Page X sur Y" `text-xs font-medium`.
+  - Dialog détail écriture : header badge rond size-10 gradient
+    emerald→gold (FileText size-5) + titre `font-display text-lg font-
+   -semibold text-forest` + GlassCard tablet noHover noAnimation
+    overflow-hidden p-0 contenant le tableau des lignes (header bg-emerald-
+    50/60 + hover + libellé `break-words leading-snug` + totaux bg-emerald-
+    50/60) + bloc paiement source (border-emerald-200 bg-emerald-50/60
+    text-emerald-800).
+- **Onglet Grand livre enrichi** :
+  - Filtres identiques à Écritures (icônes CalendarRange/ListTree/Calendar
+    + RotateCcw + title natif).
+  - Carte par compte (GrandLivreCompteCard) : GlassCard adaptive noHover
+    noAnimation overflow-hidden p-0 + header `border-b border-emerald-100
+    bg-emerald-50/60 dark:border-emerald-900/40 dark:bg-emerald-950/20`
+    avec badge rond size-8 bg-emerald-500/15 + ListTree + nom font-display
+    font-semibold text-forest + badges Ouverture (slate renforcé) et Solde
+    final (emerald renforcé) avec montants `text-gold-dark dark:text-gold`.
+  - Tableau mouvements : header `bg-emerald-50/60` + hover row + Date
+    `whitespace-nowrap` + libellé `break-words leading-snug` + cellules
+    Débit/Crédit/Solde `text-gold-dark dark:text-gold` + rows motion.tr
+    stagger capé 0.4s.
+  - Totaux généraux : GlassCard adaptive noHover noAnimation bg-muted/30
+    p-3 + span uppercase text-muted-foreground + 2 montants mono emerald
+    / amber.
+- **Onglet Bilan enrichi** :
+  - Sélecteur exercice : GlassCard adaptive noHover noAnimation p-4 sm:p-5
+    + SelectTrigger bg-background avec icône CalendarRange + bouton
+    Actualiser variant outline title natif.
+  - 3 StatCards (Total actif emerald Wallet / Total passif amber Scale /
+    Résultat gold TrendingUp si positif ou terracotta TrendingDown si
+    négatif) en grid 3 colonnes + delay 0/0.05/0.1 + className h-full.
+  - 4 cards par type (BilanDetailTable) : GlassCard adaptive noHover
+    noAnimation overflow-hidden p-0 + header `bg-emerald-50/60 dark:bg-
+    emerald-950/20` + titre `font-display text-sm font-semibold` coloré
+    selon accent (emerald/amber/rose).
+  - Tableaux détaillés : header `bg-emerald-50/60` + th uppercase text-
+    emerald-900 + hover row + libellé `break-words leading-snug` + montant
+    `text-gold-dark dark:text-gold` + ligne Total `bg-emerald-50/60` avec
+    montant text-gold-dark.
+- **Empty states premium (ErrorState / EmptyState)** : GlassCard adaptive
+  noHover relative overflow-hidden + KentePattern bg + badges ronds
+  colorés size-12 (rose AlertCircle pour error, emerald/amber/rose
+  contextuel pour empty) + titre `font-display text-base font-semibold
+  text-forest` + description `max-w-md text-sm text-muted-foreground` +
+  bouton Réessayer (ErrorState) avec title natif.
+- **LoadingState premium** : GlassCard adaptive noHover noAnimation
+  relative overflow-hidden p-0 + KentePattern strip top + div space-y-2
+  p-4 avec N Skeletons (hauteur customisable).
+- **Animation** : tous les tableaux utilisent `motion.tr` avec stagger
+  `delay: Math.min(index * 0.02, 0.4)` + `usePrefersReducedMotion()` (3
+  composants Row : ExerciceRow, EcritureRow, GrandLivreMouvementRow +
+  CompteTreeList internes). StatCards utilisent `delay={i * 0.05}` (3
+  onglets : Exercices, Plan comptable, Bilan).
+- **Imports ajoutés** : `motion` (framer-motion), `RotateCcw`, `Calendar`,
+  `Sparkles`, `type LucideIcon` (lucide-react), `usePrefersReducedMotion`
+  (@/hooks). **Imports retirés** : `Card`, `CardContent` (remplacés par
+  GlassCard / LoadingState).
+- **Constantes nouvelles** : `TYPE_COMPTE_ICONS` (Record<TypeCompte,
+  LucideIcon>) et `TYPE_COMPTE_TONES` (Record<TypeCompte, "emerald" |
+  "amber" | "sky" | "terracotta">) pour les StatCards et headers de
+  sections. Constantes originales `TYPE_COMPTE_LABEL`, `TYPE_COMPTE_CLS`,
+  `TYPE_COMPTE_ORDER`, `PAGE_SIZE` strictement conservées.
+
+#### 2. exercice-form-dialog.tsx — Dialog premium
+- **Header premium** : badge rond size-10 gradient emerald→gold
+  (CalendarRange size-5) + titre `font-display text-lg font-semibold
+  text-forest` "Nouvel exercice comptable" + description contextuelle.
+- **3 sous-sections GlassCard tablet noHover noAnimation space-y-3 p-4** :
+  1. **Libellé** (BookOpen) — Input `bg-background` + focus ring emerald
+     (`focus-visible:border-emerald-500 focus-visible:ring-emerald-500/30`)
+  2. **Période** (CalendarRange) — grid 2 colonnes Date début / Date fin
+     avec inputs bg-background + focus ring emerald
+  3. **Année scolaire** (School) — Select avec icône School dans le
+     SelectTrigger (text-emerald-600) + bg-background
+- **SectionTitle** : badge rond size-7 bg-emerald-500/15 text-emerald-700
+  + icône size-3.5 + titre `font-display text-sm font-semibold tracking-
+  tight text-forest`.
+- **Alerte amber renforcée** : `flex items-start gap-2 rounded-md border
+  border-amber-300 bg-amber-100/80 p-2.5 text-xs text-amber-800 dark:
+  border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200` + icône
+  CalendarRange `mt-0.5 size-3.5 shrink-0` (flex items-start + mt-0.5
+  conforme BUGS À ÉVITER #4).
+- **Footer premium** : `grid grid-cols-2 gap-2 sm:flex sm:justify-end` +
+  bouton Annuler variant outline h-10 w-full sm:w-auto + bouton submit
+  variant success h-10 w-full sm:w-auto avec icône CheckCircle2 (ou
+  Loader2 animate-spin si pending) + texte "Créer l'exercice".
+- **LOGIQUE MÉTIER INTACTE** : hook useQuery (anneesKeys.list /
+  fetchAnneesScolaires, enabled: open), état local (libelle / dateDebut /
+  dateFin / anneeId), useEffect init [open] avec valeurs par défaut
+  (Exercice {year}-{year+1}, 01/09 → 31/08), mutation createExercice +
+  invalidation comptaKeys.exercices(etablissement?.id), validation
+  libelle.trim(), toast success/error. Endpoints API inchangés.
+
+#### 3. compte-form-dialog.tsx — Dialog premium
+- **Header premium** : badge rond size-10 gradient emerald→gold (ListTree
+  size-5) + titre `font-display text-lg font-semibold text-forest`
+  "Nouveau compte comptable" + description contextuelle.
+- **3 sous-sections GlassCard tablet noHover noAnimation space-y-3 p-4** :
+  1. **Identification** (Hash) — grid `grid-cols-[1fr_2fr]` Numéro
+     (font-mono) / Libellé, inputs bg-background + focus ring emerald
+  2. **Classification** (ListTree) — Select Type avec icône ListTree
+     dans SelectTrigger + options avec description secondaire
+     (text-[10px] text-muted-foreground)
+  3. **Hiérarchie & état** (GitBranch) — Select Compte parent avec
+     icône GitBranch dans SelectTrigger + Switch actif encadré dans un
+     bloc `border border-emerald-200 bg-emerald-50/40 p-3 dark:border-
+     emerald-900/40 dark:bg-emerald-950/20` (alignement items-center
+     justify-between)
+- **SectionTitle** identique à exercice-form-dialog.
+- **Footer premium** identique : grid-cols-2 → sm:flex sm:justify-end +
+  bouton Annuler variant outline + bouton submit variant success avec
+  CheckCircle2 / Loader2 + "Créer le compte".
+- **LOGIQUE MÉTIER INTACTE** : hook useQuery (comptaKeys.comptes /
+  fetchComptes, enabled: open && !!etablissement?.id), parentOptions
+  filtré par type + actif, useEffect init [open] réinitialise tous les
+  champs, useEffect [type] reset parentId à "__none__", mutation
+  createCompte + invalidation comptaKeys.comptes(etablissement?.id),
+  validation numero.trim() + libelle.trim(). Endpoints API inchangés.
+
+### Conservations obligatoires (logique métier)
+- Imports `@/lib/api-phase5` strictement conservés : `comptaKeys`,
+  `fetchExercices`, `cloturerExercice`, `fetchComptes`, `fetchJournaux`,
+  `fetchEcritures`, `fetchEcriture`, `fetchGrandLivre`, `fetchBilan`,
+  `createExercice`, `createCompte`.
+- Imports `@/lib/auth-store` (useAuthStore), `@/lib/types` (ExerciceComptable,
+  CompteComptable, EcritureComptable, GrandLivreResult, BilanResult,
+  TypeCompte, EcrituresQueryParams, GrandLivreQueryParams, ExerciceDTO,
+  CompteDTO), `@/lib/format` (formatFCFA, formatDateShort, todayISO),
+  `@/lib/api-students` (anneesKeys, fetchAnneesScolaires) intacts.
+- Hooks React Query : query keys `comptaKeys.exercices/comptes/journaux/
+  ecritures/grandLivre/bilan`, `anneesKeys.list`. Mutations `cloturerExercice`,
+  `createExercice`, `createCompte` avec `onSuccess` / `onError` /
+  `invalidateQueries` intacts. `retry: 1, retryDelay: 1500` sur toutes les
+  requêtes.
+- Handlers : `setFormOpen`, `setCloturerTarget`, `setSelectedEcriture`,
+  `setExerciceId`, `setJournalId`, `setCompteId`, `setDateDebut`, `setDateFin`,
+  `setPage`, `setAnneeId`, `resetFilters`, `setNumero`, `setLibelle`, `setType`,
+  `setParentId`, `setActif`, `handleSubmit` intacts.
+- Endpoints backend intacts (routes `/api/comptabilite/*`).
+- Constantes `TYPE_COMPTE_LABEL`, `TYPE_COMPTE_CLS` (renforcé vers border-
+  300/bg-100/text-800), `TYPE_COMPTE_ORDER`, `PAGE_SIZE = 15` intacts.
+- Composants helpers `StatutExerciceBadge`, `StatutEcritureBadge`,
+  `CompteTreeList`, `ErrorState`, `EmptyState` (signature enrichie avec
+  `icon` + `tone` mais signature publique compat backwards : ErrorState
+  accepte toujours juste `onRetry`, EmptyState accepte `title` + `message`
+  ou signature enrichie `icon` + `tone` + `title` + `message`).
+- Structure des 5 onglets (ExercicesPanel / PlanComptablePanel /
+  EcrituresPanel / GrandLivrePanel / BilanPanel) conservée. Pagination
+  PAGE_SIZE = 15 intacte. Filtres exerciceId / journalId / dateDebut /
+  dateFin / page / compteId intacts.
+- Page `app/(staff)/comptabilite/page.tsx` NON modifiée.
+
+### Bugs à éviter — vérifications
+1. ✅ **Pas de Tooltip Radix** → tous les boutons utilisent `title` natif
+   (Actualiser, Nouvel exercice, Nouveau compte, Réinitialiser, Clôturer,
+   Page précédente/suivante, Réessayer).
+2. ✅ **Pas de truncate** → tous les libellés utilisent `break-words
+   leading-snug` (cellules Libellé tableaux Exercices / Écritures / Grand
+   livre / Bilan / CompteTreeList).
+3. ✅ **Pas de bouton imbriqué dans un bouton** → vérifié sur tous les
+   tableaux (boutons d'action dans `<TableCell>` séparée, pas dans un
+   bouton parent).
+4. ✅ **Icônes InfoRow flex items-start + mt-0.5** → alerte amber
+   ExerciceFormDialog `flex items-start gap-2` + CalendarRange `mt-0.5
+   size-3.5 shrink-0`.
+5. ✅ **Grid items-stretch + h-full** → StatCards Exercices / Plan
+   comptable / Bilan utilisent `grid grid-cols-X items-stretch gap-3 sm:
+   gap-4` + `className="h-full"` sur chaque StatCard.
+6. ✅ **Avatar bg-emerald-600 text-white** → remplacé par badge gradient
+   emerald→gold (variant premium) pour les hero headers (cohérent avec le
+   pattern view-frais/view-parametres). Avatar emerald uni conservé pour
+   les cellules Libellé (size-9 bg-emerald-100 text-emerald-700) car non-
+   interactif (decoration, pas un avatar d'utilisateur).
+7. ✅ **Badges border-300 bg-100 text-800** → tous les badges (StatutExercice
+   / StatutEcriture / TypeCompte / Actif-Inactif / journal / Ouverture /
+   Solde final) utilisent la palette renforcée (border-X-300 bg-X-100 text-
+   X-800 + variantes dark).
+8. ✅ **toast useToast()** → `const { toast } = useToast();` présent dans
+   ExercicesPanel + ExerciceFormDialog + CompteFormDialog.
+
+### TypeScript
+- **0 erreur sur les 3 fichiers refondus** (vérifié par `bunx tsc --noEmit
+  2>&1 | grep -E "view-comptabilite|exercice-form|compte-form"` → 0 match).
+  Les 13 erreurs tsc restantes sont toutes pré-existantes sur d'autres
+  fichiers (login-form ×8, dashboard-shell ×3, etablissement-form-dialog ×1,
+  instrumentation ×1) — aucune introduite par cette refonte.
+- Lint : **0 erreur, 0 warning** sur l'ensemble du projet (`bun run lint`
+  EXIT=0, `bun run lint --max-warnings=0` EXIT=0).
+- Aucun `any` ajouté. Aucune nouvelle dépendance. `import * as React from
+  "react"` conservé sur les 3 fichiers.
+
+### Points à vérifier par agent browser
+1. **Rendu du hero header** : KentePattern strip top + GlassCard desktop
+   p-5 sm:p-6 + badge rond size-12 gradient emerald→gold avec BookOpen
+   size-6 + titre `font-display text-2xl font-bold tracking-tight text-
+   forest` "Comptabilité générale" + pill "Phase 5" outline (border-
+   emerald-300 bg-emerald-50/60 text-emerald-800) avec Sparkles size-3 +
+   description + pill établissement (si sélectionné).
+2. **Rendu de la TabsList premium** : glass-desktop subtile + 5 tabs
+   (CalendarRange / ListTree / FileText / BookOpen / Scale size-4) + tab
+   actif bg-emerald-600 text-white shadow-sm + scrollable mobile
+   (overflow-x-auto).
+3. **Onglet Exercices** : 3 StatCards (Total exercices emerald / Ouverts
+   forest / Clôturés terracotta) + tableau header bg-emerald-50/60 + hover
+   bg-emerald-50/60 + cellule Libellé avec avatar emerald + nom font-
+   display + badges StatutExercice renforcés + bouton Clôturer avec title
+   natif + motion.tr stagger au chargement + AlertDialog footer grid-cols-2
+   mobile.
+4. **Onglet Plan comptable** : 4 StatCards par type (Actif emerald / Passif
+   amber / Produit sky / Charge terracotta) + 4 GlassCard par type avec
+   header bg-emerald-50/60 + badge icône rond emerald-500/15 + titre
+   font-display + badge type renforcé + CompteTreeList avec libellés break-
+   words + badges Actif/Inactif renforcés + bouton "Nouveau compte" variant
+   success.
+5. **Onglet Écritures** : filtres GlassCard adaptive avec icônes
+   contextuelles dans les SelectTrigger + bouton Réinitialiser variant
+   outline avec RotateCcw + tableau header bg-emerald-50/60 + hover +
+   badges StatutEcriture renforcés + libellés break-words (pas de truncate)
+   + lignes motion.tr stagger + pagination boutons avec title natif +
+   dialog détail écriture avec header badge gradient emerald→gold + lignes
+   en GlassCard tablet avec header bg-emerald-50/60.
+6. **Onglet Grand livre** : filtres identiques à Écritures + cartes par
+   compte en GlassCard adaptive avec header bg-emerald-50/60 + badges
+   Ouverture (slate renforcé) et Solde final (emerald renforcé) avec
+   montants text-gold-dark + tableau mouvements header bg-emerald-50/60 +
+   hover + montants Débit/Crédit/Solde text-gold-dark + lignes motion.tr
+   stagger + totaux généraux en GlassCard bg-muted/30.
+7. **Onglet Bilan** : sélecteur exercice en GlassCard adaptive avec icône
+   CalendarRange dans le SelectTrigger + 3 StatCards (Total actif emerald /
+   Total passif amber / Résultat gold si positif ou terracotta si négatif
+   avec icône TrendingUp/TrendingDown adaptative) + 4 BilanDetailTable en
+   grid 2 colonnes desktop avec header bg-emerald-50/60 coloré selon accent
+   + tableaux détaillés header bg-emerald-50/60 + montants text-gold-dark +
+   ligne Total bg-emerald-50/60.
+8. **Dialog ExerciceFormDialog** : header badge rond size-10 gradient
+   emerald→gold avec CalendarRange size-5 + titre font-display text-lg
+   text-forest + 3 sections GlassCard tablet (Libellé / Période / Année
+   scolaire) avec SectionTitle (badge rond emerald-500/15 + icône) + inputs
+   bg-background + focus ring emerald + alerte amber renforcée (flex items-
+   start + mt-0.5) + footer grid-cols-2 mobile sm:flex sm:justify-end +
+   bouton Annuler variant outline + bouton submit variant success avec
+   CheckCircle2/Loader2.
+9. **Dialog CompteFormDialog** : header badge rond size-10 gradient
+   emerald→gold avec ListTree size-5 + titre font-display text-lg text-
+   forest + 3 sections GlassCard tablet (Identification / Classification /
+   Hiérarchie & état) avec SectionTitle + Selects avec icônes contextuelles
+   (ListTree / GitBranch) + Switch actif encadré dans bloc border emerald-
+   200 + footer grid-cols-2 mobile sm:flex sm:justify-end + bouton submit
+   variant success.
+10. **Empty states / Error states premium** : KentePattern bg + badge rond
+    coloré size-12 (rose pour error, emerald/amber/rose pour empty) +
+    titre font-display text-base font-semibold text-forest + description
+    max-w-md + bouton Réessayer (ErrorState uniquement) avec title natif.
+11. **Loading state premium** : KentePattern strip top + GlassCard
+    adaptive noHover noAnimation p-0 + div space-y-2 p-4 avec N Skeletons.
+12. **Animation** : au chargement initial de chaque onglet, vérifier le
+    stagger des StatCards (0 → 0.05 → 0.1s sur Exercices / 0 → 0.05 →
+    0.10 → 0.15s sur Plan comptable / 0 → 0.05 → 0.1s sur Bilan) puis le
+    stagger des rows motion.tr (0 → 0.02 → 0.04 … capé 0.4s sur Exercices /
+    Écritures / Grand livre / CompteTreeList). Si l'utilisateur a activé
+    prefers-reduced-motion au niveau OS, vérifier qu'aucune animation n'est
+    déclenchée (les cards/rows apparaissent instantanément).
+13. **Responsive mobile (<640px)** : hero header flex-col, bandeaux flex-
+    col (boutons Actualiser w-full), StatCards grid 2 colonnes (Plan
+    comptable), TabsList w-full overflow-x-auto scrollable, filtres grid 1
+    colonne, footers dialog grid-cols-2 → grid-cols-1 sm:grid-cols-2,
+    AlertDialog footer grid-cols-2 → sm:flex sm:justify-end.
+14. **Contrastes** : tous les badges doivent être lisibles en mode clair
+    ET sombre — vérifier spécifiquement les badges emerald renforcés
+    (StatutExercice OUVERT, StatutEcriture VALIDEE, TypeCompte ACTIF,
+    Actif, Solde final), amber renforcés (StatutEcriture BROUILLON,
+    TypeCompte PASSIF), sky renforcés (TypeCompte PRODUIT), terracotta
+    (TypeCompte CHARGE), rose renforcés (StatutExercice CLOTURE, Inactif),
+    slate renforcés (Ouverture grand livre).
+
+### NE PAS commit/push — l'utilisateur gère le commit après vérification.
