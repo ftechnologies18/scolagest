@@ -1,24 +1,20 @@
 "use client";
 
 /**
- * ScolaGest — Page « Effectifs » (route `/effectifs`).
+ * ScolaGest — Redirection /effectifs → /eleves-effectifs?tab=effectifs.
  *
- * Tableau de bord de remplissage des classes : KPIs globaux, tableau détaillé
- * par classe et carte thermique visuelle.
- *
- * Accessible à la DIRECTION et aux DIRECTEUR_* (pilotage de l'établissement).
- * Le caissier, le comptable et le secrétariat n'y accèdent pas.
+ * Ancienne route conservée pour la rétrocompatibilité (liens existants,
+ * bookmarks, history). Redirige vers la page unifiée avec l'onglet
+ * Effectifs actif.
  */
 
-import { RoleGuard } from "@/components/auth/role-guard";
-import { EffectifsDashboard } from "@/components/effectifs/effectifs-dashboard";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default function EffectifsPage() {
-  return (
-    <RoleGuard
-      allow={["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"]}
-    >
-      <EffectifsDashboard />
-    </RoleGuard>
-  );
+export default function EffectifsRedirectPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/eleves-effectifs?tab=effectifs");
+  }, [router]);
+  return null;
 }

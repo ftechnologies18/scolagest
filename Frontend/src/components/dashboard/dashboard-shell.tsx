@@ -28,7 +28,7 @@ import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
-  Users,
+  School,
   UserPlus,
   Wallet,
   AlertTriangle,
@@ -50,7 +50,6 @@ import {
   LifeBuoy,
   ScrollText,
   CreditCard,
-  BarChart3,
   ArrowRight,
   MailOpen,
   GraduationCap,
@@ -126,9 +125,15 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         roles: ["CAISSIER", "COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT", "EDUCATEUR"],
       },
       {
-        href: "/eleves",
-        label: "Élèves",
-        icon: Users,
+        // Page unifiée Élèves & Effectifs (fusion UX) : un seul point d'entrée
+        // pour la gestion opérationnelle des élèves (liste, fiches) et le
+        // tableau de bord stratégique de remplissage des classes. L'onglet
+        // Effectifs est masqué aux rôles non-pilotage (caissier, comptable,
+        // secrétariat, éducateur) — ils ne voient que l'onglet Élèves.
+        // Anciennes routes /eleves et /effectifs redirigent ici.
+        href: "/eleves-effectifs",
+        label: "Élèves & Effectifs",
+        icon: School,
         roles: ["CAISSIER", "COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT", "EDUCATEUR"],
       },
       {
@@ -190,14 +195,6 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/utilisateurs",
         label: "Utilisateurs",
         icon: UserCog,
-        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
-      },
-      {
-        // Effectifs : tableau de bord de remplissage des classes (Phase 3,
-        // Innovation 1). Réservé à la direction et aux directeurs (pilotage).
-        href: "/effectifs",
-        label: "Effectifs",
-        icon: BarChart3,
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
       {
