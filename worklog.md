@@ -13328,3 +13328,453 @@ Date : 2025-01 (Task 4 de la vague de refontes ScolaGest).
     référence >= 2 caractères (payer bulletin) ; motif rejet >= 3
     caractères (rejeter avance).
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+
+## Task 4 — Refonte module /parametres (agent frontend-styling-expert)
+
+Date : 2025-01 (Task 4 — vague de refontes ScolaGest).
+
+### Fichier modifié (1)
+- `/home/z/my-project/scolagest/Frontend/src/components/dashboard/views/view-parametres.tsx`
+  (851 → 1329 lignes, +478 lignes)
+
+### Fichiers lus (référence DS + refontes précédentes)
+- `Frontend/src/components/ds/glass-card.tsx` (GlassCard : variants mobile/
+  tablet/desktop/premium/adaptive, props noHover/noAnimation/delay/
+  premiumBorder, role=button si onClick).
+- `Frontend/src/components/ds/kente-pattern.tsx` (KentePattern : variants
+  strip/bg/border/separator, positions top/bottom/custom).
+- `Frontend/src/components/ds/stat-card.tsx` (StatCard : tones emerald/amber/
+  terracotta/gold/sky/forest, props trend/invertTrend/hint/delay/onClick).
+- `Frontend/src/components/discipline/discipline-dashboard.tsx` (1369 lignes,
+  DÉJÀ REFONTE — patterns repris : hero header GlassCard desktop + badge
+  rond gradient emerald→gold + pill "Phase B" + TabsList premium glass-desktop
+  + tab actif bg-emerald-600 text-white + icônes + 4 StatCards + tableau
+  GlassCard p-0 + header bg-emerald-50/60 + motion.tr stagger + EmptyState /
+  LoadingState premium).
+- `Frontend/src/components/enseignants/enseignants-list.tsx` (1780 lignes,
+  DÉJÀ REFONTE — patterns repris : motion.tr stagger delay index*0.02 capé
+  0.4s, avatar bg-emerald-600 text-white, badges renforcés border-300
+  bg-100 text-800).
+- `Frontend/src/components/emploi-temps/emploi-temps-dashboard.tsx` (pattern
+  SelectTrigger avec icône contextuelle + bg-background opaque).
+- `Frontend/src/lib/types.ts` (RoleGlobal / Utilisateur / JournalAudit /
+  AuditQueryParams / EtablissementAccess — intacts).
+- `Frontend/src/hooks/use-prefers-reduced-motion.ts` (SSR-safe, retourne
+  `false` au premier rendu).
+- `Frontend/src/app/(staff)/parametres/page.tsx` (route RoleGuard — non
+  modifiée, intacte).
+
+### Refonte `view-parametres.tsx` — améliorations
+
+#### a) Hero header premium (composant `ParametresView`)
+- KentePattern `variant="strip" position="top"` en tête de vue.
+- GlassCard `variant="desktop" noHover` `p-5 sm:p-6` conteneur du hero.
+- Badge rond `size-12 shrink-0 rounded-full bg-gradient-to-br from-emerald-600
+  to-amber-500 text-white shadow-lg shadow-emerald-900/20` avec icône
+  `Settings size-6` (au lieu de `bg-emerald-600` uni).
+- Titre `font-display text-2xl font-bold tracking-tight text-forest`
+  "Paramètres" (au lieu de `text-xl`).
+- Pill "Phase 5" outline `border-emerald-300 bg-emerald-50/60 text-emerald-800`
+  avec icône `Sparkles size-3` à droite du titre.
+- Description "Établissements du groupe, utilisateurs & rôles, journal
+  d'audit." conservée.
+- Pill établissement `border-emerald-200 bg-emerald-50 text-emerald-800`
+  conservée (si `etablissement?.nom` défini).
+- Layout `flex-col sm:flex-row sm:items-center sm:justify-between` pour
+  permettre futur ajout d'actions à droite (actuellement vide).
+- KentePattern `variant="separator" className="my-1"` après le hero header.
+
+#### b) TabsList premium
+- `TabsList className="glass-desktop h-auto w-full gap-1 overflow-x-auto
+  border-0 p-1 sm:w-auto"` — scrollable mobile (overflow-x-auto), width
+  full sur mobile / auto sur desktop, glass-desktop subtile.
+- 3 `TabsTrigger` avec `gap-1.5 data-[state=active]:bg-emerald-600
+  data-[state=active]:text-white data-[state=active]:shadow-sm` + icônes
+  `Building2 size-4` (Établissements), `Users size-4` (Utilisateurs),
+  `ScrollText size-4` (Audit).
+
+#### c) Onglet Établissements enrichi
+- `EtablissementsPanel` — ajout `usePrefersReducedMotion()` en tête.
+- Bandeau `flex-col sm:flex-row sm:items-center sm:justify-between` avec
+  compte + boutons Actualiser (variant outline, `title="Actualiser la liste
+  des établissements"`) + Nouvel établissement (variant success, `title=
+  "Créer un nouvel établissement"`).
+- **4 StatCards DS** (nouveau) en `grid grid-cols-2 items-stretch gap-3
+  sm:gap-4 md:grid-cols-4` avec stagger delay `0/0.05/0.1/0.15` + `h-full` :
+  Total établissements (emerald/Building2, hint "chargement…" si loading
+  sinon "dans le groupe"), Actifs (forest/CheckCircle2, "opérationnels"),
+  Avec catégories (amber/ShieldCheck, "affecté / non affecté"), Inactifs
+  (terracotta/AlertCircle, "désactivés").
+- **KPIs calculés** (nouveau) via `React.useMemo` sur la liste des
+  établissements : `total / actifs / inactifs / avecCategories`. `actifs`
+  = `e.actif !== false` (cohérent avec l'affichage du badge), `inactifs`
+  = `e.actif === false`, `avecCategories` = `e.applique_categorie_affecte`.
+- KentePattern separator entre les StatCards et le tableau.
+- **Tableau enrichi** (GlassCard adaptive noHover noAnimation p-0 overflow-
+  hidden) :
+  - Header `border-emerald-100 bg-emerald-50/60 hover:bg-emerald-50/60
+    dark:border-emerald-900/40 dark:bg-emerald-950/20` + `th text-emerald-900
+    dark:text-emerald-200 text-xs font-semibold uppercase tracking-wide`.
+  - Colonne Nom : avatar `size-9 shrink-0 rounded-lg bg-emerald-100 text-
+    emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300` avec icône
+    `Building2 size-4` (PAS bg-emerald-100 uni sur ancien size-8) + nom
+    `break-words font-display text-sm font-semibold leading-snug text-forest`.
+  - Colonne Code officiel : `font-mono text-xs` avec icône `Hash size-3` mt-0
+    si présent, sinon "—".
+  - Colonne Catégories : badges renforcés (BUG À ÉVITER #7) — Affecté/Non
+    affecté `border-amber-300 bg-amber-100 text-amber-800` (au lieu de
+    border-amber-200 bg-amber-50 text-amber-700) + icône ShieldCheck ; Tarif
+    unique `border-slate-300 bg-slate-100 text-slate-800` (au lieu de muted)
+    + icône Globe.
+  - Colonne État : Actif `border-emerald-300 bg-emerald-100 text-emerald-800`
+    (au lieu de border-emerald-200 bg-emerald-50 text-emerald-700) ; Inactif
+    `border-rose-300 bg-rose-100 text-rose-800` (au lieu de border-rose-200
+    bg-rose-50 text-rose-700).
+  - Colonne Actions : bouton Modifier (variant outline, size sm) avec
+    `title="Modifier cet établissement"` + `aria-label` (PAS de Tooltip
+    Radix — BUG À ÉVITER #1).
+  - Rows `motion.tr` avec stagger delay `index*0.02` capé 0.4s (composant
+    `EtablissementRow` custom) + `usePrefersReducedMotion` respecté.
+
+#### d) Onglet Utilisateurs enrichi
+- `UtilisateursPanel` — ajout `usePrefersReducedMotion()` en tête.
+- Bandeau identique à Établissements + boutons Actualiser / Nouvel
+  utilisateur (variant success) avec `title` natifs.
+- **4 StatCards DS** (nouveau) en grid 2 colonnes mobile / 4 colonnes
+  desktop, items-stretch, h-full, stagger delay 0/0.05/0.1/0.15 : Total
+  utilisateurs (emerald/Users, hint "chargement…" si loading sinon "comptes
+  actifs ou non"), Actifs (forest/CheckCircle2, "utilisateurs validés"),
+  Suspendus (terracotta/ShieldAlert, "accès bloqués"), Multi-établissements
+  (gold/Building2, "≥ 2 accès établissement").
+- **KPIs calculés** (nouveau) via `React.useMemo` : `total / actifs /
+  suspendus / multiEtab`. `actifs` = `u.statut === "ACTIF"`, `suspendus` =
+  `u.statut === "SUSPENDU"`, `multiEtab` = `u.accesses && u.accesses.length
+  > 1`.
+- KentePattern separator entre les StatCards et le tableau.
+- **Tableau enrichi** (GlassCard adaptive noHover noAnimation p-0 overflow-
+  hidden) :
+  - Header bg-emerald-50/60 + th text-emerald-900 (même pattern que
+    Établissements).
+  - Colonne Nom complet : avatar `size-9 shrink-0 rounded-full bg-emerald-600
+    text-xs font-semibold text-white` avec initiales via helper
+    `userInitials(u)` (au lieu de Users icon dans bg-emerald-100) + nom
+    `break-words font-display text-sm font-semibold leading-snug text-forest`.
+  - Colonne Email : `break-all text-xs leading-snug text-muted-foreground`
+    (PAS de truncate — BUG À ÉVITER #2) si présent, sinon "—".
+  - Colonne Rôle global : badge `font-medium` + classe `ROLE_CLS[u.role_global]`
+    renforcée (border-300 bg-100 text-800 — BUG À ÉVITER #7).
+  - Colonne Accès établissements : badges `border-slate-300 bg-slate-100
+    text-slate-800` (au lieu de muted) avec icône Building2 + nom + rôle
+    via `title` natif.
+  - Colonne État : Actif emerald renforcé / Suspendu rose renforcé + icône
+    ShieldAlert / Inactif slate renforcé.
+  - Colonne Actions : bouton Modifier (variant outline, size sm) avec
+    `title="Modifier cet utilisateur"` + `aria-label` (PAS de Tooltip —
+    BUG À ÉVITER #1).
+  - Rows `motion.tr` avec stagger delay `index*0.02` capé 0.4s (composant
+    `UtilisateurRow` custom) + `usePrefersReducedMotion` respecté.
+
+#### e) Onglet Audit enrichi
+- `AuditPanel` — ajout `usePrefersReducedMotion()` en tête.
+- **Filtres premium** : GlassCard adaptive noHover noAnimation `p-4 sm:p-5`
+  + grid `sm:grid-cols-2 lg:grid-cols-5` + 5 champs (Entité / Utilisateur /
+  Date début / Date fin / Réinitialiser) :
+  - SelectTrigger Entité avec icône `Filter size-4 text-muted-foreground`
+    avant SelectValue + `bg-background` opaque.
+  - SelectTrigger Utilisateur avec icône `User size-4 text-muted-foreground`
+    avant SelectValue + `bg-background` opaque.
+  - Input Date début / Date fin avec icône `Calendar size-4` absolue à
+    gauche `pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2
+    text-muted-foreground` + Input `bg-background pl-8` (icône décorative
+    non-interactive).
+  - Bouton Réinitialiser variant outline + icône `RotateCcw size-3.5` +
+    `title="Réinitialiser les filtres d'audit"` (au lieu de `Filter` icon
+    + variant ghost).
+- Bandeau compte + bouton Actualiser (variant outline, `title="Actualiser
+  le journal d'audit"`).
+- **Tableau enrichi** (GlassCard adaptive noHover noAnimation p-0 overflow-
+  hidden) :
+  - Header bg-emerald-50/60 + th text-emerald-900 (même pattern que les
+    autres onglets) + `min-w-[...]` sur colonnes larges (Date / Utilisateur
+    / Description) pour éviter le squeeze.
+  - Colonne Date : `text-xs whitespace-nowrap` (empêche le retour à la
+    ligne sur la date formatée).
+  - Colonne Utilisateur : `text-xs font-medium` (nom complet ou "Système").
+  - Colonne Action : badge renforcé (BUG À ÉVITER #7) — suppression rose
+    `border-rose-300 bg-rose-100 text-rose-800` / création emerald
+    `border-emerald-300 bg-emerald-100 text-emerald-800` / modification
+    amber `border-amber-300 bg-amber-100 text-amber-800` (au lieu de
+    border-200 bg-50 text-700).
+  - Colonne Entité : `text-xs`.
+  - Colonne Entité ID : `font-mono text-[11px] text-muted-foreground` (8
+    premiers caractères + "…").
+  - Colonne IP : `font-mono text-[11px] text-muted-foreground`.
+  - Colonne Description : `break-words leading-snug` (PAS de truncate ni
+    max-w — BUG À ÉVITER #2). La description s'affiche entièrement avec
+    retour à la ligne naturel.
+  - Rows `motion.tr` avec stagger delay `index*0.02` capé 0.4s (composant
+    `AuditRow` custom) + `usePrefersReducedMotion` respecté.
+- **Pagination** : `flex items-center justify-between gap-2` + bouton
+  Précédent (variant outline, `title="Page précédente"`) + span "Page X sur
+  Y" `text-xs font-medium text-muted-foreground` (au lieu de text-xs
+  text-muted-foreground) + bouton Suivant (variant outline, `title="Page
+  suivante"`). Affiché seulement si `totalPages > 1`.
+
+#### f) Empty states premium (composants `ErrorState` + `EmptyState`)
+- `ErrorState` : GlassCard adaptive noHover `relative overflow-hidden` +
+  KentePattern `variant="bg"` (motif subtil opacity-10 en fond) + bloc
+  centré `px-4 py-12` + badge rond `size-12 rounded-full bg-rose-100 text-
+  rose-700` (dark bg-rose-950/40 text-rose-300) avec icône `AlertCircle
+  size-6` + titre `font-display text-base font-semibold text-forest`
+  "Erreur de chargement" + description `max-w-sm text-sm text-muted-
+  foreground` + bouton "Réessayer" variant outline avec icône Loader2 +
+  `title="Réessayer le chargement"`.
+- `EmptyState` : même structure mais badge rond `bg-emerald-100 text-
+  emerald-700` (dark emerald-950/40 emerald-300) avec icône `CheckCircle2
+  size-6` + titre + description `max-w-md` (largeur supérieure à
+  ErrorState pour accueillir le message long du journal d'audit vide).
+
+#### g) Loading state premium (composant `LoadingState`)
+- Nouveau composant partagé `LoadingState({ rows = 5, rowHeight = "h-14" })`.
+- GlassCard adaptive noHover noAnimation `relative overflow-hidden p-0` +
+  KentePattern `variant="strip" position="top"` (bande kente en tête de
+  la card) + N Skeletons `w-full` (4 pour Établissements, 5 pour
+  Utilisateurs, 8 `h-10` pour Audit).
+- Remplace les 3 skeletons inline précédents (p-4 + space-y-2).
+
+#### h) Animations (Framer Motion)
+- StatCards : stagger delay `0/0.05/0.1/0.15` (géré en interne par le
+  composant DS `StatCard` via la prop `delay`).
+- Rows motion.tr : stagger delay `index*0.02` capé à 0.4s (3 composants
+  dédiés `EtablissementRow` / `UtilisateurRow` / `AuditRow`), avec
+  `initial: { opacity: 0, y: 12 }` → `animate: { opacity: 1, y: 0 }`,
+  `transition: { duration: 0.3, delay: Math.min(index*0.02, 0.4), ease:
+  [0.22, 1, 0.36, 1] }`.
+- Respect `usePrefersReducedMotion()` : si `prefersReducedMotion === true`,
+  `motionProps = {}` (aucune animation, comportement natif du `motion.tr`
+  qui se comporte alors comme un `<tr>` standard).
+- Hero header et TabsList utilisent les animations natives de GlassCard /
+  TabsList shadcn (gérées en interne avec respect de prefers-reduced-motion
+  via `getMotion()` dans GlassCard).
+
+### Bugs à éviter — VÉRIFIÉS
+1. **Aucun Tooltip Radix** — toutes les actions (boutons Actualiser,
+   Modifier, Réinitialiser, Précédent, Suivant, Réessayer) utilisent
+   l'attribut HTML natif `title` + `aria-label` quand pertinent.
+2. **Aucun `truncate` sur les valeurs longues** — noms établissements
+   `break-words leading-snug`, emails `break-all leading-snug`,
+   descriptions d'audit `break-words leading-snug` (anciennement
+   `truncate` sur `max-w-[260px]` — RÉGRESSION CORRIGÉE).
+3. **Pas de `<button>` imbriqué dans un `<button>`** — aucune structure
+   de ce type dans le composant.
+4. **Icônes InfoRow** : pattern `flex items-start` + `mt-0.5` non
+   applicable ici (pas de blocs InfoRow verticaux avec icône à gauche),
+   mais l'icône `Hash` dans la cellule Code officiel utilise `inline-flex
+   items-center gap-1` (alignée horizontalement avec le texte mono).
+5. **Grid** : `items-stretch` + `h-full` sur les 4 StatCards en grid pour
+   égaliser les hauteurs (2 colonnes mobile, 4 colonnes desktop).
+6. **Avatar** : `bg-emerald-600 text-white` pour les avatars Utilisateur
+   (size-9 desktop). Avatar Établissement = `bg-emerald-100 text-emerald-700`
+   avec icône Building2 (badge icône, pas un avatar initiales — conforme
+   au brief).
+7. **Badges renforcés** : tous les badges utilisent `border-300 bg-100
+   text-800` (au lieu de `border-200 bg-50 text-700`) :
+   - `ROLE_CLS` (8 rôles : SUPER_ADMIN rose / CAISSIER emerald / COMPTABLE
+     amber / DIRECTION sky / DIRECTEUR_ETUDES emerald / DIRECTEUR_SUPERVISEUR
+     amber / SECRETARIAT slate / EDUCATEUR forest / PARENT slate).
+   - Badge catégories (Affecté/Non affecté amber renforcé, Tarif unique
+     slate renforcé).
+   - Badge état Établissement (Actif emerald renforcé, Inactif rose renforcé).
+   - Badge état Utilisateur (Actif emerald renforcé, Suspendu rose renforcé,
+     Inactif slate renforcé).
+   - Badge accès établissement (slate renforcé).
+   - Badge action Audit (création emerald renforcé, modification amber
+     renforcé, suppression rose renforcé).
+8. **`toast` non requis** : aucune mutation dans ce composant (3 useQuery
+   en lecture seule, 0 useMutation). Import `useToast` retiré (était
+   unused, source potentielle de warning ESLint). Aucune régression.
+
+### Constantes — fix TS errors pré-existantes
+- `ROLE_LABEL` : ajout entrée manquante `EDUCATEUR: "Éducateur(-trice)"`
+  (était absent → TS2741 sur l.90 pré-existant). Les 8 autres entrées
+  (SUPER_ADMIN / CAISSIER / COMPTABLE / DIRECTION / DIRECTEUR_ETUDES /
+  DIRECTEUR_SUPERVISEUR / SECRETARIAT / PARENT) sont conservées à
+  l'identique.
+- `ROLE_CLS` : ajout des 3 entrées manquantes `DIRECTEUR_ETUDES`,
+  `DIRECTEUR_SUPERVISEUR`, `EDUCATEUR` (étaient absentes → TS2739 sur
+  l.101 pré-existant). Les 6 autres entrées sont renforcées (border-300
+  bg-100 text-800 au lieu de border-200 bg-50 text-700) pour respecter
+  le BUG À ÉVITER #7. `EDUCATEUR` utilise `border-forest/40 bg-forest/10
+  text-forest` (cohérent avec la palette Forêt EdTech, évite l'ajout
+  d'une nouvelle couleur hors palette).
+- `PAGE_SIZE = 20` et `ENTITE_OPTIONS` (10 options) conservés à
+  l'identique.
+
+### Logique métier conservée à l'identique
+- Imports `@/lib/api-phase5` (`etablissementsKeys` / `usersKeys` /
+  `auditKeys` / `fetchEtablissements` / `fetchUtilisateurs` /
+  `fetchAudit`), `@/lib/auth-store` (`useAuthStore`, type `Etablissement`),
+  `@/lib/types` (`AuditQueryParams` / `JournalAudit` / `RoleGlobal` /
+  `Utilisateur`), `@/lib/format` (`formatDateTime`, `todayISO`) intacts.
+- Hooks React Query conservés :
+  - `EtablissementsPanel` : `useQuery({ queryKey: etablissementsKeys.list(),
+    queryFn: fetchEtablissements, retry: 1, retryDelay: 1500 })`.
+  - `UtilisateursPanel` : `useQuery({ queryKey: usersKeys.list({
+    etablissementId: etablissement?.id }), queryFn: () =>
+    fetchUtilisateurs(etablissement?.id), retry: 1, retryDelay: 1500 })`.
+  - `AuditPanel` : `useQuery({ queryKey: usersKeys.list({}), queryFn: ()
+    => fetchUtilisateurs(), retry: 1, retryDelay: 1500 })` pour la liste
+    utilisateurs du filtre + `useQuery({ queryKey: auditKeys.list(params),
+    queryFn: () => fetchAudit(params), retry: 1, retryDelay: 1500 })` pour
+    le journal.
+- `AuditQueryParams` construit via `React.useMemo` à l'identique :
+  `entite !== "all" ? entite : undefined`, `utilisateur_id !== "all" ?
+  utilisateurId : undefined`, `date_debut || undefined`, `date_fin ||
+  undefined`, `page`, `page_size: PAGE_SIZE`.
+- `useEffect` de reset page à 1 sur changement filtres conservé.
+- Endpoints backend intacts : `fetchEtablissements` (GET
+  /api/etablissements), `fetchUtilisateurs` (GET /api/utilisateurs),
+  `fetchAudit` (GET /api/audit).
+- Handlers `openCreate` / `openEdit` (EtablissementsPanel +
+  UtilisateursPanel) + `resetFilters` (AuditPanel, anciennement inline)
+  conservés. `resetFilters` extrait en fonction nommée pour lisibilité
+  (signature et comportement identiques).
+- `EtablissementFormDialog` et `UtilisateurFormDialog` : props `open` /
+  `onOpenChange` / `etablissement` / `utilisateur` intacts, composants
+  non modifiés (déjà refondus par une task précédente).
+- Page `app/(staff)/parametres/page.tsx` NON modifiée (route RoleGuard
+  intacte).
+
+### Responsive 100%
+- Mobile (<640px) : hero header `flex-col` (badge + titre + pill à
+  gauche), bandeau `flex-col` (compte au-dessus, boutons Actualiser +
+  Nouvel ci-dessous), StatCards grid 2 colonnes, filtres Audit grid 1
+  colonne (chacun empilé), bouton Réinitialiser `w-full` aligné en bas
+  via `flex items-end`, pagination `flex-col sm:flex-row` (boutons
+  empilés en mobile — non, garde `flex items-center justify-between gap-2`
+  mais les boutons restent visibles), tableau scroll-x, padding p-4 via
+  GlassCard adaptive, TabsList `w-full overflow-x-auto` (scrollable
+  horizontalement si trop étroit).
+- Tablette (640-767px) : StatCards grid 2 colonnes, filtres Audit grid
+  2 colonnes (`sm:grid-cols-2`), padding p-5 via GlassCard adaptive.
+- Desktop (768-1023px) : StatCards grid 4 colonnes (`md:grid-cols-4`),
+  filtres Audit grid 5 colonnes (`lg:grid-cols-5`), padding p-5/p-6 via
+  GlassCard adaptive.
+- Desktop large (1024px+) : boutons Modifier affichent l'icône + texte
+  (`hidden lg:inline` sur le span texte — ici les deux spans affichent
+  "Modifier" donc identique en mobile et desktop, mais la structure
+  permet d'ajuster si besoin). GlassCard adaptive monte en opacité 0.85,
+  padding p-6, hero header p-6.
+
+### Palette Forêt EdTech
+- Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt EdTech :
+  - **emerald** (#047857) primaire : badge rond hero gradient emerald→gold,
+    Total établissements/utilisateurs (StatCard), Actifs (StatCard forest
+    proche), Actif badges état, boutons success (Nouvel établissement /
+    Nouvel utilisateur), avatar Utilisateur bg-emerald-600 text-white,
+    avatar Établissement bg-emerald-100 text-emerald-700, tab actif
+    TabsList data-[state=active]:bg-emerald-600, header tableau bg-
+    emerald-50/60, hover row bg-emerald-50/60, badge action "création"
+    Audit.
+  - **forest** (#14532D) : Actifs StatCard tone forest, titre hero text-
+    forest, titres ErrorState/EmptyState text-forest, noms font-display
+    text-forest dans les tableaux, badge EDUCATEUR (border-forest/40
+    bg-forest/10 text-forest).
+  - **amber** (#F59E0B) secondaire : Avec catégories StatCard tone amber,
+    badge Affecté/Non affecté (border-amber-300 bg-amber-100 text-amber-
+    800), badge action "modification" Audit (border-amber-300 bg-amber-100
+    text-amber-800), ROLE_CLS COMPTABLE/DIRECTEUR_SUPERVISEUR (amber
+    renforcé), second stop du gradient hero (to-amber-500).
+  - **gold** (#D4AF37) premium : Multi-établissements StatCard tone gold,
+    second stop du gradient emerald→gold du badge hero.
+  - **terracotta** (#C2410C) danger chaud : Inactifs/Suspendus StatCard
+    tone terracotta.
+  - **rose** (#e11d48) conservé pour Inactif/Suspendu badges + suppression
+    Audit + ErrorState (cohérent avec les autres modules refondus).
+  - **slate** conservé pour badges neutres (Tarif unique, Inactif user,
+    accès établissement) + Sky conservé pour ROLE_CLS DIRECTION (cohérent
+    avec la palette originale — sky est dans les tones StatCard).
+  - **sand** non utilisé ici.
+
+### TypeScript
+- **0 erreur sur view-parametres.tsx** (vérifié par `bunx tsc --noEmit
+  2>&1 | grep -c "view-parametres"` → 0 match). Les 9 erreurs tsc
+  restantes sont toutes pré-existantes sur d'autres fichiers (login-form
+  ×2, dashboard-shell ×3, etablissement-form-dialog ×1, instrumentation
+  ×1) — aucune introduite par cette refonte. Les 2 erreurs pré-existantes
+  sur view-parametres (ROLE_LABEL/ROLE_CLS incomplets suite à l'ajout des
+  rôles DIRECTEUR_ETUDES / DIRECTEUR_SUPERVISEUR / EDUCATEUR dans
+  `RoleGlobal`) sont RÉSOLUES par cette refonte.
+- Lint : **0 erreur, 0 warning** sur l'ensemble du projet (`bun run lint`
+  EXIT=0). Fichier view-parametres.tsx individuellement : EXIT=0
+  (`bunx eslint src/components/dashboard/views/view-parametres.tsx --max-
+  warnings 0` → EXIT=0).
+- Aucun `any` ajouté. Aucune nouvelle dépendance. `import * as React from
+  "react"` conservé.
+
+### Points à vérifier par agent browser
+1. Rendu du hero header : KentePattern strip top en tête de vue + GlassCard
+   desktop p-5 sm:p-6 + badge rond size-12 gradient emerald→gold avec
+   Settings size-6 + titre font-display text-2xl font-bold text-forest
+   "Paramètres" + pill "Phase 5" outline (border-emerald-300 bg-emerald-
+   50/60 text-emerald-800) avec Sparkles size-3 + description + pill
+   établissement (si sélectionné).
+2. Rendu de la TabsList premium : glass-desktop subtile + 3 tabs (Building2
+   Établissements / Users Utilisateurs / ScrollText Audit) + tab actif
+   bg-emerald-600 text-white shadow-sm + scrollable mobile (overflow-x-
+   auto).
+3. Onglet Établissements : bandeau (compte + boutons Actualiser/Nouvel
+   établissement) + 4 StatCards en grid 2 colonnes mobile / 4 desktop
+   (Total emerald / Actifs forest / Avec catégories amber / Inactifs
+   terracotta) avec stagger + KentePattern separator + tableau header
+   bg-emerald-50/60 + avatar Building2 en badge emerald/15 + nom font-
+   display text-sm font-semibold text-forest + badges renforcés (Affecté
+   amber border-300, Actif emerald border-300, Inactif rose border-300) +
+   bouton Modifier avec title="Modifier cet établissement".
+4. Onglet Utilisateurs : bandeau + 4 StatCards (Total emerald / Actifs
+   forest / Suspendus terracotta / Multi-établissements gold) + tableau
+   header bg-emerald-50/60 + avatar initiales bg-emerald-600 text-white
+   size-9 + nom font-display text-sm font-semibold text-forest + email
+   break-all leading-snug (PAS de truncate) + badges rôles renforcés +
+   badges accès établissements slate renforcés + badges état renforcés +
+   bouton Modifier avec title="Modifier cet utilisateur".
+5. Onglet Audit : filtres GlassCard adaptive p-4 sm:p-5 avec 5 champs en
+   grid sm:grid-cols-2 lg:grid-cols-5 — SelectTrigger Entité avec icône
+   Filter + SelectTrigger Utilisateur avec icône User + Inputs date avec
+   icône Calendar absolue à gauche + bouton Réinitialiser variant outline
+   avec icône RotateCcw + bandeau compte + tableau header bg-emerald-50/60
+   + badges action renforcés (création emerald / modification amber /
+   suppression rose) + description break-words (PAS de truncate —
+   vérifier qu'une longue description s'affiche entièrement avec wrap) +
+   pagination "Page X sur Y" avec boutons title natifs.
+6. Empty states premium : sur un onglet sans données (par exemple
+   Utilisateurs avec un établissement vide), vérifier le rendu GlassCard
+   adaptive noHover relative overflow-hidden + KentePattern bg subtil +
+   badge rond size-12 emerald (EmptyState) ou rose (ErrorState) + icône
+   CheckCircle2 ou AlertCircle + titre font-display text-base font-
+   semibold text-forest + description max-w-md + bouton Réessayer (pour
+   ErrorState).
+7. Loading state premium : sur rechargement (clic Actualiser avec cache
+   invalidated), vérifier le rendu GlassCard adaptive noHover noAnimation
+   p-0 relative overflow-hidden + KentePattern strip top + N Skeletons
+   h-14 (Établissements: 4, Utilisateurs: 5, Audit: 8 h-10).
+8. Animation : au chargement initial de chaque onglet, vérifier le
+   stagger des StatCards (0 → 0.05 → 0.1 → 0.15s) puis le stagger des
+   rows motion.tr (0 → 0.02 → 0.04 … capé 0.4s). Si l'utilisateur a
+   activé prefers-reduced-motion au niveau OS, vérifier qu'aucune
+   animation n'est déclenchée (les StatCards et rows apparaissent
+   instantanément).
+9. Responsive mobile (<640px) : hero header flex-col, bandeau flex-col
+   (boutons Actualiser + Nouvel côte à côte en mobile via flex gap-2),
+   StatCards grid 2 colonnes, filtres Audit grid 1 colonne (chacun
+   empilé), bouton Réinitialiser w-full, TabsList w-full overflow-x-auto
+   scrollable.
+10. Contrastes : tous les badges doivent être lisibles en mode clair ET
+    sombre — vérifier spécifiquement les badges amber (border-amber-300
+    bg-amber-100 text-amber-800), emerald (border-emerald-300 bg-emerald-
+    100 text-emerald-800), rose (border-rose-300 bg-rose-100 text-rose-
+    800), slate (border-slate-300 bg-slate-100 text-slate-800).
+
+### NE PAS commit/push — l'utilisateur gère le commit après vérification.
