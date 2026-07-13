@@ -29,13 +29,11 @@ import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   School,
-  Wallet,
   AlertTriangle,
   FileBarChart,
   Coins,
   CalendarRange,
   UserCog,
-  BookOpen,
   ClipboardList,
   HandCoins,
   Timer,
@@ -47,12 +45,15 @@ import {
   LogOut,
   Building2,
   ChevronDown,
+  ChevronRight,
   CheckCircle2,
   LifeBuoy,
   ScrollText,
   CreditCard,
   GraduationCap,
   ShieldAlert,
+  Banknote,
+  Calculator,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -104,17 +105,34 @@ export interface NavItem {
 export interface NavGroup {
   label: string;
   items: NavItem[];
+  /**
+   * Marqueur `isSettings` : si true, le groupe est rendu en bas de la sidebar
+   * après un séparateur visuel (convention UX universelle — Linear, Vercel,
+   * GitHub). Typiquement utilisé pour "Paramètres".
+   */
+  isSettings?: boolean;
 }
 
 /**
  * Groupes de navigation pour le personnel d'établissement (DIRECTION,
- * CAISSIER, COMPTABLE, SECRETARIAT). DIRECTION gère le pilotage et la
- * configuration, mais n'accède PAS à la caisse ni à Mobile Money
- * (réservés au CAISSIER / COMPTABLE).
+ * CAISSIER, COMPTABLE, SECRETARIAT). DIRECTION gère la configuration mais
+ * n'accède PAS à la caisse ni à Mobile Money (réservés CAISSIER/COMPTABLE).
+ *
+ * Modernisation UX (inspirée Linear / Vercel / GitHub) :
+ *  - Regroupement métier cohérent (Vie scolaire, Finances, Enseignement,
+ *    Configuration) au lieu de jargon dev ("Pilotage", "Modules avancés").
+ *  - Discipline déplacée vers Vie scolaire (c'est de la vie scolaire, pas de
+ *    l'enseignement).
+ *  - Paie + Comptabilité + Impayés déplacés vers Finances (cœur métier argent).
+ *  - Paramètres isolé en bas avec séparateur (convention UX universelle).
+ *  - Icônes différenciées : Banknote pour Paie, Calculator pour Comptabilité
+ *    (évite la confusion avec Wallet utilisé pour Encaissements).
+ *  - Collapse par groupe mémorisé en localStorage (gère l'état replié).
  */
 export const STAFF_NAV_GROUPS: NavGroup[] = [
   {
-    label: "Pilotage",
+    // Vie scolaire : cœur métier élèves (au quotidien).
+    label: "Vie scolaire",
     items: [
       {
         href: "/dashboard",
@@ -123,33 +141,47 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         roles: ["CAISSIER", "COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT", "EDUCATEUR"],
       },
       {
-        // Page unifiée Élèves & Effectifs (fusion UX) : un seul point d'entrée
-        // pour la gestion opérationnelle des élèves (liste, fiches) et le
-        // tableau de bord stratégique de remplissage des classes. L'onglet
-        // Effectifs est masqué aux rôles non-pilotage (caissier, comptable,
-        // secrétariat, éducateur) — ils ne voient que l'onglet Élèves.
-        // Anciennes routes /eleves et /effectifs redirigent ici.
+        // Page unifiée Élèves & Effectifs (fusion UX). Onglet Effectifs
+        // masqué aux rôles non-pilotage. Anciennes routes /eleves et
+        // /effectifs redirigent ici.
         href: "/eleves-effectifs",
         label: "Élèves & Effectifs",
         icon: School,
         roles: ["CAISSIER", "COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT", "EDUCATEUR"],
       },
       {
-        // Page unifiée Inscriptions (fusion UX) : un seul point d'entrée
-        // pour le cycle complet d'admission. Onglet Pré-inscriptions en
-        // ligne (validation demandes parents) + onglet Nouvelle inscription
-        // (wizard 4 étapes au guichet). Anciennes routes /inscription et
-        // /pre-inscriptions redirigent ici.
+        // Page unifiée Inscriptions (fusion UX). Anciennes routes
+        // /inscription et /pre-inscriptions redirigent ici.
         href: "/inscriptions",
         label: "Inscriptions",
         icon: ClipboardList,
         roles: ["SECRETARIAT", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
       {
-        // Page unifiée Encaissements (fusion UX) : un seul point d'entrée
-        // pour le guichet d'encaissement. Onglet Caisse (espèces, chèque,
-        // virement) + onglet Mobile Money (Orange/MTN/Wave, masqué au
-        // COMPTABLE). Anciennes routes /caisse et /mobile-money redirigent
+        // Discipline : tableau de bord des tickets d'incident et élèves à
+        // risque. C'est de la vie scolaire, pas de l'enseignement.
+        href: "/discipline",
+        label: "Discipline",
+        icon: ShieldAlert,
+        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT", "EDUCATEUR"],
+      },
+      {
+        href: "/rapports",
+        label: "Rapports",
+        icon: FileBarChart,
+        roles: ["CAISSIER", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "COMPTABLE", "SECRETARIAT", "EDUCATEUR"],
+      },
+    ],
+  },
+  {
+    // Finances : tout ce qui concerne l'argent (encaissement, impayés, paie,
+    // compta). Regroupement cohérent — l'utilisateur financier trouve tout
+    // au même endroit.
+    label: "Finances",
+    items: [
+      {
+        // Page unifiée Encaissements (fusion UX). Onglet Mobile Money masqué
+        // au COMPTABLE. Anciennes routes /caisse et /mobile-money redirigent
         // ici.
         href: "/encaissements",
         label: "Encaissements",
@@ -163,14 +195,56 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         roles: ["CAISSIER", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "COMPTABLE"],
       },
       {
-        href: "/rapports",
-        label: "Rapports",
-        icon: FileBarChart,
-        roles: ["CAISSIER", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "COMPTABLE", "SECRETARIAT", "EDUCATEUR"],
+        // Paie enseignants : génération des bulletins mensuels, validation,
+        // paiement et suivi des avances sur salaire. Icône Banknote (au lieu
+        // de Wallet dupliqué avec Encaissements).
+        href: "/paie",
+        label: "Paie enseignants",
+        icon: Banknote,
+        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
+      },
+      {
+        // Comptabilité : réservé au COMPTABLE seul (séparation des
+        // responsabilités). Icône Calculator (au lieu de BookOpen générique).
+        href: "/comptabilite",
+        label: "Comptabilité",
+        icon: Calculator,
+        roles: ["COMPTABLE"],
       },
     ],
   },
   {
+    // Enseignement : gestion pédagogique (prof, matières, EDT, pointage).
+    // Pas la discipline (vie scolaire) ni la paie (finances).
+    label: "Enseignement",
+    items: [
+      {
+        href: "/enseignants",
+        label: "Enseignants",
+        icon: GraduationCap,
+        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
+      },
+      {
+        // Page unifiée Matières & Affectations (fusion UX). Anciennes routes
+        // /matieres et /affectations redirigent ici.
+        href: "/matieres-affectations",
+        label: "Matières & Affectations",
+        icon: Layers,
+        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
+      },
+      {
+        // Page unifiée Temps pédagogique (fusion UX). Onglet Emploi du temps
+        // + onglet Pointage temps réel. Anciennes routes /pointage-ecran et
+        // /emploi-du-temps redirigent ici.
+        href: "/temps-pedagogique",
+        label: "Temps pédagogique",
+        icon: Timer,
+        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
+      },
+    ],
+  },
+  {
+    // Configuration : admin établissement (frais, années, utilisateurs).
     label: "Configuration",
     items: [
       {
@@ -180,11 +254,8 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
       {
-        // Page unifiée Années scolaires & Passage de classe (fusion UX) :
-        // un seul point d'entrée pour la gestion du cycle annuel. L'utilisateur
-        // configure les années scolaires puis bascule sur l'onglet Passage pour
-        // l'opération de fin d'année. Anciennes routes /annees et /passage-masse
-        // redirigent ici.
+        // Page unifiée Années scolaires & Passage de classe (fusion UX).
+        // Anciennes routes /annees et /passage-masse redirigent ici.
         href: "/annees-passage",
         label: "Années & Passage",
         icon: CalendarRange,
@@ -199,70 +270,11 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    // Pédagogie (module Enseignant — Phase A) : enseignants, matières et
-    // affectations prof/matière/classe. Accessible à la direction, aux
-    // directeurs (études / superviseur) et au secrétariat.
-    label: "Pédagogie",
+    // Paramètres : isolé en bas de la sidebar (convention UX universelle —
+    // Linear, Vercel, GitHub). Rendu après un séparateur visuel.
+    label: "Paramètres",
+    isSettings: true,
     items: [
-      {
-        href: "/enseignants",
-        label: "Enseignants",
-        icon: GraduationCap,
-        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
-      },
-      {
-        // Page unifiée Matières & Affectations (fusion UX) : un seul point
-        // d'entrée pour la gestion pédagogique prof/matière/classe. Les
-        // anciennes routes /matieres et /affectations redirigent vers cette
-        // page avec l'onglet approprié (rétrocompatibilité).
-        href: "/matieres-affectations",
-        label: "Matières & Affectations",
-        icon: Layers,
-        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
-      },
-      {
-        // Page unifiée Temps pédagogique (fusion UX) : un seul point d'entrée
-        // pour la gestion du temps pédagogique. Onglet Emploi du temps
-        // (planning hebdomadaire) + onglet Pointage temps réel (suivi
-        // enseignants). Workflow séquentiel : l'EDT génère les sessions de
-        // pointage. Anciennes routes /pointage-ecran et /emploi-du-temps
-        // redirigent ici.
-        href: "/temps-pedagogique",
-        label: "Temps pédagogique",
-        icon: Timer,
-        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
-      },
-      {
-        // Discipline (Phase B) : tableau de bord des tickets d'incident
-        // disciplinaire et identification des élèves à risque. Accessible à la
-        // direction, aux directeurs, au secrétariat et aux éducateurs (vie
-        // scolaire).
-        href: "/discipline",
-        label: "Discipline",
-        icon: ShieldAlert,
-        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT", "EDUCATEUR"],
-      },
-      {
-        // Paie enseignants (Phase C) : génération des bulletins mensuels,
-        // validation/paiement et suivi des avances sur salaire. Réservé à la
-        // direction et aux directeurs (études / superviseur).
-        href: "/paie",
-        label: "Paie enseignants",
-        icon: Wallet,
-        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
-      },
-    ],
-  },
-  {
-    label: "Modules avancés",
-    items: [
-      {
-        // Comptabilité : réservé au COMPTABLE seul (séparation des responsabilités).
-        href: "/comptabilite",
-        label: "Comptabilité",
-        icon: BookOpen,
-        roles: ["COMPTABLE"],
-      },
       {
         href: "/parametres",
         label: "Paramètres",
@@ -404,6 +416,43 @@ export function DashboardShell({
     } catch {
       // ignore
     }
+  }, []);
+
+  // Collapse par groupe de navigation : mémorise quels groupes sont repliés.
+  // Clé localStorage "scolagest-sidebar-collapsed-groups" = JSON string[] des
+  // labels de groupe repliés. Inspiration Linear / Notion — l'utilisateur
+  // replie les groupes qu'il n'utilise pas pour désencombrer sa sidebar.
+  const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("scolagest-sidebar-collapsed-groups");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setCollapsedGroups(parsed.filter((x) => typeof x === "string"));
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleGroup = useCallback((groupLabel: string) => {
+    setCollapsedGroups((prev) => {
+      const next = prev.includes(groupLabel)
+        ? prev.filter((g) => g !== groupLabel)
+        : [...prev, groupLabel];
+      try {
+        localStorage.setItem(
+          "scolagest-sidebar-collapsed-groups",
+          JSON.stringify(next),
+        );
+      } catch {
+        // ignore
+      }
+      return next;
+    });
   }, []);
 
   // Dérivé : la sidebar est-elle visuellement affichée ?
@@ -591,110 +640,208 @@ export function DashboardShell({
 
       {/* Navigation */}
       <ScrollArea className="flex-1">
-        <nav className={cn("space-y-5", sidebarCollapsed ? "p-2" : "p-3")}>
-          {visibleGroups.map((group) => (
-            <div key={group.label}>
-              {!sidebarCollapsed && (
-                <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-100/70">
-                  {group.label}
-                </p>
-              )}
-              {sidebarCollapsed && <div className="mb-1.5 h-px bg-white/10" aria-hidden="true" />}
-              <ul className="space-y-0.5">
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-                  const active = isActivePath(pathname, item.href);
-                  // En mode réduit, badge repositionné en haut à droite de l'icône
-                  const showPreBadge = item.href === "/pre-inscriptions" && pendingCount > 0;
-                  const showCaisseBadge = item.href === "/caisse" && fileAttenteCount > 0;
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        onClick={handleNavClick}
-                        title={sidebarCollapsed ? item.label : undefined}
+        <nav className={cn("space-y-4", sidebarCollapsed ? "p-2" : "p-3")}>
+          {/* Groupes normaux (Vie scolaire, Finances, Enseignement, Configuration) */}
+          {visibleGroups
+            .filter((group) => !group.isSettings)
+            .map((group) => {
+              const isGroupCollapsed = collapsedGroups.includes(group.label);
+              return (
+                <div key={group.label}>
+                  {!sidebarCollapsed ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(group.label)}
+                      aria-expanded={!isGroupCollapsed}
+                      aria-controls={`nav-group-${group.label.replace(/\s+/g, "-").toLowerCase()}`}
+                      className="group/label mb-1.5 flex w-full items-center justify-between rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-100/70 transition-colors hover:text-emerald-100"
+                    >
+                      <span>{group.label}</span>
+                      <ChevronRight
                         className={cn(
-                          "group relative flex w-full items-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest",
-                          sidebarCollapsed ? "justify-center px-0 py-2.5" : "gap-2.5 px-2.5 py-2",
-                          active
-                            ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-900/30"
-                            : "text-emerald-100/80 hover:bg-white/10 hover:text-white",
+                          "size-3 shrink-0 transition-transform duration-200",
+                          isGroupCollapsed ? "rotate-0" : "rotate-90",
                         )}
-                      >
-                        <Icon
-                          className={cn(
-                            "size-4 shrink-0",
-                            active
-                              ? "text-white"
-                              : "text-emerald-100/80 group-hover:text-amber-300",
-                          )}
-                          aria-hidden="true"
-                        />
-                        {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
-                        {/* Badge notifications pré-inscriptions */}
-                        {showPreBadge && !sidebarCollapsed && (
-                          <span
+                        aria-hidden="true"
+                      />
+                    </button>
+                  ) : (
+                    <div className="mb-1.5 h-px bg-white/10" aria-hidden="true" />
+                  )}
+                  {!isGroupCollapsed || sidebarCollapsed ? (
+                    <ul
+                      id={`nav-group-${group.label.replace(/\s+/g, "-").toLowerCase()}`}
+                      className="space-y-0.5"
+                    >
+                      {group.items.map((item) => {
+                        const Icon = item.icon;
+                        const active = isActivePath(pathname, item.href);
+                        // En mode réduit, badge repositionné en haut à droite de l'icône
+                        const showPreBadge = item.href === "/pre-inscriptions" && pendingCount > 0;
+                        const showCaisseBadge = item.href === "/caisse" && fileAttenteCount > 0;
+                        return (
+                          <li key={item.href}>
+                            <Link
+                              href={item.href}
+                              onClick={handleNavClick}
+                              title={sidebarCollapsed ? item.label : undefined}
+                              className={cn(
+                                "group relative flex w-full items-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest",
+                                sidebarCollapsed ? "justify-center px-0 py-2.5" : "gap-2.5 px-2.5 py-2",
+                                active
+                                  ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-900/30"
+                                  : "text-emerald-100/80 hover:bg-white/10 hover:text-white",
+                              )}
+                            >
+                              <Icon
+                                className={cn(
+                                  "size-4 shrink-0",
+                                  active
+                                    ? "text-white"
+                                    : "text-emerald-100/80 group-hover:text-amber-300",
+                                )}
+                                aria-hidden="true"
+                              />
+                              {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                              {/* Badge notifications pré-inscriptions */}
+                              {showPreBadge && !sidebarCollapsed && (
+                                <span
+                                  className={cn(
+                                    "ml-auto flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
+                                    active
+                                      ? "bg-white text-emerald-700"
+                                      : "bg-emerald-600 text-white",
+                                  )}
+                                >
+                                  {pendingCount > 99 ? "99+" : pendingCount}
+                                </span>
+                              )}
+                              {/* Badge file d'attente caisse (élèves PRE_INSCRIT) */}
+                              {showCaisseBadge && !sidebarCollapsed && (
+                                <span
+                                  className={cn(
+                                    "ml-auto flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
+                                    active
+                                      ? "bg-white text-amber-700"
+                                      : "bg-amber-500 text-white",
+                                  )}
+                                >
+                                  {fileAttenteCount > 99 ? "99+" : fileAttenteCount}
+                                </span>
+                              )}
+                              {/* Badges en mode réduit : pastille en haut à droite */}
+                              {showPreBadge && sidebarCollapsed && (
+                                <span
+                                  className={cn(
+                                    "absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold",
+                                    active ? "bg-white text-emerald-700" : "bg-emerald-500 text-white",
+                                  )}
+                                >
+                                  {pendingCount > 99 ? "99+" : pendingCount}
+                                </span>
+                              )}
+                              {showCaisseBadge && sidebarCollapsed && (
+                                <span
+                                  className={cn(
+                                    "absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold",
+                                    active ? "bg-white text-amber-700" : "bg-amber-500 text-white",
+                                  )}
+                                >
+                                  {fileAttenteCount > 99 ? "99+" : fileAttenteCount}
+                                </span>
+                              )}
+                              {active &&
+                                !sidebarCollapsed &&
+                                item.href !== "/pre-inscriptions" &&
+                                item.href !== "/caisse" && (
+                                  <CheckCircle2 className="ml-auto size-3.5 text-amber-300" />
+                                )}
+                              {/* Indicateur actif en mode réduit : barre verticale à gauche */}
+                              {active && sidebarCollapsed && (
+                                <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-amber-300" aria-hidden="true" />
+                              )}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : null}
+                </div>
+              );
+            })}
+
+          {/* Séparateur visuel + groupes "settings" isolés en bas (convention UX) */}
+          {visibleGroups.some((g) => g.isSettings) ? (
+            <>
+              <div className="mx-2 border-t border-white/10" aria-hidden="true" />
+              {visibleGroups
+                .filter((group) => group.isSettings)
+                .map((group) => {
+                  const isGroupCollapsed = collapsedGroups.includes(group.label);
+                  return (
+                    <div key={group.label}>
+                      {!sidebarCollapsed ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleGroup(group.label)}
+                          aria-expanded={!isGroupCollapsed}
+                          className="group/label mb-1.5 flex w-full items-center justify-between rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-100/70 transition-colors hover:text-emerald-100"
+                        >
+                          <span>{group.label}</span>
+                          <ChevronRight
                             className={cn(
-                              "ml-auto flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
-                              active
-                                ? "bg-white text-emerald-700"
-                                : "bg-emerald-600 text-white",
+                              "size-3 shrink-0 transition-transform duration-200",
+                              isGroupCollapsed ? "rotate-0" : "rotate-90",
                             )}
-                          >
-                            {pendingCount > 99 ? "99+" : pendingCount}
-                          </span>
-                        )}
-                        {/* Badge file d'attente caisse (élèves PRE_INSCRIT) */}
-                        {showCaisseBadge && !sidebarCollapsed && (
-                          <span
-                            className={cn(
-                              "ml-auto flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
-                              active
-                                ? "bg-white text-amber-700"
-                                : "bg-amber-500 text-white",
-                            )}
-                          >
-                            {fileAttenteCount > 99 ? "99+" : fileAttenteCount}
-                          </span>
-                        )}
-                        {/* Badges en mode réduit : pastille en haut à droite */}
-                        {showPreBadge && sidebarCollapsed && (
-                          <span
-                            className={cn(
-                              "absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold",
-                              active ? "bg-white text-emerald-700" : "bg-emerald-500 text-white",
-                            )}
-                          >
-                            {pendingCount > 99 ? "99+" : pendingCount}
-                          </span>
-                        )}
-                        {showCaisseBadge && sidebarCollapsed && (
-                          <span
-                            className={cn(
-                              "absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold",
-                              active ? "bg-white text-amber-700" : "bg-amber-500 text-white",
-                            )}
-                          >
-                            {fileAttenteCount > 99 ? "99+" : fileAttenteCount}
-                          </span>
-                        )}
-                        {active &&
-                          !sidebarCollapsed &&
-                          item.href !== "/pre-inscriptions" &&
-                          item.href !== "/caisse" && (
-                            <CheckCircle2 className="ml-auto size-3.5 text-amber-300" />
-                          )}
-                        {/* Indicateur actif en mode réduit : barre verticale à gauche */}
-                        {active && sidebarCollapsed && (
-                          <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-amber-300" aria-hidden="true" />
-                        )}
-                      </Link>
-                    </li>
+                            aria-hidden="true"
+                          />
+                        </button>
+                      ) : (
+                        <div className="mb-1.5 h-px bg-white/10" aria-hidden="true" />
+                      )}
+                      {!isGroupCollapsed || sidebarCollapsed ? (
+                        <ul className="space-y-0.5">
+                          {group.items.map((item) => {
+                            const Icon = item.icon;
+                            const active = isActivePath(pathname, item.href);
+                            return (
+                              <li key={item.href}>
+                                <Link
+                                  href={item.href}
+                                  onClick={handleNavClick}
+                                  title={sidebarCollapsed ? item.label : undefined}
+                                  className={cn(
+                                    "group relative flex w-full items-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-forest",
+                                    sidebarCollapsed ? "justify-center px-0 py-2.5" : "gap-2.5 px-2.5 py-2",
+                                    active
+                                      ? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-900/30"
+                                      : "text-emerald-100/80 hover:bg-white/10 hover:text-white",
+                                  )}
+                                >
+                                  <Icon
+                                    className={cn(
+                                      "size-4 shrink-0",
+                                      active
+                                        ? "text-white"
+                                        : "text-emerald-100/80 group-hover:text-amber-300",
+                                    )}
+                                    aria-hidden="true"
+                                  />
+                                  {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                                  {active && sidebarCollapsed && (
+                                    <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-amber-300" aria-hidden="true" />
+                                  )}
+                                </Link>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
+                    </div>
                   );
                 })}
-              </ul>
-            </div>
-          ))}
+            </>
+          ) : null}
         </nav>
       </ScrollArea>
 
