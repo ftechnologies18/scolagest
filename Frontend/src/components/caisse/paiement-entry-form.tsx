@@ -285,10 +285,10 @@ export function PaiementEntryForm() {
               {selectedEleve ? (
                 <div className="flex items-center justify-between rounded-md border border-emerald-200 bg-emerald-50/50 px-3 py-2 dark:border-emerald-900/40 dark:bg-emerald-950/20">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
+                    <p className="break-words text-sm font-medium leading-snug">
                       {eleveLabel(selectedEleve)}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="break-words text-xs leading-snug text-muted-foreground">
                       {selectedEleve.identifiant_interne}
                       {selectedEleve.inscription_courante?.classe_libelle
                         ? ` · ${selectedEleve.inscription_courante.classe_libelle}`
@@ -302,6 +302,7 @@ export function PaiementEntryForm() {
                     className="size-7"
                     onClick={handleClearEleve}
                     aria-label="Changer d'élève"
+                    title="Changer d'élève"
                   >
                     <X className="size-4" />
                   </Button>
@@ -349,14 +350,14 @@ export function PaiementEntryForm() {
                                 onClick={() => handleSelectEleve(e)}
                                 className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-accent"
                               >
-                                <div className="flex size-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                                  <User className="size-4" />
+                                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-semibold text-white">
+                                  {eleveLabel(e).charAt(0).toUpperCase()}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className="truncate font-medium">
+                                  <p className="break-words font-medium leading-snug">
                                     {eleveLabel(e)}
                                   </p>
-                                  <p className="truncate text-xs text-muted-foreground">
+                                  <p className="break-words text-xs leading-snug text-muted-foreground">
                                     {e.identifiant_interne}
                                     {e.inscription_courante?.classe_libelle
                                       ? ` · ${e.inscription_courante.classe_libelle}`
@@ -564,7 +565,7 @@ export function PaiementEntryForm() {
             </div>
 
             {/* Submit */}
-            <div className="flex justify-end gap-2 border-t pt-3">
+            <div className="grid grid-cols-2 gap-2 border-t pt-3 sm:flex sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
@@ -576,6 +577,8 @@ export function PaiementEntryForm() {
                   setMode("ESPECES");
                 }}
                 disabled={!selectedEleve || mutation.isPending}
+                className="w-full sm:w-auto"
+                title="Réinitialiser le formulaire"
               >
                 Réinitialiser
               </Button>
@@ -584,6 +587,8 @@ export function PaiementEntryForm() {
                 variant="success"
                 disabled={!canSubmit || mutation.isPending}
                 onClick={() => mutation.mutate()}
+                className="w-full sm:w-auto"
+                title="Valider l'encaissement et générer le reçu"
               >
                 {mutation.isPending ? (
                   <>
@@ -800,8 +805,8 @@ function SoldeCard({
                   className="flex items-center justify-between rounded-md border px-2 py-1.5 text-xs"
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{e.libelle}</p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="break-words font-medium leading-snug">{e.libelle}</p>
+                    <p className="break-words text-[10px] leading-snug text-muted-foreground">
                       {formatDateShort(e.date_limite)} ·{" "}
                       {formatFCFA(e.montant - e.montant_paye)} restant
                     </p>

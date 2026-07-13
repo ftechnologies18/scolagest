@@ -136,7 +136,7 @@ function RepartitionBar({
             className={cn("size-2 shrink-0 rounded-full", style.bar)}
             aria-hidden
           />
-          <span className="truncate text-xs font-medium">{item.label || style.label}</span>
+          <span className="break-words text-xs font-medium leading-snug">{item.label || style.label}</span>
           <span className="text-[11px] text-muted-foreground">
             ({item.nb} tx)
           </span>
@@ -177,7 +177,7 @@ function DernierPaiementRow({
 }) {
   const style = modeStyle(paiement.mode_paiement);
   return (
-    <li className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-accent/40">
+    <li className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20">
       <div
         className={cn(
           "flex size-9 shrink-0 items-center justify-center rounded-full",
@@ -187,10 +187,10 @@ function DernierPaiementRow({
         <Receipt className={cn("size-4", style.text)} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">
+        <p className="break-words text-sm font-medium leading-snug">
           {paiement.eleve_prenoms} {paiement.eleve_nom}
         </p>
-        <p className="truncate text-[11px] text-muted-foreground">
+        <p className="break-words text-[11px] leading-snug text-muted-foreground">
           <span className="font-mono">{paiement.numero_recu}</span>
           {paiement.frais_libelle ? (
             <>
@@ -325,21 +325,21 @@ export function DashboardCaissePanel({
       <div className="flex items-center justify-between">
         <Badge
           variant="outline"
-          className="border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
+          className="border-emerald-300 bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200"
         >
           <Clock className="mr-1 size-3" />
           Actualisé toutes les 30s
         </Badge>
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           size="sm"
           onClick={() => refetch()}
           disabled={isFetching}
-          className="text-muted-foreground"
+          title="Actualiser le tableau de bord"
         >
           <RefreshCw
-            className={cn("mr-1.5 size-3.5", isFetching && "animate-spin")}
+            className={cn("size-3.5", isFetching && "animate-spin")}
           />
           Actualiser
         </Button>
@@ -399,13 +399,22 @@ export function DashboardCaissePanel({
         <GlassCard variant="adaptive" noHover>
           <div className="mb-3 flex items-center gap-2">
             <Wallet className="size-4 text-emerald-600" />
-            <h3 className="font-display text-sm font-semibold">Répartition par mode</h3>
+            <h3 className="font-display text-sm font-semibold text-forest">Répartition par mode</h3>
           </div>
           <div className="space-y-3">
             {repartition.length === 0 ? (
-              <p className="py-6 text-center text-xs text-muted-foreground">
-                Aucun encaissement aujourd'hui.
-              </p>
+              <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
+                <div className="flex size-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  <Wallet className="size-5" />
+                </div>
+                <p className="font-display text-sm font-semibold text-forest">
+                  Aucun encaissement aujourd'hui
+                </p>
+                <p className="max-w-sm text-xs text-muted-foreground">
+                  La répartition par mode de paiement apparaîtra dès le premier
+                  encaissement validé.
+                </p>
+              </div>
             ) : (
               repartition.map((item) => (
                 <RepartitionBar key={item.mode} item={item} />
@@ -418,12 +427,20 @@ export function DashboardCaissePanel({
         <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
           <div className="flex items-center gap-2 p-5 pb-3">
             <Receipt className="size-4 text-sky-600" />
-            <h3 className="font-display text-sm font-semibold">Derniers encaissements</h3>
+            <h3 className="font-display text-sm font-semibold text-forest">Derniers encaissements</h3>
           </div>
           {derniers.length === 0 ? (
-            <p className="px-5 py-8 text-center text-xs text-muted-foreground">
-              Aucun encaissement pour le moment aujourd'hui.
-            </p>
+            <div className="flex flex-col items-center justify-center gap-2 px-5 py-8 text-center">
+              <div className="flex size-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <Receipt className="size-5" />
+              </div>
+              <p className="font-display text-sm font-semibold text-forest">
+                Aucun encaissement pour le moment
+              </p>
+              <p className="max-w-sm text-xs text-muted-foreground">
+                Les derniers encaissements validés du jour apparaîtront ici.
+              </p>
+            </div>
           ) : (
             <ul className="max-h-96 divide-y overflow-y-auto">
               {derniers.map((p) => (

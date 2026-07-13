@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ScolaGest — Dialogue d'affichage / impression d'un reçu (Phase 3).
+ * ScolaGest — Dialogue d'affichage / impression d'un reçu (Phase 3 — refonte Forêt EdTech).
  *
  * Affiche un reçu mis en forme (en-tête établissement, n° reçu, infos élève,
  * détail du paiement, solde restant, caissier, date/heure, signature) à partir
@@ -13,6 +13,11 @@
  *
  * Le bouton « Imprimer / Télécharger PDF » déclenche `window.print()`. La CSS
  * d'impression (`.receipt-print` dans `globals.css`) masque tout sauf le reçu.
+ *
+ * Refonte : header avec badge rond gradient emerald→gold + ReceiptText +
+ * bouton « Imprimer » variant success + footer grid-cols-2 mobile. Le corps
+ * du reçu (ReceiptBody) reste imprimable (.receipt-print) avec son design
+ * emerald/orange intact.
  */
 
 import * as React from "react";
@@ -125,7 +130,9 @@ export function RecuDialog({
       <DialogContent className="max-w-3xl gap-0 p-0 sm:max-w-3xl">
         <DialogHeader className="no-print border-b px-6 py-4">
           <DialogTitle className="flex items-center gap-2 text-base">
-            <ReceiptIcon className="size-5 text-emerald-600" />
+            <span className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg shadow-emerald-900/20">
+              <ReceiptIcon className="size-4" />
+            </span>
             Reçu de caisse
           </DialogTitle>
           <DialogDescription className="text-xs">
@@ -137,9 +144,13 @@ export function RecuDialog({
         {/* Contenu scrollable */}
         <div className="max-h-[70vh] overflow-y-auto p-6">
           {isLoading || !paiement ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Chargement du reçu…
+            <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+              <div className="flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <Loader2 className="size-6 animate-spin" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Chargement du reçu…
+              </p>
             </div>
           ) : (
             <ReceiptBody
@@ -167,28 +178,32 @@ export function RecuDialog({
           )}
         </div>
 
-        {/* Footer actions */}
-        <div className="no-print flex flex-col-reverse gap-2 border-t px-6 py-4 sm:flex-row sm:justify-between sm:items-center">
-          <p className="text-[11px] text-muted-foreground">
+        {/* Footer actions — grid-cols-2 mobile / flex sm:justify-end */}
+        <div className="no-print grid grid-cols-1 gap-2 border-t px-6 py-4 sm:grid-cols-2 sm:items-center">
+          <p className="text-[11px] text-muted-foreground sm:col-span-1">
             Astuce : choisissez « Enregistrer en PDF » comme imprimante pour
             générer un fichier PDF.
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:col-span-1 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
               type="button"
               onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto"
+              title="Fermer le reçu"
             >
               Fermer
             </Button>
             <Button
               type="button"
+              variant="success"
               onClick={handlePrint}
               disabled={isLoading || !paiement}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
+              className="w-full sm:w-auto"
+              title="Imprimer le reçu ou l'enregistrer en PDF"
             >
               <Printer className="size-4" />
-              Imprimer / Télécharger PDF
+              Imprimer / PDF
             </Button>
           </div>
         </div>
@@ -259,8 +274,10 @@ function ReceiptBody({
             <GraduationCap className="size-6" />
           </div>
           <div>
-            <div className="text-base font-semibold">{etablissementNom}</div>
-            <div className="text-[11px] text-emerald-100">
+            <div className="break-words text-base font-semibold leading-snug">
+              {etablissementNom}
+            </div>
+            <div className="break-words text-[11px] leading-snug text-emerald-100">
               {etablissementVille ? `${etablissementVille}, Côte d'Ivoire` : "Côte d'Ivoire"}
               {etablissementCode ? ` · Code ${etablissementCode}` : ""}
             </div>
@@ -270,7 +287,9 @@ function ReceiptBody({
           <div className="text-[11px] uppercase tracking-wide text-emerald-100">
             Reçu de caisse
           </div>
-          <div className="font-mono text-lg font-bold">{numeroRecu}</div>
+          <div className="break-words font-mono text-lg font-bold leading-snug">
+            {numeroRecu}
+          </div>
         </div>
       </div>
 
@@ -300,15 +319,15 @@ function ReceiptBody({
             <div className="text-[11px] uppercase text-muted-foreground">
               Élève
             </div>
-            <div className="font-semibold">{eleveNomComplet}</div>
-            <div className="text-xs text-muted-foreground">{eleveClasse}</div>
+            <div className="break-words font-semibold leading-snug">{eleveNomComplet}</div>
+            <div className="break-words text-xs leading-snug text-muted-foreground">{eleveClasse}</div>
           </div>
           <div className="rounded-lg border p-3">
             <div className="text-[11px] uppercase text-muted-foreground">
               Matricule
             </div>
-            <div className="font-mono font-semibold">{eleveMatricule}</div>
-            <div className="text-xs text-muted-foreground">
+            <div className="break-words font-mono font-semibold leading-snug">{eleveMatricule}</div>
+            <div className="break-words text-xs leading-snug text-muted-foreground">
               Catégorie :{" "}
               {eleve?.categorie === "AFFECTE"
                 ? "Affecté"
@@ -331,8 +350,8 @@ function ReceiptBody({
             </thead>
             <tbody>
               <tr className="border-t">
-                <td className="px-3 py-2 font-medium">{motif}</td>
-                <td className="px-3 py-2 text-muted-foreground">
+                <td className="break-words px-3 py-2 font-medium leading-snug">{motif}</td>
+                <td className="break-words px-3 py-2 leading-snug text-muted-foreground">
                   {paiement.echeance?.libelle ?? "—"}
                 </td>
                 <td className="px-3 py-2 text-right font-mono font-semibold">
@@ -360,12 +379,12 @@ function ReceiptBody({
               Mode de paiement
             </div>
             <div className="flex items-center justify-between">
-              <span className="font-semibold">
+              <span className="break-words font-semibold leading-snug">
                 {MODE_LABEL[modePaiement]}
               </span>
               <ModePaiementBadge mode={modePaiement} />
             </div>
-            <div className="mt-1 text-xs text-muted-foreground">
+            <div className="mt-1 break-words text-xs leading-snug text-muted-foreground">
               Référence : {referenceExterne || "—"}
               {providerMomo ? ` · ${providerMomo}` : ""}
             </div>
@@ -408,7 +427,7 @@ function ReceiptBody({
                 : formatFCFA(soldeRestant)}
             </div>
             {soldeRestant !== undefined && soldeRestant > 0 ? (
-              <div className="text-xs text-amber-700 dark:text-amber-400">
+              <div className="break-words text-xs leading-snug text-amber-700 dark:text-amber-400">
                 Pensez à régulariser avant la prochaine échéance.
               </div>
             ) : null}
@@ -417,7 +436,7 @@ function ReceiptBody({
 
         {/* Pied + QR */}
         <div className="flex items-end justify-between gap-4 pt-2">
-          <div className="text-[11px] text-muted-foreground">
+          <div className="break-words text-[11px] leading-snug text-muted-foreground">
             <div className="flex items-center gap-1.5 font-medium text-emerald-700 dark:text-emerald-300">
               <CheckCircle2 className="size-3.5" />
               Document généré électroniquement par ScolaGest
@@ -428,7 +447,7 @@ function ReceiptBody({
             </div>
             <div className="mt-2 italic">Merci de votre confiance.</div>
           </div>
-          <div className="flex size-20 flex-col items-center justify-center rounded-md border-2 border-dashed border-slate-300 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-900/40">
+          <div className="flex size-20 shrink-0 flex-col items-center justify-center rounded-md border-2 border-dashed border-slate-300 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-900/40">
             <QrCode className="size-9" />
             <span className="text-[9px]">QR vérification</span>
           </div>
@@ -437,8 +456,8 @@ function ReceiptBody({
         <Separator />
 
         <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>Signé : {caissierNom} (caissier)</span>
-          <span>ScolaGest · www.scolagest.ci</span>
+          <span className="break-words">Signé : {caissierNom} (caissier)</span>
+          <span className="break-words">ScolaGest · www.scolagest.ci</span>
         </div>
       </div>
     </div>
@@ -449,7 +468,7 @@ function Meta({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div className="text-[11px] uppercase text-muted-foreground">{label}</div>
-      <div className="font-medium">{value}</div>
+      <div className="break-words font-medium leading-snug">{value}</div>
     </div>
   );
 }

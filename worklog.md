@@ -13778,3 +13778,700 @@ Date : 2025-01 (Task 4 — vague de refontes ScolaGest).
     800), slate (border-slate-300 bg-slate-100 text-slate-800).
 
 ### NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+
+## Task 4 — Refonte module /caisse (agent frontend-styling-expert)
+
+Date : 2025-01 (Task 4 — vague de refontes ScolaGest — module /caisse).
+
+### Fichiers modifiés (7)
+- `/home/z/my-project/scolagest/Frontend/src/components/dashboard/views/view-caisse.tsx`
+  (149 → 186 lignes, +37 lignes)
+- `/home/z/my-project/scolagest/Frontend/src/components/caisse/dashboard-caisse.tsx`
+  (445 → 462 lignes, +17 lignes — enrichissement partiel, déjà refondu)
+- `/home/z/my-project/scolagest/Frontend/src/components/caisse/file-attente.tsx`
+  (638 → 714 lignes, +76 lignes)
+- `/home/z/my-project/scolagest/Frontend/src/components/caisse/paiement-entry-form.tsx`
+  (818 → 823 lignes, +5 lignes — enrichissement partiel, déjà refondu)
+- `/home/z/my-project/scolagest/Frontend/src/components/caisse/paiements-list.tsx`
+  (610 → 820 lignes, +210 lignes)
+- `/home/z/my-project/scolagest/Frontend/src/components/caisse/cloture-caisse.tsx`
+  (509 → 601 lignes, +92 lignes)
+- `/home/z/my-project/scolagest/Frontend/src/components/caisse/recu-dialog.tsx`
+  (455 → 474 lignes, +19 lignes)
+
+Total : 3758 → 4080 lignes (+322 lignes).
+
+### Fichiers NON touchés (conformes au brief)
+- `/home/z/my-project/scolagest/Frontend/src/app/(staff)/caisse/page.tsx`
+  (route RoleGuard CAISSIER/COMPTABLE — intacte, 19 lignes).
+- `/home/z/my-project/scolagest/Frontend/src/components/caisse/caisse-badges.tsx`
+  (134 lignes, badges partagés ModePaiementBadge/StatutPaiementBadge/
+  StatutEcheanceBadge/TypeFraisBadge — intacts).
+- `lib/api-caisse.ts`, `lib/api-students.ts`, `lib/types.ts`, `lib/auth-store.ts`,
+  `lib/format.ts`, `lib/utils.ts`, `app/globals.css`, `components/ui/*`,
+  `components/ds/*`, backend.
+
+### Fichiers lus (référence DS + refontes précédentes)
+- `Frontend/src/components/ds/glass-card.tsx` (GlassCard : variants mobile/
+  tablet/desktop/premium/adaptive, props noHover/noAnimation/delay/
+  premiumBorder, role=button si onClick).
+- `Frontend/src/components/ds/kente-pattern.tsx` (KentePattern : variants
+  strip/bg/border/separator, positions top/bottom/custom).
+- `Frontend/src/components/ds/stat-card.tsx` (StatCard : tones emerald/amber/
+  terracotta/gold/sky/forest, props trend/invertTrend/hint/delay/onClick).
+- `Frontend/src/components/dashboard/views/view-parametres.tsx` (DÉJÀ REFONTE
+  Task 4 précédente — patterns repris : hero header GlassCard desktop + badge
+  rond gradient emerald→gold + pill "Phase 5" + TabsList premium glass-desktop
+  + tab actif bg-emerald-600 text-white + icônes + tableau header bg-
+  emerald-50/60 + th text-emerald-900 uppercase tracking-wide + motion.tr
+  stagger + EmptyState/ErrorState/LoadingState premium).
+- `Frontend/src/lib/api-caisse.ts` (exports fetchFileAttente / fetchDashboardCaisse
+  / fetchPaiements / fetchPaiement / createPaiement / annulerPaiement /
+  fetchRecu / fetchClotureAujourdhui / createCloture / validerCloture + types
+  EleveFileAttente / DashboardCaisse / RepartitionModeCaisse / DernierPaiement
+  + clés fraiKeys/soldesKeys/paiementsKeys/cloturesKeys — intacts).
+- `Frontend/src/hooks/use-prefers-reduced-motion.ts` (SSR-safe, retourne
+  `false` au premier rendu).
+- `Frontend/src/components/ui/button.tsx` (variants success/outline/destructive
+  /ghost/etc. — `success` = gradient emerald-600→emerald-700).
+
+### Refonte — améliorations par fichier
+
+#### a) `view-caisse.tsx` — Hero header + TabsList premium
+- KentePattern `variant="strip" position="top"` en tête de vue.
+- GlassCard `variant="desktop" noHover` `p-5 sm:p-6` conteneur du hero.
+- Badge rond `size-12 shrink-0 rounded-full bg-gradient-to-br from-emerald-600
+  to-amber-500 text-white shadow-lg shadow-emerald-900/20` avec icône `Wallet
+  size-6` (au lieu de `bg-emerald-600` uni size-11).
+- Titre `font-display text-2xl font-bold tracking-tight text-forest` "Caisse"
+  (au lieu de `text-xl` sans text-forest).
+- Pill "Phase 3" outline `border-emerald-300 bg-emerald-50/60 text-emerald-800`
+  avec icône `Sparkles size-3` à droite du titre.
+- Description "Tableau de bord, file d'attente, encaissement, historique et
+  clôture quotidienne." conservée.
+- Pill établissement `border-emerald-200 bg-emerald-50 text-emerald-800`
+  conservé.
+- KentePattern `variant="separator" className="my-1"` après le hero header.
+- TabsList premium : `glass-desktop h-auto w-full gap-1 overflow-x-auto border-0
+  p-1 sm:w-auto` (au lieu de `grid w-full grid-cols-3 sm:w-auto sm:grid-cols-none`)
+  + scrollable mobile.
+- 5 TabsTrigger avec `gap-1.5 data-[state=active]:bg-emerald-600
+  data-[state=active]:text-white data-[state=active]:shadow-sm` + icônes
+  `LayoutDashboard size-4` (Tableau de bord — `hidden sm:inline` / `sm:hidden`
+  sur 2 spans pour gérer la largeur mobile), `Users size-4` (File d'attente),
+  `ReceiptText size-4` (Encaissement), `History size-4` (Historique),
+  `Lock size-4` (Clôture).
+- Badge compteur file d'attente renforcé : `size-5 min-w-5 rounded-full px-1
+  text-[10px] font-bold` + classe conditionnelle `bg-amber-600 text-white`
+  si tab actif, sinon `border border-amber-300 bg-amber-100 text-amber-800
+  dark:border-amber-800/60 dark:bg-amber-950/60 dark:text-amber-200`
+  (au lieu de `size-4 min-w-4 bg-amber-100 text-amber-700` sans bordure).
+  Ajout `title={`${fileCount} élève(s) en attente`}` natif.
+- Imports ajoutés : `Sparkles` (lucide), `GlassCard` (DS).
+- Logique conservée à l'identique : `useAuthStore` (etablissement), `useQuery`
+  sur `fileAttenteKeys.list()` + `fetchFileAttente` + `refetchInterval: 30_000`
+  + `refetchOnWindowFocus: true`, `CaisseTab` type, `DashboardCaissePanel`
+  avec `onJumpToFileAttente={() => setTab("file")}`, `FileAttente`,
+  `PaiementEntryForm`, `PaiementsList`, `ClotureCaissePanel`.
+
+#### b) `dashboard-caisse.tsx` — Enrichissement (déjà partiellement refondu)
+- 4 StatCards DS Forêt EdTech (Total encaissé emerald/Wallet, Transactions
+  sky/Receipt, File d'attente amber/Users cliquable, Annulations terracotta/
+  XCircle) avec stagger delay 0/0.05/0.1/0.15 — VÉRIFIÉ OK.
+- GlassCard adaptive pour Répartition par mode + Derniers encaissements —
+  VÉRIFIÉ OK.
+- KentePattern separator entre KPIs et détails — VÉRIFIÉ OK.
+- **Badge "Actualisé toutes les 30s" renforcé** (BUG À ÉVITER #7) :
+  `border-emerald-300 bg-emerald-100 text-emerald-800` (au lieu de
+  border-emerald-200 bg-emerald-50 text-emerald-700).
+- **Bouton Actualiser variant outline** (au lieu de variant ghost
+  text-muted-foreground) + `title="Actualiser le tableau de bord"` natif
+  (BUG À ÉVITER #1).
+- **DernierPaiementRow hover bg-emerald-50/60** (au lieu de bg-accent/40)
+  + `dark:hover:bg-emerald-950/20`.
+- **DernierPaiementRow break-words leading-snug** (au lieu de `truncate` —
+  BUG À ÉVITER #2) sur nom élève + numéro reçu/libellé frais.
+- **RepartitionBar label break-words leading-snug** (au lieu de `truncate`).
+- **Titres sections `text-forest`** (Répartition par mode, Derniers
+  encaissements) ajouté pour cohérence.
+- **Empty states premium** dans Répartition par mode (si 0 encaissement) et
+  Derniers encaissements (si 0 paiement) : badge rond size-10 emerald/15 +
+  icône (Wallet ou Receipt) + titre font-display text-sm font-semibold text-
+  forest + description max-w-sm text-xs text-muted-foreground (au lieu de
+  simple `<p className="py-6 text-center text-xs">`).
+- Logique conservée : `useQuery` sur `dashboardCaisseKeys.today()` +
+  `fetchDashboardCaisse` + `refetchInterval: 30_000`, `MODE_REPARTITION`
+  (constante), `MODE_LABEL_SHORT` (constante), `RepartitionBar`/`DernierPaiementRow`
+  (sous-composants), `onJumpToFileAttente` callback, `panierMoyen` calcul,
+  `etablissement` guard, `isLoading`/`isError` states.
+
+#### c) `file-attente.tsx` — Refonte complète
+- **Hero header local** : GlassCard `variant="tablet" noHover p-4 sm:p-5`
+  + badge rond size-10 gradient emerald→gold + icône `Users size-5` + titre
+  font-display text-base font-bold text-forest "File d'attente" + badge
+  compteur renforcé (border-amber-300 bg-amber-100 text-amber-800) avec
+  icône Clock + description "Liste triée par date d'inscription… Actualisation
+  automatique toutes les 30 secondes." + bouton Actualiser variant outline
+  w-full sm:w-auto avec title natif (au lieu de bandeau simple Badge +
+  Button ghost).
+- KentePattern separator entre le hero et la liste.
+- **Cards élèves en GlassCard adaptive** AVEC hover lift (retrait de `noHover`
+  — la carte se soulève au survol) — wrapper `motion.div` avec stagger delay
+  `index*0.04` capé 0.4s (au lieu de GlassCard noHover simple).
+- **Avatar initiales bg-emerald-600 text-white** size-11 (au lieu de
+  GraduationCap dans bg-emerald-100) — BUG À ÉVITER #6. Helper `eleveInitials`
+  ajouté.
+- **Badges renforcés** (BUG À ÉVITER #7) :
+  - "EN ATTENTE" : `border-amber-300 bg-amber-100 text-amber-800` (au lieu de
+    border-amber-300 bg-amber-50 text-amber-700).
+  - "PRÉ-INSCRIPTION" : `border-emerald-300 bg-emerald-100 text-emerald-800`
+    (au lieu de border-emerald-200 bg-emerald-50 text-emerald-700).
+  - "MANUELLE" : `border-slate-300 bg-slate-100 text-slate-800` (au lieu de
+    border-slate-200 bg-slate-50 text-slate-700).
+- **Noms/identifiants/classes break-words leading-snug** (au lieu de
+  `truncate` — BUG À ÉVITER #2).
+- **Bouton "Encaisser" variant success** (déjà OK) + `title="Encaisser le
+  frais d'inscription et sortir l'élève de la file d'attente"` natif ajouté
+  (BUG À ÉVITER #1).
+- **Empty state premium** : GlassCard adaptive noHover relative overflow-
+  hidden + KentePattern bg + bloc centré + badge rond size-12 emerald/15 +
+  Users + titre font-display text-base font-semibold text-forest + description
+  max-w-md (au lieu de Card border-emerald-200 simple).
+- **Error state premium** : même structure mais badge rond rose + icône
+  AlertCircle + bouton Réessayer variant outline avec title natif.
+- **Loading state** enrichi : Skeleton hero h-20 + 4 Skeletons h-28 (au lieu
+  de 2 skeletons inline).
+- **EncaissementDialog enrichi** :
+  - Header avec badge rond size-7 gradient emerald→gold + icône HandCoins
+    (au lieu de simple icône emerald-600).
+  - Avatar initiales bg-emerald-600 text-white (au lieu de GraduationCap dans
+    bg-emerald-100) — BUG À ÉVITER #6.
+  - Noms/identifiants/classes break-words leading-snug (au lieu de truncate).
+  - Bouton "Valider l'encaissement" **variant success** (au lieu de
+    `bg-emerald-600 text-white hover:bg-emerald-700` custom).
+  - Footer grid-cols-2 gap-2 sm:flex sm:justify-end + boutons `w-full sm:w-auto`
+    + title natifs (Annuler / Valider l'encaissement).
+- Imports ajoutés : `motion` (framer-motion), `Users` (lucide),
+  `usePrefersReducedMotion` (hook), `GlassCard` (DS), `KentePattern` (DS).
+- Imports supprimés : `GraduationCap` (lucide), `Card`/`CardContent` (shadcn).
+- Logique conservée à l'identique : `fileAttenteKeys` (all/list), `MODE_OPTIONS`
+  + `PROVIDER_OPTIONS` (constantes), `eleveNom` (helper), `sourceBadge`
+  (helper renforcé), `EncaissementDialog` (sous-composant) avec useMutation
+  `createPaiement` + invalidations `fileAttenteKeys` / `dashboardCaisseKeys` /
+  `paiementsKeys` / `soldesKeys` + toast succès/erreur + state reset montant,
+  `FileAttente` (composant principal) avec `useQuery` `fetchFileAttente` +
+  `refetchInterval: 30_000` + `refetchOnWindowFocus: true` + etablissement
+  guard + isLoading/isError/count===0 guards.
+
+#### d) `paiement-entry-form.tsx` — Enrichissement (déjà partiellement refondu)
+- GlassCard adaptive pour la section principale (Nouvel encaissement) et
+  SoldeCard — VÉRIFIÉ OK.
+- **Footer grid-cols-2 sur mobile** : `grid grid-cols-2 gap-2 border-t pt-3
+  sm:flex sm:justify-end` + boutons `w-full sm:w-auto` (au lieu de `flex
+  justify-end gap-2`) — bouton Réinitialiser + bouton Encaisser variant
+  success.
+- **Boutons avec title natif** (BUG À ÉVITER #1) : Réinitialiser (`title=
+  "Réinitialiser le formulaire"`), Encaisser (`title="Valider l'encaissement
+  et générer le reçu"`), bouton X changer d'élève (`title="Changer d'élève"`).
+- **Avatar initiales bg-emerald-600 text-white** dans la popover de recherche
+  (au lieu de icône User dans bg-emerald-100) — BUG À ÉVITER #6. Initiale
+  calculée via `eleveLabel(e).charAt(0).toUpperCase()`.
+- **Noms/identifiants/classes break-words leading-snug** (au lieu de
+  `truncate` — BUG À ÉVITER #2) : selectedEleve card (nom + identifiant +
+  classe), popover search results (nom + identifiant + classe), échéances à
+  venir dans SoldeCard (libellé + date/montant).
+- Bouton "Encaisser" variant success (déjà OK).
+- Logique conservée : `useQuery` `elevesKeys.list` (recherche debounced 250ms
+  si ≥ 2 caractères), `useQuery` `soldesKeys.eleve` (solde de l'élève
+  sélectionné), `useMutation` `createPaiement` + invalidations `paiementsKeys`
+  / `soldesKeys` + toast succès/erreur + refetchSolde + reset partiel,
+  `MODE_OPTIONS` + `PROVIDER_OPTIONS` (constantes), `eleveLabel` (helper),
+  `canSubmit` logic (selectedEleve + montantNum > 0 + fraisId ou soldeDu > 0),
+  `isOverpay` alerte, `echeancesPourFrais` (React.useMemo), `RecuDialog`
+  (post-encaissement), `SoldeCard` (sous-composant — Card/Skeleton pour états
+  vides/loading/error, GlassCard pour le contenu principal).
+
+#### e) `paiements-list.tsx` — Refonte complète
+- **Filtres premium** : GlassCard adaptive noHover p-4 + grid sm:grid-cols-2
+  lg:grid-cols-4 (4 champs Date début / Date fin / Mode / Caissier) +
+  bouton Réinitialiser les filtres variant outline size sm avec icône
+  RotateCcw + `title="Réinitialiser les filtres"` natif (affiché seulement
+  si `hasActiveFilters`).
+- KentePattern separator entre filtres et tableau.
+- **Bandeau compte + Actualiser** : `flex flex-col gap-2 sm:flex-row` + texte
+  compte ou Loader2 si isFetching + bouton Actualiser variant outline w-full
+  sm:w-auto avec title natif (au lieu de simple pagination en bas).
+- **Tableau premium** : GlassCard adaptive noHover noAnimation p-0 overflow-
+  hidden + header `border-emerald-100 bg-emerald-50/60 hover:bg-emerald-50/60
+  dark:border-emerald-900/40 dark:bg-emerald-950/20` + `th text-emerald-900
+  dark:text-emerald-200 text-xs font-semibold uppercase tracking-wide`
+  (au lieu de bg-muted/40) — 9 colonnes (Date / Reçu / Élève / Motif / Montant
+  / Mode / Caissier / Statut / Actions).
+- **Lignes desktop motion.tr avec stagger** : composant `PaiementRow` custom
+  + `usePrefersReducedMotion` respecté + delay `index*0.02` capé 0.4s +
+  hover bg-emerald-50/60 + opacity-60 si ANNULE + click row ouvre le reçu.
+- **Cells break-words leading-snug** (au lieu de truncate — BUG À ÉVITER #2)
+  : numéro reçu, nom élève, classe, motif, caissier.
+- **Boutons Actions avec title natif** (BUG À ÉVITER #1) : bouton Eye
+  (variant outline size icon, `title="Voir le reçu"`), bouton XCircle
+  (variant outline size icon avec `border-rose-300 text-rose-700 hover:bg-
+  rose-50 dark:border-rose-800/60 dark:text-rose-300 dark:hover:bg-rose-
+  950/40`, `title="Annuler le paiement"` — au lieu de variant ghost sans
+  title).
+- **Cartes mobiles motion.li avec stagger** : composant `PaiementMobileCard`
+  custom + delay `index*0.03` capé 0.3s + hover bg-emerald-50/60 + opacity-60
+  si ANNULE + click row ouvre le reçu.
+- **Mobile cards enrichies** : boutons Reçu/Annuler variant outline avec
+  title natif (au lieu de variant ghost sans title) + couleurs rose renforcées
+  pour Annuler.
+- **Empty state premium** : composant `EmptyState` — GlassCard adaptive
+  noHover noAnimation p-0 relative overflow-hidden + KentePattern bg + bloc
+  centré + badge rond size-12 emerald/15 + History + titre font-display
+  text-base font-semibold text-forest "Aucun paiement" + description max-w-md
+  (au lieu de bloc simple bg-muted).
+- **Error state premium** : composant `ErrorState` — même structure mais
+  badge rond rose + AlertCircle + bouton Réessayer variant outline avec title
+  natif.
+- **Loading state premium** : composant `LoadingState` — GlassCard adaptive
+  noHover noAnimation p-0 relative overflow-hidden + KentePattern strip top
+  + 6 Skeletons h-10 (au lieu de div space-y-2 p-4 simple).
+- **Pagination enrichie** : `flex flex-col gap-2 sm:flex-row` + texte
+  compte/Loader2 + boutons Précédent/Suivant variant outline avec title natif
+  (au lieu de simple flex gap-2).
+- **Annulation dialog enrichi** : header avec badge rond size-7 rose/15 +
+  icône XCircle + DialogFooter grid-cols-2 sm:flex sm:justify-end + boutons
+  w-full sm:w-auto + title natifs (Fermer / Confirmer l'annulation).
+- Imports ajoutés : `motion` (framer-motion), `RotateCcw`, `RefreshCw`
+  (lucide), `usePrefersReducedMotion` (hook), `KentePattern` (DS).
+- Imports supprimés : `cn` encore utilisé, `Card` non utilisé.
+- Logique conservée à l'identique : `useQuery` `paiementsKeys.list(params)` +
+  `fetchPaiements`, `useMutation` `annulerPaiement` + invalidation
+  `paiementsKeys.all` + toast succès/erreur + state motifAnnulation,
+  `PAGE_SIZE = 20`, `MODE_FILTER_OPTIONS` (constante), `params` (React.useMemo
+  PaiementsQueryParams), `useEffect` reset page 1 sur changement filtres,
+  `handleOpenAnnulation`/`handleConfirmAnnulation`/`handleResetFilters`
+  handlers, `hasActiveFilters` calcul, `RecuDialog` (post-clic row).
+
+#### f) `cloture-caisse.tsx` — Refonte complète
+- **Header récap premium** : badge rond size-10 gradient emerald→gold +
+  icône `Lock size-5` (au lieu de simple icône emerald-600 size-4) + titre
+  font-display text-base font-bold tracking-tight text-forest (au lieu de
+  text-base font-semibold sans text-forest) + sous-titre descriptif "Vérifiez
+  le total remis puis clôturez la journée…" ajouté.
+- **StatutClotureBadge renforcé** (BUG À ÉVITER #7) :
+  - OUVERTE : `border-slate-300 bg-slate-100 text-slate-800` (au lieu de
+    muted-foreground/20 muted/40) + icône User.
+  - CLOTUREE : `border-amber-300 bg-amber-100 text-amber-800` (au lieu de
+    border-amber-200 bg-amber-50 text-amber-700) + icône Lock.
+  - VALIDEE : `border-emerald-300 bg-emerald-100 text-emerald-800` (au lieu
+    de border-emerald-200 bg-emerald-50 text-emerald-700) + icône ShieldCheck.
+- **Badge "Ouverte (non clôturée)"** (fallback si pas de clôture) renforcé
+  en `border-slate-300 bg-slate-100 text-slate-800` (au lieu de muted).
+- **Badge "Clôture validée"** renforcé en `border-emerald-300 bg-emerald-100
+  text-emerald-800` (au lieu de border-emerald-200 bg-emerald-50 text-
+  emerald-700).
+- **Bloc Écart renforcé** : `border-emerald-300 bg-emerald-100` si ecart=0
+  (au lieu de border-emerald-200 bg-emerald-50) / `border-amber-300 bg-
+  amber-100` si ecart!=0 (au lieu de border-amber-200 bg-amber-50) + textes
+  `text-emerald-800 dark:text-emerald-200` / `text-amber-800 dark:text-
+  amber-200` (au lieu de 700/300).
+- **Bandeau erreur clôture renforcé** : `border-amber-300 bg-amber-100 text-
+  amber-800` (au lieu de border-amber-200 bg-amber-50 text-amber-800).
+- **Boutons avec title natif** (BUG À ÉVITER #1) :
+  - Clôturer la caisse : `title="Clôturer la caisse du jour"`.
+  - Mettre à jour la clôture : `title="Mettre à jour la clôture du jour"`.
+  - Valider la clôture : `title="Valider la clôture en tant que superviseur"`.
+- **Bouton Clôturer/Mettre à jour variant success** (déjà OK).
+- **Bouton Valider variant outline** avec couleurs emerald renforcées
+  `border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-
+  emerald-800/60 dark:text-emerald-300 dark:hover:bg-emerald-950/40` (déjà
+  OK) + title natif ajouté.
+- **Empty state premium** dans le tableau Paiements du jour (si 0 paiement) :
+  bloc centré + badge rond size-12 emerald/15 + Wallet + titre font-display
+  text-sm font-semibold text-forest "Aucun paiement valide enregistré
+  aujourd'hui" + description max-w-md (au lieu de simple bloc Wallet muted).
+- **Tableau Paiements du jour premium** : header `border-emerald-100 bg-
+  emerald-50/60 hover:bg-emerald-50/60 dark:border-emerald-900/40 dark:bg-
+  emerald-950/20` + `th text-emerald-900 dark:text-emerald-200 text-xs font-
+  semibold uppercase tracking-wide` (au lieu de bg-muted/40) + GlassCard
+  adaptive noHover **noAnimation** (ajouté).
+- **Lignes motion.tr avec stagger** : composant `PaiementDuJourRow` custom +
+  `usePrefersReducedMotion` respecté + delay `index*0.02` capé 0.4s + hover
+  bg-emerald-50/60 (au lieu de TableRow statique).
+- **Cells break-words leading-snug** (au lieu de truncate — BUG À ÉVITER #2)
+  : numéro reçu, nom élève.
+- Imports ajoutés : `motion` (framer-motion), `User` (lucide — pour icône
+  badge OUVERTE), `usePrefersReducedMotion` (hook), type `Paiement` (types).
+- Imports supprimés : `cn` encore utilisé.
+- Logique conservée à l'identique : `useQuery` `cloturesKeys.aujourdhui()` +
+  `fetchClotureAujourdhui`, `useQuery` `paiementsKeys.list` (filtre today
+  + page_size 200) + `fetchPaiements`, `paiementsDuJour` (filter VALIDE),
+  `totalTheoriqueCalcule` (reduce), `useMutation` `createCloture` +
+  invalidation `cloturesKeys.all` + toast succès/erreur, `useMutation`
+  `validerCloture` + invalidation + toast, `SUPERVISEUR_ROLES` (constante),
+  `isSuperviseur` (role guard), `estCloturee`/`estValidee`/`canEdit` states,
+  `ecart` calcul, `useEffect` reset totalRemis/notes quand cloture change.
+
+#### g) `recu-dialog.tsx` — Premium
+- **Header premium** : badge rond size-8 gradient emerald→gold + icône
+  `ReceiptIcon size-4` + shadow-lg shadow-emerald-900/20 (au lieu de simple
+  icône emerald-600 size-5) + titre "Reçu de caisse" conservé.
+- **Loading state premium** : bloc centré + badge rond size-12 emerald/15 +
+  Loader2 animate-spin size-6 + texte "Chargement du reçu…" (au lieu de
+  simple flex items-center gap-2 text-sm text-muted-foreground).
+- **Footer grid-cols-2 mobile** : `grid grid-cols-1 gap-2 border-t px-6 py-4
+  sm:grid-cols-2 sm:items-center` (au lieu de flex-col-reverse sm:flex-row)
+  — col 1 = astuce PDF, col 2 = boutons Fermer/Imprimer.
+- **Boutons avec title natif** (BUG À ÉVITER #1) : Fermer (`title="Fermer
+  le reçu"`), Imprimer (`title="Imprimer le reçu ou l'enregistrer en PDF"`).
+- **Bouton "Imprimer / PDF" variant success** (au lieu de `bg-emerald-600
+  text-white hover:bg-emerald-700` custom) + libellé court "Imprimer / PDF"
+  (au lieu de "Imprimer / Télécharger PDF") pour tenir sur mobile.
+- **ReceiptBody break-words leading-snug** (au lieu de truncate — BUG À
+  ÉVITER #2) sur tous les textes longs : nom établissement, ville/code,
+  numéro reçu, motif, échéance libellé, mode de paiement, référence, solde,
+  signature caissier, URL ScolaGest. Le rendu imprimable (.receipt-print)
+  reste intact.
+- Design du reçu (en-tête emerald-700, table des méta, table détail, table
+  mode+solde, pied + QR) conservé à l'identique — pas de régression visuelle
+  sur l'impression PDF.
+- Imports ajoutés : aucun (déjà tous présents).
+- Logique conservée : `useQuery` `["paiements", "detail", effectiveId]` +
+  `fetchPaiement` (enabled si pas de paiement pré-chargé), `useQuery`
+  `["paiements", "recu", effectiveId]` + `fetchRecu` (retry: 0), `snapshot`
+  parsing via `React.useMemo` (JSON.parse contenu_snapshot), `numeroRecu`
+  fallback (recu.numero ?? paiement.numero_recu ?? "—"), `handlePrint`
+  (window.print), `ReceiptBody` (sous-composant avec eleveNomComplet /
+  eleveMatricule / eleveClasse / motif / montant / modePaiement /
+  referenceExterne / providerMomo / datePaiement / soldeRestant depuis
+  snapshot ou paiement), `Meta` (sous-composant).
+
+### Bugs à éviter — VÉRIFIÉS
+1. **Aucun Tooltip Radix** — toutes les actions (boutons Actualiser,
+   Encaisser, Réinitialiser, Voir le reçu, Annuler, Clôturer, Valider,
+   Imprimer, Fermer, Réessayer, Réinitialiser les filtres, Précédent,
+   Suivant, Changer d'élève) utilisent l'attribut HTML natif `title` +
+   `aria-label` quand pertinent.
+2. **Aucun `truncate` sur les valeurs longues** — noms élèves `break-words
+   leading-snug`, identifiants internes `break-words font-mono leading-snug`,
+   numéros reçus `break-words font-mono leading-snug`, motifs `break-words
+   leading-snug`, caissiers `break-words leading-snug`, libellés frais/
+   échéances `break-words leading-snug`, descriptions `break-words leading-
+   snug`. Les 2 seuls `truncate` restants (mode label court dans RepartitionBar
+   + libellé échéance dans SoldeCard) ont été convertis en `break-words
+   leading-snug` pour respecter strictement le BUG À ÉVITER #2.
+3. **Pas de `<button>` imbriqué dans un `<button>`** — vérifié sur les 7
+   fichiers. Les boutons d'action dans les cellules de tableau utilisent
+   `onClick={(e) => e.stopPropagation()}` sur le conteneur parent pour éviter
+   la propagation au `<motion.tr>` cliquable (au lieu de stopPropagation sur
+   chaque bouton, ce qui cassait l'accessibilité).
+4. **Icônes InfoRow** : pattern `flex items-start` + `mt-0.5` respecté sur
+   les messages d'erreur (AlertCircle + "Le montant dépasse le solde dû" /
+   "Aucun frais d'inscription associé" dans EncaissementDialog, "Trop-perçu"
+   dans PaiementEntryForm).
+5. **Grid** : `items-stretch` + `h-full` non applicable ici (StatCards déjà
+   gérées par le DS StatCard avec `delay` interne). Pour le tableau
+   paiements-list, les colonnes utilisent `min-w-0` + `break-words` pour
+   éviter le squeeze.
+6. **Avatar** : `bg-emerald-600 text-white` pour les avatars initiales
+   (file-attente.tsx FileAttente + EncaissementDialog, paiement-entry-form.tsx
+   popover search). Les avatars icône (GraduationCap/Receipt/Wallet dans
+   bg-emerald-100) sont conservés pour les badges décoratifs non-avatar
+   (header dialogs, empty states premium) — conforme au brief.
+7. **Badges renforcés** : tous les badges internes (non partagés via
+   caisse-badges.tsx) utilisent `border-300 bg-100 text-800` (au lieu de
+   `border-200 bg-50 text-700`) :
+   - view-caisse.tsx : badge compteur file d'attente (amber renforcé).
+   - dashboard-caisse.tsx : badge "Actualisé toutes les 30s" (emerald
+     renforcé).
+   - file-attente.tsx : "EN ATTENTE" (amber renforcé), "PRÉ-INSCRIPTION"
+     (emerald renforcé), "MANUELLE" (slate renforcé), badge compteur hero
+     (amber renforcé).
+   - cloture-caisse.tsx : StatutClotureBadge OUVERTE (slate renforcé) /
+     CLOTUREE (amber renforcé) / VALIDEE (emerald renforcé), badge "Ouverte
+     non clôturée" (slate renforcé), badge "Clôture validée" (emerald
+     renforcé).
+   - paiements-list.tsx : pas de badge interne (utilise ModePaiementBadge /
+     StatutPaiementBadge de caisse-badges.tsx — non modifié).
+   - recu-dialog.tsx : pas de badge interne (utilise ModePaiementBadge de
+     caisse-badges.tsx — non modifié).
+   - Note : `caisse-badges.tsx` (ModePaiementBadge / StatutPaiementBadge /
+     StatutEcheanceBadge / TypeFraisBadge) conserve son pattern `border-200
+     bg-50 text-700` car le brief stipule explicitement "NE PAS toucher à
+     caisse-badges.tsx (déjà OK)".
+8. **`toast`** : vérifié `const { toast } = useToast();` présent dans
+   file-attente.tsx (EncaissementDialog), paiements-list.tsx (PaiementsList),
+   cloture-caisse.tsx (ClotureCaissePanel), paiement-entry-form.tsx
+   (PaiementEntryForm). Aucun usage de toast dans view-caisse.tsx /
+   dashboard-caisse.tsx / recu-dialog.tsx (read-only / display).
+
+### Constantes — conservées à l'identique
+- `fileAttenteKeys` (all/list) dans file-attente.tsx.
+- `dashboardCaisseKeys` (all/today) dans dashboard-caisse.tsx.
+- `MODE_OPTIONS` + `PROVIDER_OPTIONS` dans file-attente.tsx + paiement-entry-
+  form.tsx (avec `desc` supplémentaire dans paiement-entry-form pour le
+  RadioGroup).
+- `MODE_REPARTITION` + `MODE_LABEL_SHORT` dans dashboard-caisse.tsx.
+- `PAGE_SIZE = 20` + `MODE_FILTER_OPTIONS` dans paiements-list.tsx.
+- `SUPERVISEUR_ROLES` dans cloture-caisse.tsx.
+- `MODE_LABEL` dans recu-dialog.tsx.
+- Helpers `eleveNom`, `eleveInitials`, `sourceBadge`, `eleveLabel`,
+  `modeStyle`, `userInitials` (ce dernier non utilisé ici — c'était pour
+  parametres) — conservés.
+
+### Logique métier conservée à l'identique
+- Imports `@/lib/api-caisse` (fetchFileAttente, fetchDashboardCaisse,
+  fetchPaiements, fetchPaiement, createPaiement, annulerPaiement, fetchRecu,
+  fetchClotureAujourdhui, createCloture, validerCloture, paiementsKeys,
+  soldesKeys, cloturesKeys, dashboardCaisseKeys, fileAttenteKeys, types
+  EleveFileAttente/DashboardCaisse/RepartitionModeCaisse/DernierPaiement)
+  intacts.
+- Imports `@/lib/api-students` (fetchEleves, elevesKeys) intacts.
+- Imports `@/lib/types` (ModePaiement, Paiement, PaiementsQueryParams,
+  SoldeEleve, ClotureCaisse, RecuSnapshot, Eleve) intacts.
+- Imports `@/lib/auth-store` (useAuthStore) intacts.
+- Imports `@/lib/format` (formatFCFA, formatDateShort, formatDateTime,
+  formatTime, todayISO, dateInputToISO) intacts.
+- Hooks React Query conservés :
+  - view-caisse.tsx : `useQuery({ queryKey: fileAttenteKeys.list(),
+    queryFn: fetchFileAttente, enabled: !!etablissement, refetchInterval:
+    30_000, refetchOnWindowFocus: true })`.
+  - dashboard-caisse.tsx : `useQuery({ queryKey: dashboardCaisseKeys.today(),
+    queryFn: () => fetchDashboardCaisse(), enabled: !!etablissement,
+    refetchInterval: 30_000, refetchOnWindowFocus: true })`.
+  - file-attente.tsx : `useQuery({ queryKey: fileAttenteKeys.list(),
+    queryFn: fetchFileAttente, enabled: !!etablissement, refetchInterval:
+    30_000, refetchOnWindowFocus: true })`.
+  - paiement-entry-form.tsx : `useQuery({ queryKey: elevesKeys.list({...}),
+    queryFn: () => fetchEleves({...}), enabled: debouncedSearch.length >= 2
+    && !selectedEleve })` + `useQuery({ queryKey: soldesKeys.eleve(...),
+    queryFn: () => fetchSoldeEleve(...), enabled: !!selectedEleve })`.
+  - paiements-list.tsx : `useQuery({ queryKey: paiementsKeys.list(params),
+    queryFn: () => fetchPaiements(params) })` (params via React.useMemo).
+  - cloture-caisse.tsx : `useQuery({ queryKey: cloturesKeys.aujourdhui(),
+    queryFn: fetchClotureAujourdhui })` + `useQuery({ queryKey:
+    paiementsKeys.list({date_debut: today, date_fin: today, page: 1,
+    page_size: 200}), queryFn: () => fetchPaiements({...}) })`.
+  - recu-dialog.tsx : `useQuery({ queryKey: ["paiements", "detail",
+    effectiveId], queryFn: () => fetchPaiement(effectiveId!), enabled: open
+    && !!effectiveId && !paiementPrefetched })` + `useQuery({ queryKey:
+    ["paiements", "recu", effectiveId], queryFn: () => fetchRecu(effectiveId!),
+    enabled: open && !!effectiveId, retry: 0 })`.
+- Mutations React Query conservées :
+  - file-attente.tsx EncaissementDialog : `useMutation({ mutationFn: () =>
+    createPaiement({...}), onSuccess: invalidations fileAttenteKeys.all +
+    dashboardCaisseKeys.all + paiementsKeys.all + soldesKeys.all + toast,
+    onError: toast })`.
+  - paiement-entry-form.tsx PaiementEntryForm : `useMutation({ mutationFn:
+    () => createPaiement({...}), onSuccess: invalidations paiementsKeys.all
+    + soldesKeys.all + toast + setPaiementCree + setRecuOpen + refetchSolde
+    + reset partiel, onError: toast })`.
+  - paiements-list.tsx PaiementsList : `useMutation({ mutationFn: (id) =>
+    annulerPaiement(id, motifAnnulation.trim()), onSuccess: invalidation
+    paiementsKeys.all + toast, onError: toast })`.
+  - cloture-caisse.tsx ClotureCaissePanel : `useMutation({ mutationFn: () =>
+    createCloture({...}), onSuccess: invalidation cloturesKeys.all + toast,
+    onError: toast })` + `useMutation({ mutationFn: (id) => validerCloture(id),
+    onSuccess: invalidation cloturesKeys.all + toast, onError: toast })`.
+- Endpoints backend intacts (routes `/api/caisse/*`).
+- Handlers conservés : `setTab` (view-caisse), `handleSelectEleve` /
+  `handleClearEleve` (paiement-entry-form), `handleOpenAnnulation` /
+  `handleConfirmAnnulation` / `handleResetFilters` (paiements-list),
+  `handlePrint` (recu-dialog).
+- `CaisseTab` type + `onJumpToFileAttente` callback (view-caisse) intacts.
+- `EtablissementAccess` guard sur tous les composants principaux
+  (DashboardCaissePanel, FileAttente).
+- `RecuDialog` props `open` / `onOpenChange` / `paiementId` / `paiement`
+  intacts. `RecuSnapshot` parsing JSON.parse intact.
+- Page `app/(staff)/caisse/page.tsx` NON modifiée (route RoleGuard
+  CAISSIER/COMPTABLE intacte).
+
+### Responsive 100%
+- Mobile (<640px) :
+  - view-caisse : hero header flex-col (badge + titre + pill à gauche),
+    TabsList w-full overflow-x-auto scrollable horizontalement, tabs avec
+    spans responsive ("Tableau" en mobile / "Tableau de bord" en sm+).
+  - file-attente : hero header flex-col (badge + titre à gauche, bouton
+    Actualiser w-full en dessous), cards flex-col (identité au-dessus,
+    montants + bouton Encaisser en dessous), grid-cols-3 pour les 3 montages
+    (Attendu / Payé / Solde dû), EncaissementDialog footer grid-cols-2.
+  - paiements-list : filtres grid 1 colonne, bandeau flex-col (compte au-
+    dessus, bouton Actualiser w-full en dessous), tableau scroll-x via
+    `hidden md:block` + cartes mobiles `md:hidden` (PaiementMobileCard),
+    pagination flex-col, AnnulationDialog footer grid-cols-2.
+  - cloture-caisse : bloc sm:grid-cols-3 → 1 colonne (théorique / remis /
+    écart empilés), actions flex-wrap justify-end.
+  - recu-dialog : footer grid-cols-1 (astuce au-dessus, boutons Fermer +
+    Imprimer w-full en dessous).
+- Tablette (640-767px) : filtres paiements-list grid 2 colonnes, tabs
+  affichent le libellé complet.
+- Desktop (768-1023px) : filtres paiements-list grid 2 colonnes, tableau
+  desktop (hidden md:block).
+- Desktop large (1024px+) : filtres grid 4 colonnes, tableau desktop,
+  GlassCard adaptive monte en opacité 0.85 / padding p-6.
+
+### Palette Forêt EdTech
+- Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt EdTech :
+  - **emerald** (#047857) primaire : badge rond hero gradient emerald→gold
+    (view-caisse, file-attente hero + EncaissementDialog, cloture-caisse
+    header, recu-dialog header), StatCards (Total encaissé, Actifs),
+    boutons success (Encaisser / Clôturer la caisse / Imprimer PDF), avatar
+    initiales bg-emerald-600 text-white, tab actif TabsList data-[state-
+    active]:bg-emerald-600, header tableau bg-emerald-50/60, hover row bg-
+    emerald-50/60, badge compteur amber, empty states premium emerald/15.
+  - **forest** (#14532D) : titres hero font-display text-forest, titres
+    sections tableau font-display text-forest, empty state premium text-
+    forest.
+  - **amber** (#F59E0B) secondaire : second stop du gradient emerald→gold,
+    badge "EN ATTENTE" (border-amber-300 bg-amber-100 text-amber-800),
+    badge "CLOTUREE" (border-amber-300 bg-amber-100 text-amber-800), bloc
+    écart si != 0 (border-amber-300 bg-amber-100 text-amber-800), badge
+    compteur file d'attente (border-amber-300 bg-amber-100 text-amber-800),
+    StatCard "File d'attente" tone amber.
+  - **gold** (#D4AF37) premium : second stop du gradient emerald→gold du
+    badge hero (tous les fichiers).
+  - **terracotta** (#C2410C) danger chaud : StatCard "Annulations" tone
+    terracotta.
+  - **rose** (#e11d48) conservé pour ANNULE / Inactif / ErrorState +
+    boutons Annuler (variant outline border-rose-300 text-rose-700) +
+    bouton Confirmer l'annulation (variant destructive).
+  - **slate** conservé pour badges neutres (MANUELLE, OUVERTE) — renforcés
+    en border-slate-300 bg-slate-100 text-slate-800.
+  - **sky** conservé pour StatCard "Transactions" tone sky + icône Receipt
+    dans Derniers encaissements header (cohérent avec la palette originale —
+    sky est dans les tones StatCard).
+
+### TypeScript
+- **0 erreur sur les 7 fichiers caisse** (vérifié par `bunx tsc --noEmit
+  2>&1 | grep -E "view-caisse|dashboard-caisse|file-attente|paiement-entry|
+  paiements-list|cloture-caisse|recu-dialog"` → 0 match). Les 9 erreurs tsc
+  restantes sont toutes pré-existantes sur d'autres fichiers (login-form ×2,
+  dashboard-shell ×3, etablissement-form-dialog ×1, instrumentation ×1 +
+  autres non-caisse) — aucune introduite par cette refonte.
+- Lint : **0 erreur, 0 warning** sur l'ensemble du projet (`bun run lint`
+  EXIT=0). Fichiers caisse individuellement : EXIT=0 (`bunx eslint
+  src/components/dashboard/views/view-caisse.tsx src/components/caisse/*.tsx
+  --max-warnings 0` → EXIT=0).
+- Aucun `any` ajouté. Aucune nouvelle dépendance. `import * as React from
+  "react"` conservé sur les 6 fichiers qui l'utilisent (dashboard-caisse.tsx
+  n'importe pas React car n'utilise aucune API React.* directement — c'était
+  déjà le cas avant la refonte).
+
+### Points à vérifier par agent browser
+1. **Rendu du hero header view-caisse** : KentePattern strip top en tête de
+   vue + GlassCard desktop p-5 sm:p-6 + badge rond size-12 gradient
+   emerald→gold avec Wallet size-6 + titre font-display text-2xl font-bold
+   text-forest "Caisse" + pill "Phase 3" outline (border-emerald-300 bg-
+   emerald-50/60 text-emerald-800) avec Sparkles size-3 + description +
+   pill établissement (si sélectionné).
+2. **Rendu de la TabsList premium view-caisse** : glass-desktop subtile + 5
+   tabs (LayoutDashboard / Users + badge compteur / ReceiptText / History /
+   Lock) + tab actif bg-emerald-600 text-white shadow-sm + scrollable mobile
+   (overflow-x-auto) + badge compteur file d'attente renforcé (border-amber-
+   300 bg-amber-100 text-amber-800) avec title natif.
+3. **Onglet Tableau de bord** : bandeau (badge "Actualisé toutes les 30s"
+   emerald renforcé + bouton Actualiser variant outline avec title natif) +
+   4 StatCards en grid 2 colonnes mobile / 4 desktop (Total encaissé emerald
+   / Transactions sky / File d'attente amber cliquable / Annulations
+   terracotta) avec stagger + KentePattern separator + 2 GlassCard
+   (Répartition par mode avec empty state premium Wallet / Derniers
+   encaissements avec empty state premium Receipt + DernierPaiementRow hover
+   bg-emerald-50/60 + break-words leading-snug).
+4. **Onglet File d'attente** : hero header local GlassCard tablet + badge
+   rond size-10 gradient emerald→gold + Users + "File d'attente" titre
+   font-display text-forest + badge compteur amber renforcé + bouton
+   Actualiser variant outline + KentePattern separator + cards élèves
+   GlassCard adaptive AVEC hover lift + motion.div stagger (index*0.04 capé
+   0.4s) + avatar initiales bg-emerald-600 text-white size-11 + badges
+   "EN ATTENTE" / "PRÉ-INSCRIPTION" / "MANUELLE" renforcés + bouton Encaisser
+   variant success avec title natif.
+5. **Onglet File d'attente — dialog Encaissement rapide** : header badge
+   rond size-7 gradient emerald→gold + HandCoins + récap élève avec avatar
+   initiales bg-emerald-600 text-white + 3 colonnes Attendu/Payé/Solde dû +
+   formulaire (mode / provider si MoMo / référence si CHEQUE+VIREMENT+MoMo /
+   montant + date) + footer grid-cols-2 sm:flex sm:justify-end + bouton
+   Valider l'encaissement variant success avec title natif.
+6. **Onglet File d'attente — empty state** : vérifier sur un établissement
+   sans élève PRE_INSCRIT — GlassCard adaptive noHover relative overflow-
+   hidden + KentePattern bg subtil + badge rond size-12 emerald/15 + Users
+   size-6 + titre font-display text-base font-semibold text-forest + 
+   description max-w-md.
+7. **Onglet Encaissement** : GlassCard adaptive "Nouvel encaissement" +
+   recherche élève (popover avec avatar initiales bg-emerald-600 text-white
+   + noms break-words leading-snug) + bouton X changer d'élève avec title
+   natif + Motif/Montant/Mode (RadioGroup 4 cartes)/Date + footer grid-cols-
+   2 sm:flex sm:justify-end + boutons Réinitialiser (variant outline w-full
+   sm:w-auto avec title natif) + Encaisser (variant success w-full sm:w-auto
+   avec title natif). SoldeCard latérale (GlassCard si élève sélectionné).
+8. **Onglet Encaissement — post-encaissement** : toast succès + ouverture
+   automatique du RecuDialog avec paiement pré-chargé.
+9. **Onglet Historique** : filtres GlassCard adaptive p-4 (4 champs Date
+   début / Date fin / Mode / Caissier + bouton Réinitialiser les filtres
+   variant outline avec RotateCcw si hasActiveFilters) + KentePattern
+   separator + bandeau compte + bouton Actualiser variant outline + tableau
+   premium (header bg-emerald-50/60 + th text-emerald-900 uppercase +
+   hover row bg-emerald-50/60 + motion.tr stagger + cells break-words
+   leading-snug + boutons Eye/XCircle variant outline avec title natif) +
+   cartes mobiles motion.li stagger + pagination (boutons Précédent/Suivant
+   variant outline avec title natif).
+10. **Onglet Historique — empty/error/loading states premium** : sur un
+    établissement sans paiement → EmptyState (GlassCard + KentePattern bg +
+    badge rond emerald + History + titre font-display + description). Sur
+    backend down → ErrorState (badge rond rose + AlertCircle + bouton
+    Réessayer). Au chargement → LoadingState (GlassCard + KentePattern strip
+    top + 6 Skeletons h-10).
+11. **Onglet Historique — dialog Annulation** : header badge rond rose +
+    XCircle + Textarea motif + footer grid-cols-2 sm:flex sm:justify-end +
+    boutons Fermer (variant outline w-full sm:w-auto) + Confirmer
+    l'annulation (variant destructive w-full sm:w-auto avec title natif).
+12. **Onglet Clôture** : GlassCard adaptive "Clôture de caisse" + header
+    badge rond size-10 gradient emerald→gold + Lock + titre font-display
+    text-forest + infos caissier + badge statut (StatutClotureBadge renforcé
+    avec icône User/Lock/ShieldCheck) + grid sm:grid-cols-3 (théorique /
+    remis / écart renforcé emerald ou amber) + notes + actions (bouton
+    Clôturer variant success avec title natif + bouton Valider variant
+    outline emerald avec title natif si superviseur) + KentePattern separator
+    + tableau Paiements du jour premium (header bg-emerald-50/60 + motion.tr
+    stagger + cells break-words leading-snug) + empty state premium si 0
+    paiement (badge rond emerald + Wallet + titre font-display + description).
+13. **Onglet Clôture — sans clôture existante** : badge "Ouverte (non
+    clôturée)" slate renforcé + bouton "Clôturer la caisse" variant success
+    visible. **Avec clôture CLOTUREE non validée + superviseur** : bouton
+    "Mettre à jour la clôture" + bouton "Valider la clôture" variant outline
+    emerald. **Avec clôture VALIDEE** : badge "Clôture validée" emerald
+    renforcé, aucun bouton.
+14. **Dialog Reçu** : header badge rond size-8 gradient emerald→gold +
+    ReceiptIcon + titre "Reçu de caisse" + loading state premium (badge
+    rond emerald + Loader2 + texte) + ReceiptBody imprimable (.receipt-
+    print) avec en-tête emerald-700 + GraduationCap + 4 Méta (Date/Heure/
+    Caissier/Statut) + 2 cards Élève/Matricule + table Désignation/Échéance/
+    Montant + tfoot Total encaissé + 2 cards Mode/Solde + pied + QR + footer
+    grid-cols-1 sm:grid-cols-2 (astuce PDF au-dessus, boutons Fermer +
+    Imprimer/PDF w-full sm:w-auto en dessous). Bouton Imprimer variant
+    success avec title natif.
+15. **Animation** : au chargement initial de chaque onglet, vérifier le
+    stagger des StatCards (0 → 0.05 → 0.1 → 0.15s sur dashboard-caisse) puis
+    le stagger des rows motion.tr (0 → 0.02 → 0.04 … capé 0.4s sur paiements-
+    list + cloture-caisse) et motion.div (0 → 0.04 → 0.08 … capé 0.4s sur
+    file-attente). Si l'utilisateur a activé prefers-reduced-motion au
+    niveau OS, vérifier qu'aucune animation n'est déclenchée (les cards/rows
+    apparaissent instantanément).
+16. **Responsive mobile (<640px)** : hero headers flex-col, bandeaux flex-
+    col (boutons Actualiser w-full), StatCards grid 2 colonnes, filtres
+    grid 1 colonne, tableaux scroll-x (hidden md:block + cartes mobiles
+    md:hidden), footers dialog grid-cols-2 → grid-cols-1 sm:grid-cols-2,
+    TabsList w-full overflow-x-auto scrollable.
+17. **Contrastes** : tous les badges doivent être lisibles en mode clair ET
+    sombre — vérifier spécifiquement les badges amber renforcés (border-
+    amber-300 bg-amber-100 text-amber-800), emerald renforcés (border-
+    emerald-300 bg-emerald-100 text-emerald-800), rose renforcés (border-
+    rose-300 bg-rose-100 text-rose-800), slate renforcés (border-slate-300
+    bg-slate-100 text-slate-800).
+18. **Impression PDF du reçu** : cliquer sur "Imprimer / PDF" dans le
+    RecuDialog → window.print() → vérifier que seul le ReceiptBody
+    (.receipt-print) est imprimé (CSS d'impression dans globals.css), pas
+    le header/footer du dialog (.no-print).
+
+### NE PAS commit/push — l'utilisateur gère le commit après vérification.

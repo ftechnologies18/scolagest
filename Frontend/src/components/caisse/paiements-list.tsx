@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ScolaGest — Historique des paiements (Phase 3).
+ * ScolaGest — Historique des paiements (Phase 3 — refonte Forêt EdTech).
  *
  * Tableau paginé des encaissements avec filtres :
  *  - plage de dates (date_debut / date_fin)
@@ -13,11 +13,15 @@
  * Action « Annuler » (avec motif) pour les paiements VALIDE ; réservée aux
  * rôles CAISSIER / DIRECTION / COMPTABLE.
  *
- * États : chargement (skeleton), vide, erreur.
+ * Refonte : GlassCard adaptive noHover noAnimation p-0 pour le tableau +
+ * header bg-emerald-50/60 + th text-emerald-900 uppercase tracking-wide +
+ * hover row bg-emerald-50/60 + boutons avec title natif + motion.tr stagger
+ * + empty/error/loading states premium (KentePattern bg + badge rond).
  */
 
 import * as React from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import {
   History,
   Loader2,
@@ -27,6 +31,8 @@ import {
   Receipt as ReceiptIcon,
   ChevronLeft,
   ChevronRight,
+  RotateCcw,
+  RefreshCw,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -37,6 +43,7 @@ import {
   paiementsKeys,
 } from "@/lib/api-caisse";
 import { useToast } from "@/hooks/use-toast";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import {
   formatFCFA,
   formatDateShort,
@@ -91,10 +98,98 @@ const MODE_FILTER_OPTIONS: { value: "all" | ModePaiement; label: string }[] = [
   { value: "MOBILE_MONEY", label: "Mobile Money" },
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// États partagés (premium)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <GlassCard
+      variant="adaptive"
+      noHover
+      noAnimation
+      className="relative overflow-hidden p-0"
+    >
+      <KentePattern variant="bg" />
+      <div className="relative flex flex-col items-center justify-center gap-3 px-4 py-12 text-center">
+        <div className="flex size-12 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+          <AlertCircle className="size-6" />
+        </div>
+        <div className="space-y-1">
+          <p className="font-display text-base font-semibold text-forest">
+            Erreur de chargement
+          </p>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Vérifiez que le backend est démarré puis réessayez.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onRetry}
+          title="Réessayer le chargement"
+        >
+          <RefreshCw className="size-3.5" />
+          Réessayer
+        </Button>
+      </div>
+    </GlassCard>
+  );
+}
+
+function EmptyState() {
+  return (
+    <GlassCard
+      variant="adaptive"
+      noHover
+      noAnimation
+      className="relative overflow-hidden p-0"
+    >
+      <KentePattern variant="bg" />
+      <div className="relative flex flex-col items-center justify-center gap-3 px-4 py-12 text-center">
+        <div className="flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <History className="size-6" />
+        </div>
+        <div className="space-y-1">
+          <p className="font-display text-base font-semibold text-forest">
+            Aucun paiement
+          </p>
+          <p className="max-w-md text-sm text-muted-foreground">
+            Aucun encaissement ne correspond à vos filtres. Modifiez les
+            critères ou encaissez un premier paiement dans l&apos;onglet «
+            Encaissement ».
+          </p>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+function LoadingState() {
+  return (
+    <GlassCard
+      variant="adaptive"
+      noHover
+      noAnimation
+      className="relative overflow-hidden p-0"
+    >
+      <KentePattern variant="strip" position="top" />
+      <div className="space-y-2 p-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </div>
+    </GlassCard>
+  );
+}
+
+// (icône RefreshCw réutilisée dans ErrorState / bandeau)
+
 export function PaiementsList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   // Filtres
   const [dateDebut, setDateDebut] = React.useState<string>("");
@@ -129,6 +224,7 @@ export function PaiementsList() {
     isLoading,
     isError,
     isFetching,
+    refetch,
   } = useQuery({
     queryKey: paiementsKeys.list(params),
     queryFn: () => fetchPaiements(params),
@@ -184,6 +280,16 @@ export function PaiementsList() {
     }
     annulerMutation.mutate(annulationId);
   }
+
+  function handleResetFilters() {
+    setDateDebut("");
+    setDateFin("");
+    setMode("all");
+    setMoiOnly(false);
+  }
+
+  const hasActiveFilters =
+    dateDebut !== "" || dateFin !== "" || mode !== "all" || moiOnly;
 
   return (
     <div className="space-y-4">
@@ -249,87 +355,130 @@ export function PaiementsList() {
             </Select>
           </div>
         </div>
+        {hasActiveFilters ? (
+          <div className="mt-3 flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleResetFilters}
+              title="Réinitialiser les filtres"
+            >
+              <RotateCcw className="size-3.5" />
+              Réinitialiser les filtres
+            </Button>
+          </div>
+        ) : null}
       </GlassCard>
 
       <KentePattern variant="separator" />
 
-      {/* Tableau */}
-      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
-        <div>
-          {isLoading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : isError ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-              <div className="flex size-12 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
-                <AlertCircle className="size-6" />
-              </div>
-              <p className="text-sm font-medium">Erreur de chargement</p>
-              <p className="max-w-md text-xs text-muted-foreground">
-                Vérifiez que le backend est démarré puis réessayez.
-              </p>
-            </div>
-          ) : paiements.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-              <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <History className="size-6" />
-              </div>
-              <p className="text-sm font-medium">Aucun paiement</p>
-              <p className="max-w-md text-xs text-muted-foreground">
-                Aucun encaissement ne correspond à vos filtres. Modifiez les
-                critères ou encaissez un premier paiement dans l&apos;onglet
-                « Encaissement ».
-              </p>
-            </div>
+      {/* Bandeau compte + actualiser */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          {isFetching ? (
+            <span className="inline-flex items-center gap-1">
+              <Loader2 className="size-3 animate-spin" /> Mise à jour…
+            </span>
           ) : (
-            <>
-              {/* Desktop table */}
-              <div className="hidden overflow-x-auto md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/40">
-                      <TableHead className="pl-4">Date</TableHead>
-                      <TableHead>Reçu</TableHead>
-                      <TableHead>Élève</TableHead>
-                      <TableHead>Motif</TableHead>
-                      <TableHead className="text-right">Montant</TableHead>
-                      <TableHead>Mode</TableHead>
-                      <TableHead>Caissier</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead className="pr-4 text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paiements.map((p) => (
-                      <PaiementRow
-                        key={p.id}
-                        paiement={p}
-                        onOpenRecu={() => setRecuPaiementId(p.id)}
-                        onAnnuler={() => handleOpenAnnulation(p.id)}
-                      />
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+            <span>
+              {total} paiement{total > 1 ? "s" : ""} · page {page} /{" "}
+              {totalPages}
+            </span>
+          )}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          title="Actualiser la liste des paiements"
+          className="w-full sm:w-auto"
+        >
+          <RefreshCw className={cn("size-3.5", isFetching && "animate-spin")} />
+          Actualiser
+        </Button>
+      </div>
 
-              {/* Mobile cards */}
-              <ul className="divide-y md:hidden">
-                {paiements.map((p) => (
-                  <PaiementMobileCard
+      {/* Tableau / states */}
+      {isLoading ? (
+        <LoadingState />
+      ) : isError ? (
+        <ErrorState onRetry={() => refetch()} />
+      ) : paiements.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <GlassCard
+          variant="adaptive"
+          noHover
+          noAnimation
+          className="overflow-hidden p-0"
+        >
+          {/* Desktop table */}
+          <div className="hidden overflow-x-auto md:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-emerald-100 bg-emerald-50/60 hover:bg-emerald-50/60 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                  <TableHead className="pl-4 text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    Date
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    Reçu
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    Élève
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    Motif
+                  </TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    Montant
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    Mode
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    Caissier
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    Statut
+                  </TableHead>
+                  <TableHead className="pr-4 text-right text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paiements.map((p, index) => (
+                  <PaiementRow
                     key={p.id}
                     paiement={p}
+                    index={index}
+                    prefersReducedMotion={prefersReducedMotion}
                     onOpenRecu={() => setRecuPaiementId(p.id)}
                     onAnnuler={() => handleOpenAnnulation(p.id)}
                   />
                 ))}
-              </ul>
-            </>
-          )}
-        </div>
-      </GlassCard>
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile cards */}
+          <ul className="divide-y md:hidden">
+            {paiements.map((p, index) => (
+              <PaiementMobileCard
+                key={p.id}
+                paiement={p}
+                index={index}
+                prefersReducedMotion={prefersReducedMotion}
+                onOpenRecu={() => setRecuPaiementId(p.id)}
+                onAnnuler={() => handleOpenAnnulation(p.id)}
+              />
+            ))}
+          </ul>
+        </GlassCard>
+      )}
 
       {/* Pagination */}
       {total > 0 ? (
@@ -352,6 +501,7 @@ export function PaiementsList() {
               size="sm"
               disabled={page <= 1 || isFetching}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
+              title="Page précédente"
             >
               <ChevronLeft className="size-4" />
               Précédent
@@ -361,6 +511,7 @@ export function PaiementsList() {
               size="sm"
               disabled={page >= totalPages || isFetching}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              title="Page suivante"
             >
               Suivant
               <ChevronRight className="size-4" />
@@ -384,7 +535,9 @@ export function PaiementsList() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <XCircle className="size-5 text-rose-600" />
+              <span className="flex size-7 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+                <XCircle className="size-4" />
+              </span>
               Annuler le paiement
             </DialogTitle>
             <DialogDescription>
@@ -402,11 +555,13 @@ export function PaiementsList() {
               placeholder="Ex. Erreur de saisie — doublon avec reçu REC-…"
             />
           </div>
-          <DialogFooter>
+          <DialogFooter className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
             <Button
               variant="outline"
               onClick={() => setAnnulationId(null)}
               disabled={annulerMutation.isPending}
+              className="w-full sm:w-auto"
+              title="Fermer sans annuler"
             >
               Fermer
             </Button>
@@ -414,6 +569,8 @@ export function PaiementsList() {
               variant="destructive"
               onClick={handleConfirmAnnulation}
               disabled={annulerMutation.isPending}
+              className="w-full sm:w-auto"
+              title="Confirmer l'annulation du paiement"
             >
               {annulerMutation.isPending ? (
                 <>
@@ -435,15 +592,19 @@ export function PaiementsList() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Ligne desktop
+// Ligne desktop (motion.tr avec stagger delay index*0.02)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PaiementRow({
   paiement,
+  index,
+  prefersReducedMotion,
   onOpenRecu,
   onAnnuler,
 }: {
   paiement: Paiement;
+  index: number;
+  prefersReducedMotion: boolean;
   onOpenRecu: () => void;
   onAnnuler: () => void;
 }) {
@@ -458,17 +619,31 @@ function PaiementRow({
     ? `${paiement.caissier.prenoms ?? ""} ${paiement.caissier.nom ?? ""}`.trim()
     : "—";
 
+  const motionProps = prefersReducedMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: 12 },
+        animate: { opacity: 1, y: 0 },
+        transition: {
+          duration: 0.3,
+          delay: Math.min(index * 0.02, 0.4),
+          ease: [0.22, 1, 0.36, 1] as const,
+        },
+      };
+
   return (
-    <TableRow
+    <motion.tr
+      data-slot="table-row"
       className={cn(
-        "cursor-pointer hover:bg-muted/40",
+        "cursor-pointer border-b transition-colors hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20",
         paiement.statut === "ANNULE" && "opacity-60",
       )}
       onClick={onOpenRecu}
+      {...motionProps}
     >
       <TableCell className="pl-4">
         <div className="flex flex-col">
-          <span className="text-xs font-medium">
+          <span className="whitespace-nowrap text-xs font-medium">
             {formatDateShort(paiement.date_paiement)}
           </span>
           <span className="text-[10px] text-muted-foreground">
@@ -477,69 +652,81 @@ function PaiementRow({
         </div>
       </TableCell>
       <TableCell>
-        <span className="font-mono text-xs font-medium">
+        <span className="break-words font-mono text-xs font-medium leading-snug">
           {paiement.numero_recu}
         </span>
       </TableCell>
       <TableCell>
         <div className="flex flex-col">
-          <span className="text-xs font-medium">{eleveLabel}</span>
+          <span className="break-words text-xs font-medium leading-snug">
+            {eleveLabel}
+          </span>
           {paiement.eleve?.inscription_courante?.classe_libelle ? (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="break-words text-[10px] leading-snug text-muted-foreground">
               {paiement.eleve.inscription_courante.classe_libelle}
             </span>
           ) : null}
         </div>
       </TableCell>
-      <TableCell className="text-xs">{motif}</TableCell>
+      <TableCell className="break-words text-xs leading-snug">
+        {motif}
+      </TableCell>
       <TableCell className="text-right font-mono text-xs font-semibold">
         {formatFCFA(paiement.montant)}
       </TableCell>
       <TableCell>
         <ModePaiementBadge mode={paiement.mode_paiement} />
       </TableCell>
-      <TableCell className="text-xs">{caissierLabel}</TableCell>
+      <TableCell className="break-words text-xs leading-snug">
+        {caissierLabel}
+      </TableCell>
       <TableCell>
         <StatutPaiementBadge statut={paiement.statut} />
       </TableCell>
       <TableCell className="pr-4 text-right" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-end gap-1">
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
             className="size-7"
             onClick={onOpenRecu}
             aria-label="Voir le reçu"
+            title="Voir le reçu"
           >
             <Eye className="size-3.5" />
           </Button>
           {paiement.statut === "VALIDE" ? (
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
-              className="size-7 text-rose-600 hover:bg-rose-50"
+              className="size-7 border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-800/60 dark:text-rose-300 dark:hover:bg-rose-950/40"
               onClick={onAnnuler}
               aria-label="Annuler le paiement"
+              title="Annuler le paiement"
             >
               <XCircle className="size-3.5" />
             </Button>
           ) : null}
         </div>
       </TableCell>
-    </TableRow>
+    </motion.tr>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Carte mobile
+// Carte mobile (motion.li avec stagger delay index*0.03)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PaiementMobileCard({
   paiement,
+  index,
+  prefersReducedMotion,
   onOpenRecu,
   onAnnuler,
 }: {
   paiement: Paiement;
+  index: number;
+  prefersReducedMotion: boolean;
   onOpenRecu: () => void;
   onAnnuler: () => void;
 }) {
@@ -553,24 +740,45 @@ function PaiementMobileCard({
   const caissierLabel = paiement.caissier
     ? `${paiement.caissier.prenoms ?? ""} ${paiement.caissier.nom ?? ""}`.trim()
     : "—";
+
+  const motionProps = prefersReducedMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: 8 },
+        animate: { opacity: 1, y: 0 },
+        transition: {
+          duration: 0.25,
+          delay: Math.min(index * 0.03, 0.3),
+          ease: [0.22, 1, 0.36, 1] as const,
+        },
+      };
+
   return (
-    <li
-      className="cursor-pointer p-3 hover:bg-muted/40"
+    <motion.li
+      className={cn(
+        "cursor-pointer p-3 transition-colors hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20",
+        paiement.statut === "ANNULE" && "opacity-60",
+      )}
       onClick={onOpenRecu}
+      {...motionProps}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{eleveLabel}</p>
-          <p className="truncate text-xs text-muted-foreground">{motif}</p>
+          <p className="break-words text-sm font-semibold leading-snug">
+            {eleveLabel}
+          </p>
+          <p className="break-words text-xs leading-snug text-muted-foreground">
+            {motif}
+          </p>
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-            <span className="font-mono">{paiement.numero_recu}</span>
+            <span className="break-words font-mono">{paiement.numero_recu}</span>
             <span>·</span>
-            <span>
+            <span className="whitespace-nowrap">
               {formatDateShort(paiement.date_paiement)}{" "}
               {formatTime(paiement.date_paiement)}
             </span>
             <span>·</span>
-            <span>{caissierLabel}</span>
+            <span className="break-words">{caissierLabel}</span>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
@@ -584,20 +792,22 @@ function PaiementMobileCard({
         <ModePaiementBadge mode={paiement.mode_paiement} />
         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             className="h-7 px-2"
             onClick={onOpenRecu}
+            title="Voir le reçu"
           >
             <ReceiptIcon className="size-3.5" />
             Reçu
           </Button>
           {paiement.statut === "VALIDE" ? (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-7 px-2 text-rose-600 hover:bg-rose-50"
+              className="h-7 border-rose-300 px-2 text-rose-700 hover:bg-rose-50 dark:border-rose-800/60 dark:text-rose-300 dark:hover:bg-rose-950/40"
               onClick={onAnnuler}
+              title="Annuler le paiement"
             >
               <XCircle className="size-3.5" />
               Annuler
@@ -605,6 +815,6 @@ function PaiementMobileCard({
           ) : null}
         </div>
       </div>
-    </li>
+    </motion.li>
   );
 }
