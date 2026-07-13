@@ -263,7 +263,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
       <KentePattern variant="bg" className="opacity-[0.06]" />
 
       {/* ===== Panneau gauche : Formulaire (glassmorphism) ===== */}
-      <div className="relative flex w-full items-center justify-center p-6 pt-16 lg:w-1/2 lg:pt-6 xl:w-[45%]">
+      <div className="relative flex w-full items-center justify-center p-4 pt-14 sm:p-6 sm:pt-16 lg:w-1/2 lg:pt-6 xl:w-[45%]">
         {/* Décorations d'arrière-plan */}
         <div
           aria-hidden
@@ -281,32 +281,32 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
           className="relative z-10 w-full max-w-md"
         >
           {/* En-tête mobile compact (caché sur desktop où le branding prend le relais) */}
-          <div className="mb-6 flex flex-col items-center text-center lg:hidden">
+          <div className="mb-3 flex flex-col items-center text-center lg:hidden">
             <Image
               src="/logo.png"
               alt="ScolaGest"
-              width={64}
-              height={64}
-              className="rounded-2xl bg-white p-1 shadow-lg shadow-amber-600/20 ring-1 ring-gold/40"
+              width={52}
+              height={52}
+              className="rounded-xl bg-white p-1 shadow-lg shadow-amber-600/20 ring-1 ring-gold/40"
               priority
             />
-            <h1 className="mt-3 font-display text-xl font-bold">ScolaGest</h1>
-            <p className="text-sm text-muted-foreground">Espace Parent</p>
+            <h1 className="mt-2 font-display text-lg font-bold">ScolaGest</h1>
+            <p className="text-xs text-muted-foreground">Espace Parent</p>
           </div>
 
           {/* Carte glass premium (refonte Forêt EdTech) */}
           <GlassCard
             variant="desktop"
             premiumBorder
-            className="relative overflow-hidden !p-8"
+            className="relative overflow-hidden !p-6 sm:!p-8"
           >
             {/* Texture kente subtile en fond de carte */}
             <KentePattern variant="bg" className="opacity-[0.05]" />
 
             {/* Hero engageant : titre + sous-titre rassurant */}
-            <div className="relative mb-6">
-              <div className="mb-3 flex items-center gap-2">
-                <span className="flex size-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-md shadow-emerald-900/20">
+            <div className="relative mb-4 sm:mb-6">
+              <div className="mb-2 flex items-center gap-2 sm:mb-3">
+                <span className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-md shadow-emerald-900/20 sm:size-10">
                   <UserRound className="size-5" />
                 </span>
                 <div className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
@@ -314,10 +314,10 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
                   Portail familial
                 </div>
               </div>
-              <h2 className="font-display text-2xl font-bold text-forest">
+              <h2 className="font-display text-xl font-bold text-forest sm:text-2xl">
                 Accédez au portail familial
               </h2>
-              <p className="mt-1.5 break-words text-sm leading-snug text-muted-foreground">
+              <p className="mt-1 break-words text-sm leading-snug text-muted-foreground sm:mt-1.5">
                 Suivez la scolarité de vos enfants, consultez les soldes et
                 réglez en ligne — en toute simplicité.
               </p>
@@ -345,7 +345,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
               </motion.button>
             ) : null}
 
-            <form onSubmit={handleSubmit} className="relative space-y-5">
+            <form onSubmit={handleSubmit} className="relative space-y-4 sm:space-y-5">
               {/* Téléphone — icône Phone + focus ring emerald */}
               <motion.div
                 variants={itemVariants}
@@ -529,7 +529,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
             </form>
 
             {/* Panneau démo (bascule via AnimatePresence) */}
-            <div className="relative mt-6 rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 backdrop-blur-sm">
+            <div className="relative mt-4 sm:mt-6 rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 backdrop-blur-sm">
               <button
                 type="button"
                 onClick={() => setDemoOpen((v) => !v)}
@@ -586,7 +586,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
             </div>
 
             {/* Note de sécurité (emerald, cohérent avec l'existant) */}
-            <p className="relative mt-4 flex items-start gap-1.5 text-[11px] leading-snug text-muted-foreground">
+            <p className="relative mt-3 sm:mt-4 flex items-start gap-1.5 text-[11px] leading-snug text-muted-foreground">
               <ShieldCheck className="mt-0.5 size-3 shrink-0 text-emerald-600" />
               Votre session parent est valable 2 heures et limitée à la
               consultation de vos enfants et au paiement en ligne. Aucun accès
@@ -594,7 +594,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
             </p>
           </GlassCard>
 
-          <p className="mt-6 break-words text-center text-[10px] leading-relaxed text-muted-foreground sm:text-[11px]">
+          <p className="mt-4 sm:mt-6 break-words text-center text-[10px] leading-relaxed text-muted-foreground sm:text-[11px]">
             © 2026 ScolaGest. Développé par Freelance Technologies Côte d&apos;Ivoire. Tous droits réservés.
           </p>
         </motion.div>
