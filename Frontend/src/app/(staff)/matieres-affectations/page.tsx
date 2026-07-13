@@ -20,7 +20,7 @@
  * redirigent vers cette page avec le bon onglet via `?tab=`.
  */
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BookOpen, CalendarDays, Layers, Sparkles } from "lucide-react";
 import { RoleGuard } from "@/components/auth/role-guard";
@@ -39,6 +39,13 @@ const ALLOWED_ROLES = [
 
 type TabValue = "matieres" | "affectations";
 
+/** Lit l'onglet depuis les searchParams avec fallback sur "matières". */
+function readTabFromParams(searchParams: URLSearchParams): TabValue {
+  return searchParams.get("tab") === "affectations"
+    ? "affectations"
+    : "matieres";
+}
+
 export default function MatieresAffectationsPage() {
   return (
     <RoleGuard allow={[...ALLOWED_ROLES]}>
@@ -50,17 +57,21 @@ export default function MatieresAffectationsPage() {
 function MatieresAffectationsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // State local = source de vérité pour Radix (controlled). Initialisé depuis
+  // l'URL pour la rétrocompatibilité (?tab=affectations) et le back/forward.
+  const [tab, setTab] = useState<TabValue>(() => readTabFromParams(searchParams));
 
-  // Onglet courant dérivé de l'URL (source de vérité = URL, pas de state local
-  // dupliqué — évite le anti-pattern setState-in-effect et garantit la
-  // cohérence URL ↔ onglet affiché).
-  const tabParam = searchParams.get("tab");
-  const tab: TabValue = tabParam === "affectations" ? "affectations" : "matieres";
+  // Sync URL → state quand l'URL change (back/forward, liens externes).
+  // Pattern légitime documenté Next.js pour les onglets synchronisés URL.
+  useEffect(() => {
+    setTab(readTabFromParams(searchParams));
+  }, [searchParams]);
 
-  /** Bascule d'onglet + met à jour l'URL sans rechargement (partageabilité). */
+  /** Bascule d'onglet : state local (réactivité immédiate) + URL (partage). */
   const handleTabChange = useCallback(
     (value: string) => {
       if (value !== "matieres" && value !== "affectations") return;
+      setTab(value as TabValue);
       const params = new URLSearchParams(searchParams.toString());
       params.set("tab", value);
       router.replace(`/matieres-affectations?${params.toString()}`, {
