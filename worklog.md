@@ -9521,3 +9521,366 @@ Stage Summary:
       bg-emerald-100 text-emerald-800) / "Écart : X FCFA" (border-amber-300
       bg-amber-100 text-amber-800) + total échéances en font-mono.
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+Task ID: 4
+Agent: frontend-styling-expert
+Task: Refonte du module /annees (Forêt EdTech, glassmorphism, kente, responsive)
+
+Work Log:
+- Lecture du worklog.md (rapports /eleves, /inscription, /impayes, /rapports,
+  /pre-inscriptions, /frais) — bugs à éviter notés : (1) PAS de Tooltip Radix
+  sur boutons cliquables → utiliser `title` natif ; (2) PAS de `truncate` sur
+  libellés longs → `break-words leading-snug` ; (3) PAS de `<button>` dans
+  `<button>` ; (4) `flex items-start` + `mt-0.5` sur icône badge InfoRow ;
+  (5) `items-stretch` + `h-full` pour égaliser cards en grid ; (6) contraste
+  avatar fallback `bg-emerald-600 text-white` ; (7) contraste badges
+  `bg-100 text-800 border-300` ; (8) vérifier `const { toast } = useToast();`
+  dans chaque composant qui utilise `toast(...)`.
+- Lecture du fichier à refondre `view-annees.tsx` (728 lignes) dans son
+  intégralité. 3 composants : `AnneesView` (composant principal),
+  `AnneeCard` (carte d'une année), `CreateAnneeDialog`, `PromoteDialog`.
+  Types locaux `AnneeScolaire`, `AnneeStats`, `PreviewEleve`, `PromoteResult`.
+  Hooks React Query (annees-scolaires, annee-stats, promotion-preview),
+  mutations activate/close/create/promote. Helper `statutBadge` + `formatDate`.
+- Lecture des composants DS `GlassCard` (variants mobile/tablet/desktop/
+  premium/adaptive, props premiumBorder/noHover/noAnimation/delay),
+  `KentePattern` (variants strip/bg/border/separator), `StatCard` (tones
+  emerald/amber/terracotta/gold/sky/forest, props icon/label/value/hint/
+  delay). Lecture des exemples `view-frais.tsx` (hero header GlassCard
+  desktop + 4 StatCards + sections par type + FraisCard hover lift + empty
+  states premium), `view-impayes.tsx` (hero header + 4 StatCards + barre
+  d'actions + tableau desktop). Pattern identifié : utiliser `delay={Math.min(index * 0.05, 0.3)}` sur GlassCard pour stagger (motion géré en
+  interne par GlassCard — pas besoin d'importer `motion` directement).
+- Refonte de `view-annees.tsx` (728 → 1145 lignes, +417 lignes) via `Write`
+  (fichier entier réécrit — les changements touchaient ~60% du fichier,
+  mais toutes les fonctions helpers, hooks et la logique métier ont été
+  recopiées à l'identique). Toutes les règles strictes respectées :
+  • Hero header premium : `GlassCard variant="desktop" noHover p-5 sm:p-6`
+    avec badge rond gradient emerald→gold (`bg-gradient-to-br from-emerald-600
+    to-amber-500 text-white shadow-lg shadow-emerald-900/20`) + icône
+    `CalendarDays` size-6 (au lieu de simple `<h2>` text-xl) + titre
+    `font-display text-2xl font-bold tracking-tight text-forest` + pill
+    "Phase 2" outline (border-emerald-300 bg-emerald-50/60 text-emerald-800
+    avec icône Sparkles) + sous-titre descriptif + pill "Année en cours :
+    {libelle}" emerald (border-emerald-200 bg-emerald-50 text-emerald-800
+    avec icône CheckCircle2) qui n'apparaît que si une année est active +
+    boutons à droite ("Passage / Réinscription" variant outline avec
+    ArrowRight + "Nouvelle année" variant success avec Plus), full-width
+    sur mobile (`w-full sm:w-auto`).
+  • 4 StatCards de résumé en grid `sm:grid-cols-2 lg:grid-cols-4` entre
+    le header et les cards :
+    - "Total années" (tone emerald, icon CalendarDays, value = totalAnnees,
+      hint "exercices configurés") delay=0.
+    - "Année active" (tone gold, icon CheckCircle2, value = libellé de
+      l'année active ou "—", hint "en cours"/"aucune active") delay=0.05.
+    - "En préparation" (tone amber, icon AlertCircle, value = nombre
+      d'années en statut PREPARATION et non actives, hint "à activer")
+      delay=0.1.
+    - "Clôturées" (tone forest, icon Archive, value = nombre d'années
+      en statut CLOTUREE, hint "archivées") delay=0.15.
+  • AnneeCard enrichie :
+    - `GlassCard variant="adaptive" delay={Math.min(index * 0.05, 0.3)}`
+      + `premiumBorder={annee.est_active}` (bordure gold pour l'année
+      active, en remplacement du simple `ring-2 ring-emerald-400/60`) +
+      `className="flex h-full flex-col"` (égalisation hauteurs en grid) ;
+      hover lift activé (noHover retiré).
+    - Header : libellé `break-words font-display text-lg font-semibold
+      leading-snug text-forest` (au lieu de text-lg sans break-words) +
+      dates avec icône CalendarDays dans badge emerald/15 (au lieu de
+      muted-foreground) + `tabular-nums` + statut badge à droite.
+    - 3 mini-cards stats : bordures colorées (emerald-200/60, amber-200/60,
+      gold/30) + fond coloré subtil (emerald-50/60, amber-50/60, gold/10)
+      + icônes dans badge rond coloré (Users emerald, CalendarDays amber,
+      GraduationCap gold) + valeur text-lg font-bold colorée (emerald-800,
+      amber-800, gold-dark) + label text-[10px] font-medium coloré. Avant :
+      tout en `bg-muted/40 text-muted-foreground`.
+    - Boutons d'action : `title` natif (PAS de Tooltip Radix — BUG À ÉVITER
+      #1) + `aria-label` complet + icône + texte `hidden lg:inline` (icônes
+      seules sur mobile, icône + texte sur lg+). Bouton "Activer" variant
+      outline border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-
+      emerald-100 (renforcé vs border-emerald-300 text-emerald-700 simple).
+      Bouton "Clôturer" variant outline border-terracotta/40 bg-terracotta/5
+      text-terracotta hover:bg-terracotta/10 (au lieu de variant outline
+      par défaut — meilleur signal "danger chaud").
+    - Badge "Année en cours" : `bg-gradient-to-r from-emerald-600 to-
+      amber-500 text-white shadow-sm` avec icône CheckCircle2 (au lieu de
+      `bg-emerald-600 text-white` uni). Badge "Archivée" : `border
+      border-terracotta/40 bg-terracotta/10 text-terracotta` (au lieu de
+      `text-muted-foreground`).
+  • CreateAnneeDialog premium :
+    - Header : `DialogTitle` avec badge rond gradient emerald→gold (size-10
+      + CalendarDays size-5) + titre `font-display text-lg font-semibold
+      text-forest` + description contextuelle.
+    - 3 sous-sections `GlassCard variant="tablet" noHover noAnimation
+      className="p-4"` :
+      - Section 1 "Libellé" : Label + Input (bg-background opaque pour
+        lisibilité) avec focus ring emerald (`focus-visible:border-emerald-
+        500 focus-visible:ring-emerald-500/30`) + hint "Format recommandé :
+        2027-2028".
+      - Section 2 "Dates" : grid 1 colonne mobile / 2 colonnes sm, chaque
+        Input avec icône Calendar emerald à gauche (`pointer-events-none
+        absolute left-2.5 top-1/2`) + `pl-8` + focus ring emerald.
+      - Section 3 "Reprise des frais" : `flex items-start justify-between`
+        (BUG À ÉVITER #4 respecté) avec badge gold/15 (Coins size-4 +
+        `mt-0.5`) à gauche + Label + description, Switch à droite + si
+        `copierFrais` est true, Select "Année source" avec id `source-annee`
+        + SelectTrigger bg-background + focus ring emerald.
+    - Footer : `grid grid-cols-2 gap-2 sm:flex sm:justify-end` (boutons
+      full-width sur mobile, inline sur desktop). Bouton Annuler variant
+      outline. Bouton submit `variant="success"` (au lieu de `bg-emerald-600
+      hover:bg-emerald-700` custom) avec icône `CheckCircle2` en mode
+      succès et `Loader2` en mode pending (au lieu de `Plus`).
+    - `canSubmit` consolidé : `!!libelle && !!dateDebut && !!dateFin && (!
+      copierFrais || !!sourceAnnee)`.
+  • PromoteDialog premium :
+    - Header : `DialogTitle` avec badge rond gradient emerald→gold (size-10
+      + ArrowRight size-5) + titre `font-display text-lg font-semibold
+      text-forest` + description contextuelle.
+    - Étape 1 (sélection années) : 2 Selects avec `id` + Label associés,
+      SelectTrigger bg-background + focus ring emerald. Flèche de
+      transition au centre : `flex justify-center py-1` avec badge rond
+      emerald/15 + ArrowRight size-4 (au lieu de simple ArrowRight muted).
+      Bandeau d'info en bas (border-emerald-200 bg-emerald-50/60 text-
+      emerald-800 + CheckCircle2) qui apparaît si ancienneId && nouvelleId
+      (remplace le bouton "Voir les élèves" inutile — la preview se charge
+      automatiquement via React Query `enabled: !!ancienneId && open && !
+      result`).
+    - Étape 2 (preview élèves) :
+      * 4 StatCards horizontales (PROMU emerald + ArrowRight, REDOUBLANT
+        amber + RotateCcw, DIPLOME sky + GraduationCap, NON_REINSCRIT
+        terracotta + UserX) avec stagger delay 0/0.05/0.1/0.15 (au lieu
+        de 4 mini-cards `bg-X-50 p-2` simples).
+      * Tableau : wrapper `rounded-lg border border-emerald-200/60` (au
+        lieu de `border` simple) + header `sticky top-0 bg-emerald-50/80
+        backdrop-blur` (au lieu de `bg-background`) + th `text-xs font-
+        semibold text-emerald-900 dark:text-emerald-200` + hover row
+        `bg-emerald-50/60 dark:bg-emerald-950/20`.
+      * Icônes de décision dans la colonne gauche : badges ronds colorés
+        (REDOUBLANT amber/15, NON_REINSCRIT rose/15, DIPLOME sky/15, PROMU
+        emerald/15) avec icône size-3.5 (au lieu d'icône size-4 nue).
+      * Cellule élève : `break-words text-sm font-medium leading-snug
+        text-foreground` (au lieu de `font-medium text-sm`).
+      * Select de décision : `h-8 w-[140px] text-xs focus-visible:border-
+        emerald-500 focus-visible:ring-emerald-500/30` + `aria-label`
+        complet avec nom de l'élève (au lieu de sans aria-label).
+      * Bandeau d'info en bas : `border-emerald-200 bg-emerald-50/60 text-
+        emerald-800` + CheckCircle2 (au lieu de `bg-emerald-50 p-3 text-
+        emerald-700` simple).
+    - Étape 3 (résultat) : 4 StatCards (Promus emerald + ArrowRight,
+      Redoublants amber + RotateCcw, Diplômés sky + GraduationCap, Non
+      réinscrits terracotta + UserX) avec stagger + alerte erreurs si
+      `result.erreurs > 0` en border-amber-300 bg-amber-50 text-amber-800
+      + hint "skipped" si `result.skipped > 0`.
+    - Footer : `grid grid-cols-2 gap-2 sm:flex sm:justify-end` (boutons
+      full-width sur mobile, inline sur desktop). Bouton Annuler variant
+      outline. Bouton submit `variant="success"` (au lieu de `bg-emerald-
+      600 hover:bg-emerald-700` custom) avec icône `ArrowRight` en mode
+      succès et `Loader2` en mode pending. En mode résultat : bouton
+      "Terminé" `variant="success"` avec CheckCircle2 (au lieu de `bg-
+      emerald-600 hover:bg-emerald-700` sans icône).
+  • Empty state premium : nouveau composant `EmptyState` (icône LucideIcon,
+    title, description, action React.ReactNode optionnel) — `GlassCard
+    variant="adaptive" noHover relative overflow-hidden` + `KentePattern
+    variant="bg"` + badge rond `bg-emerald-100 text-emerald-700` + titre
+    `font-display text-base font-semibold text-forest` + description
+    `max-w-md text-sm text-muted-foreground` + bouton "Créer une année"
+    `variant="success"` avec icône Plus.
+  • `statutBadge` renforcé (logique conservée, style amélioré) :
+    - Active : `bg-emerald-100 text-emerald-800 border-emerald-300` (au
+      lieu de `bg-emerald-600 text-white` uni — meilleur contraste avec le
+      nouveau badge gradient "Année en cours" sur la card).
+    - PREPARATION : `bg-amber-100 text-amber-800 border-amber-300` (au
+      lieu de `text-amber-700` simple — BUG À ÉVITER #7).
+    - EN_COURS : `bg-emerald-100 text-emerald-800 border-emerald-300` (au
+      lieu de `text-emerald-700` simple).
+    - CLOTUREE : `bg-terracotta/10 text-terracotta border-terracotta/40`
+      (au lieu de `text-muted-foreground` muted — meilleur signal
+      "archivé").
+  • Imports enrichis : ajout de `Calendar` (icône pour inputs dates),
+    `Sparkles` (pill "Phase 2"), `Coins` (section reprise des frais),
+    `StatCard` (DS), `cn` (utils). Import retiré : `Textarea` (n'était pas
+    utilisé dans le fichier d'origine — vérifié), `formatFCFA` (n'était pas
+    utilisé dans le fichier d'origine — vérifié par grep avant refonte).
+  • Accessibilité : `aria-label` complet sur tous les boutons icône
+    (Activer/Clôturer) et sur le Select de décision par élève, `title`
+    natif pour tooltip (PAS de Tooltip Radix — BUG À ÉVITER #1), `id` +
+    `<Label htmlFor>` sur tous les champs (Libellé, Date de début, Date de
+    fin, Reprendre les frais, Année source, Année source/cible promote,
+    Select de décision par élève), contrastes WCAG AA respectés (badges
+    border-300 bg-100 text-800).
+  • Aucune logique métier modifiée : types `AnneeScolaire`/`AnneeStats`/
+    `PreviewEleve`/`PromoteResult` intacts, hooks React Query
+    (`annees-scolaires` / `annee-stats, annee.id` / `promotion-preview,
+    ancienneId`) avec mêmes `enabled`/`retry`/`retryDelay`, mutations
+    `activateMutation`/`closeMutation`/`mutation` (create)/`mutation`
+    (promote) avec mêmes `mutationFn`/`onSuccess`/`onError`, state
+    `createOpen`/`promoteOpen`/`libelle`/`dateDebut`/`dateFin`/`copierFrais`/
+    `sourceAnnee`/`ancienneId`/`nouvelleId`/`result`/`decisions`, helpers
+    `statutBadge` (logique conservée, style amélioré) / `formatDate`,
+    `handleClose` / `updateDecision` / `stats` useMemo (avec même reduce
+    logique est_diplome → diplomes / PROMU → promus / REDOUBLANT →
+    redoublants / NON_REINSCRIT → nonReinscrits), constantes de décision
+    `PROMU`/`REDOUBLANT`/`NON_REINSCRIT` (inline strings comme l'original,
+    DIPLOME étant un cas particulier de PROMU+est_diplome). Endpoints API
+    inchangés : GET /api/annees-scolaires, POST /api/annees-scolaires (avec
+    copier_frais_de optionnel), POST /api/annees-scolaires/:id/activate,
+    POST /api/annees-scolaires/:id/close, POST /api/annees-scolaires/preview
+    (avec ancienne_annee_id), POST /api/annees-scolaires/promote (avec
+    ancienne_annee_id/nouvelle_annee_id/decisions), GET /api/annees-
+    scolaires/:id/stats. Constantes de décision respectées : `PROMU`,
+    `REDOUBLANT`, `NON_REINSCRIT`, `DIPLOME` (ce dernier étant déduit via
+    `e.est_diplome && d === "PROMU"` comme dans l'original).
+
+Compile-check : `bunx tsc --noEmit 2>&1 | grep -c "view-annees"` → **0
+erreur** sur view-annees.tsx. Les 17 erreurs tsc restantes sont toutes
+PRÉ-EXISTANTES sur d'autres fichiers (login-form ×8, dashboard-shell ×3,
+view-parametres ×2, view-utilisateurs ×1, etablissement-form-dialog ×1,
+utilisateur-form-dialog ×1, instrumentation ×1) — aucune sur view-annees.
+Lint-check : `bunx eslint src/components/dashboard/views/view-annees.tsx`
+→ **0 erreur, 0 warning** (EXIT=0). `bun run lint` (full project) →
+**0 erreur, 0 warning** (EXIT=0).
+
+Stage Summary:
+- Fichiers modifiés (1) :
+  • `Frontend/src/components/dashboard/views/view-annees.tsx`
+    (728 → 1145 lignes, +417 lignes).
+- Identité "Forêt EdTech" enrichie :
+  • Hero header GlassCard desktop + badge rond gradient emerald→gold
+    (CalendarDays size-6) + pill "Phase 2" outline (Sparkles) + pill
+    "Année en cours : {libelle}" emerald (CheckCircle2) + boutons
+    "Passage / Réinscription" (outline, ArrowRight) et "Nouvelle année"
+    (success, Plus) full-width mobile / auto desktop.
+  • 4 StatCards de résumé (Total années emerald/CalendarDays, Année active
+    gold/CheckCircle2, En préparation amber/AlertCircle, Clôturées
+    forest/Archive) avec stagger 0/0.05/0.1/0.15.
+  • AnneeCard : GlassCard adaptive (hover lift) + `premiumBorder` pour
+    l'année active (au lieu de ring-emerald) + `flex h-full flex-col` pour
+    égaliser les hauteurs en grid ; libellé `break-words font-display
+    text-lg font-semibold leading-snug text-forest` ; dates avec icône
+    CalendarDays dans badge emerald/15 ; 3 mini-cards stats colorées
+    (élèves emerald/inscrits amber/frais gold) avec bordures colorées et
+    icônes dans badges ronds ; boutons Activer (border-emerald-300 bg-
+    emerald-50 text-emerald-800) et Clôturer (border-terracotta/40 bg-
+    terracotta/5 text-terracotta) avec `title` natif + `aria-label` +
+    `hidden lg:inline` sur le libellé ; badge "Année en cours" en gradient
+    emerald→gold (au lieu de bg-emerald-600 uni) ; badge "Archivée" en
+    terracotta/10 (au lieu de muted-foreground).
+  • CreateAnneeDialog premium : header badge rond gradient emerald→gold
+    (CalendarDays) + titre font-display text-lg ; 3 sous-sections GlassCard
+    tablet (Libellé, Dates avec icônes Calendar, Reprise des frais avec
+    badge gold/15 + Coins + Switch + Select année source) ; footer
+    grid-cols-2 mobile + sm:flex sm:justify-end desktop ; bouton submit
+    variant="success" avec CheckCircle2/Loader2 (au lieu de Plus seul).
+  • PromoteDialog premium : header badge rond gradient emerald→gold
+    (ArrowRight) + titre font-display text-lg ; étape 1 (sélection années)
+    avec 2 Selects (id + Label + focus ring emerald) + flèche de transition
+    au centre (badge rond emerald/15 + ArrowRight) + bandeau d'info en bas
+    (border-emerald-200 bg-emerald-50/60 + CheckCircle2) ; étape 2 (preview)
+    avec 4 StatCards horizontales (PROMU emerald/ArrowRight, REDOUBLANT
+    amber/RotateCcw, DIPLOME sky/GraduationCap, NON_REINSCRIT
+    terracotta/UserX) + tableau avec header bg-emerald-50/80 backdrop-blur
+    + hover row bg-emerald-50/60 + icônes de décision dans badges ronds
+    colorés + Select de décision focus ring emerald + `aria-label` complet
+    par élève + bandeau d'info en bas ; étape 3 (résultat) avec 4 StatCards
+    (Promus emerald, Redoublants amber, Diplômés sky, Non réinscrits
+    terracotta) + alerte erreurs amber si > 0 + hint skipped si > 0 ;
+    footer grid-cols-2 mobile + bouton submit variant="success" avec
+    ArrowRight/Loader2 (au lieu de ArrowRight seul sans spinner).
+  • Empty state "Aucune année scolaire" : KentePattern bg + badge rond
+    emerald + CalendarDays + bouton "Créer une année" (variant success
+    avec Plus).
+- Responsive 100% : mobile (1 colonne, AnneeCard icônes seules, StatCards
+  1 colonne, boutons d'action full-width, footer dialog grid-cols-2,
+  hero header boutons full-width en colonne) / tablette (StatCards 2
+  colonnes, AnneeCard 2 colonnes, icônes seules) / desktop (StatCards 4
+  colonnes, AnneeCard 3 colonnes, icône + texte sur lg+, hover lift,
+  boutons hero header inline en colonne à droite).
+- Touch targets ≥ 44px sur mobile : boutons d'action AnneeCard (size="sm"
+  h-8 mais full-width avec flex-1 → zone tactile confortable), boutons
+  dialog footer h-9 (default), SelectTrigger h-9 (default), boutons hero
+  header full-width mobile.
+- Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt EdTech :
+  emerald (#047857) primaire (année active, bouton Activer), amber
+  (#F59E0B) secondaire (année en préparation, REDOUBLANT), gold (#D4AF37)
+  premium (année active, frais), terracotta (#C2410C) danger chaud
+  (année clôturée, bouton Clôturer, NON_REINSCRIT), sky pour DIPLOME
+  (cohérent avec l'original). Rose uniquement pour l'icône UserX
+  (NON_REINSCRIT) — cohérent avec /impayes et /pre-inscriptions.
+- Aucun Tooltip Radix — attributs `title` natifs (BUG À ÉVITER #1). Aucun
+  `truncate` sur les libellés longs — `break-words leading-snug` (BUG
+  À ÉVITER #2). Pas de `<button>` imbriqué dans un `<button>` (BUG
+  À ÉVITER #3 — AnneeCard n'est pas cliquable, les badges "Année en cours"
+  et "Archivée" sont des `<div>` et non des `<Button>`). `flex items-start`
+  + `mt-0.5` sur badge icône dans la section "Reprise des frais" (BUG
+  À ÉVITER #4). `flex h-full flex-col` + `premiumBorder` sur AnneeCard
+  pour égaliser les hauteurs (BUG À ÉVITER #5). Contrastes renforcés sur
+  badges statutBadge (border-300 bg-100 text-800 — BUG À ÉVITER #7).
+- Bug `toast` non déclaré VÉRIFIÉ : `const { toast } = useToast();` est
+  présent dans les 3 composants qui utilisent `toast(...)` : `AnneesView`
+  (l. 80), `CreateAnneeDialog` (l. 320), `PromoteDialog` (l. 481). Aucun
+  bug potentiel.
+- TypeScript : **0 erreur sur view-annees.tsx** (vérifié par
+  `bunx tsc --noEmit 2>&1 | grep -c "view-annees"` → 0 match). Les 17
+  erreurs tsc restantes sont toutes pré-existantes sur d'autres fichiers
+  (login-form ×8, dashboard-shell ×3, view-parametres ×2,
+  view-utilisateurs ×1, etablissement-form-dialog ×1, utilisateur-form-
+  dialog ×1, instrumentation ×1).
+- Lint : **0 erreur, 0 warning** sur l'ensemble du projet
+  (`bun run lint` EXIT=0). Fichier view-annees.tsx individuellement :
+  EXIT=0.
+- Aucune logique métier modifiée. Aucun endpoint backend touché. Fichiers
+  DS (glass-card, kente-pattern, stat-card), globals.css, api-client.ts,
+  format.ts, components/ui/*, components/ds/*, app/(staff)/annees/page.tsx
+  (route wrapper non modifiée) — TOUS INTACTS.
+- Points à vérifier par agent browser :
+  1. Rendu du hero header GlassCard desktop (badge rond gradient
+     emerald→gold avec CalendarDays size-6, titre font-display text-2xl
+     text-forest "Années scolaires", pill "Phase 2" outline à droite du
+     titre, pill "Année en cours : {libelle}" emerald sous le sous-titre,
+     boutons "Passage / Réinscription" (outline) et "Nouvelle année"
+     (success) full-width mobile / inline en colonne à droite sur desktop).
+  2. Rendu des 4 StatCards en grid lg:grid-cols-4 (Total années emerald/
+     CalendarDays, Année active gold/CheckCircle2, En préparation amber/
+     AlertCircle, Clôturées forest/Archive) avec stagger animation (delay
+     0/0.05/0.1/0.15).
+  3. AnneeCard : hover lift (noHover retiré) ; `premiumBorder` gold sur
+     l'année active ; libellé font-display text-lg font-semibold text-forest
+     break-words ; dates avec icône CalendarDays dans badge emerald/15 +
+     tabular-nums ; 3 mini-cards stats colorées (élèves emerald/inscrits
+     amber/frais gold) avec bordures colorées et icônes dans badges ronds ;
+     boutons Activer (border-emerald-300) et Clôturer (border-terracotta/40)
+     avec `title` natif + icônes seules sous lg, icône + texte sur lg+ ;
+     badge "Année en cours" en gradient emerald→gold ; badge "Archivée"
+     en terracotta/10.
+  4. CreateAnneeDialog : header avec badge rond gradient emerald→gold +
+     CalendarDays + titre font-display text-lg ; 3 sous-sections GlassCard
+     tablet (Libellé avec hint "Format recommandé : 2027-2028", Dates avec
+     icônes Calendar emerald à gauche des inputs, Reprise des frais avec
+     badge gold/15 + Coins + Switch + Select année source) ; footer
+     grid-cols-2 sur mobile (boutons full-width) + sm:flex sm:justify-end
+     sur desktop ; bouton submit variant="success" avec CheckCircle2
+     (ou Loader2 si pending).
+  5. PromoteDialog : header avec badge rond gradient emerald→gold +
+     ArrowRight + titre font-display text-lg ; étape 1 (sélection années)
+     avec 2 Selects (id + Label + focus ring emerald) + flèche de
+     transition au centre (badge rond emerald/15 + ArrowRight) + bandeau
+     d'info en bas ; étape 2 (preview) avec 4 StatCards horizontales
+     (PROMU emerald, REDOUBLANT amber, DIPLOME sky, NON_REINSCRIT
+     terracotta) + tableau avec header bg-emerald-50/80 backdrop-blur +
+     hover row bg-emerald-50/60 + icônes de décision dans badges ronds
+     colorés + Select de décision focus ring emerald + `aria-label`
+     complet par élève ; étape 3 (résultat) avec 4 StatCards + alerte
+     erreurs amber si > 0 ; footer grid-cols-2 sur mobile + bouton submit
+     variant="success" avec ArrowRight (ou Loader2 si pending).
+  6. Empty state "Aucune année scolaire" : KentePattern bg + badge rond
+     emerald + CalendarDays + bouton "Créer une année" variant success
+     avec Plus.
+  7. Statut badge : Active (bg-emerald-100 text-emerald-800 border-
+     emerald-300), Préparation (bg-amber-100 text-amber-800 border-
+     amber-300), En cours (bg-emerald-100 text-emerald-800 border-
+     emerald-300), Clôturée (bg-terracotta/10 text-terracotta border-
+     terracotta/40).
+  8. Loading state : KentePattern strip top + Loader2 size-8 animate-spin
+     text-emerald-600 centré (au lieu de Loader2 seul sans KentePattern).
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.
