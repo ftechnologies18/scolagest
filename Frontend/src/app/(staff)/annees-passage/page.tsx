@@ -31,10 +31,8 @@
 
 import { useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, CalendarDays, CalendarRange, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays } from "lucide-react";
 import { RoleGuard } from "@/components/auth/role-guard";
-import { GlassCard } from "@/components/ds/glass-card";
-import { KentePattern } from "@/components/ds/kente-pattern";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import AnneesView from "@/components/dashboard/views/view-annees";
 import { PassageMasseDashboard } from "@/components/passage-masse/passage-masse-dashboard";
@@ -87,61 +85,30 @@ function AnneesPassageContent() {
   );
 
   return (
-    <div className="relative min-h-screen">
-      <KentePattern variant="bg" className="opacity-[0.04]" />
+    <div className="relative mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      {/* ─── Onglets Années / Passage ───────────────────────────────────── */}
+      <Tabs value={tab} onValueChange={handleTabChange} className="space-y-0">
+        <TabsList className="h-10">
+          <TabsTrigger value="annees" className="gap-1.5 px-3">
+            <CalendarDays className="size-4" />
+            Années scolaires
+          </TabsTrigger>
+          <TabsTrigger value="passage" className="gap-1.5 px-3">
+            <ArrowRight className="size-4" />
+            Passage de classe
+          </TabsTrigger>
+        </TabsList>
 
-      <div className="relative mx-auto w-full max-w-7xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
-        {/* ─── Header global premium ─────────────────────────────────────── */}
-        <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3 sm:gap-4">
-              {/* Badge rond gradient emerald→gold avec icône CalendarRange (fusion années + passage) */}
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg shadow-emerald-900/20">
-                <CalendarRange className="size-6" />
-              </div>
-              <div className="min-w-0 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="font-display text-2xl font-bold tracking-tight text-forest">
-                    Années scolaires &amp; Passage de classe
-                  </h1>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50/60 px-2 py-0.5 align-middle text-[11px] font-medium text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
-                    <Sparkles className="size-3" />
-                    Cycle annuel
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Gestion du cycle annuel : configuration des années scolaires
-                  et passage de classe en masse (opération de fin d&apos;année).
-                </p>
-              </div>
-            </div>
-          </div>
-        </GlassCard>
+        {/* TabContent Années — rend AnneesView (CRUD années scolaires) */}
+        <TabsContent value="annees" className="mt-0">
+          <AnneesView />
+        </TabsContent>
 
-        {/* ─── Onglets Années / Passage ───────────────────────────────────── */}
-        <Tabs value={tab} onValueChange={handleTabChange} className="space-y-0">
-          <TabsList className="h-10">
-            <TabsTrigger value="annees" className="gap-1.5 px-3">
-              <CalendarDays className="size-4" />
-              Années scolaires
-            </TabsTrigger>
-            <TabsTrigger value="passage" className="gap-1.5 px-3">
-              <ArrowRight className="size-4" />
-              Passage de classe
-            </TabsTrigger>
-          </TabsList>
-
-          {/* TabContent Années — rend AnneesView (CRUD années scolaires) */}
-          <TabsContent value="annees" className="mt-0">
-            <AnneesView />
-          </TabsContent>
-
-          {/* TabContent Passage — rend PassageMasseDashboard (passage en masse) */}
-          <TabsContent value="passage" className="mt-0">
-            <PassageMasseDashboard />
-          </TabsContent>
-        </Tabs>
-      </div>
+        {/* TabContent Passage — rend PassageMasseDashboard (passage en masse) */}
+        <TabsContent value="passage" className="mt-0">
+          <PassageMasseDashboard />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

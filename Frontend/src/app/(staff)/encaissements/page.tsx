@@ -29,10 +29,8 @@
 
 import { useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { HandCoins, Smartphone, Sparkles, Wallet } from "lucide-react";
+import { Smartphone, Wallet } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
-import { GlassCard } from "@/components/ds/glass-card";
-import { KentePattern } from "@/components/ds/kente-pattern";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import CaisseView from "@/components/dashboard/views/view-caisse";
 import MobileMoneyView from "@/components/dashboard/views/view-mobile-money";
@@ -94,61 +92,31 @@ function EncaissementsContent() {
   );
 
   return (
-    <div className="relative min-h-screen">
-      <KentePattern variant="bg" className="opacity-[0.04]" />
-
-      <div className="relative mx-auto w-full max-w-7xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
-        {/* ─── Header global premium ─────────────────────────────────────── */}
-        <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3 sm:gap-4">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg shadow-emerald-900/20">
-                <HandCoins className="size-6" />
-              </div>
-              <div className="min-w-0 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="font-display text-2xl font-bold tracking-tight text-forest">
-                    Encaissements
-                  </h1>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50/60 px-2 py-0.5 align-middle text-[11px] font-medium text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
-                    <Sparkles className="size-3" />
-                    Guichet
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Guichet d&apos;encaissement unifié : caisse physique (espèces,
-                  chèque, virement) et Mobile Money (Orange, MTN, Wave).
-                </p>
-              </div>
-            </div>
-          </div>
-        </GlassCard>
-
-        {/* ─── Onglets Caisse / Mobile Money ──────────────────────────────── */}
-        <Tabs value={tab} onValueChange={handleTabChange} className="space-y-0">
-          <TabsList className="h-10">
-            <TabsTrigger value="caisse" className="gap-1.5 px-3">
-              <Wallet className="size-4" />
-              Caisse
-            </TabsTrigger>
-            {canSeeMomo ? (
-              <TabsTrigger value="momo" className="gap-1.5 px-3">
-                <Smartphone className="size-4" />
-                Mobile Money
-              </TabsTrigger>
-            ) : null}
-          </TabsList>
-
-          <TabsContent value="caisse" className="mt-0">
-            <CaisseView />
-          </TabsContent>
+    <div className="relative mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      {/* ─── Onglets Caisse / Mobile Money ──────────────────────────────── */}
+      <Tabs value={tab} onValueChange={handleTabChange} className="space-y-0">
+        <TabsList className="h-10">
+          <TabsTrigger value="caisse" className="gap-1.5 px-3">
+            <Wallet className="size-4" />
+            Caisse
+          </TabsTrigger>
           {canSeeMomo ? (
-            <TabsContent value="momo" className="mt-0">
-              <MobileMoneyView />
-            </TabsContent>
+            <TabsTrigger value="momo" className="gap-1.5 px-3">
+              <Smartphone className="size-4" />
+              Mobile Money
+            </TabsTrigger>
           ) : null}
-        </Tabs>
-      </div>
+        </TabsList>
+
+        <TabsContent value="caisse" className="mt-0">
+          <CaisseView />
+        </TabsContent>
+        {canSeeMomo ? (
+          <TabsContent value="momo" className="mt-0">
+            <MobileMoneyView />
+          </TabsContent>
+        ) : null}
+      </Tabs>
     </div>
   );
 }
