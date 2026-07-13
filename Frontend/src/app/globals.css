@@ -461,6 +461,42 @@
 }
 
 /* ───────────────────────────────────────────────────────────────────────────── */
+/* PWA install — effet shimmer idle subtil sur le bord du bouton.                */
+/* Signal d'interactivité discret : un gradient gold traverse le bord toutes les */
+/* 4s. Désactivé automatiquement par le bloc prefers-reduced-motion ci-dessous.  */
+/* ───────────────────────────────────────────────────────────────────────────── */
+.pwa-install-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.pwa-install-shimmer::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(212, 175, 55, 0) 45%,
+    rgba(212, 175, 55, 0.8) 50%,
+    rgba(212, 175, 55, 0) 55%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  background-position: 200% 0;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: pwa-shimmer 4s ease-in-out infinite;
+}
+@keyframes pwa-shimmer {
+  0%, 100% { background-position: 200% 0; }
+  50% { background-position: -100% 0; }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── */
 /* Forêt EdTech — Accessibilité : respect global de prefers-reduced-motion       */
 /* Désactive toutes les animations CSS utilitaires (animate-pulse/spin/bounce/    */
 /* ping) ainsi que les transitions/animations when l'utilisateur a activé         */

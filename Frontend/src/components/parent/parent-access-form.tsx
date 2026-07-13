@@ -323,28 +323,6 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
               </p>
             </div>
 
-            {/* Bandeau d'installation PWA (uniquement si `beforeinstallprompt`
-                capturé — Chrome/Edge/Android. Caché sur iOS Safari). */}
-            {canInstall ? (
-              <motion.button
-                type="button"
-                onClick={handleInstall}
-                disabled={installing}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                whileHover={{ scale: installing ? 1 : 1.01 }}
-                whileTap={{ scale: installing ? 1 : 0.99 }}
-                className="relative mb-5 flex w-full items-center justify-center gap-2 rounded-lg border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm transition-colors hover:from-amber-100 hover:to-orange-100 disabled:opacity-60"
-              >
-                {installing ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Download className="size-3.5" />
-                )}
-                {installing ? "Installation…" : "Installer l'application"}
-              </motion.button>
-            ) : null}
-
             <form onSubmit={handleSubmit} className="relative space-y-4 sm:space-y-5">
               {/* Téléphone — icône Phone + focus ring emerald */}
               <motion.div
@@ -584,6 +562,54 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
                 ) : null}
               </AnimatePresence>
             </div>
+
+            {/* Bouton « Installer l'application » (PWA `beforeinstallprompt`,
+                Chrome/Edge/Android). Déplacé en zone annexe (après le panneau
+                démo) pour ne pas parasiter le CTA principal « Se connecter ».
+                Apparition différée (delay 0.8s) avec slide-up + fade, effet
+                « bonus qui arrive en dernier ». Shimmer idle subtil sur le bord
+                pour signaler l'interactivité sans nuisance. Caché sur iOS Safari
+                et Firefox desktop (beforeinstallprompt jamais capturé). */}
+            {canInstall ? (
+              <motion.button
+                type="button"
+                onClick={handleInstall}
+                disabled={installing}
+                initial={{ opacity: 0, y: 12, height: 0 }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  height: "auto",
+                  transition: { delay: 0.8, duration: 0.5, ease: "easeOut" },
+                }}
+                whileHover={
+                  installing
+                    ? undefined
+                    : { scale: 1.02, y: -1, transition: { duration: 0.2 } }
+                }
+                whileTap={
+                  installing ? undefined : { scale: 0.98, transition: { duration: 0.1 } }
+                }
+                className="pwa-install-shimmer relative mt-4 flex w-full items-center justify-center gap-2 self-center rounded-full border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 px-5 py-2 text-xs font-semibold text-amber-800 shadow-sm transition-colors hover:from-amber-100 hover:to-orange-100 disabled:opacity-60 sm:mt-5 sm:w-auto"
+              >
+                {installing ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <motion.span
+                    animate={{ y: [0, -2, 0] }}
+                    transition={{
+                      duration: 1.8,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      repeatDelay: 1.2,
+                    }}
+                  >
+                    <Download className="size-3.5" />
+                  </motion.span>
+                )}
+                {installing ? "Installation…" : "Installer l'application"}
+              </motion.button>
+            ) : null}
 
             {/* Note de sécurité (emerald, cohérent avec l'existant) */}
             <p className="relative mt-3 sm:mt-4 flex items-start gap-1.5 text-[11px] leading-snug text-muted-foreground">
