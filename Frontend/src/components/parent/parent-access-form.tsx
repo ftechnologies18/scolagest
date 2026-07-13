@@ -9,7 +9,7 @@
  *
  * Refonte Forêt EdTech :
  *  - Gradient emerald→amber en fond d'écran + texture kente subtile (opacity 6%).
- *  - Hero engageant : titre « Accédez au portail familial » + sous-titre
+ *  - Hero engageant : titre « Connectez-vous » + sous-titre
  *    rassurant dans une GlassCard premium (bordure gold + KentePattern bg).
  *  - Formulaire glassmorphism : GlassCard desktop + champs avec icônes
  *    (Phone pour téléphone, KeyRound pour PIN) + focus ring emerald +
@@ -305,7 +305,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
                 </div>
               </div>
               <h2 className="font-display text-xl font-bold text-forest sm:text-2xl">
-                Accédez au portail familial
+                Connectez-vous
               </h2>
               <p className="mt-1 break-words text-sm leading-snug text-muted-foreground sm:mt-1.5">
                 Suivez la scolarité de vos enfants, consultez les soldes et
