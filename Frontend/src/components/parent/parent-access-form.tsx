@@ -263,7 +263,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
       <KentePattern variant="bg" className="opacity-[0.06]" />
 
       {/* ===== Panneau gauche : Formulaire (glassmorphism) ===== */}
-      <div className="relative flex w-full items-center justify-center p-4 pt-14 sm:p-6 sm:pt-16 lg:w-1/2 lg:pt-6 xl:w-[45%]">
+      <div className="relative flex w-full items-center justify-center p-6 pt-14 sm:pt-16 lg:w-1/2 lg:pt-6 xl:w-[45%]">
         {/* Décorations d'arrière-plan */}
         <div
           aria-hidden
@@ -298,7 +298,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
           <GlassCard
             variant="desktop"
             premiumBorder
-            className="relative overflow-hidden !p-6 sm:!p-8"
+            className="relative overflow-hidden !p-8"
           >
             {/* Texture kente subtile en fond de carte */}
             <KentePattern variant="bg" className="opacity-[0.05]" />
