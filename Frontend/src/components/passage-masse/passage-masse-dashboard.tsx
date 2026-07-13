@@ -19,25 +19,60 @@
  *      carte de succès avec les compteurs du PromoteResult + bouton « Nouveau
  *      passage » (reset complet).
  *
+ * Refonte Forêt EdTech :
+ *  - Hero header GlassCard desktop + KentePattern strip top + badge rond
+ *    gradient emerald→gold (GraduationCap) + pill « Phase 3 » outline + pill
+ *    « Établissement » emerald.
+ *  - 4 StatCards DS (emerald / amber / terracotta / gold) avec stagger.
+ *  - Zone de sélection des années : GlassCard adaptive + sections source/cible
+ *    avec icônes CalendarDays / ArrowRight + flèche de transition au centre
+ *    (desktop) + bouton « Générer l'aperçu » variant success.
+ *  - Tableau d'aperçu : GlassCard adaptive noHover p-0 + header bg-emerald-
+ *    50/60 + rows motion.tr (stagger delay index*0.02) + hover row bg-emerald-
+ *    50/60 + libellés font-display + badges renforcés (border-300 bg-100
+ *    text-800) + Select décision avec focus ring emerald + points colorés.
+ *  - Pied de page sticky mobile (backdrop-blur + bordure haute) avec badges
+ *    résumé renforcés + bouton « Valider le passage » variant success.
+ *  - SuccessCard premium : GlassCard desktop premiumBorder + KentePattern bg
+ *    + badge rond gradient emerald→gold (Check) + 6 ResultCounter renforcés.
+ *  - Empty states premium : KentePattern bg + badges ronds colorés + icône
+ *    contextuelle (AlertCircle amber / Users emerald / AlertCircle rose).
+ *  - Loading state : KentePattern strip top + Skeletons + Loader2 centré.
+ *
  * États : pas d'établissement, chargement des années, erreur, aperçu vide.
  *
  * Le contexte d'établissement vient de `useAuthStore` (filtré côté backend).
- * Couleurs : emerald / amber / rose / slate uniquement — jamais indigo ni bleu.
+ * Couleurs : emerald / amber / terracotta / gold / rose / violet (diplômes)
+ * uniquement — jamais indigo ni bleu.
+ *
+ * LOGIQUE MÉTIER INTACTE : hooks React Query (anneesKeys.list / active /
+ * enabled: !!etablissement), état local (sourceAnneeId, cibleAnneeId, preview,
+ * decisions, loadingPreview, errorPreview, submitting, submitError, result),
+ * effects de préselection (source = année active, cible = année suivante),
+ * compteurs dynamiques `counts` (useMemo sur preview + decisions), handlers
+ * (handleGeneratePreview, handleDecisionChange, handleApplyAll, handleSubmit,
+ * handleReset), helpers (fullName, sortPreview), constantes DECISION_LABEL /
+ * DECISION_BADGE_CLS (contrastes renforcés). Endpoints backend intacts :
+ * POST /api/annees-scolaires/preview, POST /api/annees-scolaires/promote,
+ * GET /api/annees-scolaires, GET /api/annees-scolaires/active.
  */
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import {
   AlertCircle,
   ArrowRight,
+  CalendarDays,
   Check,
   GraduationCap,
   Loader2,
   RefreshCw,
+  RotateCw,
+  Sparkles,
   Trophy,
   Users,
   UserX,
-  RotateCw,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -60,7 +95,6 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -77,6 +111,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
+import { StatCard } from "@/components/ds/stat-card";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { useToast } from "@/hooks/use-toast";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -90,15 +128,20 @@ const DECISION_LABEL: Record<DecisionPassage, string> = {
   NON_REINSCRIT: "Non réinscrit",
 };
 
-/** Couleurs sémantiques par décision (badges, accents). */
+/** Couleurs sémantiques par décision (badges, accents).
+ *  Refonte : contrastes renforcés (border-300 bg-100 text-800 — BUG À ÉVITER #7). */
 const DECISION_BADGE_CLS: Record<DecisionPassage, string> = {
   PROMU:
-    "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300",
+    "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200",
   REDOUBLANT:
-    "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300",
+    "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/50 dark:text-amber-200",
   NON_REINSCRIT:
-    "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300",
+    "border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-800/60 dark:bg-rose-950/50 dark:text-rose-200",
 };
+
+/** Couleurs du badge « Active » dans les SelectItem (année scolaire active). */
+const ANNEE_ACTIVE_BADGE_CLS =
+  "border-emerald-300 bg-emerald-100 px-1.5 py-0 text-[10px] font-medium text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200";
 
 /** Nom complet d'un élève (nom + prénoms). */
 function fullName(eleve: { eleve_nom: string; eleve_prenoms: string }): string {
@@ -117,61 +160,6 @@ function sortPreview(rows: PreviewEleve[]): PreviewEleve[] {
     const nb = (b.eleve_nom || "").toLowerCase();
     return na.localeCompare(nb, "fr");
   });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Sous-composants
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface KpiCardProps {
-  icon: React.ElementType;
-  label: string;
-  value: number;
-  accent: "emerald" | "amber" | "rose" | "slate" | "violet";
-  hint?: string;
-}
-
-const KPI_ICON_CLS: Record<KpiCardProps["accent"], string> = {
-  emerald:
-    "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
-  amber:
-    "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
-  rose: "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
-  slate:
-    "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300",
-  violet:
-    "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
-};
-
-function KpiCard({ icon: Icon, label, value, accent, hint }: KpiCardProps) {
-  return (
-    <Card className="overflow-hidden">
-      <CardContent className="flex items-center gap-4">
-        <div
-          className={cn(
-            "flex size-11 shrink-0 items-center justify-center rounded-xl",
-            KPI_ICON_CLS[accent],
-          )}
-          aria-hidden
-        >
-          <Icon className="size-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {label}
-          </p>
-          <p className="mt-0.5 text-2xl font-bold leading-tight tabular-nums">
-            {value}
-          </p>
-          {hint ? (
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {hint}
-            </p>
-          ) : null}
-        </div>
-      </CardContent>
-    </Card>
-  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -202,7 +190,9 @@ export function PassageMasseDashboard() {
 
   const [preview, setPreview] = React.useState<PreviewEleve[] | null>(null);
   /** Map eleve_id → décision éditable (initialisée depuis le preview). */
-  const [decisions, setDecisions] = React.useState<Record<string, DecisionPassage>>({});
+  const [decisions, setDecisions] = React.useState<
+    Record<string, DecisionPassage>
+  >({});
 
   const [loadingPreview, setLoadingPreview] = React.useState(false);
   const [errorPreview, setErrorPreview] = React.useState<string | null>(null);
@@ -385,34 +375,21 @@ export function PassageMasseDashboard() {
   // ─── Pas d'établissement sélectionné ───────────────────────────────────────
   if (!etablissement) {
     return (
-      <div className="space-y-4">
-        <DashboardHeader />
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-              <AlertCircle className="size-6" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-base font-medium">
-                Sélectionnez un établissement
-              </p>
-              <p className="max-w-md text-sm text-muted-foreground">
-                Le passage de classe s&apos;applique par établissement.
-                Choisissez un établissement dans la barre latérale pour
-                continuer.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <PassageMasseShell>
+        <EmptyState
+          icon={AlertCircle}
+          tone="amber"
+          title="Sélectionnez un établissement"
+          description="Le passage de classe s'applique par établissement. Choisissez un établissement dans la barre latérale pour continuer."
+        />
+      </PassageMasseShell>
     );
   }
 
   // ─── Écran de succès (après validation) ─────────────────────────────────────
   if (result) {
     return (
-      <div className="space-y-6">
-        <DashboardHeader />
+      <PassageMasseShell etablissementNom={etablissement.nom}>
         <SuccessCard
           result={result}
           sourceLibelle={annees.find((a) => a.id === sourceAnneeId)?.libelle}
@@ -420,24 +397,26 @@ export function PassageMasseDashboard() {
           onReset={handleReset}
           submitError={submitError}
         />
-      </div>
+      </PassageMasseShell>
     );
   }
 
   // ─── Vue principale ─────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
-      <DashboardHeader />
-
+    <PassageMasseShell etablissementNom={etablissement.nom}>
       {/* ─── Sélection des années + bouton aperçu ────────────────────────────── */}
-      <Card>
-        <CardContent className="space-y-4 p-4 sm:p-6">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <GlassCard variant="adaptive" noHover className="p-4 sm:p-5 md:p-6">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr] md:items-end">
+            {/* Année source */}
             <div className="space-y-2">
               <label
                 htmlFor="passage-source-annee"
-                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"
               >
+                <span className="inline-flex size-6 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                  <CalendarDays className="size-3.5" />
+                </span>
                 Année source (ancienne)
               </label>
               <Select
@@ -451,7 +430,7 @@ export function PassageMasseDashboard() {
               >
                 <SelectTrigger
                   id="passage-source-annee"
-                  className="w-full"
+                  className="w-full bg-background"
                   aria-label="Année source"
                 >
                   <SelectValue
@@ -466,10 +445,7 @@ export function PassageMasseDashboard() {
                       <span className="flex items-center gap-2">
                         <span>{a.libelle}</span>
                         {a.est_active ? (
-                          <Badge
-                            variant="outline"
-                            className="border-emerald-200 bg-emerald-50 px-1.5 py-0 text-[10px] text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
-                          >
+                          <Badge variant="outline" className={ANNEE_ACTIVE_BADGE_CLS}>
                             Active
                           </Badge>
                         ) : null}
@@ -483,11 +459,25 @@ export function PassageMasseDashboard() {
               </Select>
             </div>
 
+            {/* Flèche de transition (desktop uniquement) */}
+            <div className="hidden md:flex md:items-end md:justify-center md:pb-2">
+              <span
+                className="inline-flex size-10 items-center justify-center rounded-full bg-gradient-to-br from-amber-400/20 to-amber-500/20 text-amber-700 ring-1 ring-amber-300/40 dark:text-amber-300 dark:ring-amber-800/40"
+                aria-hidden
+              >
+                <ArrowRight className="size-5" />
+              </span>
+            </div>
+
+            {/* Année cible */}
             <div className="space-y-2">
               <label
                 htmlFor="passage-cible-annee"
-                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"
               >
+                <span className="inline-flex size-6 items-center justify-center rounded-md bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+                  <ArrowRight className="size-3.5" />
+                </span>
                 Année cible (nouvelle)
               </label>
               <Select
@@ -497,7 +487,7 @@ export function PassageMasseDashboard() {
               >
                 <SelectTrigger
                   id="passage-cible-annee"
-                  className="w-full"
+                  className="w-full bg-background"
                   aria-label="Année cible"
                 >
                   <SelectValue
@@ -512,10 +502,7 @@ export function PassageMasseDashboard() {
                       <span className="flex items-center gap-2">
                         <span>{a.libelle}</span>
                         {a.est_active ? (
-                          <Badge
-                            variant="outline"
-                            className="border-emerald-200 bg-emerald-50 px-1.5 py-0 text-[10px] text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
-                          >
+                          <Badge variant="outline" className={ANNEE_ACTIVE_BADGE_CLS}>
                             Active
                           </Badge>
                         ) : null}
@@ -533,6 +520,7 @@ export function PassageMasseDashboard() {
           <div className="flex flex-wrap items-center gap-2">
             <Button
               onClick={handleGeneratePreview}
+              variant="success"
               disabled={
                 loadingPreview ||
                 anneesLoading ||
@@ -563,309 +551,209 @@ export function PassageMasseDashboard() {
           {sourceAnneeId && cibleAnneeId && sourceAnneeId === cibleAnneeId ? (
             <p
               role="alert"
-              className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
+              className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-100 px-3 py-2 text-sm text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
             >
               <AlertCircle className="size-4 shrink-0" />
               L&apos;année source et l&apos;année cible sont identiques —
               sélectionnez deux années distinctes.
             </p>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {/* ─── Erreur d'aperçu ─────────────────────────────────────────────────── */}
       {errorPreview ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
-              <AlertCircle className="size-6" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-base font-medium">
-                Impossible de générer l&apos;aperçu
-              </p>
-              <p className="max-w-md text-sm text-muted-foreground">
-                {errorPreview}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={AlertCircle}
+          tone="rose"
+          title="Impossible de générer l'aperçu"
+          description={errorPreview}
+        />
       ) : null}
 
       {/* ─── Chargement de l'aperçu (skeleton) ───────────────────────────────── */}
-      {loadingPreview && !preview ? (
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-full max-w-md rounded-lg" />
-          <Skeleton className="h-24 w-full rounded-xl" />
-          <Skeleton className="h-72 w-full rounded-xl" />
-        </div>
-      ) : null}
+      {loadingPreview && !preview ? <LoadingState /> : null}
 
       {/* ─── Aperçu (tableau + actions + résumé) ─────────────────────────────── */}
       {preview && preview.length > 0 ? (
         <>
-          {/* Résumé temps réel */}
+          {/* Résumé temps réel — 4 StatCards DS avec stagger */}
           <section
             aria-label="Résumé des décisions"
-            className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+            className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 items-stretch"
           >
-            <KpiCard
+            <StatCard
               icon={ArrowRight}
-              accent="emerald"
+              tone="emerald"
               label="Promus"
               value={counts.promus}
               hint="Inscrits dans la classe suivante"
+              delay={0}
+              className="h-full"
             />
-            <KpiCard
+            <StatCard
               icon={RotateCw}
-              accent="amber"
+              tone="amber"
               label="Redoublants"
               value={counts.redoublants}
               hint="Restent dans la même classe"
+              delay={0.05}
+              className="h-full"
             />
-            <KpiCard
+            <StatCard
               icon={UserX}
-              accent="rose"
+              tone="terracotta"
               label="Non réinscrits"
               value={counts.nonReinscrits}
               hint="Abandons / départs"
+              delay={0.1}
+              className="h-full"
             />
-            <KpiCard
+            <StatCard
               icon={Trophy}
-              accent="violet"
+              tone="gold"
               label="Diplômés"
               value={counts.diplomes}
               hint="Fin de cycle (BEPC, CEPE…)"
+              delay={0.15}
+              className="h-full"
             />
           </section>
 
-          {/* Actions rapides + bouton validation */}
-          <Card>
-            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-              <div className="flex flex-wrap items-center gap-2">
+          <KentePattern variant="separator" className="my-1" />
+
+          {/* Actions rapides + bouton validation (desktop) */}
+          <GlassCard variant="adaptive" noHover className="p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Actions rapides :
                 </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleApplyAll("PROMU")}
-                  className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-900/50 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
-                >
-                  <Check className="size-3.5" />
-                  Tous promus
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleApplyAll("REDOUBLANT")}
-                  className="border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-900/50 dark:text-amber-300 dark:hover:bg-amber-950/40"
-                >
-                  <RotateCw className="size-3.5" />
-                  Tous redoublants
-                </Button>
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleApplyAll("PROMU")}
+                    className="w-full border-emerald-300 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 dark:border-emerald-800/60 dark:text-emerald-300 dark:hover:bg-emerald-950/40 sm:w-auto"
+                  >
+                    <Check className="size-3.5" />
+                    Tous promus
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleApplyAll("REDOUBLANT")}
+                    className="w-full border-amber-300 text-amber-800 hover:bg-amber-50 hover:text-amber-900 dark:border-amber-800/60 dark:text-amber-300 dark:hover:bg-amber-950/40 sm:w-auto"
+                  >
+                    <RotateCw className="size-3.5" />
+                    Tous redoublants
+                  </Button>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                {submitError ? (
-                  <span className="hidden text-xs text-rose-600 dark:text-rose-400 sm:inline">
-                    {submitError}
-                  </span>
-                ) : null}
-                <Button
-                  onClick={handleSubmit}
-                  disabled={
-                    submitting ||
-                    !cibleAnneeId ||
-                    sourceAnneeId === cibleAnneeId
-                  }
-                  className="bg-emerald-600 text-white hover:bg-emerald-700"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      Validation…
-                    </>
-                  ) : (
-                    <>
-                      <GraduationCap className="size-4" />
-                      Valider le passage
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+              <Button
+                onClick={handleSubmit}
+                variant="success"
+                disabled={
+                  submitting ||
+                  !cibleAnneeId ||
+                  sourceAnneeId === cibleAnneeId
+                }
+                className="hidden w-full sm:inline-flex sm:w-auto"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Validation…
+                  </>
+                ) : (
+                  <>
+                    <GraduationCap className="size-4" />
+                    Valider le passage
+                  </>
+                )}
+              </Button>
+            </div>
+            {submitError ? (
+              <p
+                role="alert"
+                className="mt-3 text-xs text-rose-600 dark:text-rose-400 sm:hidden"
+              >
+                {submitError}
+              </p>
+            ) : null}
+          </GlassCard>
 
           {/* Tableau d'aperçu */}
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="min-w-[220px]">Élève</TableHead>
-                      <TableHead className="min-w-[140px]">
-                        Classe actuelle
-                      </TableHead>
-                      <TableHead className="min-w-[60px] text-center">
-                        <span className="sr-only">Vers</span>
-                      </TableHead>
-                      <TableHead className="min-w-[160px]">
-                        Classe suivante
-                      </TableHead>
-                      <TableHead className="min-w-[180px]">Décision</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {preview.map((row) => {
-                      const isDiplome = row.est_diplome;
-                      const decision =
-                        decisions[row.eleve_id] ?? row.decision;
-                      return (
-                        <TableRow key={row.eleve_id}>
-                          <TableCell>
-                            <div className="flex flex-col gap-0.5">
-                              <span className="font-medium">
-                                {fullName(row)}
-                              </span>
-                              <span className="text-[11px] text-muted-foreground">
-                                ID : {row.eleve_id.slice(0, 8)}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {row.classe_actuelle ? (
-                              <Badge
-                                variant="outline"
-                                className="border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300"
-                              >
-                                {row.classe_actuelle}
-                              </Badge>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">
-                                —
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center text-muted-foreground">
-                            <ArrowRight className="mx-auto size-4" />
-                          </TableCell>
-                          <TableCell>
-                            {isDiplome ? (
-                              <Badge
-                                variant="outline"
-                                className="border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-300"
-                              >
-                                <Trophy className="size-3" />
-                                Diplôme
-                              </Badge>
-                            ) : row.classe_suivante ? (
-                              <Badge
-                                variant="outline"
-                                className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
-                              >
-                                {row.classe_suivante}
-                              </Badge>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">
-                                —
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {isDiplome ? (
-                              <Select value="PROMU" disabled>
-                                <SelectTrigger
-                                  size="sm"
-                                  className="w-full bg-muted/40 text-muted-foreground"
-                                  aria-label="Décision (diplômé)"
-                                >
-                                  <SelectValue>
-                                    <span className="flex items-center gap-1.5">
-                                      <Trophy className="size-3.5" />
-                                      Diplôme
-                                    </span>
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="PROMU">Diplôme</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Select
-                                value={decision}
-                                onValueChange={(v) =>
-                                  handleDecisionChange(
-                                    row.eleve_id,
-                                    v as DecisionPassage,
-                                  )
-                                }
-                              >
-                                <SelectTrigger
-                                  size="sm"
-                                  className="w-full"
-                                  aria-label={`Décision pour ${fullName(row)}`}
-                                >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="PROMU">
-                                    <span className="flex items-center gap-1.5">
-                                      <span className="size-1.5 rounded-full bg-emerald-500" />
-                                      {DECISION_LABEL.PROMU}
-                                    </span>
-                                  </SelectItem>
-                                  <SelectItem value="REDOUBLANT">
-                                    <span className="flex items-center gap-1.5">
-                                      <span className="size-1.5 rounded-full bg-amber-500" />
-                                      {DECISION_LABEL.REDOUBLANT}
-                                    </span>
-                                  </SelectItem>
-                                  <SelectItem value="NON_REINSCRIT">
-                                    <span className="flex items-center gap-1.5">
-                                      <span className="size-1.5 rounded-full bg-rose-500" />
-                                      {DECISION_LABEL.NON_REINSCRIT}
-                                    </span>
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+          <GlassCard
+            variant="adaptive"
+            noHover
+            noAnimation
+            className="overflow-hidden p-0"
+          >
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-emerald-100 bg-emerald-50/60 hover:bg-emerald-50/60 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                    <TableHead className="min-w-[220px] text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                      Élève
+                    </TableHead>
+                    <TableHead className="min-w-[140px] text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                      Classe actuelle
+                    </TableHead>
+                    <TableHead className="min-w-[60px] text-center text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                      <span className="sr-only">Vers</span>
+                    </TableHead>
+                    <TableHead className="min-w-[160px] text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                      Classe suivante
+                    </TableHead>
+                    <TableHead className="min-w-[180px] text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                      Décision
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {preview.map((row, idx) => {
+                    const isDiplome = row.est_diplome;
+                    const decision =
+                      decisions[row.eleve_id] ?? row.decision;
+                    return (
+                      <PreviewRow
+                        key={row.eleve_id}
+                        row={row}
+                        isDiplome={isDiplome}
+                        decision={decision}
+                        index={idx}
+                        onDecisionChange={handleDecisionChange}
+                      />
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </GlassCard>
 
-          {/* Pied : résumé compact + bouton validation (mobile-friendly) */}
-          <Card>
-            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          {/* Pied : résumé compact + bouton validation (mobile sticky) */}
+          <GlassCard
+            variant="adaptive"
+            noHover
+            noAnimation
+            className="sticky bottom-0 z-30 border-t border-emerald-200/60 p-4 sm:static sm:border-t-0 sm:p-5"
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <Badge
-                  variant="outline"
-                  className={DECISION_BADGE_CLS.PROMU}
-                >
+                <Badge variant="outline" className={DECISION_BADGE_CLS.PROMU}>
                   {counts.promus} promu(s)
                 </Badge>
-                <Badge
-                  variant="outline"
-                  className={DECISION_BADGE_CLS.REDOUBLANT}
-                >
+                <Badge variant="outline" className={DECISION_BADGE_CLS.REDOUBLANT}>
                   {counts.redoublants} redoublant(s)
                 </Badge>
-                <Badge
-                  variant="outline"
-                  className={DECISION_BADGE_CLS.NON_REINSCRIT}
-                >
+                <Badge variant="outline" className={DECISION_BADGE_CLS.NON_REINSCRIT}>
                   {counts.nonReinscrits} non réinscrit(s)
                 </Badge>
                 <Badge
                   variant="outline"
-                  className="border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-300"
+                  className="border-violet-300 bg-violet-100 text-violet-800 dark:border-violet-800/60 dark:bg-violet-950/50 dark:text-violet-200"
                 >
                   {counts.diplomes} diplômé(s)
                 </Badge>
@@ -880,12 +768,13 @@ export function PassageMasseDashboard() {
               ) : null}
               <Button
                 onClick={handleSubmit}
+                variant="success"
                 disabled={
                   submitting ||
                   !cibleAnneeId ||
                   sourceAnneeId === cibleAnneeId
                 }
-                className="bg-emerald-600 text-white hover:bg-emerald-700 sm:hidden"
+                className="w-full sm:hidden"
               >
                 {submitting ? (
                   <>
@@ -899,51 +788,229 @@ export function PassageMasseDashboard() {
                   </>
                 )}
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
         </>
       ) : null}
 
       {/* ─── Aperçu vide (après génération, 0 élèves) ────────────────────────── */}
       {preview && preview.length === 0 && !loadingPreview ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              <Users className="size-6" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-base font-medium">Aucun élève à traiter</p>
-              <p className="max-w-md text-sm text-muted-foreground">
-                Aucun élève n&apos;est inscrit dans l&apos;année source
-                sélectionnée. Vérifiez votre sélection ou créez des
-                inscriptions pour cette année.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Users}
+          tone="emerald"
+          title="Aucun élève à traiter"
+          description="Aucun élève n'est inscrit dans l'année source sélectionnée. Vérifiez votre sélection ou créez des inscriptions pour cette année."
+        />
       ) : null}
-    </div>
+    </PassageMasseShell>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// En-tête + carte de succès
+// Shell (hero header premium + KentePattern strip / separator)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DashboardHeader() {
+function PassageMasseShell({
+  children,
+  etablissementNom,
+}: {
+  children: React.ReactNode;
+  etablissementNom?: string;
+}) {
   return (
-    <div className="flex flex-col gap-1">
-      <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-        Passage de classe en masse
-      </h1>
-      <p className="text-sm text-muted-foreground">
-        Promouvez l&apos;ensemble des élèves d&apos;une année vers la suivante
-        en une seule opération. Ajustez individuellement chaque décision avant
-        validation.
-      </p>
+    <div className="space-y-4 sm:space-y-6">
+      <KentePattern variant="strip" position="top" />
+
+      {/* ─── Hero header premium ──────────────────────────────────────── */}
+      <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3 sm:gap-4">
+            {/* Badge rond gradient emerald→gold avec icône GraduationCap */}
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg shadow-emerald-900/20">
+              <GraduationCap className="size-6" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-2xl font-bold tracking-tight text-forest">
+                  Passage de classe en masse
+                </h1>
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50/60 px-2 py-0.5 align-middle text-[11px] font-medium text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  <Sparkles className="size-3" />
+                  Phase 3
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Promouvez l&apos;ensemble des élèves d&apos;une année vers la
+                suivante en une seule opération. Ajustez individuellement
+                chaque décision avant validation.
+              </p>
+              {etablissementNom ? (
+                <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  {etablissementNom}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </GlassCard>
+
+      <KentePattern variant="separator" className="my-1" />
+
+      {children}
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ligne d'aperçu (motion.tr avec stagger delay index*0.02)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface PreviewRowProps {
+  row: PreviewEleve;
+  isDiplome: boolean;
+  decision: DecisionPassage;
+  index: number;
+  onDecisionChange: (eleveId: string, value: DecisionPassage) => void;
+}
+
+function PreviewRow({
+  row,
+  isDiplome,
+  decision,
+  index,
+  onDecisionChange,
+}: PreviewRowProps) {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const animationProps = prefersReducedMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: 12 },
+        animate: { opacity: 1, y: 0 },
+        transition: {
+          duration: 0.3,
+          delay: Math.min(index * 0.02, 0.4),
+          ease: [0.22, 1, 0.36, 1] as const,
+        },
+      };
+  return (
+    <motion.tr
+      data-slot="table-row"
+      className="border-b transition-colors hover:bg-emerald-50/60 dark:border-emerald-900/40 dark:hover:bg-emerald-950/20"
+      {...animationProps}
+    >
+      <TableCell>
+        <div className="flex flex-col gap-0.5">
+          <span className="break-words font-display text-sm font-semibold leading-snug text-forest">
+            {fullName(row)}
+          </span>
+          <span className="font-mono text-[11px] text-muted-foreground">
+            ID : {row.eleve_id.slice(0, 8)}
+          </span>
+        </div>
+      </TableCell>
+      <TableCell>
+        {row.classe_actuelle ? (
+          <Badge
+            variant="outline"
+            className="border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300"
+          >
+            {row.classe_actuelle}
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </TableCell>
+      <TableCell className="text-center">
+        <span
+          className="inline-flex size-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+          aria-hidden
+        >
+          <ArrowRight className="size-3.5" />
+        </span>
+      </TableCell>
+      <TableCell>
+        {isDiplome ? (
+          <Badge
+            variant="outline"
+            className="border-violet-300 bg-violet-100 text-violet-800 dark:border-violet-800/60 dark:bg-violet-950/50 dark:text-violet-200"
+          >
+            <Trophy className="size-3" />
+            Diplôme
+          </Badge>
+        ) : row.classe_suivante ? (
+          <Badge
+            variant="outline"
+            className="border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200"
+          >
+            {row.classe_suivante}
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </TableCell>
+      <TableCell>
+        {isDiplome ? (
+          <Select value="PROMU" disabled>
+            <SelectTrigger
+              size="sm"
+              className="w-full bg-muted/40 text-muted-foreground"
+              aria-label="Décision (diplômé)"
+            >
+              <SelectValue>
+                <span className="flex items-center gap-1.5">
+                  <Trophy className="size-3.5" />
+                  Diplôme
+                </span>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="PROMU">Diplôme</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <Select
+            value={decision}
+            onValueChange={(v) =>
+              onDecisionChange(row.eleve_id, v as DecisionPassage)
+            }
+          >
+            <SelectTrigger
+              size="sm"
+              className="w-full bg-background focus:ring-emerald-500/40"
+              aria-label={`Décision pour ${fullName(row)}`}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="PROMU">
+                <span className="flex items-center gap-1.5">
+                  <span className="size-1.5 rounded-full bg-emerald-500" />
+                  {DECISION_LABEL.PROMU}
+                </span>
+              </SelectItem>
+              <SelectItem value="REDOUBLANT">
+                <span className="flex items-center gap-1.5">
+                  <span className="size-1.5 rounded-full bg-amber-500" />
+                  {DECISION_LABEL.REDOUBLANT}
+                </span>
+              </SelectItem>
+              <SelectItem value="NON_REINSCRIT">
+                <span className="flex items-center gap-1.5">
+                  <span className="size-1.5 rounded-full bg-rose-500" />
+                  {DECISION_LABEL.NON_REINSCRIT}
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+      </TableCell>
+    </motion.tr>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SuccessCard premium (GlassCard desktop premiumBorder + KentePattern bg)
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface SuccessCardProps {
   result: PromoteResult;
@@ -969,18 +1036,25 @@ function SuccessCard({
     result.erreurs;
 
   return (
-    <Card className="overflow-hidden border-emerald-200 dark:border-emerald-900/50">
-      <CardContent className="space-y-5 p-4 sm:p-6">
+    <GlassCard
+      variant="desktop"
+      premiumBorder
+      noHover
+      noAnimation
+      className="relative overflow-hidden p-4 sm:p-6"
+    >
+      <KentePattern variant="bg" />
+      <div className="relative space-y-5">
         {/* En-tête succès */}
         <div className="flex items-start gap-3">
           <div
-            className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+            className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg shadow-emerald-900/20"
             aria-hidden
           >
             <Check className="size-6" />
           </div>
           <div className="min-w-0 flex-1 space-y-1">
-            <h2 className="text-lg font-bold tracking-tight">
+            <h2 className="font-display text-xl font-bold tracking-tight text-forest">
               Passage de classe validé
             </h2>
             <p className="text-sm text-muted-foreground">
@@ -1006,7 +1080,7 @@ function SuccessCard({
           </div>
         </div>
 
-        {/* Grille des compteurs */}
+        {/* Grille des compteurs (6 ResultCounter renforcés) */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <ResultCounter
             icon={ArrowRight}
@@ -1028,7 +1102,7 @@ function SuccessCard({
           />
           <ResultCounter
             icon={UserX}
-            accent="rose"
+            accent="terracotta"
             label="Non réinscrits"
             value={result.non_reinscrits}
           />
@@ -1051,7 +1125,7 @@ function SuccessCard({
         {submitError ? (
           <p
             role="alert"
-            className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200"
+            className="rounded-lg border border-rose-300 bg-rose-100 px-3 py-2 text-sm text-rose-800 dark:border-rose-800/60 dark:bg-rose-950/40 dark:text-rose-200"
           >
             {submitError}
           </p>
@@ -1070,36 +1144,50 @@ function SuccessCard({
           <Button
             onClick={onReset}
             variant="outline"
-            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-900/50 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+            className="border-emerald-300 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 dark:border-emerald-800/60 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
           >
             <RefreshCw className="size-4" />
             Nouveau passage
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ResultCounter — compteur compact pour la SuccessCard (bordures renforcées)
+// ─────────────────────────────────────────────────────────────────────────────
+
+type ResultTone =
+  | "emerald"
+  | "amber"
+  | "rose"
+  | "slate"
+  | "violet"
+  | "terracotta";
+
+const RESULT_COUNTER_CLS: Record<ResultTone, string> = {
+  emerald:
+    "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200",
+  amber:
+    "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200",
+  rose: "border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-800/60 dark:bg-rose-950/40 dark:text-rose-200",
+  slate:
+    "border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300",
+  violet:
+    "border-violet-300 bg-violet-100 text-violet-800 dark:border-violet-800/60 dark:bg-violet-950/40 dark:text-violet-200",
+  terracotta:
+    "border-terracotta bg-terracotta/10 text-terracotta dark:border-terracotta/50 dark:bg-terracotta/15 dark:text-terracotta-light",
+};
+
 interface ResultCounterProps {
   icon: React.ElementType;
-  accent: "emerald" | "amber" | "rose" | "slate" | "violet";
+  accent: ResultTone;
   label: string;
   value: number;
   hint?: string;
 }
-
-const RESULT_COUNTER_CLS: Record<ResultCounterProps["accent"], string> = {
-  emerald:
-    "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
-  amber:
-    "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
-  rose: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
-  slate:
-    "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300",
-  violet:
-    "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300",
-};
 
 function ResultCounter({
   icon: Icon,
@@ -1111,7 +1199,7 @@ function ResultCounter({
   return (
     <div
       className={cn(
-        "flex flex-col gap-1 rounded-xl border border-transparent p-3",
+        "flex flex-col gap-1 rounded-xl border p-3",
         RESULT_COUNTER_CLS[accent],
       )}
     >
@@ -1122,9 +1210,80 @@ function ResultCounter({
         <Icon className="size-3.5 opacity-80" aria-hidden />
       </div>
       <p className="text-2xl font-bold leading-none tabular-nums">{value}</p>
-      {hint ? (
-        <p className="text-[10px] opacity-70">{hint}</p>
-      ) : null}
+      {hint ? <p className="text-[10px] opacity-70">{hint}</p> : null}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// États vides premium (KentePattern bg + badge rond coloré + icône Lucide)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface EmptyStateProps {
+  icon: React.ElementType;
+  tone: "emerald" | "amber" | "rose";
+  title: string;
+  description: string;
+}
+
+const EMPTY_STATE_CLS: Record<EmptyStateProps["tone"], string> = {
+  emerald:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+  amber:
+    "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+  rose: "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
+};
+
+function EmptyState({ icon: Icon, tone, title, description }: EmptyStateProps) {
+  return (
+    <GlassCard
+      variant="adaptive"
+      noHover
+      noAnimation
+      className="relative overflow-hidden"
+    >
+      <KentePattern variant="bg" />
+      <div className="relative flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
+        <div
+          className={cn(
+            "flex size-12 items-center justify-center rounded-full",
+            EMPTY_STATE_CLS[tone],
+          )}
+        >
+          <Icon className="size-6" />
+        </div>
+        <div className="space-y-1">
+          <p className="font-display text-base font-semibold text-forest">
+            {title}
+          </p>
+          <p className="max-w-md text-sm text-muted-foreground">{description}</p>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Loading state premium (KentePattern strip top + Skeletons + Loader2 centré)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LoadingState() {
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <Skeleton className="h-10 w-full max-w-md rounded-lg" />
+      <Skeleton className="h-24 w-full rounded-xl" />
+      <Skeleton className="h-72 w-full rounded-xl" />
+      <GlassCard
+        variant="adaptive"
+        noHover
+        noAnimation
+        className="relative overflow-hidden p-0"
+      >
+        <KentePattern variant="strip" position="top" />
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="size-8 animate-spin text-emerald-600 dark:text-emerald-400" />
+        </div>
+      </GlassCard>
     </div>
   );
 }

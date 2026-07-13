@@ -10796,3 +10796,461 @@ Stage Summary:
       usePrefersReducedMotion respecté — animations désactivées si
       l'utilisateur préfère réduire les animations.
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+Task ID: 4
+Agent: frontend-styling-expert
+Task: Refonte du module /passage-masse (Forêt EdTech, glassmorphism, kente, responsive)
+
+Work Log:
+- Lecture du worklog.md (dernières ~600 lignes) pour collecter les
+  rapports des refontes précédentes (/effectifs, /utilisateurs) et les
+  BUGS À ÉVITER (Tooltip Radix → `title` natif, `truncate` sur valeurs
+  longues → `break-words leading-snug`, bouton dans bouton, `items-
+  stretch` + `h-full` pour égaliser les hauteurs, contrastes `border-
+  300 bg-100 text-800`, `useToast()` déjà présent).
+- Lecture intégrale du fichier cible `passage-masse-dashboard.tsx`
+  (1130 lignes) : 4 zones (sélection années, KPIs custom KpiCard,
+  actions rapides + validation, tableau d'aperçu) + écran de succès
+  SuccessCard avec 6 ResultCounter + 4 états (pas d'établissement,
+  erreur d'aperçu, loading skeleton, aperçu vide).
+- Lecture des composants DS : `glass-card.tsx` (variants mobile/tablet/
+  desktop/premium/adaptive + premiumBorder + noHover/noAnimation/delay),
+  `kente-pattern.tsx` (variants strip/bg/border/separator + position
+  top/bottom/custom), `stat-card.tsx` (tones emerald/amber/terracotta/
+  gold/sky/forest + LucideIcon + delay + h-full pour stretch).
+- Lecture de `globals.css` lignes 280-491 : tokens glass-adaptive
+  (opacity 0.70 → 0.80 → 0.85 aux breakpoints 768px/1024px), tokens
+  kente (.bg-kente-pattern, .kente-strip-top, .kente-separator, .kente-
+  border-premium), polices `font-display`/`font-body`, accessibilité
+  prefers-reduced-motion.
+- Lecture de `effectifs-dashboard.tsx` (refonte la plus proche — 727
+  lignes) : pattern EffectifsShell (KentePattern strip top + GlassCard
+  desktop hero header + KentePattern separator + children), pattern
+  EmptyState (GlassCard adaptive + KentePattern bg + badge rond coloré
+  + titre font-display text-base + description max-w-md), pattern
+  LoadingState (4 Skeletons h-28 en grid + GlassCard adaptive + Kente
+  Pattern strip top + Loader2 size-8 centré), pattern HeatmapTile
+  (motion.div avec stagger delay index*0.03 capé à 0.6s + usePrefers-
+  ReducedMotion).
+- Lecture de `api-passage-masse.ts` : types DecisionPassage / EleveDeci-
+  sion / PreviewEleve / PromoteResult (promus, diplomes, redoublants,
+  non_reinscrits, skipped, erreurs), fonctions fetchPreview (POST /
+  api/annees-scolaires/preview) et submitPromote (POST /api/annees-
+  scolaires/promote) — signatures conservées à l'identique.
+- Lecture de `app/(staff)/passage-masse/page.tsx` : wrapper RoleGuard
+  (DIRECTION, DIRECTEUR_ETUDES, DIRECTEUR_SUPERVISEUR) — non modifié.
+- Vérification du variant `success` du Button shadcn : `bg-gradient-
+  to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-
+  emerald-900/20 hover:from-emerald-700 hover:to-emerald-800` (présent
+  dans `components/ui/button.tsx` ligne 23-25).
+- Refonte du fichier `passage-masse-dashboard.tsx` (1130 → 1289 lignes,
+  +159 lignes) en appliquant toutes les améliorations de la spec :
+  • Hero header enrichi (PassageMasseShell) : `KentePattern variant=
+    "strip" position="top"` en tête de vue + `GlassCard variant=
+    "desktop" noHover` avec badge rond gradient emerald→gold (size-12
+    rounded-full, `bg-gradient-to-br from-emerald-600 to-amber-500
+    text-white shadow-lg shadow-emerald-900/20`) avec icône `Gradua-
+    tionCap` size-6 (au lieu de rien) + titre `font-display text-2xl
+    font-bold tracking-tight text-forest` "Passage de classe en masse"
+    (au lieu de text-xl sans font-display) + pill "Phase 3" outline à
+    droite du titre (`Sparkles` + border-emerald-300 bg-emerald-50/60
+    text-emerald-800) + sous-titre descriptif conservé + pill éta-
+    blissement emerald (border-emerald-200 bg-emerald-50 text-emerald-
+    800) visible si etablissementNom est fourni + `KentePattern
+    variant="separator" className="my-1"` après le hero header.
+  • Zone de sélection des années enrichie : `GlassCard variant=
+    "adaptive" noHover className="p-4 sm:p-5 md:p-6"` (au lieu de
+    `<Card>` shadcn) + layout grid `md:grid-cols-[1fr_auto_1fr]` pour
+    les 3 colonnes (source + flèche + cible) sur desktop (au lieu de
+    `md:grid-cols-2`) + section "Année source" avec icône `CalendarDays`
+    en badge emerald/100 (size-6 rounded-md bg-emerald-100 text-
+    emerald-700) + section "Année cible" avec icône `ArrowRight` en
+    badge amber/100 (size-6 rounded-md bg-amber-100 text-amber-700) +
+    flèche de transition au centre desktop (size-10 rounded-full bg-
+    gradient-to-br from-amber-400/20 to-amber-500/20 ring-1 ring-amber-
+    300/40 + ArrowRight size-5) + bouton "Générer l'aperçu" `variant=
+    "success"` (au lieu de default) avec icône RefreshCw/Loader2 +
+    SelectTrigger avec `bg-background` (au lieu de transparent — fond
+    opaque blanc pour lisibilité, conformément à la règle "Éviter le
+    glass sur les inputs/selects") + badge "Active" renforcé (border-
+    emerald-300 bg-emerald-100 text-emerald-800 — BUG À ÉVITER #7) +
+    alerte années identiques renforcée (border-amber-300 bg-amber-100
+    text-amber-800).
+  • KPIs enrichis (remplacement du composant `KpiCard` custom par
+    `StatCard` DS) en grid `grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4
+    items-stretch` (au lieu de `grid-cols-2 sm:grid-cols-4` sans
+    items-stretch) avec `className="h-full"` sur chaque StatCard pour
+    égaliser les hauteurs (BUG À ÉVITER #5) :
+    - "Promus" (tone emerald, icon ArrowRight, value = counts.promus,
+      hint "Inscrits dans la classe suivante", delay 0)
+    - "Redoublants" (tone amber, icon RotateCw, value = counts.redou-
+      blants, hint "Restent dans la même classe", delay 0.05)
+    - "Non réinscrits" (tone terracotta, icon UserX, value = counts.
+      nonReinscrits, hint "Abandons / départs", delay 0.1) — terracotta
+      au lieu de rose pour cohérence palette africaine (spec).
+    - "Diplômés" (tone gold, icon Trophy, value = counts.diplomes,
+      hint "Fin de cycle (BEPC, CEPE…)", delay 0.15) — gold au lieu de
+      violet pour accent premium (spec).
+  • KentePattern separator entre les KPIs et les actions rapides
+    (`className="my-1"`).
+  • Actions rapides + validation enrichies : `GlassCard variant=
+    "adaptive" noHover className="p-4 sm:p-5"` (au lieu de `<Card>`) +
+    boutons "Tous promus" (`variant="outline"` border-emerald-300
+    text-emerald-800 hover:bg-emerald-50) + "Tous redoublants" (`variant=
+    "outline"` border-amber-300 text-amber-800 hover:bg-amber-50) en
+    `flex-col gap-2 sm:flex-row sm:flex-wrap` (boutons full-width
+    empilés sur mobile, inline sur desktop — spec d) + bouton "Valider
+    le passage" `variant="success"` (au lieu de bg-emerald-600 custom)
+    avec icône GraduationCap/Loader2, `hidden sm:inline-flex sm:w-auto`
+    (visible desktop uniquement — la validation mobile est dans le pied
+    de page sticky).
+  • Tableau d'aperçu enrichi : `GlassCard variant="adaptive" noHover
+    noAnimation className="overflow-hidden p-0"` (au lieu de `<Card>`) +
+    `noAnimation` évite la double animation (GlassCard + enfants rows) +
+    Header row `bg-emerald-50/60 hover:bg-emerald-50/60 dark:bg-emerald-
+    950/20` (au lieu de default) + `th` avec `text-xs font-semibold
+    uppercase tracking-wide text-emerald-900 dark:text-emerald-200` +
+    Hover row `hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20` +
+    Colonne "Élève" : nom `font-display text-sm font-semibold leading-
+    snug text-forest break-words` (au lieu de font-medium sans font-
+    display ni break-words — BUG À ÉVITER #2) + ID en `font-mono text-
+    [11px] text-muted-foreground` (au lieu de text-[11px] sans font-
+    mono) + Colonne "Classe actuelle" : badge avec bordure renforcée
+    (border-slate-300 bg-slate-100 text-slate-800 au lieu de border-
+    slate-200 bg-slate-50 text-slate-700 — BUG À ÉVITER #7) + Colonne
+    flèche : icône ArrowRight en badge emerald/100 `size-7 rounded-full
+    bg-emerald-100 text-emerald-700` (au lieu de `mx-auto size-4 text-
+    muted-foreground` sans badge) + Colonne "Classe suivante" : badge
+    emerald renforcé (border-emerald-300 bg-emerald-100 text-emerald-800
+    au lieu de border-emerald-200 bg-emerald-50 text-emerald-700) ou
+    badge violet "Diplôme" renforcé (border-violet-300 bg-violet-100
+    text-violet-800 au lieu de border-violet-200 bg-violet-50 text-
+    violet-700) + Colonne "Décision" : Select avec `bg-background focus:
+    ring-emerald-500/40` (au lieu de transparent sans focus ring) +
+    points colorés emerald/amber/rose conservés (déjà présents dans
+    l'original).
+  • Stagger animation sur les rows via composant `PreviewRow` custom :
+    `motion.tr` (framer-motion) avec `initial={{ opacity: 0, y: 12 }}`
+    `animate={{ opacity: 1, y: 0 }}` `transition={{ duration: 0.3,
+    delay: Math.min(index * 0.02, 0.4), ease: [0.22, 1, 0.36, 1] }}` +
+    `usePrefersReducedMotion` respecté (animation désactivée si
+    l'utilisateur préfère réduire les animations) + `data-slot="table-
+    row"` conservé pour compat avec les styles shadcn Table.
+  • Pied de page (résumé compact + validation mobile sticky) : `Glass-
+    Card variant="adaptive" noHover noAnimation className="sticky bottom-
+    0 z-30 border-t border-emerald-200/60 p-4 sm:static sm:border-t-0
+    sm:p-5"` (au lieu de `<Card>` non sticky) — sticky en bas sur mobile
+    avec backdrop-blur (déjà dans glass-adaptive) + bordure haute
+    emerald/200/60 sur mobile uniquement (spécification d/f : "sticky
+    en bas (backdrop-blur + border-top)") + badges de résumé renforcés
+    (DECISION_BADGE_CLS mis à jour avec border-300 bg-100 text-800 —
+    BUG À ÉVITER #7) + badge diplômés violet renforcé (border-violet-300
+    bg-violet-100 text-violet-800) + bouton "Valider le passage" sur
+    mobile : `variant="success"` (au lieu de bg-emerald-600 custom) +
+    `className="w-full sm:hidden"` (full-width mobile, masqué desktop).
+  • SuccessCard premium : `GlassCard variant="desktop" premiumBorder
+    noHover noAnimation className="relative overflow-hidden p-4 sm:p-6"`
+    (au lieu de `<Card className="overflow-hidden border-emerald-200">`)
+    + `premiumBorder` (effet succès premium gold via `.kente-border-
+    premium` : border 2px solid #D4AF37 + box-shadow 0 0 0 1px #047857 +
+    halo gold) + `KentePattern variant="bg"` en fond décoratif subtil
+    (opacity-10 absolute inset-0 pointer-events-none) + en-tête avec
+    badge rond gradient emerald→gold (size-12 rounded-full bg-gradient-
+    to-br from-emerald-600 to-amber-500 text-white shadow-lg shadow-
+    emerald-900/20) avec icône Check size-6 (au lieu de bg-emerald-100
+    text-emerald-700 sans gradient) + titre `font-display text-xl font-
+    bold tracking-tight text-forest` "Passage de classe validé" (au lieu
+    de text-lg font-bold sans font-display) + grille des compteurs : 6
+    `ResultCounter` renforcés (border-300 bg-100 text-800 au lieu de
+    border-transparent bg-50 text-700 — BUG À ÉVITER #7) + ajout du tone
+    "terracotta" pour "Non réinscrits" (cohérence avec KPIs) + bouton
+    "Nouveau passage" : `variant="outline"` avec border-emerald-300
+    text-emerald-800 hover:bg-emerald-50 (au lieu de border-emerald-200
+    text-emerald-700).
+  • Empty states premium (nouveau composant `EmptyState`) : `GlassCard
+    variant="adaptive" noHover noAnimation className="relative overflow-
+    hidden"` + `KentePattern variant="bg"` en fond décoratif + badge
+    rond coloré (amber pour établissement manquant, rose pour erreur
+    d'aperçu, emerald pour aperçu vide) + icône Lucide size-6 + titre
+    `font-display text-base font-semibold text-forest` + description
+    `max-w-md text-sm text-muted-foreground`. 3 cas gérés :
+    - Pas d'établissement : AlertCircle amber "Sélectionnez un éta-
+      blissement" (sans etablissementNom dans le shell).
+    - Erreur d'aperçu : AlertCircle rose "Impossible de générer
+      l'aperçu" avec errorPreview comme description.
+    - Aperçu vide (0 élève) : Users emerald "Aucun élève à traiter"
+      (avec etablissementNom dans le shell).
+  • Loading state premium (nouveau composant `LoadingState`) : 3
+    Skeletons (h-10 max-w-md rounded-lg, h-24 rounded-xl, h-72 rounded-
+    xl) + `GlassCard variant="adaptive" noHover noAnimation className=
+    "relative overflow-hidden p-0"` + `KentePattern variant="strip"
+    position="top"` (au lieu de rien) + `Loader2 size-8 animate-spin
+    text-emerald-600 dark:text-emerald-400` centré (au lieu de rien —
+    le loading state original n'avait que des Skeletons, sans spinner
+    centré).
+  • Imports enrichis : ajout de `motion` (framer-motion), `CalendarDays`
+    (icône section source), `Sparkles` (pill "Phase 3"), `GlassCard`
+    (DS), `KentePattern` (DS), `StatCard` (DS), `usePrefersReducedMotion`
+    (hooks). Imports retirés : `Card`/`CardContent` (remplacés par
+    GlassCard pour tous les contenants), composant custom `KpiCard` et
+    son type `KpiCardProps` / la map `KPI_ICON_CLS` (remplacés par
+    StatCard DS), composant custom `DashboardHeader` (remplacé par
+    `PassageMasseShell` avec hero header premium).
+  • Accessibilité : `id` + `<label htmlFor>` sur les Select source/cible
+    (conservé) + `aria-label` complet sur les Select (source, cible,
+    décision, décision diplômé) + `aria-hidden` sur les badges décoratifs
+    (flèche desktop, flèche row) + `role="alert"` sur les messages
+    d'erreur (années identiques, submitError) + `title` natif non requis
+    ici (pas de tooltip sur boutons cliquables — BUG À ÉVITER #1 non
+    applicable). Contrastes WCAG AA respectés (badges border-300 bg-100
+    text-800, boutons success gradient emerald).
+  • Aucune logique métier modifiée : hooks React Query (anneesKeys.list /
+    active / enabled: !!etablissement) conservés à l'identique, types
+    DecisionPassage / EleveDecision / PreviewEleve / PromoteResult
+    conservés, état local (sourceAnneeId, cibleAnneeId, preview,
+    decisions, loadingPreview, errorPreview, submitting, submitError,
+    result) conservé, effects de préselection (source = année active,
+    cible = année suivante) conservés, compteurs dynamiques `counts`
+    (useMemo sur preview + decisions) conservés, handlers (handleGenerate-
+    Preview, handleDecisionChange, handleApplyAll, handleSubmit, handle-
+    Reset) conservés à l'identique, helpers `fullName` et `sortPreview`
+    conservés, constantes DECISION_LABEL / DECISION_BADGE_CLS (contrastes
+    renforcés visuellement mais sémantiquement identiques), endpoints
+    backend intacts (POST /api/annees-scolaires/preview, POST /api/annees-
+    scolaires/promote, GET /api/annees-scolaires, GET /api/annees-
+    scolaires/active).
+  • Bug `toast` non déclaré VÉRIFIÉ : `const { toast } = useToast();`
+    déjà présent en tête du composant principal `PassageMasseDashboard`,
+    conservé à l'identique (BUG À ÉVITER #7 — aucune régression).
+
+Compile-check : `bunx tsc --noEmit 2>&1 | grep -c "passage-masse-
+dashboard"` → **0 erreur** sur le fichier refondu (avant : 0 erreur — la
+refonte n'a pas introduit de régression). Les 15 erreurs tsc restantes
+sont toutes PRÉ-EXISTANTES sur d'autres fichiers (login-form ×8,
+dashboard-shell ×3, view-parametres ×2, etablissement-form-dialog ×1,
+instrumentation ×1) — aucune sur passage-masse-dashboard.tsx.
+Lint-check : `bunx eslint src/components/passage-masse/passage-masse-
+dashboard.tsx` → **0 erreur, 0 warning** (EXIT=0). `bun run lint` (full
+project) → **0 erreur, 0 warning** (EXIT=0).
+
+Stage Summary:
+- Fichier modifié (1) :
+  • `Frontend/src/components/passage-masse/passage-masse-dashboard.tsx`
+    (1130 → 1289 lignes, +159 lignes).
+- Identité "Forêt EdTech" enrichie :
+  • Hero header GlassCard desktop + KentePattern strip top + badge rond
+    gradient emerald→gold (GraduationCap size-6) + pill "Phase 3"
+    outline (Sparkles) + pill établissement emerald (si sélectionné) +
+    KentePattern separator après le hero header.
+  • Zone de sélection des années : GlassCard adaptive + layout grid
+    `md:grid-cols-[1fr_auto_1fr]` (source + flèche + cible) + sections
+    avec icônes CalendarDays (badge emerald/100) et ArrowRight (badge
+    amber/100) + flèche de transition au centre desktop (size-10
+    rounded-full bg-gradient amber/20 + ArrowRight size-5) + bouton
+    "Générer l'aperçu" variant success + SelectTrigger avec bg-background
+    opaque (lisibilité) + badge "Active" renforcé.
+  • 4 StatCards DS en grid md:grid-cols-4 (Promus emerald/ArrowRight,
+    Redoublants amber/RotateCw, Non réinscrits terracotta/UserX,
+    Diplômés gold/Trophy) avec stagger delay 0/0.05/0.1/0.15 +
+    items-stretch + h-full pour égaliser les hauteurs + KentePattern
+    separator après les KPIs.
+  • Actions rapides : GlassCard adaptive + boutons "Tous promus"
+    (outline border-emerald-300) + "Tous redoublants" (outline border-
+    amber-300) en flex-col full-width mobile + bouton "Valider le
+    passage" variant success (hidden sm:inline-flex) avec icône
+    GraduationCap/Loader2.
+  • Tableau d'aperçu : GlassCard adaptive noHover noHover noAnimation
+    p-0 + header bg-emerald-50/60 + th text-emerald-900 + hover row
+    bg-emerald-50/60 + libellé élève font-display text-sm font-semibold
+    text-forest break-words + ID font-mono text-[11px] + badge classe
+    actuelle renforcé (border-slate-300 bg-slate-100 text-slate-800) +
+    flèche row en badge emerald/100 size-7 rounded-full + badge classe
+    suivante emerald renforcé (border-300 bg-100 text-800) + badge
+    Diplôme violet renforcé + Select décision bg-background focus:ring-
+    emerald-500/40 + points colorés emerald/amber/rose conservés +
+    rows motion.tr avec stagger delay index*0.02 (capé à 0.4s) via
+    composant PreviewRow custom + usePrefersReducedMotion respecté.
+  • Pied de page sticky mobile : GlassCard adaptive noHover noAnimation
+    `sticky bottom-0 z-30 border-t border-emerald-200/60 p-4 sm:static
+    sm:border-t-0 sm:p-5` + badges résumé renforcés (DECISION_BADGE_CLS
+    border-300 bg-100 text-800) + bouton "Valider le passage" variant
+    success w-full sm:hidden (mobile uniquement, full-width).
+  • SuccessCard premium : GlassCard desktop premiumBorder + KentePattern
+    bg subtil + badge rond gradient emerald→gold (Check size-6) + titre
+    font-display text-xl + 6 ResultCounter renforcés (border-300 bg-100
+    text-800, 6 tones emerald/violet/amber/terracotta/slate/rose) +
+    bouton "Nouveau passage" outline border-emerald-300 text-emerald-800.
+  • Empty states premium : GlassCard adaptive + KentePattern bg +
+    badges ronds colorés (amber AlertCircle établissement, rose Alert-
+    Circle erreur d'aperçu, emerald Users aperçu vide) + titres font-
+    display text-base + descriptions max-w-md.
+  • Loading state premium : 3 Skeletons + GlassCard adaptive + Kente
+    Pattern strip top + Loader2 size-8 animate-spin text-emerald-600
+    centré.
+- Responsive 100% : mobile (KPIs grid 2 colonnes, actions rapides boutons
+  full-width empilés flex-col, pied de page sticky bottom-0 z-30 avec
+  bordure haute emerald, tableau scroll-x, padding p-4 via GlassCard
+  adaptive, hero header p-5) / tablette (KPIs grid 4 colonnes, actions
+  rapides flex-row, padding p-5) / desktop (KPIs grid 4 colonnes, layout
+  sélection 3 colonnes avec flèche centre, lisibilité optimale, padding
+  p-6 via GlassCard adaptive qui monte en opacité 0.85, hero header p-6,
+  bouton "Valider le passage" dans la carte actions rapides, pied de
+  page statique).
+- Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt EdTech
+  : emerald (#047857) primaire (Promus, header, hover row, boutons
+  success, badges classe suivante) ; amber (#F59E0B) secondaire
+  (Redoublants, badges année cible, flèche transition, alerte années
+  identiques, boutons "Tous redoublants") ; gold (#D4AF37) premium
+  (Diplômés, badge rond gradient header emerald→gold, SuccessCard
+  premiumBorder) ; terracotta (#C2410C) danger chaud (Non réinscrits
+  dans KPIs et ResultCounter — au lieu de rose pour cohérence palette
+  africaine) ; rose conservé pour NON_REINSCRIT dans DECISION_BADGE_CLS
+  (cohérent avec la décision dans le tableau et le pied de page) et
+  pour Erreurs dans ResultCounter ; violet conservé pour Diplôme
+  (existant dans le code original — spécifié par la spec) ; slate
+  conservé pour Ignorés (ResultCounter) et classe actuelle (badge
+  neutre). Sky non utilisé.
+- Aucun Tooltip Radix — aucune utilisation de Tooltip dans ce fichier
+  (BUG À ÉVITER #1). Aucun `truncate` sur les libellés longs (noms
+  d'élèves) — `break-words leading-snug` pour les noms dans le tableau
+  (BUG À ÉVITER #2). Pas de `<button>` imbriqué dans un `<button>` (BUG
+  À ÉVITER #3 — aucune action cliquable dans le tableau d'aperçu, les
+  Select gèrent l'édition). `items-stretch` + `h-full` sur les StatCards
+  en grid pour égaliser les hauteurs (BUG À ÉVITER #5). Contrastes
+  renforcés sur tous les badges (border-300 bg-100 text-800 — BUG À
+  ÉVITER #7) : DECISION_BADGE_CLS, ANNEE_ACTIVE_BADGE_CLS, badges
+  classe actuelle/suivante/Diplôme du tableau, badges résumé du pied de
+  page, ResultCounter (6 tones).
+- Bug `toast` non déclaré VÉRIFIÉ : `const { toast } = useToast();`
+  conservé en tête du composant principal `PassageMasseDashboard`. Les
+  handlers `handleGeneratePreview` (toast "Année source manquante" /
+  "Aperçu vide" / "Aperçu généré"), `handleSubmit` (toast "Sélection
+  incomplète" / "Années identiques" / "Passage de classe validé")
+  utilisent `toast` correctement. Aucun bug potentiel.
+- TypeScript : **0 erreur sur passage-masse-dashboard.tsx** (vérifié par
+  `bunx tsc --noEmit 2>&1 | grep -c "passage-masse-dashboard"` → 0
+  match). Les 15 erreurs tsc restantes sont toutes pré-existantes sur
+  d'autres fichiers (login-form ×8, dashboard-shell ×3, view-parametres
+  ×2, etablissement-form-dialog ×1, instrumentation ×1) — aucune
+  introduite par cette refonte.
+- Lint : **0 erreur, 0 warning** sur l'ensemble du projet
+  (`bun run lint` EXIT=0). Fichier passage-masse-dashboard.tsx
+  individuellement : EXIT=0.
+- Aucune logique métier modifiée. Aucun endpoint backend touché.
+  Fichiers DS (glass-card, kente-pattern, stat-card), globals.css,
+  api-passage-masse.ts (signatures des fonctions conservées : fetchPreview,
+  submitPromote, types DecisionPassage / EleveDecision / PreviewEleve /
+  PromoteResult inchangés), api-students.ts (anneesKeys, fetchActiveAnnee,
+  fetchAnneesScolaires inchangés), types.ts (AnneeScolaire inchangé),
+  auth-store.ts, api-client.ts (ApiError inchangé), components/ui/*
+  (Button variant success, Badge, Skeleton, Select, Table intacts),
+  components/ds/*, app/(staff)/passage-masse/page.tsx (route wrapper
+  RoleGuard non modifiée) — TOUS INTACTS.
+- Points à vérifier par agent browser :
+  1. Rendu du hero header GlassCard desktop (KentePattern strip top en
+     tête de vue + badge rond gradient emerald→gold avec GraduationCap
+     size-6 + titre font-display text-2xl font-bold text-forest
+     "Passage de classe en masse" + pill "Phase 3" outline à droite du
+     titre avec Sparkles + pill "{etablissement.nom}" emerald sous le
+     sous-titre si un établissement est sélectionné).
+  2. Rendu de la zone de sélection des années : GlassCard adaptive +
+     layout grid md:grid-cols-[1fr_auto_1fr] sur desktop (source + flèche
+     + cible) ; sur mobile, source puis cible empilés (la flèche centrée
+     est masquée). Section source avec icône CalendarDays en badge
+     emerald/100 size-6 rounded-md + section cible avec icône ArrowRight
+     en badge amber/100 size-6 rounded-md. Flèche de transition desktop
+     size-10 rounded-full bg-gradient amber/20 + ArrowRight size-5.
+     SelectTrigger avec fond opaque bg-background (pas de glass pour
+     lisibilité). Badge "Active" renforcé (border-emerald-300 bg-emerald-
+     100 text-emerald-800) sur l'année active dans la liste. Bouton
+     "Générer l'aperçu" variant success (gradient emerald). Alerte années
+     identiques en border-amber-300 bg-amber-100 text-amber-800.
+  3. Rendu des 4 StatCards en grid md:grid-cols-4 (mobile grid-cols-2)
+     avec stagger animation (delay 0/0.05/0.1/0.15) : Promus emerald/
+     ArrowRight + hint "Inscrits dans la classe suivante" ; Redoublants
+     amber/RotateCw + hint "Restent dans la même classe" ; Non réinscrits
+     terracotta/UserX + hint "Abandons / départs" ; Diplômés gold/Trophy
+     + hint "Fin de cycle (BEPC, CEPE…)". Sur mobile, les 4 cartes sont
+     sur 2 colonnes — vérifier que les hauteurs sont alignées (items-
+     stretch + h-full).
+  4. Tableau d'aperçu : GlassCard adaptive noHover noAnimation p-0 +
+     header bg-emerald-50/60 + th text-emerald-900 + hover row bg-emerald-
+     50/60 + libellé élève font-display text-sm font-semibold text-forest
+     break-words + ID font-mono text-[11px] + badge classe actuelle
+     renforcé (border-slate-300 bg-slate-100 text-slate-800) + flèche
+     row en badge emerald/100 size-7 rounded-full + badge classe
+     suivante emerald renforcé (border-300 bg-100 text-800) + badge
+     "Diplôme" violet renforcé (border-violet-300 bg-violet-100 text-
+     violet-800) si est_diplome + Select décision bg-background focus:
+     ring-emerald-500/40 + points colorés emerald/amber/rose devant
+     chaque option + Select diplômé désactivé avec Trophy + "Diplôme".
+     Animation stagger sur les rows (motion.tr delay index*0.02 capé à
+     0.4s).
+  5. Pied de page sticky mobile : sur mobile (<640px), la GlassCard du
+     pied de page est collée en bas (sticky bottom-0 z-30) avec bordure
+     haute emerald-200/60 et backdrop-blur (de glass-adaptive) — vérifier
+     qu'elle reste visible lors du scroll. Sur desktop (≥640px), elle est
+     statique (sm:static sm:border-t-0). Badges résumé renforcés (Promus
+     emerald, Redoublants amber, Non réinscrits rose, Diplômés violet —
+     tous border-300 bg-100 text-800) + bouton "Valider le passage"
+     variant success w-full sm:hidden (mobile uniquement, full-width).
+  6. SuccessCard premium (après validation) : GlassCard desktop avec
+     bordure premium gold (kente-border-premium — border 2px solid
+     #D4AF37 + halo) + KentePattern bg subtil en fond + badge rond
+     gradient emerald→gold (Check size-6) + titre font-display text-xl
+     "Passage de classe validé" + libellé source → cible + 6 Result-
+     Counter en grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 (Promus
+     emerald, Diplômés violet, Redoublants amber, Non réinscrits
+     terracotta, Ignorés slate, Erreurs rose — tous border-300 bg-100
+     text-800) + bouton "Nouveau passage" outline border-emerald-300
+     text-emerald-800.
+  7. Empty states premium :
+     - Pas d'établissement : GlassCard adaptive + KentePattern bg +
+       badge rond amber + AlertCircle size-6 + titre font-display
+       "Sélectionnez un établissement" + description (sans pill éta-
+       blissement dans le hero header).
+     - Erreur d'aperçu : GlassCard adaptive + KentePattern bg + badge
+       rond rose + AlertCircle size-6 + titre "Impossible de générer
+       l'aperçu" + description = errorPreview.
+     - Aperçu vide (0 élève) : GlassCard adaptive + KentePattern bg +
+       badge rond emerald + Users size-6 + titre "Aucun élève à traiter"
+       + description + pill établissement dans le hero header.
+  8. Loading state : 3 Skeletons (h-10 max-w-md, h-24, h-72) + GlassCard
+     adaptive + KentePattern strip top + Loader2 size-8 animate-spin
+     text-emerald-600 centré (visible pendant la génération de l'aperçu
+     si preview est null).
+  9. Mobile (<640px) : KPIs grid 2 colonnes, actions rapides boutons
+     full-width empilés flex-col (Tous promus + Tous redoublants), pied
+     de page sticky bottom-0 z-30 avec bouton "Valider le passage"
+     variant success w-full, tableau scroll-x, padding p-4 via GlassCard
+     adaptive, hero header p-5, badge rond gradient size-12 (48px),
+     bouton "Valider le passage" de la carte actions rapides masqué
+     (hidden sm:inline-flex).
+  10. Desktop (1024px+) : KPIs grid 4 colonnes, layout sélection 3
+      colonnes avec flèche centre (md:grid-cols-[1fr_auto_1fr]), bouton
+      "Valider le passage" dans la carte actions rapides (hidden sm:
+      inline-flex sm:w-auto), pied de page statique (sm:static sm:border-
+      t-0) sans bouton submit (sm:hidden), GlassCard adaptive monte en
+      opacité 0.85, padding p-6, hero header p-6.
+  11. Contrastes : badges border-300 bg-100 text-800 (PAS border-200
+      bg-50 text-700) pour DECISION_BADGE_CLS, ANNEE_ACTIVE_BADGE_CLS,
+      badges classe actuelle/suivante/Diplôme du tableau, badges résumé
+      du pied de page, ResultCounter ; boutons "Tous promus" outline
+      border-emerald-300 text-emerald-800 ; boutons "Tous redoublants"
+      outline border-amber-300 text-amber-800 ; boutons "Valider le
+      passage" et "Générer l'aperçu" variant success (gradient emerald) ;
+      bouton "Nouveau passage" outline border-emerald-300 text-emerald-800.
+  12. Animation : StatCards avec stagger delay 0/0.05/0.1/0.15 (via DS) ;
+      PreviewRow (motion.tr) avec stagger delay index*0.02 (capé à 0.4s) ;
+      usePrefersReducedMotion respecté — animations désactivées si
+      l'utilisateur préfère réduire les animations.
+  13. Comportement métier : génération de l'aperçu (POST /api/annees-
+      scolaires/preview avec ancienne_annee_id) → tableau d'élèves avec
+      décision éditable ; actions "Tous promus" / "Tous redoublants"
+      (n'affectent pas les diplômés) ; validation (POST /api/annees-
+      scolaires/promote avec ancienne_annee_id, nouvelle_annee_id,
+      decisions) → SuccessCard avec compteurs ; reset complet via bouton
+      "Nouveau passage". Préselection automatique : source = année
+      active, cible = année suivante dans la liste.
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.
