@@ -11254,3 +11254,621 @@ Stage Summary:
       "Nouveau passage". Préselection automatique : source = année
       active, cible = année suivante dans la liste.
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+Task ID: 4
+Agent: frontend-styling-expert
+Task: Refonte du module /enseignants (Forêt EdTech, glassmorphism, kente, responsive)
+
+Work Log:
+- Lecture du worklog.md (~1000 dernières lignes) — extraction des BUGS À
+  ÉVITER (Tooltip Radix → `title` natif ; `truncate` → `break-words`/
+  `break-all leading-snug` ; boutons imbriqués → `div role="button"` ;
+  contrastes `border-300 bg-100 text-800` au lieu de `border-200 bg-50
+  text-700` ; avatar `bg-emerald-600 text-white` ; `items-stretch` + `h-full`
+  pour égaliser les hauteurs ; `toast` déclaré en tête de chaque composant
+  qui l'utilise).
+- Lecture complète du fichier `enseignants-list.tsx` (1226 lignes) —
+  identification de la structure : composant principal `EnseignantsList`
+  + `EnseignantsShell` (header minimaliste avec badge emerald uni) +
+  tableau desktop `<Card>` + dialogs `EnseignantFormDialog` /
+  `EnseignantMatieresDialog` + `EmptyState` (Card simple). Aucune carte
+  mobile, aucun GlassCard/KentePattern/StatCard, pas de Framer Motion.
+- Lecture des composants DS :
+  • `glass-card.tsx` : variants `mobile` / `tablet` / `desktop` / `premium`
+    / `adaptive` + props `premiumBorder` / `noAnimation` / `noHover` /
+    `delay` + support `onClick` interactif (role=button, tabindex=0).
+  • `kente-pattern.tsx` : variants `strip` (top/bottom/custom) / `bg`
+    (absolute opacity-10) / `separator` (kente-separator) / `border`.
+  • `stat-card.tsx` : tones `emerald` / `amber` / `terracotta` / `gold` /
+    `sky` / `forest` + `delay` pour stagger + `hint` + `onClick` optionnel
+    + `className` pour égalisation `h-full`.
+- Lecture des exemples de refontes réussies :
+  • `effectifs-dashboard.tsx` : pattern hero header GlassCard desktop +
+    badge rond gradient emerald→gold + pill "Phase 3" outline + pill éta-
+    blissement emerald + KentePattern strip top + 4 StatCards DS en grid
+    md:grid-cols-4 avec stagger delay 0/0.05/0.1/0.15 + KentePattern
+    separator + tableau desktop GlassCard adaptive noHover noAnimation
+    p-0 overflow-hidden + header bg-emerald-50/60 + hover row bg-emerald-
+    50/60 + libellés font-display text-sm font-semibold text-forest
+    break-words + badges renforcés + EmptyState premium KentePattern bg +
+    badges ronds colorés + LoadingState avec KentePattern strip top +
+    Loader2 centré.
+  • `view-frais.tsx` : pattern FraisShell avec hero header + bouton
+    "Nouveau frais" variant success w-full sm:w-auto + 4 StatCards
+    (Coins emerald / CheckCircle2 forest / Wallet gold / CalendarDays
+    amber) + EmptyState premium avec `action` prop (bouton contextuel
+    variant success) + FraisCard avec hover lift + `delay={min(index*
+    0.05, 0.3)}` + `flex h-full flex-col` pour égaliser les hauteurs +
+    boutons d'action avec `title` natif + `aria-label` + `hidden lg:
+    inline` pour le texte desktop.
+- Vérification du `Button` shadcn : variant `success` (gradient emerald
+  from-emerald-600 to-emerald-700) confirmé, variant `terracotta` (danger
+  chaud) confirmé, variant `gold` (premium or) confirmé, variant `forest`
+  confirmé. Tailles `icon` (size-9) + `xl` (h-12) confirmées.
+- Vérification des tokens CSS Forêt EdTech dans `globals.css` :
+  • `@theme inline` enregistre `--color-forest`, `--color-forest-deep`,
+    `--color-emerald-fe`, `--color-amber-fe`, `--color-gold`, `--color-
+    gold-light`, `--color-gold-dark`, `--color-terracotta`, `--color-
+    terracotta-light`, `--color-terracotta-dark`, `--color-sand` comme
+    utilitaires Tailwind 4 (donc `text-forest`, `bg-gold/15`, `text-gold-
+    dark`, `text-terracotta`, etc. sont valides).
+  • `emerald-600` / `amber-600` / `rose-600` etc. utilisent la palette
+    Tailwind par défaut (pas de collision — `emerald-fe` / `amber-fe` sont
+    les variants custom).
+- Vérification du type `Etablissement` dans `lib/auth-store.ts` (l. 57) :
+  `id`, `nom`, `code_officiel?`, `ville?`, `applique_categorie_affecte?`,
+  `actif?`. Le `etablissement.nom` est accessible pour le pill éta-
+  blissement dans le hero header.
+- Vérification que `usePrefersReducedMotion` est exporté depuis
+  `@/hooks/use-prefers-reduced-motion` — hook SSR-safe (retourne false
+  côté serveur, se met à jour via useEffect après mount).
+- Vérification des types `Enseignant` / `EnseignantDTO` /
+  `StatutEnseignant` / `TypeContrat` / `Sexe` / `EnseignantMatiere` /
+  `Matiere` dans `lib/api-enseignant.ts` — `Enseignant.matieres` est
+  `EnseignantMatiere[]` (avec `matiere_id`, `taux_horaire`,
+  `est_principale`, `matiere?: Matiere`), `Enseignant.statut` est
+  `StatutEnseignant` ("ACTIF" | "INACTIF" | "CONGE"), `Enseignant.type_
+  contrat` est `TypeContrat` ("CDI" | "CDD" | "VACATAIRE" |
+  "STAGIAIRE"), `Enseignant.sexe` est `Sexe` ("M" | "F" | ""). Les
+  fonctions `fetchEnseignants({search, statut})`, `createEnseignant(dto)`,
+  `updateEnseignant(id, dto)`, `deleteEnseignant(id)`,
+  `addMatiereToEnseignant(id, dto)`, `removeMatiereFromEnseignant(id,
+  matiereId)`, `fetchMatieres()` — signatures conservées à l'identique.
+- Refonte du fichier `enseignants-list.tsx` (1226 → 1779 lignes, +553
+  lignes) :
+  • Imports enrichis : ajout de `motion` (framer-motion), `GlassCard` /
+    `KentePattern` / `StatCard` (DS), `usePrefersReducedMotion` (hooks),
+    icônes Lucide supplémentaires (`Sparkles` pour pill "Phase A",
+    `Filter` pour le Select statut, `FileText` pour le badge contrat,
+    `CheckCircle2` pour KPI Actifs, `CalendarClock` pour KPI En congé,
+    `UserX` pour KPI Inactifs, `type LucideIcon` pour typage des props
+    d'icônes). Imports retirés : `Card, CardContent` (remplacés par
+    GlassCard pour tous les contenants).
+  • `STATUT_CLS` renforcé (BUG À ÉVITER #7) : `border-300 bg-100 text-800`
+    (au lieu de `border-200 bg-50 text-700`). INACTIF en rose (cohérent
+    avec /utilisateurs et /effectifs) au lieu de muted — sémantique
+    "danger chaud" conforme à la palette africaine.
+  • Nouveau helper `enseignantInitials(e)` : extrait les initiales (max
+    2 lettres : première lettre de `prenoms` + première lettre de `nom`)
+    pour les avatars desktop (size-9) et mobile (size-11).
+  • `EnseignantsList` (composant principal) :
+    - Ajout de `usePrefersReducedMotion()` (respect des préférences
+      utilisateur).
+    - Ajout des KPIs calculés via `useMemo` : `kpis.total` / `kpis.actifs`
+      / `kpis.conges` / `kpis.inactifs` (comptage des statuts sur la
+      liste chargée).
+    - Filtres : `<Card>` → `<GlassCard variant="adaptive" noHover
+      noAnimation className="p-4 sm:p-5">` + `Input` avec `bg-background`
+      opaque (lisibilité, règle "Éviter le glass sur les inputs") +
+      `SelectTrigger` avec `bg-background` opaque + icône `Filter` dans le
+      SelectTrigger avant `SelectValue` (icône contextuelle, spec c) +
+      layout `flex-col sm:flex-row sm:items-center` (responsive).
+    - Ajout des 4 StatCards DS en grid `grid-cols-2 gap-3 sm:gap-4 md:
+      grid-cols-4` entre les filtres et le tableau :
+      • "Total enseignants" (tone emerald, icon GraduationCap, value =
+        kpis.total, hint "chargement…" si isLoading sinon "dans l'éta-
+        blissement", delay 0).
+      • "Actifs" (tone forest, icon CheckCircle2, value = kpis.actifs,
+        hint "en activité", delay 0.05).
+      • "En congé" (tone amber, icon CalendarClock, value = kpis.conges,
+        hint "temporairement absents", delay 0.1).
+      • "Inactifs" (tone terracotta, icon UserX, value = kpis.inactifs,
+        hint "non disponibles", delay 0.15).
+      Toutes avec `className="h-full"` (BUG À ÉVITER #5 — égalisation des
+      hauteurs en grid).
+    - KentePattern separator entre les StatCards et le tableau
+      (`<KentePattern variant="separator" className="my-1" />`).
+    - Loading state : `<Card><CardContent>` → nouveau composant
+      `LoadingState` (GlassCard adaptive noHover noAnimation p-0 +
+      KentePattern strip top + 5 Skeletons h-12).
+    - Empty states : `EmptyState` enrichi avec prop `action` optionnelle
+      (GlassCard adaptive noHover + KentePattern bg + badge rond coloré
+      + icône Lucide size-6 + titre `font-display text-base font-semibold
+      text-forest` + description max-w-md + bouton contextuel). 3 cas :
+      pas d'établissement (AlertCircle amber), erreur de chargement
+      (AlertCircle rose), aucun enseignant (GraduationCap emerald + bouton
+      "Créer un enseignant" variant success).
+    - Tableau desktop : `<Card><CardContent className="p-0">` → `<GlassCard
+      variant="adaptive" noHover noAnimation className="hidden overflow-
+      hidden p-0 md:block">` (visibile md+ uniquement). Header row
+      `bg-emerald-50/60 hover:bg-emerald-50/60 dark:border-emerald-900/40
+      dark:bg-emerald-950/20` (au lieu de default). `th` avec `text-xs
+      font-semibold uppercase tracking-wide text-emerald-900 dark:text-
+      emerald-200`. Hover row `hover:bg-emerald-50/60 dark:hover:bg-
+      emerald-950/20`.
+    - Nouveau composant `EnseignantRow` (motion.tr) — une ligne du
+      tableau desktop avec stagger animation (delay = min(index * 0.02,
+      0.4)) :
+      • `<motion.tr data-slot="table-row" className="hover:bg-emerald-50/
+        60 border-b transition-colors dark:hover:bg-emerald-950/20">` (au
+        lieu de TableRow — conserve le `data-slot` shadcn + animations
+        Framer Motion).
+      • Colonne "Matricule" : `font-mono text-xs text-muted-foreground`
+        (conservé).
+      • Colonne "Nom complet" : avatar `bg-emerald-600 text-white text-xs
+        font-semibold size-9 rounded-full` (BUG À ÉVITER #6) avec initiales
+        + nom `font-display text-sm font-semibold leading-snug text-forest
+        break-words` (au lieu de `font-medium` sans font-display — BUG À
+        ÉVITER #2) + email `break-all leading-snug` (au lieu de `truncate`
+        — BUG À ÉVITER #2) avec icône `Mail size-3 mt-0.5` (BUG À ÉVITER
+        #4 — `items-start` + `mt-0.5`).
+      • Colonne "Téléphone" : `inline-flex items-center gap-1.5 rounded-md
+        bg-emerald-500/15 px-2 py-1 text-xs` avec icône `Phone size-3
+        text-emerald-700 dark:text-emerald-300` (au lieu de `flex items-
+        center gap-1` sans badge).
+      • Colonne "Statut" : `StatutEnseignantBadge` (avec STATUT_CLS
+        renforcé).
+      • Colonne "Contrat" : `Badge` avec icône `FileText size-3` +
+        libellé `TYPE_CONTRAT_LABEL[e.type_contrat]` + classes renforcées
+        `border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-
+        700 dark:bg-slate-900/50 dark:text-slate-200` (badge neutre —
+        BUG À ÉVITER #7).
+      • Colonne "Taux/h" : `font-mono text-base font-bold text-gold-dark
+        dark:text-gold` (au lieu de `text-right font-mono text-xs` —
+        spec d : `text-base font-bold text-gold`). `text-gold-dark` en
+        mode clair pour contraste AA (#B8941F sur blanc = 4.5:1), `text-
+        gold` en mode sombre (#D4AF37 sur fond sombre = bon contraste).
+      • Colonne "Matières" : badges emerald renforcés `border-emerald-300
+        bg-emerald-100 text-emerald-800 dark:border-emerald-800/60 dark:
+        bg-emerald-950/50 dark:text-emerald-200` (BUG À ÉVITER #7) au
+        lieu de `border-emerald-200 bg-emerald-50 text-emerald-700`. Badge
+        "+N" en slate neutre renforcé. Max 3 badges affichés + badge
+        "+N" si > 3.
+      • Colonne "Actions" : 3 boutons (`Button` ghost sm) avec `title`
+        natif (PAS de Tooltip Radix — BUG À ÉVITER #1) + `aria-label`
+        complet + `hidden lg:inline` sur le texte (icône seule sur md
+        768-1023, icône + texte sur lg 1024+) :
+        - Modifier (Pencil, `text-emerald-700 hover:bg-emerald-50`).
+        - Matières (BookOpen, `text-amber-700 hover:bg-amber-50`).
+        - Supprimer (Trash2 ou Loader2 animate-spin si `deleting`,
+          `text-destructive hover:bg-rose-50`) — bouton trigger de
+          l'`AlertDialog` via `AlertDialogTrigger asChild` (pas de
+          bouton imbriqué — BUG À ÉVITER #3 respecté).
+      • AlertDialog de suppression : contenu identique à l'original
+        (titre + description + bouton Annuler + bouton Supprimer défini-
+        tivement `bg-destructive text-white hover:bg-destructive/90`).
+    - Nouveau composant `EnseignantMobileCard` (motion.div) — vue carte
+      mobile (md:hidden) pour chaque enseignant :
+      • `motion.div className="rounded-2xl"` avec stagger animation
+        (delay = min(index * 0.05, 0.4)) — wrapper pour animation.
+      • `GlassCard variant="mobile" noHover noAnimation className="p-4"`
+        (carte mobile glassmorphism).
+      • En-tête : avatar `bg-emerald-600 text-white size-11 rounded-full
+        text-sm font-semibold` (BUG À ÉVITER #6) + nom `font-display
+        text-base font-semibold leading-snug text-forest break-words`
+        + matricule `font-mono text-[11px] text-muted-foreground` +
+        StatutEnseignantBadge à droite.
+      • Body : InfoRows avec icônes dans badges ronds size-6 (BUG À
+        ÉVITER #4 — `flex items-start` + `mt-0.5` pour email) :
+        - Téléphone (Phone, badge emerald/15, font-mono).
+        - Email (Mail, badge amber/15, break-all leading-snug).
+        - Contrat (FileText, badge slate/15, font-medium).
+        - Taux/h (BookOpen, badge gold/15, value `font-mono text-base
+          font-bold text-gold-dark dark:text-gold`).
+      • Matières (si > 0) : section border-t pt-3 + label uppercase
+        tracking-wide + badges emerald renforcés (max 4 + badge "+N"
+        slate si > 4).
+      • Footer : 3 boutons d'action `Button ghost size="icon"` avec
+        `className="h-11 w-11"` (touch target ≥ 44px — spec c mobile) +
+        `title` natif + `aria-label` complet :
+        - Modifier (Pencil size-4, emerald).
+        - Matières (BookOpen size-4, amber).
+        - Supprimer (Trash2 ou Loader2 animate-spin, destructive) —
+          bouton trigger de l'`AlertDialog` via `AlertDialogTrigger
+          asChild`.
+      • AlertDialog de suppression identique au desktop.
+    - Dialog création / édition → `EnseignantFormDialog` premium :
+      - DialogHeader enrichi : badge rond gradient `bg-gradient-to-br
+        from-emerald-600 to-amber-500 text-white shadow-md shadow-
+        emerald-900/20` size-10 + icône `GraduationCap size-5` + titre
+        `font-display text-lg font-bold tracking-tight text-forest` (au
+        lieu de `DialogTitle` sans style) + description conservée.
+      - 3 sections GlassCard `variant="tablet" noHover noAnimation p-4`
+        (au lieu d'une grid unique) :
+        • "Identité" (FormSectionTitle avec icône GraduationCap dans
+          badge rond emerald/15 size-7) : Nom + Prénoms + Sexe (grid
+          sm:grid-cols-2).
+        • "Contact" (FormSectionTitle avec icône Phone) : Téléphone +
+          Email (grid sm:grid-cols-2).
+        • "Contrat" (FormSectionTitle avec icône FileText) : Type de
+          contrat + Statut + Taux horaire + Diplôme + Spécialité (grid
+          sm:grid-cols-2, Spécialité en col-span-2).
+      - Tous les `Input` et `SelectTrigger` avec `bg-background` opaque
+        (règle "Éviter le glass sur les inputs").
+      - Footer : `grid grid-cols-2 gap-2 sm:flex sm:justify-end` (boutons
+        full-width empilés sur mobile en 2 colonnes, inline sur desktop)
+        + bouton Annuler `variant="outline" w-full sm:w-auto` + bouton
+        submit `variant="success"` (au lieu de `bg-emerald-600 text-
+        white hover:bg-emerald-700` custom) avec `w-full sm:w-auto`.
+      - LOGIQUE MÉTIER INTACTE : `FormState`, validation `nomValid` /
+        `tauxValid` / `formValid`, `handleSave` (build du `EnseignantDTO`
+        avec trim + undefined si vide), `React.useEffect` de sync à
+        l'ouverture (enseignant ou reset), `submitted` state pour
+        l'affichage des erreurs, `isEdit` basé sur `!!enseignant`.
+    - Dialog gestion matières → `EnseignantMatieresDialog` premium :
+      - DialogHeader enrichi : badge rond gradient emerald→gold size-10
+        + icône `BookOpen size-5` (au lieu de rien) + titre `font-
+        display text-lg font-bold tracking-tight text-forest` (au lieu
+        de `DialogTitle` sans style) + description conservée.
+      - Liste des matières associées : `<ul>` de cards mini (li) avec
+        border `border-emerald-200 bg-emerald-50/60 dark:border-emerald-
+        900/40 dark:bg-emerald-950/30` (au lieu de `border bg-card` géné-
+        rique) + icône BookOpen dans badge rond emerald/15 size-7 +
+        libellé `break-words text-sm font-medium leading-snug text-
+        forest` (au lieu de `truncate` — BUG À ÉVITER #2) + code +
+        taux `font-mono font-semibold text-gold-dark dark:text-gold` +
+        bouton supprimer `Button ghost size="icon" size-8 text-
+        destructive` avec `title` natif + `aria-label`.
+      - Formulaire d'ajout : `Select` matière (avec `bg-background`) +
+        `Input` taux (avec `bg-background`) + bouton "Ajouter" `variant=
+        "success"` (au lieu de `bg-emerald-600 text-white hover:bg-
+        emerald-700` custom) en grid `sm:grid-cols-[1fr_140px_auto]` +
+        bouton full-width mobile `w-full sm:w-auto`.
+      - Footer : bouton "Fermer" `variant="outline" w-full sm:w-auto`
+        (full-width mobile, auto desktop).
+      - LOGIQUE MÉTIER INTACTE : `useQuery` fetchMatieres (matieresKeys.
+        list), `useQuery` refreshed enseignant via `fetchEnseignants({
+        search: enseignant.matricule })`, `availableMatieres` (matieres
+        actives non associées), `addMutation` (POST /api/enseignants/:id/
+        matieres), `removeMutation` (DELETE /api/enseignants/:id/
+        matieres/:matiereId), `handleAdd` (validation matièreId + taux
+        positif), `useToast()` pour toasts succès/erreur, `queryClient.
+        invalidateQueries` sur enseignantsKeys.all et matieresKeys.all.
+    - `EnseignantsShell` enrichi (hero header premium) :
+      • `KentePattern variant="strip" position="top"` en tête de vue
+        (ajouté).
+      • `GlassCard variant="desktop" noHover className="p-5 sm:p-6"` (au
+        lieu d'un simple div flex) pour le hero header.
+      • Badge rond gradient `bg-gradient-to-br from-emerald-600 to-
+        amber-500 text-white shadow-lg shadow-emerald-900/20` size-12
+        (au lieu de `bg-emerald-600` uni size-11) avec icône
+        GraduationCap size-6.
+      • Titre `font-display text-2xl font-bold tracking-tight text-
+        forest` (au lieu de `text-xl font-bold tracking-tight` sans
+        font-display).
+      • Pill "Phase A" outline `border-emerald-300 bg-emerald-50/60 text-
+        emerald-800` avec icône Sparkles (ajouté).
+      • Pill établissement emerald `border-emerald-200 bg-emerald-50
+        text-emerald-800` visible si `etablissementNom` fourni (ajouté).
+      • Bouton "Nouvel enseignant" `variant="success"` (au lieu de
+        `bg-emerald-600 text-white hover:bg-emerald-700` custom) +
+        `w-full sm:w-auto` (full-width mobile).
+      • `KentePattern variant="separator" className="my-1"` après le
+        hero header (ajouté).
+    - `EmptyState` enrichi : `<Card><CardContent>` → `<GlassCard
+      variant="adaptive" noHover className="relative overflow-hidden">`
+      + `<KentePattern variant="bg" />` en fond décoratif + badge rond
+      coloré size-12 (emerald/amber/rose selon tone) + icône Lucide
+      size-6 + titre `font-display text-base font-semibold text-forest`
+      (au lieu de `text-base font-medium`) + description max-w-md +
+      prop `action` optionnelle (React.ReactNode) pour le bouton
+      contextuel.
+    - Nouveau composant `LoadingState` : GlassCard adaptive noHover
+      noAnimation p-0 + KentePattern strip top + 5 Skeletons h-12 w-full
+      (au lieu de `<Card><CardContent className="space-y-2 p-4">`).
+    - Nouveau composant `FormSectionTitle` : badge rond emerald/15 size-7
+      + icône Lucide + titre `font-display text-sm font-semibold
+      tracking-tight text-forest` pour les 3 sections du formulaire.
+  • Accessibilité : `aria-label` complet sur les Select (statut, sexe,
+    contrat, statut form), `aria-label` sur les boutons d'action (Modifier
+    / Matières / Supprimer / Retirer matière) avec le nom de l'enseignant,
+    `aria-invalid` sur les champs invalides (nom, taux), `aria-hidden`
+    sur les avatars décoratifs, `role="alert"` implicite via `text-
+    destructive` sur les messages d'erreur. `title` natif sur tous les
+    boutons d'action (PAS de Tooltip Radix — BUG À ÉVITER #1).
+  • Aucune logique métier modifiée : hooks React Query
+    (enseignantsKeys.list / matieresKeys.list / enabled: !!etablissement)
+    conservés à l'identique, mutations createMutation / updateMutation /
+    deleteMutation / addMutation / removeMutation + invalidateQueries
+    conservées, handlers openCreate / openEdit / openMatieres /
+    handleSubmit conservés, debounce 300ms sur la recherche conservé,
+    types Enseignant / EnseignantDTO / StatutEnseignant / TypeContrat /
+    Sexe / EnseignantMatiere / Matiere conservés, constantes STATUT_LABEL
+    / STATUT_CLS (contrastes renforcés visuellement mais sémantiquement
+    identiques) / TYPE_CONTRAT_LABEL / TYPE_CONTRAT_OPTIONS /
+    STATUT_OPTIONS / FormState conservées, helper enseignantFullName
+    conservé, endpoints backend intacts (GET /api/enseignants, POST
+    /api/enseignants, PUT /api/enseignants/:id, DELETE /api/enseignants/
+    :id, POST /api/enseignants/:id/matieres, DELETE /api/enseignants/:id/
+    matieres/:matiereId, GET /api/matieres).
+  • Bug `toast` non déclaré VÉRIFIÉ : `const { toast } = useToast();`
+    présent en tête du composant principal `EnseignantsList` (l. 218) ET
+    en tête du composant `EnseignantMatieresDialog` (l. 1429) — les deux
+    composants qui utilisent `toast(...)` dans leurs mutations. Aucune
+    régression (BUG À ÉVITER #8).
+
+Compile-check : `bunx tsc --noEmit 2>&1 | grep -c "enseignants-list"` →
+**0 erreur** sur le fichier refondu (avant : 0 erreur — la refonte n'a
+pas introduit de régression). Les 15 erreurs tsc restantes sont toutes
+PRÉ-EXISTANTES sur d'autres fichiers (login-form ×8, dashboard-shell ×3,
+view-parametres ×2, etablissement-form-dialog ×1, instrumentation ×1) —
+aucune sur enseignants-list.tsx.
+Lint-check : `bunx eslint src/components/enseignants/enseignants-list.tsx`
+→ **0 erreur, 0 warning** (EXIT=0). `bun run lint` (full project) →
+**0 erreur, 0 warning** (EXIT=0).
+
+Stage Summary:
+- Fichier modifié (1) :
+  • `Frontend/src/components/enseignants/enseignants-list.tsx` (1226 →
+    1779 lignes, +553 lignes).
+- Identité "Forêt EdTech" enrichie :
+  • Hero header GlassCard desktop + KentePattern strip top + badge rond
+    gradient emerald→gold (GraduationCap size-6) + pill "Phase A"
+    outline (Sparkles) + pill établissement emerald (si sélectionné) +
+    bouton "Nouvel enseignant" variant success w-full sm:w-auto +
+    KentePattern separator après le hero header.
+  • Filtres : GlassCard adaptive noHover noAnimation p-4 sm:p-5 + Input
+    avec bg-background opaque + icône Search + bouton effacer X + Select
+    statut avec icône Filter dans SelectTrigger (bg-background opaque) +
+    layout flex-col sm:flex-row sm:items-center (responsive).
+  • 4 StatCards DS en grid grid-cols-2 md:grid-cols-4 avec stagger delay
+    0/0.05/0.1/0.15 + items-stretch + h-full : Total enseignants
+    (emerald/GraduationCap), Actifs (forest/CheckCircle2), En congé
+    (amber/CalendarClock), Inactifs (terracotta/UserX) + hints contex-
+    tuels + "chargement…" sur Total enseignants pendant isLoading.
+  • Tableau desktop (md:block, hidden on mobile) : GlassCard adaptive
+    noHover noAnimation p-0 overflow-hidden + header bg-emerald-50/60 +
+    th text-emerald-900 + hover row bg-emerald-50/60 + matricule font-
+    mono text-xs + nom avatar emerald-600 text-white size-9 + nom font-
+    display text-sm font-semibold text-forest break-words + email
+    break-all leading-snug + téléphone badge emerald/15 + icône Phone +
+    statut StatutEnseignantBadge (border-300 bg-100 text-800) + contrat
+    badge slate renforcé avec icône FileText + taux/h text-gold-dark
+    dark:text-gold font-mono text-base font-bold + matières badges
+    emerald renforcés (max 3 + "+N" slate) + actions 3 boutons ghost sm
+    avec title natif + aria-label + hidden lg:inline (icône seule md,
+    icône+texte lg). Rows motion.tr avec stagger delay index*0.02 capé
+    à 0.4s (composant EnseignantRow custom) + usePrefersReducedMotion
+    respecté.
+  • Cartes mobile (md:hidden) : GlassCard mobile noHover noAnimation p-4
+    + motion.div wrapper avec stagger delay index*0.05 capé à 0.4s +
+    en-tête avatar emerald-600 text-white size-11 + nom font-display
+    text-base font-semibold text-forest break-words + matricule font-
+    mono + StatutEnseignantBadge + body InfoRows (téléphone emerald/15,
+    email amber/15 break-all, contrat slate/15, taux/h gold/15 text-
+    gold-dark dark:text-gold font-bold) + matières (max 4 + "+N") +
+    footer 3 boutons ghost size="icon" h-11 w-11 (touch target ≥ 44px)
+    avec title natif + aria-label (icônes seules Pencil/BookOpen/Trash2
+    ou Loader2 animate-spin si deleting).
+  • EnseignantFormDialog premium : header badge rond gradient emerald→
+    gold (GraduationCap size-5) + titre font-display text-lg + 3 sections
+    GlassCard tablet (Identité / Contact / Contrat) avec FormSectionTitle
+    (badge rond emerald/15 size-7 + icône contextuelle GraduationCap /
+    Phone / FileText) + Input/SelectTrigger avec bg-background opaque +
+    footer grid-cols-2 gap-2 sm:flex sm:justify-end + bouton Annuler
+    variant outline w-full sm:w-auto + bouton submit variant success
+    w-full sm:w-auto (avec Loader2 si submitting, texte "Enregistrer"
+    si edit sinon "Créer l'enseignant").
+  • EnseignantMatieresDialog premium : header badge rond gradient
+    emerald→gold (BookOpen size-5) + titre font-display text-lg + liste
+    matières en cards mini (border-emerald-200 bg-emerald-50/60) avec
+    icône BookOpen dans badge rond emerald/15 size-7 + libellé break-
+    words text-sm font-medium text-forest + taux font-mono font-semibold
+    text-gold-dark dark:text-gold + bouton supprimer ghost size="icon"
+    size-8 text-destructif avec title natif + aria-label + formulaire
+    d'ajout (Select matière bg-background + Input taux bg-background +
+    bouton "Ajouter" variant success w-full sm:w-auto avec Loader2 ou
+    Plus) + footer bouton "Fermer" variant outline w-full sm:w-auto.
+  • Empty states premium : GlassCard adaptive noHover + KentePattern bg
+    + badges ronds colorés (amber AlertCircle pour établissement man-
+    quant, rose AlertCircle pour erreur de chargement, emerald
+    GraduationCap pour aucun enseignant) + titres font-display text-base
+    font-semibold text-forest + descriptions max-w-md + bouton "Créer
+    un enseignant" variant success sur l'état vide.
+  • Loading state premium : GlassCard adaptive noHover noAnimation p-0 +
+    KentePattern strip top + 5 Skeletons h-12 w-full.
+- Responsive 100% : mobile (<640px, KPIs grid 2 colonnes, filtres flex-
+  col, hero header flex-col, bouton "Nouvel enseignant" w-full, cartes
+  mobile md:hidden avec actions icône-seules h-11 w-11, dialog footer
+  grid-cols-2, padding p-4 via GlassCard adaptive) / tablette (768-
+  1023px, KPIs grid 4 colonnes, filtres flex-row, tableau desktop visible
+  md:block, actions icône-seules `hidden lg:inline`, padding p-5) /
+  desktop (1024px+, KPIs grid 4 colonnes, tableau desktop avec icône +
+  texte sur les boutons `lg:inline`, GlassCard adaptive monte en opacité
+  0.85, padding p-6, hero header p-6).
+- Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt EdTech
+  : emerald (#047857) primaire (Total enseignants, Actifs, header badge
+  rond gradient emerald→gold, hover row, boutons success, badges
+  matières, badge téléphone, avatar emerald-600) ; amber (#F59E0B)
+  secondaire (En congé, badge rond gradient emerald→gold, bouton
+  Matières, icône email mobile) ; gold (#D4AF37) premium (taux/h text-
+  gold-dark dark:text-gold, badge taux mobile, taux matières dialog) ;
+  terracotta (#C2410C) danger chaud (Inactifs KPI) ; rose (#e11d48)
+  conservé pour INACTIF dans STATUT_CLS (cohérent avec /utilisateurs et
+  /effectifs) et pour EmptyState erreur de chargement ; slate conservé
+  pour badge contrat (neutre) et badge "+N" matières. Sky non utilisé.
+- Aucun Tooltip Radix — toutes les actions utilisent l'attribut HTML
+  natif `title` (BUG À ÉVITER #1). Aucun `truncate` sur les valeurs
+  longues (noms, emails) — `break-words leading-snug` pour les noms,
+  `break-all leading-snug` pour les emails (BUG À ÉVITER #2). Pas de
+  `<button>` imbriqué dans un `<button>` — les AlertDialog utilisent
+  `AlertDialogTrigger asChild` qui rend un seul `<button>` via Slot
+  (BUG À ÉVITER #3). `items-stretch` + `h-full` sur les StatCards en
+  grid pour égaliser les hauteurs (BUG À ÉVITER #5). Avatar `bg-
+  emerald-600 text-white` (BUG À ÉVITER #6). Contrastes renforcés sur
+  tous les badges (border-300 bg-100 text-800 — BUG À ÉVITER #7) :
+  STATUT_CLS (ACTIF emerald, INACTIF rose, CONGE amber), badges
+  matières (emerald), badge contrat (slate), badge "+N" (slate).
+- Bug `toast` non déclaré VÉRIFIÉ : `const { toast } = useToast();`
+  présent en tête de `EnseignantsList` (l. 218) ET en tête de
+  `EnseignantMatieresDialog` (l. 1429). Les handlers createMutation /
+  updateMutation / deleteMutation / addMutation / removeMutation /
+  handleAdd utilisent `toast(...)` correctement. Aucun bug potentiel.
+- TypeScript : **0 erreur sur enseignants-list.tsx** (vérifié par
+  `bunx tsc --noEmit 2>&1 | grep -c "enseignants-list"` → 0 match).
+  Les 15 erreurs tsc restantes sont toutes pré-existantes sur d'autres
+  fichiers (login-form ×8, dashboard-shell ×3, view-parametres ×2,
+  etablissement-form-dialog ×1, instrumentation ×1) — aucune introduite
+  par cette refonte.
+- Lint : **0 erreur, 0 warning** sur l'ensemble du projet
+  (`bun run lint` EXIT=0). Fichier enseignants-list.tsx individuellement
+  : EXIT=0 (`bunx eslint src/components/enseignants/enseignants-list.tsx`
+  + `--max-warnings 0` → EXIT=0).
+- Aucune logique métier modifiée. Aucun endpoint backend touché.
+  Fichiers DS (glass-card, kente-pattern, stat-card), globals.css,
+  api-enseignant.ts (signatures des fonctions conservées :
+  fetchEnseignants / createEnseignant / updateEnseignant / deleteEnseignant
+  / addMatiereToEnseignant / removeMatiereFromEnseignant / fetchMatieres,
+  types Enseignant / EnseignantDTO / StatutEnseignant / TypeContrat /
+  Sexe / EnseignantMatiere / Matiere inchangés), auth-store.ts,
+  api-client.ts, format.ts, components/ui/* (Button variant success,
+  Badge, Skeleton, Select, Table, Dialog, AlertDialog, Input, Label
+  intacts), components/ds/*, app/(staff)/enseignants/page.tsx (route
+  wrapper RoleGuard non modifiée) — TOUS INTACTS.
+- Points à vérifier par agent browser :
+  1. Rendu du hero header GlassCard desktop (KentePattern strip top en
+     tête de vue + badge rond gradient emerald→gold avec GraduationCap
+     size-6 + titre font-display text-2xl font-bold text-forest
+     "Enseignants" + pill "Phase A" outline à droite du titre avec
+     Sparkles + pill "{etablissement.nom}" emerald sous le sous-titre si
+     un établissement est sélectionné + bouton "Nouvel enseignant"
+     variant success w-full sm:w-auto à droite).
+  2. Rendu de la barre de filtres : GlassCard adaptive noHover
+     noAnimation p-4 sm:p-5 + Input avec icône Search à gauche + bouton
+     X à droite (si search non vide) + Select statut avec icône Filter
+     dans le SelectTrigger (bg-background opaque) + layout flex-col sur
+     mobile, flex-row sm:items-center sur desktop.
+  3. Rendu des 4 StatCards en grid grid-cols-2 md:grid-cols-4 (mobile
+     2 colonnes, desktop 4 colonnes) avec stagger animation (delay
+     0/0.05/0.1/0.15) : Total enseignants (emerald/GraduationCap) avec
+     hint "chargement…" si loading sinon "dans l'établissement" ;
+     Actifs (forest/CheckCircle2) + hint "en activité" ; En congé
+     (amber/CalendarClock) + hint "temporairement absents" ; Inactifs
+     (terracotta/UserX) + hint "non disponibles". Sur mobile, les 4
+     cartes sont sur 2 colonnes — vérifier que les hauteurs sont
+     alignées (items-stretch + h-full).
+  4. Tableau desktop (md:block, hidden on mobile) : GlassCard adaptive
+     noHover noAnimation p-0 overflow-hidden + header bg-emerald-50/60 +
+     th text-emerald-900 + hover row bg-emerald-50/60 + matricule
+     font-mono text-xs + colonne Nom complet avec avatar emerald-600
+     text-white size-9 + initiales + nom font-display text-sm font-
+     semibold text-forest break-words + email break-all leading-snug
+     avec icône Mail mt-0.5 + téléphone badge emerald/15 + icône Phone +
+     statut StatutEnseignantBadge (border-300 bg-100 text-800) +
+     contrat badge slate renforcé avec icône FileText + taux/h font-mono
+     text-base font-bold text-gold-dark dark:text-gold + matières
+     badges emerald renforcés (max 3 + "+N" slate) + actions 3 boutons
+     ghost sm avec title natif + aria-label + hidden lg:inline (icône
+     seule sur md 768-1023, icône + texte sur lg 1024+). Animation
+     stagger sur les rows (motion.tr delay index*0.02 capé à 0.4s).
+  5. Cartes mobile (md:hidden, visible sur <768px) : GlassCard mobile
+     p-4 + motion.div wrapper avec stagger delay index*0.05 capé à 0.4s
+     + en-tête avatar emerald-600 text-white size-11 + initiales + nom
+     font-display text-base font-semibold text-forest break-words +
+     matricule font-mono text-[11px] + StatutEnseignantBadge à droite +
+     body InfoRows (téléphone badge emerald/15, email badge amber/15
+     break-all, contrat badge slate/15, taux/h badge gold/15 + value
+     text-gold-dark dark:text-gold font-mono font-bold) + matières
+     section (si > 0) avec badges emerald renforcés (max 4 + "+N") +
+     footer 3 boutons ghost size="icon" h-11 w-11 (touch target ≥ 44px)
+     avec title natif + aria-label (icônes seules Pencil/BookOpen/Trash2
+     ou Loader2 animate-spin si deleting). AlertDialog de suppression
+     identique au desktop.
+  6. EnseignantFormDialog (création/édition) : header badge rond
+     gradient emerald→gold (GraduationCap size-5) + titre font-display
+     text-lg "Modifier l'enseignant" ou "Nouvel enseignant" + 3 sections
+     GlassCard tablet (Identité avec icône GraduationCap, Contact avec
+     icône Phone, Contrat avec icône FileText) + FormSectionTitle (badge
+     rond emerald/15 size-7 + icône) + Input/SelectTrigger avec bg-
+     background opaque + footer grid-cols-2 gap-2 sm:flex sm:justify-end
+     + bouton Annuler variant outline w-full sm:w-auto + bouton submit
+     variant success w-full sm:w-auto (Loader2 animate-spin si
+     submitting, "Enregistrer" en édition, "Créer l'enseignant" en
+     création). Validation : nom requis (message "Le nom est requis" si
+     submitted && !nomValid), taux horaire numérique positif (message
+     "Montant invalide" si submitted && !tauxValid).
+  7. EnseignantMatieresDialog : header badge rond gradient emerald→gold
+     (BookOpen size-5) + titre font-display text-lg "Matières enseignées"
+     + description "Matières de {fullName}." + liste des matières
+     associées en cards mini (border-emerald-200 bg-emerald-50/60) avec
+     icône BookOpen dans badge rond emerald/15 size-7 + libellé break-
+     words text-sm font-medium text-forest + code + taux font-mono font-
+     semibold text-gold-dark dark:text-gold + bouton supprimer ghost
+     size="icon" size-8 text-destructif avec title="Retirer cette
+     matière" + aria-label + formulaire d'ajout (Select matière bg-
+     background + Input taux bg-background + bouton "Ajouter" variant
+     success w-full sm:w-auto avec Loader2 ou Plus) + footer bouton
+     "Fermer" variant outline w-full sm:w-auto. États : liste vide
+     (border-dashed muted), matières disponibles vides (message "Toutes
+     les matières actives sont déjà associées"), chargement des matières
+     (Skeleton h-9 w-full), isFetching (Loader2 size-3.5 animate-spin à
+     côté du titre "Matières associées").
+  8. Empty states premium :
+     - Pas d'établissement : GlassCard adaptive + KentePattern bg +
+       badge rond amber size-12 + AlertCircle size-6 + titre font-
+       display "Sélectionnez un établissement" + description (sans pill
+       établissement dans le hero header, sans bouton "Nouvel enseignant"
+       dans le shell).
+     - Erreur de chargement : GlassCard adaptive + KentePattern bg +
+       badge rond rose size-12 + AlertCircle size-6 + titre "Erreur de
+       chargement" + description = error.message (sans bouton action).
+     - Aucun enseignant : GlassCard adaptive + KentePattern bg + badge
+       rond emerald size-12 + GraduationCap size-6 + titre "Aucun
+       enseignant" + description + bouton "Créer un enseignant" variant
+       success avec icône Plus (pill établissement dans le hero header,
+       bouton "Nouvel enseignant" dans le shell).
+  9. Loading state : GlassCard adaptive noHover noAnimation p-0 +
+     KentePattern strip top + 5 Skeletons h-12 w-full (visible pendant
+     isLoading, en dessous des StatCards qui montent "chargement…" sur
+     Total enseignants).
+  10. Mobile (<768px) : KPIs grid 2 colonnes, filtres flex-col (Input
+      full-width, Select full-width), hero header flex-col (badge + titre
+      + pill + bouton "Nouvel enseignant" w-full en bas), cartes mobile
+      md:hidden avec actions icône-seules h-11 w-11, dialog footer
+      grid-cols-2 (boutons full-width en 2 colonnes), padding p-4 via
+      GlassCard adaptive.
+  11. Desktop (1024px+) : KPIs grid 4 colonnes, filtres flex-row sm:
+      items-center, hero header flex-row sm:justify-between (badge + titre
+      à gauche, bouton "Nouvel enseignant" sm:w-auto à droite), tableau
+      desktop md:block avec boutons d'action "hidden lg:inline" (icône +
+      texte), GlassCard adaptive monte en opacité 0.85, padding p-6,
+      hero header p-6.
+  12. Contrastes : badges border-300 bg-100 text-800 (PAS border-200
+      bg-50 text-700) pour STATUT_CLS (ACTIF emerald, INACTIF rose,
+      CONGE amber), badges matières (emerald), badge contrat (slate),
+      badge "+N" (slate) ; bouton "Nouvel enseignant" variant success
+      (gradient emerald from-emerald-600 to-emerald-700) ; bouton
+      "Ajouter" variant success ; bouton submit formulaire variant
+      success ; taux/h text-gold-dark dark:text-gold (gold family,
+      contraste AA en mode clair grâce à gold-dark #B8941F).
+  13. Animation : StatCards avec stagger delay 0/0.05/0.1/0.15 (via DS) ;
+      EnseignantRow (motion.tr) avec stagger delay index*0.02 capé à
+      0.4s ; EnseignantMobileCard (motion.div wrapper) avec stagger
+      delay index*0.05 capé à 0.4s ; usePrefersReducedMotion respecté —
+      animations désactivées si l'utilisateur préfère réduire les
+      animations (motionProps = {} si prefersReducedMotion).
+  14. Comportement métier : recherche debouncée 300ms (search →
+      debouncedSearch → params → useQuery) ; filtre statut (all /
+      ACTIF / INACTIF / CONGE) ; bouton "Nouvel enseignant" ouvre
+      EnseignantFormDialog en mode création (editing=null) ; bouton
+      Modifier ouvre EnseignantFormDialog en mode édition (editing=ensei-
+      gnant) ; bouton Matières ouvre EnseignantMatieresDialog (matieres-
+      Target=enseignant) ; bouton Supprimer ouvre AlertDialog →
+      deleteMutation.mutate(e.id) ; formulaire validation nom + taux →
+      createMutation ou updateMutation ; dialog matières : addMutation
+      (POST /api/enseignants/:id/matieres) + removeMutation (DELETE
+      /api/enseignants/:id/matieres/:matiereId) + invalidateQueries sur
+      enseignantsKeys.all et matieresKeys.all. Préselection automatique
+      du formulaire à l'ouverture (enseignant ou reset vide).
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.
