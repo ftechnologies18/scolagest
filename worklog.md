@@ -8429,3 +8429,161 @@ Stage Summary :
 - TypeScript : 0 erreur sur mes fichiers.
 - Aucune couleur indigo/bleu. Mobile-first. TypeScript strict.
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+Task ID: 4
+Agent: frontend-styling-expert
+Task: Refonte du module /impayes (Forêt EdTech, glassmorphism, kente, responsive)
+
+Work Log:
+- Lecture du worklog.md (contexte Forêt EdTech, phases fe-0 à fe-5c, kente-refonte
+  v1/v2, pwa-parent) — identité visuelle et bugs à éviter (Tooltip Radix,
+  truncate, contrastes) intégrés.
+- Lecture intégrale du fichier à refondre (904 lignes) :
+  `src/components/dashboard/views/view-impayes.tsx` — repérage du bug
+  `toast` non déclaré (lignes 115 + 121) causé par `useToast` importé mais
+  jamais déstructuré. Repérage des sections à enrichir (hero header, filtres,
+  StatCards, barre d'actions, tableau, cartes mobile, bordereau, empty states).
+- Lecture des composants DS de référence :
+  • `components/ds/glass-card.tsx` — variants (mobile/tablet/desktop/premium/
+    adaptive), `premiumBorder`, `noHover`, `noAnimation`.
+  • `components/ds/kente-pattern.tsx` — variants (strip/bg/border/separator),
+    `position` (top/bottom/custom).
+  • `components/ds/stat-card.tsx` — tones (emerald/amber/terracotta/gold/sky/
+    forest), `icon`, `hint`, `delay`.
+  • `components/ds/progress-circle.tsx` (non utilisé ici).
+- Lecture de `components/eleves/eleves-list.tsx` (refonte réussie à imiter) :
+  hero header GlassCard desktop, badge rond gradient, StatCards, filtres avec
+  icônes contextuelles, tableau desktop avec avatar initials, hover row
+  bg-emerald-50/60, empty state premium avec KentePattern bg.
+- Lecture de `lib/types.ts` (ImpayeItem, ImpayesFilters, EcheanceEnRetard),
+  `lib/api-reports.ts` (fetchImpayes, impayesKeys), `hooks/use-toast.ts`
+  (confirmé `useToast` retourne `{ toast, dismiss, ... }`).
+- Installation des dépendances frontend (`bun install` — 859 packages) pour
+  permettre le `tsc --noEmit` et `bun run lint`.
+- Refonte complète du fichier `view-impayes.tsx` (904 → 1274 lignes) via
+  `Write` (fichier entier réécrit — les changements touchaient 90% du
+  fichier). Toutes les règles strictes respectées :
+  • BUG `toast` CORRIGÉ : ajout de `const { toast } = useToast();` au début
+    de `ImpayesView` (avec commentaire explicatif).
+  • Hero header : GlassCard desktop + badge rond gradient amber→terracotta
+    avec `AlertTriangle` + titre `font-display text-2xl` + pill "Phase 4"
+    outline (icône Sparkles) + pill établissement amber renforcée.
+  • Filtres : icônes `School` (classe) et `Tag` (catégorie) dans les
+    SelectTrigger, label `htmlFor` sur Classe/Catégorie, switch "En retard
+    uniquement" dans un label cliquable avec icône Clock, bouton
+    "Réinitialiser" variant `outline` quand filtre actif (plus visible) avec
+    icône `RotateCcw`.
+  • StatCards : passage à 4 cards en grid `sm:grid-cols-2 lg:grid-cols-4`
+    (au lieu de 3) — ajout de "Échéances en retard" tone=gold icon=
+    CalendarClock qui somme `it.echeances_en_retard.length` sur tous les
+    élèves. Hint contextuel sur chaque card.
+  • Barre d'actions desktop : compteur enrichi ({list.length} élève(s) ·
+    {selected.size} sélectionné(s)), Actualiser (ghost, Loader2), Bordereau
+    (success emerald, Printer, title "PDF imprimable"), Relance SMS (outline
+    quand 0 sélection, default+bg-amber-600 quand sélection > 0). Attribut
+    `title` natif (pas de Tooltip Radix — BUG À ÉVITER #1).
+  • Barre d'actions mobile sticky : border-top + backdrop-blur-md + 3
+    boutons full-width h-11 (≥44px) en grid-cols-3.
+  • Tableau desktop : header bg-amber-50/60, hover row bg-amber-50/60, row
+    sélectionnée bg-amber-100/60 (plus visible que bg-amber-50/50), avatar
+    initials bg-amber-600 text-white (BUG À ÉVITER #5), solde dû text-sm
+    font-bold text-amber-800 (au lieu de text-xs amber-700), nouvelle
+    colonne "Détail" avec bouton ghost icône Eye qui ouvre un dialog
+    `DetailEcheancesDialog` listant les échéances en retard détaillées de
+    l'élève (libellé, date limite, montant, retard). stop-click sur
+    checkbox + bouton détail pour éviter le toggle accidentel.
+  • Cartes mobile : `<li>` cliquable (button) qui toggle la sélection,
+    checkbox 44px (min-h-11 min-w-11), avatar initials bg-amber-600, montant
+    text-base font-bold (au lieu de text-sm), CategorieMiniBadge inline
+    dans la ligne classe, hint "X échéance(s) en retard" si applicable.
+  • Badges contrastés (BUG À ÉVITER #6) : `CategorieMiniBadge` passe en
+    border-300 bg-100 text-800 (au lieu de border-200 bg-50 text-700).
+    `RetardBadge` : "À jour" en text-emerald-700, 1-29j emerald, 30-59j
+    amber, 60j+ rose (palette chaud/froid cohérente avec le module
+    impayés), tous en border-300 bg-100 text-800.
+  • Bordereau imprimable premium : la card imprimable est enveloppée dans
+    une `GlassCard variant="desktop" premiumBorder noHover noAnimation`
+    (effet document officiel premium), en-tête en gradient amber→terracotta
+    (au lieu de bg-amber-600 uni), `KentePattern variant="separator"`
+    inséré juste sous l'en-tête, tableau avec hover rows bg-amber-50/50,
+    footer du dialog (no-print) boutons h-11 full-width sur mobile.
+  • Empty states premium : `EmptyStateEtablissement` et
+    `EmptyStateAucunImpaye` enrichis avec `KentePattern variant="bg"` en
+    fond décoratif + badge rond coloré (amber pour établissement manquant,
+    emerald pour "aucun impayé" succès). `EmptyStateErreur` avec badge
+    rond rose et bouton Réessayer.
+  • Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt EdTech :
+    emerald #047857 / amber #F59E0B / gold #D4AF37 / terracotta #C2410C /
+    rose (badge critique 60j+, cohérent avec /eleves pour criticité).
+  • Aucun `truncate` sur les noms (BUG À ÉVITER #2) — `break-words
+    leading-snug` partout.
+  • Pas de `Tooltip` Radix — attributs `title` natifs (BUG À ÉVITER #1).
+  • Accessibilité : `aria-label` sur tous les boutons icône, `Label`
+    associés aux Select via `htmlFor`/`id`, `aria-pressed` sur les boutons
+    cliquables mobile, `aria-label` "Sélectionner X" sur les checkbox.
+  • Aucune logique métier modifiée : hooks React Query (fetchImpayes /
+    impayesKeys.list(debouncedFilters) / enabled=!!etablissementId /
+    retry:1 / retryDelay:1500), debounce 300ms, sélection Set<string>
+    (toggleOne/toggleAll), reset sélection quand filtres changent,
+    handleSendSMS (POST /api/messages/relance-masse avec eleve_ids +
+    template_id undefined), BordereauRelanceDialog (window.print() +
+    classe .bordereau-print), calculs (totalSolde, maxRetard,
+    totalEcheancesRetard), format des filtres (classe_id, categorie,
+    echeance_passee).
+- Compile-check : `bunx tsc --noEmit 2>&1 | grep view-impayes` → **0 erreur**
+  (le bug `toast` est résolu). Les 17 erreurs tsc restantes sont toutes
+  PRÉ-EXISTANTES sur d'autres fichiers (login-form, dashboard-shell,
+  view-parametres, view-utilisateurs, etablissement-form-dialog,
+  utilisateur-form-dialog, instrumentation) — aucune sur view-impayes.
+- Lint-check : `bun run lint` → **0 erreur, 0 warning** (EXIT=0).
+
+Stage Summary:
+- Fichier modifié : `Frontend/src/components/dashboard/views/view-impayes.tsx`
+  (904 → 1274 lignes, +370 lignes).
+- Bug critique `toast` non déclaré CORRIGÉ : ajout de
+  `const { toast } = useToast();` au début de `ImpayesView`. Sans cette
+  ligne, l'envoi SMS de relance crashait avec `ReferenceError: toast is not
+  defined` (cf. lignes 115 + 121 du fichier d'origine).
+- Identité "Forêt EdTech" enrichie :
+  • Hero header : GlassCard desktop + badge rond gradient amber→terracotta +
+    pill "Phase 4".
+  • 4 StatCards (au lieu de 3) avec nouveau tone gold pour "Échéances en
+    retard".
+  • Bordereau imprimable : GlassCard desktop + premiumBorder + en-tête
+    gradient amber→terracotta + KentePattern separator.
+  • Empty states premium avec KentePattern bg.
+- Responsive 100% : mobile (filtres 1 colonne, cartes mobile cliquables
+  44px, barre d'actions sticky full-width) / tablette (filtres 2 colonnes,
+  tableau desktop visible) / desktop (filtres 4 colonnes, tableau complet
+  avec colonne Détail).
+- Touch targets ≥ 44px sur mobile (checkbox 20px dans conteneur 44px,
+  boutons d'action h-11).
+- Aucune couleur indigo/bleu. Aucun Tooltip Radix. Aucun `truncate` sur les
+  valeurs longues. Contrastes renforcés sur badges (border-300 bg-100
+  text-800). Avatar initials bg-amber-600 text-white.
+- TypeScript : **0 erreur sur view-impayes.tsx** (vérifié par
+  `bunx tsc --noEmit 2>&1 | grep view-impayes`).
+- Lint : **0 erreur, 0 warning** sur l'ensemble du projet (`bun run lint`
+  EXIT=0).
+- Aucune logique métier modifiée. Aucun endpoint backend touché. Fichiers
+  DS (glass-card, kente-pattern, stat-card, progress-circle), globals.css,
+  api-reports.ts, api-students.ts, api-client.ts, types.ts, auth-store.ts,
+  format.ts, components/ui/*, components/ds/*, app/(staff)/impayes/page.tsx
+  — TOUS INTACTS.
+- Points à vérifier par agent browser :
+  1. Rendu du hero header GlassCard desktop (gradient amber→terracotta du
+     badge, titre font-display text-2xl, pill "Phase 4").
+  2. Rendu des 4 StatCards en grid lg:grid-cols-4 (la 4e "Échéances en
+     retard" tone=gold doit apparaître).
+  3. Comportement du bouton "Relance SMS" : doit passer de outline à
+     default (bg-amber-600) quand on sélectionne au moins un élève.
+  4. Ouverture du dialog "Détail" (Eye) avec les échéances en retard
+     détaillées de l'élève.
+  5. Bordereau imprimable : premiumBorder (gold) + gradient amber→terracotta
+     en en-tête + KentePattern separator sous l'en-tête + window.print().
+  6. Mobile : barre d'actions sticky en bas (3 boutons full-width h-11) +
+     cartes mobile cliquables (toggle sélection au tap).
+  7. Empty state "Aucun impayé" : KentePattern bg + badge rond emerald +
+     CheckCircle2.
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.

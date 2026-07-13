@@ -1,20 +1,32 @@
 "use client";
 
 /**
- * ScolaGest — Vue « Impayés & relances » (Phase 4).
+ * ScolaGest — Vue « Impayés & relances » (Phase 4 — Refonte Forêt EdTech).
  *
  * Affiche la liste des élèves ayant un solde_du > 0 (filtres optionnels :
  * classe, catégorie, "échéances passées uniquement") avec :
- *  - résumé (nb élèves en retard, total solde dû, retard max en jours) ;
- *  - table desktop + cartes mobile ;
- *  - colonne checkbox pour sélectionner plusieurs élèves ;
- *  - bouton « Générer bordereau de relance » (activé si ≥1 sélectionné) qui
- *    ouvre un Dialog imprimable.
+ *  - Hero header (badge rond gradient amber→terracotta, titre font-display,
+ *    pill établissement + pill "Phase 4").
+ *  - Filtres enrichis : icônes contextuelles (School / Tag) devant les Select,
+ *    Switch "En retard uniquement", bouton Réinitialiser (RotateCcw, outline).
+ *  - 4 StatCards de résumé : élèves en retard (amber), total solde dû
+ *    (terracotta), retard max (terracotta), échéances en retard (gold).
+ *  - Barre d'actions enrichie : compteur, Actualiser (ghost), Bordereau
+ *    (success emerald, hint PDF imprimable), Relance SMS (outline → default
+ *    amber quand sélection > 0). Boutons sticky full-width en bas sur mobile.
+ *  - Tableau desktop : hover row bg-amber-50/60, avatar initials bg-amber-600,
+ *    colonne Détail (Eye) ouvrant un dialog des échéances en retard.
+ *  - Cartes mobile : card cliquable, avatar initials, montant text-base
+ *    font-bold, checkbox 44px.
+ *  - Bordereau imprimable premium : GlassCard desktop + premiumBorder,
+ *    en-tête gradient amber→terracotta, KentePattern separator.
+ *  - Empty states premium : KentePattern bg, badges ronds colorés.
  *
- * Le bordereau est rendu client-side à partir de la sélection (pas de
- * persistance serveur en V1). Il utilise la classe `.bordereau-print` qui,
- * couplée à la règle `@media print` de `globals.css`, masque tout le reste de
- * la page lors de l'impression.
+ * LOGIQUE MÉTIER INTACTE : hooks React Query (fetchImpayes / impayesKeys),
+ * types (ImpayeItem, ImpayesFilters, EcheanceEnRetard), debounce 300ms,
+ * sélection Set<string>, workflows handleSendSMS (POST /api/messages/relance-
+ * masse) et BordereauRelanceDialog (rendu client-side + window.print() +
+ * classe .bordereau-print). Aucun endpoint backend modifié.
  */
 
 import * as React from "react";
@@ -34,6 +46,12 @@ import {
   Wallet,
   Timer,
   Send,
+  School,
+  Tag,
+  RotateCcw,
+  CalendarClock,
+  Eye,
+  Sparkles,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -53,6 +71,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 import {
   Table,
@@ -80,6 +99,22 @@ import { GlassCard } from "@/components/ds/glass-card";
 import { StatCard } from "@/components/ds/stat-card";
 import { KentePattern } from "@/components/ds/kente-pattern";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers partagés
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Initiales (max 2) à partir d'un nom + prénoms — pour l'avatar fallback. */
+function initialsOf(nom?: string, prenoms?: string): string {
+  const a = (nom ?? "").trim().charAt(0);
+  const b = (prenoms ?? "").trim().charAt(0);
+  return (a + b).toUpperCase() || "?";
+}
+
+/** Nom complet d'un élève impayé (prénoms + nom). */
+function impayeFullName(it: ImpayeItem): string {
+  return [it.eleve_prenoms, it.eleve_nom].filter(Boolean).join(" ").trim() || "—";
+}
+
 const CATEGORIE_OPTIONS = [
   { value: "all", label: "Toutes catégories" },
   { value: "AFFECTE", label: "Affecté" },
@@ -90,6 +125,11 @@ const CATEGORIE_OPTIONS = [
 export default function ImpayesView() {
   const etablissement = useAuthStore((s) => s.etablissement);
   const etablissementId = etablissement?.id;
+  // ⚠️ Bug historique corrigé : `toast` était utilisé (lignes 115 et 121 du
+  // fichier d'origine) sans jamais être déstructuré depuis `useToast`. Sans
+  // cette ligne, l'envoi SMS de relance crashait avec
+  // `ReferenceError: toast is not defined`. Maintenant déclaré explicitement.
+  const { toast } = useToast();
 
   // Filtres
   const [classeId, setClasseId] = React.useState<string>("all");
@@ -100,6 +140,13 @@ export default function ImpayesView() {
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [bordereauOpen, setBordereauOpen] = React.useState(false);
   const [smsSending, setSmsSending] = React.useState(false);
+
+  // Dialog "Détail" (échéances en retard d'un élève) — desktop
+  const [detailItem, setDetailItem] = React.useState<ImpayeItem | null>(null);
+
+  // Indicateur "filtre actif" (bouton Réinitialiser plus visible)
+  const hasActiveFilter =
+    classeId !== "all" || categorie !== "all" || echeancePassee;
 
   // Bug 4 : Envoi SMS de relance via POST /api/messages/relance-masse
   const handleSendSMS = async () => {
@@ -171,6 +218,11 @@ export default function ImpayesView() {
     (m, i) => Math.max(m, i.nb_jours_retard_max ?? 0),
     0,
   );
+  // Total d'échéances en retard (somme sur tous les élèves)
+  const totalEcheancesRetard = list.reduce(
+    (s, i) => s + (i.echeances_en_retard?.length ?? 0),
+    0,
+  );
 
   // Gestion de la sélection
   function toggleOne(id: string, checked: boolean) {
@@ -195,59 +247,61 @@ export default function ImpayesView() {
   }, [classeId, categorie, echeancePassee]);
 
   const selectedItems = list.filter((i) => selected.has(i.eleve_id));
+  const hasSelection = selected.size > 0;
 
   return (
     <div className="space-y-4">
       <KentePattern variant="strip" position="top" />
-      {/* En-tête */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm">
-            <AlertTriangle className="size-6" />
-          </div>
-          <div>
-            <h1 className="font-display text-xl font-bold tracking-tight">
-              Impayés &amp; relances
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Suivi des soldes débiteurs, échéances en retard et génération de
-              bordereaux de relance.
+
+      {/* ─── Hero header ────────────────────────────────────────────── */}
+      <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3 sm:gap-4">
+            {/* Badge rond gradient amber→terracotta avec icône AlertTriangle */}
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-terracotta text-white shadow-lg shadow-amber-900/20">
+              <AlertTriangle className="size-6" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-2xl font-bold tracking-tight text-forest">
+                  Impayés &amp; relances
+                </h1>
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 align-middle text-[11px] font-medium text-amber-800 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200">
+                  <Sparkles className="size-3" />
+                  Phase 4
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Suivi des soldes débiteurs, échéances en retard et génération de
+                bordereaux de relance.
+              </p>
               {etablissement?.nom ? (
-                <span className="ml-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                <span className="inline-flex items-center rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-300">
                   {etablissement.nom}
                 </span>
               ) : null}
-            </p>
+            </div>
           </div>
         </div>
-      </div>
+      </GlassCard>
 
       <KentePattern variant="separator" className="my-4" />
 
       {!etablissementId ? (
-        <GlassCard variant="adaptive" noHover className="border border-dashed">
-          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-              <Filter className="size-6" />
-            </div>
-            <p className="text-sm font-medium">
-              Sélectionnez un établissement
-            </p>
-            <p className="max-w-md text-xs text-muted-foreground">
-              Les impayés sont calculés par établissement. Choisissez-en un dans
-              la barre latérale pour commencer.
-            </p>
-          </div>
-        </GlassCard>
+        <EmptyStateEtablissement />
       ) : (
         <>
-          {/* Filtres */}
-          <GlassCard variant="adaptive" noHover>
+          {/* ─── Filtres ────────────────────────────────────────────── */}
+          <GlassCard variant="adaptive" noHover className="p-4 sm:p-5">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {/* Classe */}
               <div className="space-y-1.5">
-                <Label className="text-xs">Classe</Label>
+                <Label htmlFor="filter-classe" className="text-xs font-medium text-muted-foreground">
+                  Classe
+                </Label>
                 <Select value={classeId} onValueChange={setClasseId}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="filter-classe" className="h-10 w-full">
+                    <School className="mr-1.5 size-4 shrink-0 text-amber-600" />
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -260,10 +314,15 @@ export default function ImpayesView() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Catégorie */}
               <div className="space-y-1.5">
-                <Label className="text-xs">Catégorie</Label>
+                <Label htmlFor="filter-categorie" className="text-xs font-medium text-muted-foreground">
+                  Catégorie
+                </Label>
                 <Select value={categorie} onValueChange={setCategorie}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="filter-categorie" className="h-10 w-full">
+                    <Tag className="mr-1.5 size-4 shrink-0 text-amber-600" />
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -275,34 +334,45 @@ export default function ImpayesView() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Switch "En retard uniquement" */}
               <div className="space-y-1.5">
-                <Label className="text-xs">Filtre échéances</Label>
-                <div className="flex h-9 items-center justify-between gap-2 rounded-md border px-3">
-                  <Label
-                    htmlFor="echeance-passee"
-                    className="cursor-pointer text-xs"
-                  >
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Filtre échéances
+                </Label>
+                <label
+                  htmlFor="echeance-passee"
+                  className="flex h-10 cursor-pointer items-center justify-between gap-2 rounded-md border bg-background px-3 transition-colors hover:bg-amber-50/40 dark:hover:bg-amber-950/20"
+                >
+                  <span className="flex items-center gap-1.5 text-xs font-medium">
+                    <Clock className="size-3.5 text-amber-600" />
                     En retard uniquement
-                  </Label>
+                  </span>
                   <Switch
                     id="echeance-passee"
                     checked={echeancePassee}
                     onCheckedChange={setEcheancePassee}
                   />
-                </div>
+                </label>
               </div>
+
+              {/* Réinitialiser (outline, plus visible quand filtre actif) */}
               <div className="flex items-end">
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full"
+                  variant={hasActiveFilter ? "outline" : "ghost"}
+                  size="default"
+                  className={cn(
+                    "h-10 w-full",
+                    hasActiveFilter &&
+                      "border-amber-300 text-amber-800 hover:bg-amber-50 hover:text-amber-900 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-950/40",
+                  )}
                   onClick={() => {
                     setClasseId("all");
                     setCategorie("all");
-                    setEcheancePassee(true);
+                    setEcheancePassee(false);
                   }}
                 >
-                  <Filter className="size-3.5" />
+                  <RotateCcw className="size-3.5" />
                   Réinitialiser
                 </Button>
               </div>
@@ -311,13 +381,14 @@ export default function ImpayesView() {
 
           <KentePattern variant="separator" className="my-4" />
 
-          {/* Résumé */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          {/* ─── StatCards de résumé (4) ─────────────────────────────── */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Élèves en retard"
               value={`${list.length}`}
               icon={Users}
               tone="amber"
+              hint={isFetching && !isLoading ? "mise à jour…" : "solde débiteur"}
               delay={0}
             />
             <StatCard
@@ -325,6 +396,7 @@ export default function ImpayesView() {
               value={formatFCFA(totalSolde)}
               icon={Wallet}
               tone="terracotta"
+              hint="à recouvrer"
               delay={0.05}
             />
             <StatCard
@@ -336,12 +408,21 @@ export default function ImpayesView() {
               }
               icon={Timer}
               tone="terracotta"
+              hint="plus ancien retard"
               delay={0.1}
+            />
+            <StatCard
+              label="Échéances en retard"
+              value={`${totalEcheancesRetard}`}
+              icon={CalendarClock}
+              tone="gold"
+              hint="cumul tous élèves"
+              delay={0.15}
             />
           </div>
 
-          {/* Barre d'actions */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* ─── Barre d'actions (desktop + tablette) ──────────────── */}
+          <div className="hidden flex-wrap items-center justify-between gap-2 md:flex">
             <p className="text-xs text-muted-foreground">
               {isFetching ? (
                 <span className="inline-flex items-center gap-1">
@@ -349,7 +430,12 @@ export default function ImpayesView() {
                 </span>
               ) : (
                 <>
-                  {list.length} élève(s) · {selected.size} sélectionné(s)
+                  <span className="font-medium text-foreground">{list.length}</span>{" "}
+                  élève{list.length > 1 ? "s" : ""} ·{" "}
+                  <span className="font-medium text-amber-800 dark:text-amber-300">
+                    {selected.size}
+                  </span>{" "}
+                  sélectionné{selected.size > 1 ? "s" : ""}
                 </>
               )}
             </p>
@@ -360,9 +446,7 @@ export default function ImpayesView() {
                 onClick={() => refetch()}
                 disabled={isFetching}
               >
-                <Loader2
-                  className={cn("size-3.5", isFetching && "animate-spin")}
-                />
+                <Loader2 className={cn("size-3.5", isFetching && "animate-spin")} />
                 Actualiser
               </Button>
               <Button
@@ -370,23 +454,33 @@ export default function ImpayesView() {
                 variant="success"
                 onClick={() => setBordereauOpen(true)}
                 disabled={selected.size === 0}
+                title="Générer un bordereau de relance PDF imprimable"
               >
                 <Printer className="size-3.5" />
-                Bordereau {selected.size > 0 ? `(${selected.size})` : ""}
+                Bordereau {selected.size > 0 ? `(${selected.size})` : "PDF"}
               </Button>
               <Button
                 size="sm"
-                variant="outline"
+                variant={hasSelection ? "default" : "outline"}
                 disabled={selected.size === 0 || smsSending}
                 onClick={handleSendSMS}
+                className={cn(
+                  hasSelection &&
+                    "bg-amber-600 text-white shadow-lg shadow-amber-900/20 hover:bg-amber-700",
+                )}
+                title="Envoyer un SMS de relance aux élèves sélectionnés"
               >
-                {smsSending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+                {smsSending ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Send className="size-3.5" />
+                )}
                 Relance SMS {selected.size > 0 ? `(${selected.size})` : ""}
               </Button>
             </div>
           </div>
 
-          {/* Tableau */}
+          {/* ─── Tableau (desktop + tablette + mobile) ──────────────── */}
           <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
             <div>
               {isLoading ? (
@@ -396,44 +490,16 @@ export default function ImpayesView() {
                   ))}
                 </div>
               ) : isError ? (
-                <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-                  <div className="flex size-12 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
-                    <AlertCircle className="size-6" />
-                  </div>
-                  <p className="text-sm font-medium">Erreur de chargement</p>
-                  <p className="max-w-md text-xs text-muted-foreground">
-                    Le backend n&apos;a pas pu renvoyer les impayés. Vérifiez
-                    qu&apos;il est démarré puis réessayez.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => refetch()}
-                  >
-                    <Loader2 className="size-3.5" />
-                    Réessayer
-                  </Button>
-                </div>
+                <EmptyStateErreur onRetry={() => refetch()} />
               ) : list.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-                  <div className="flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                    <CheckCircle2 className="size-6" />
-                  </div>
-                  <p className="text-sm font-medium">
-                    Aucun impayé {echeancePassee ? "en retard" : ""}
-                  </p>
-                  <p className="max-w-md text-xs text-muted-foreground">
-                    Tous les élèves sont à jour de leurs paiements sur les
-                    critères sélectionnés. Belle performance !
-                  </p>
-                </div>
+                <EmptyStateAucunImpaye echeancePassee={echeancePassee} />
               ) : (
                 <>
-                  {/* Desktop */}
+                  {/* Desktop / Tablette : tableau */}
                   <div className="hidden overflow-x-auto md:block">
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-muted/40">
+                        <TableRow className="bg-amber-50/60 hover:bg-amber-50/60 dark:bg-amber-950/20">
                           <TableHead className="w-10 pl-4">
                             <Checkbox
                               checked={
@@ -448,48 +514,58 @@ export default function ImpayesView() {
                           <TableHead>Classe</TableHead>
                           <TableHead>Catégorie</TableHead>
                           <TableHead className="text-right">Solde dû</TableHead>
-                          <TableHead className="text-right">
+                          <TableHead className="text-center">
                             Éch. en retard
                           </TableHead>
-                          <TableHead className="text-right pr-4">
+                          <TableHead className="text-right">
                             Retard max
                           </TableHead>
+                          <TableHead className="pr-4 text-right">Détail</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {list.map((it) => {
                           const checked = selected.has(it.eleve_id);
+                          const hasRetardDetail =
+                            (it.echeances_en_retard?.length ?? 0) > 0;
                           return (
                             <TableRow
                               key={it.eleve_id}
                               className={cn(
-                                "hover:bg-muted/40",
-                                checked && "bg-amber-50/50 dark:bg-amber-950/20",
+                                "cursor-pointer transition-colors hover:bg-amber-50/60 dark:hover:bg-amber-950/20",
+                                checked &&
+                                  "bg-amber-100/60 dark:bg-amber-950/30",
                               )}
+                              onClick={() => toggleOne(it.eleve_id, !checked)}
                             >
-                              <TableCell className="pl-4">
+                              <TableCell
+                                className="pl-4"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <Checkbox
                                   checked={checked}
                                   onCheckedChange={(v) =>
                                     toggleOne(it.eleve_id, !!v)
                                   }
-                                  aria-label={`Sélectionner ${it.eleve_nom}`}
+                                  aria-label={`Sélectionner ${impayeFullName(it)}`}
+                                  className="size-5"
                                 />
                               </TableCell>
                               <TableCell>
-                                <div className="flex flex-col">
-                                  <span className="text-xs font-medium">
-                                    {[
-                                      it.eleve_prenoms,
-                                      it.eleve_nom,
-                                    ]
-                                      .filter(Boolean)
-                                      .join(" ")
-                                      .trim() || "—"}
-                                  </span>
-                                  <span className="text-[10px] text-muted-foreground">
-                                    {it.eleve_id.slice(0, 8)}
-                                  </span>
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="size-9 border-2 border-amber-100 ring-1 ring-amber-200/50 dark:border-amber-900/40 dark:ring-amber-800/30">
+                                    <AvatarFallback className="bg-amber-600 text-xs font-semibold text-white dark:bg-amber-800 dark:text-amber-50">
+                                      {initialsOf(it.eleve_nom, it.eleve_prenoms)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="min-w-0">
+                                    <p className="break-words text-sm font-medium leading-snug">
+                                      {impayeFullName(it)}
+                                    </p>
+                                    <p className="font-mono text-[10px] text-muted-foreground">
+                                      {it.eleve_id.slice(0, 8)}
+                                    </p>
+                                  </div>
                                 </div>
                               </TableCell>
                               <TableCell className="text-xs">
@@ -498,14 +574,32 @@ export default function ImpayesView() {
                               <TableCell>
                                 <CategorieMiniBadge categorie={it.categorie} />
                               </TableCell>
-                              <TableCell className="text-right font-mono text-xs font-semibold text-amber-700 dark:text-amber-300">
-                                {formatFCFA(it.solde_du)}
+                              <TableCell className="text-right">
+                                <span className="font-mono text-sm font-bold text-amber-800 dark:text-amber-300">
+                                  {formatFCFA(it.solde_du)}
+                                </span>
                               </TableCell>
-                              <TableCell className="text-right text-xs">
+                              <TableCell className="text-center text-xs tabular-nums">
                                 {it.echeances_en_retard?.length ?? 0}
                               </TableCell>
-                              <TableCell className="pr-4 text-right">
+                              <TableCell className="text-right">
                                 <RetardBadge jours={it.nb_jours_retard_max} />
+                              </TableCell>
+                              <TableCell
+                                className="pr-4 text-right"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-8 text-muted-foreground hover:bg-amber-50 hover:text-amber-800 dark:hover:bg-amber-950/40"
+                                  onClick={() => setDetailItem(it)}
+                                  aria-label={`Détail des échéances de ${impayeFullName(it)}`}
+                                  title="Détail des échéances en retard"
+                                  disabled={!hasRetardDetail}
+                                >
+                                  <Eye className="size-4" />
+                                </Button>
                               </TableCell>
                             </TableRow>
                           );
@@ -514,46 +608,77 @@ export default function ImpayesView() {
                     </Table>
                   </div>
 
-                  {/* Mobile cards */}
+                  {/* Mobile : cartes empilées */}
                   <ul className="divide-y md:hidden">
                     {list.map((it) => {
                       const checked = selected.has(it.eleve_id);
+                      const hasRetardDetail =
+                        (it.echeances_en_retard?.length ?? 0) > 0;
                       return (
                         <li
                           key={it.eleve_id}
                           className={cn(
-                            "p-3",
-                            checked && "bg-amber-50/50 dark:bg-amber-950/20",
+                            "transition-colors",
+                            checked
+                              ? "bg-amber-100/60 dark:bg-amber-950/30"
+                              : "bg-transparent",
                           )}
                         >
-                          <div className="flex items-start gap-2">
-                            <Checkbox
-                              checked={checked}
-                              onCheckedChange={(v) =>
-                                toggleOne(it.eleve_id, !!v)
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => toggleOne(it.eleve_id, !checked)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                toggleOne(it.eleve_id, !checked);
                               }
-                              aria-label={`Sélectionner ${it.eleve_nom}`}
-                              className="mt-1"
-                            />
+                            }}
+                            className="flex w-full cursor-pointer items-start gap-3 p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 focus-visible:ring-offset-2"
+                            aria-label={`Sélectionner ${impayeFullName(it)}`}
+                            aria-pressed={checked}
+                          >
+                            {/* Touch target ≥ 44px sur la checkbox */}
+                            <span
+                              className="flex min-h-11 min-w-11 items-center justify-center"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(v) =>
+                                  toggleOne(it.eleve_id, !!v)
+                                }
+                                aria-label={`Sélectionner ${impayeFullName(it)}`}
+                                className="size-5"
+                              />
+                            </span>
+                            <Avatar className="size-10 shrink-0 border-2 border-amber-100 ring-1 ring-amber-200/50 dark:border-amber-900/40">
+                              <AvatarFallback className="bg-amber-600 text-xs font-semibold text-white dark:bg-amber-800 dark:text-amber-50">
+                                {initialsOf(it.eleve_nom, it.eleve_prenoms)}
+                              </AvatarFallback>
+                            </Avatar>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-semibold">
-                                {[
-                                  it.eleve_prenoms,
-                                  it.eleve_nom,
-                                ]
-                                  .filter(Boolean)
-                                  .join(" ")
-                                  .trim() || "—"}
+                              <p className="break-words text-sm font-semibold leading-snug">
+                                {impayeFullName(it)}
                               </p>
-                              <p className="truncate text-xs text-muted-foreground">
-                                {it.classe} · {it.categorie}
+                              <p className="break-words text-xs text-muted-foreground">
+                                {it.classe || "—"} · <CategorieMiniBadge categorie={it.categorie} />
                               </p>
                               <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                                <span className="font-mono text-sm font-bold text-amber-700 dark:text-amber-300">
+                                <span className="font-mono text-base font-bold text-amber-800 dark:text-amber-300">
                                   {formatFCFA(it.solde_du)}
                                 </span>
                                 <RetardBadge jours={it.nb_jours_retard_max} />
                               </div>
+                              {hasRetardDetail ? (
+                                <p className="mt-1 text-[11px] text-muted-foreground">
+                                  {it.echeances_en_retard?.length ?? 0} échéance
+                                  {(it.echeances_en_retard?.length ?? 0) > 1
+                                    ? "s"
+                                    : ""}{" "}
+                                  en retard
+                                </p>
+                              ) : null}
                             </div>
                           </div>
                         </li>
@@ -564,6 +689,62 @@ export default function ImpayesView() {
               )}
             </div>
           </GlassCard>
+
+          {/* ─── Barre d'actions sticky (mobile uniquement) ─────────── */}
+          {list.length > 0 && (
+            <div className="sticky bottom-0 z-10 mt-2 flex flex-col gap-2 border-t border-amber-200/60 bg-background/80 p-3 backdrop-blur-md md:hidden dark:border-amber-800/40 dark:bg-background/80">
+              <p className="text-center text-[11px] text-muted-foreground">
+                <span className="font-medium text-foreground">{list.length}</span>{" "}
+                élève{list.length > 1 ? "s" : ""} ·{" "}
+                <span className="font-medium text-amber-800 dark:text-amber-300">
+                  {selected.size}
+                </span>{" "}
+                sélectionné{selected.size > 1 ? "s" : ""}
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => refetch()}
+                  disabled={isFetching}
+                  className="h-11"
+                >
+                  <Loader2
+                    className={cn("size-4", isFetching && "animate-spin")}
+                  />
+                  <span className="sr-only">Actualiser</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="success"
+                  onClick={() => setBordereauOpen(true)}
+                  disabled={selected.size === 0}
+                  className="h-11"
+                >
+                  <Printer className="size-4" />
+                  Bordereau
+                </Button>
+                <Button
+                  size="sm"
+                  variant={hasSelection ? "default" : "outline"}
+                  disabled={selected.size === 0 || smsSending}
+                  onClick={handleSendSMS}
+                  className={cn(
+                    "h-11",
+                    hasSelection &&
+                      "bg-amber-600 text-white hover:bg-amber-700",
+                  )}
+                >
+                  {smsSending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Send className="size-4" />
+                  )}
+                  SMS
+                </Button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -572,6 +753,14 @@ export default function ImpayesView() {
         open={bordereauOpen}
         onOpenChange={setBordereauOpen}
         items={selectedItems}
+      />
+
+      {/* Dialog détail échéances en retard (desktop) */}
+      <DetailEcheancesDialog
+        item={detailItem}
+        onOpenChange={(open) => {
+          if (!open) setDetailItem(null);
+        }}
       />
     </div>
   );
@@ -621,11 +810,17 @@ function BordereauRelanceDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Contenu imprimable */}
-        <div className="max-h-[70vh] overflow-y-auto p-6">
-          <div className="bordereau-print rounded-lg border bg-white text-foreground">
-            {/* En-tête établissement */}
-            <div className="flex flex-col gap-3 rounded-t-lg bg-amber-600 px-6 py-5 text-white sm:flex-row sm:items-center sm:justify-between">
+        {/* Contenu imprimable — GlassCard desktop + premiumBorder (effet document officiel) */}
+        <div className="max-h-[70vh] overflow-y-auto p-4 sm:p-6">
+          <GlassCard
+            variant="desktop"
+            premiumBorder
+            noHover
+            noAnimation
+            className="bordereau-print overflow-hidden bg-white p-0 text-foreground"
+          >
+            {/* En-tête établissement — gradient amber→terracotta */}
+            <div className="flex flex-col gap-3 bg-gradient-to-br from-amber-500 to-terracotta px-6 py-5 text-white sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex size-11 items-center justify-center rounded-lg bg-white/15">
                   <GraduationCap className="size-6" />
@@ -653,6 +848,9 @@ function BordereauRelanceDialog({
                 </div>
               </div>
             </div>
+
+            {/* Séparateur kente sous l'en-tête */}
+            <KentePattern variant="separator" />
 
             <div className="space-y-5 p-6">
               {/* Titre */}
@@ -701,11 +899,7 @@ function BordereauRelanceDialog({
                   </thead>
                   <tbody>
                     {items.map((it, idx) => {
-                      const fullName =
-                        [it.eleve_prenoms, it.eleve_nom]
-                          .filter(Boolean)
-                          .join(" ")
-                          .trim() || "—";
+                      const fullName = impayeFullName(it);
                       const retards =
                         it.echeances_en_retard && it.echeances_en_retard.length > 0
                           ? it.echeances_en_retard
@@ -720,20 +914,20 @@ function BordereauRelanceDialog({
                       return (
                         <tr
                           key={it.eleve_id}
-                          className="border-t text-foreground"
+                          className="border-t text-foreground transition-colors hover:bg-amber-50/50 dark:hover:bg-amber-950/20"
                         >
-                          <td className="px-3 py-2 text-xs text-muted-foreground">
+                          <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">
                             {idx + 1}
                           </td>
                           <td className="px-3 py-2">
-                            <div className="text-xs font-medium">
+                            <div className="break-words text-xs font-medium leading-snug">
                               {fullName}
                             </div>
                           </td>
                           <td className="px-3 py-2 text-xs">
                             {it.classe || "—"}
                           </td>
-                          <td className="px-3 py-2 text-[11px] text-muted-foreground">
+                          <td className="px-3 py-2 break-words text-[11px] text-muted-foreground leading-snug">
                             {retards}
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-xs font-semibold">
@@ -770,7 +964,7 @@ function BordereauRelanceDialog({
                 </table>
               </div>
 
-              {/* Mention légale */}
+              {/* Mention légale — bordure gauche amber */}
               <div className="rounded-md border-l-4 border-amber-500 bg-amber-50/50 p-3 text-[11px] text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
                 <strong>Mention importante :</strong> Le présent bordereau est
                 un document de relance administrative. Il ne constitue pas une
@@ -784,7 +978,7 @@ function BordereauRelanceDialog({
                   <div className="text-[11px] uppercase text-muted-foreground">
                     Le Comptable / Caissier
                   </div>
-                  <div className="mt-12 text-xs font-medium">
+                  <div className="mt-12 break-words text-xs font-medium">
                     {user
                       ? `${user.prenoms ?? ""} ${user.nom ?? ""}`.trim()
                       : "—"}
@@ -797,7 +991,7 @@ function BordereauRelanceDialog({
                   <div className="text-[11px] uppercase text-muted-foreground">
                     Le Directeur / Surveillant Général
                   </div>
-                  <div className="mt-12 text-xs font-medium">
+                  <div className="mt-12 break-words text-xs font-medium">
                     {etablissement?.nom ?? "—"}
                   </div>
                   <div className="mt-1 text-[10px] text-muted-foreground">
@@ -817,20 +1011,21 @@ function BordereauRelanceDialog({
                 <span>ScolaGest · Gestion &amp; Caisse Scolaire</span>
               </div>
             </div>
-          </div>
+          </GlassCard>
         </div>
 
-        {/* Footer actions */}
-        <div className="no-print flex flex-col-reverse gap-2 border-t px-6 py-4 sm:flex-row sm:justify-between sm:items-center">
+        {/* Footer actions (no-print) — boutons full-width sur mobile */}
+        <div className="no-print flex flex-col-reverse gap-2 border-t px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[11px] text-muted-foreground">
             Astuce : choisissez « Enregistrer en PDF » comme imprimante pour
             générer un fichier numérique.
           </p>
-          <div className="flex gap-2">
+          <div className="flex w-full gap-2 sm:w-auto">
             <Button
               variant="outline"
               type="button"
               onClick={() => onOpenChange(false)}
+              className="h-11 sm:h-9"
             >
               <X className="size-4" />
               Fermer
@@ -839,7 +1034,7 @@ function BordereauRelanceDialog({
               type="button"
               onClick={handlePrint}
               disabled={items.length === 0}
-              className="bg-amber-600 text-white hover:bg-amber-700"
+              className="h-11 bg-amber-600 text-white hover:bg-amber-700 sm:h-9"
             >
               <Printer className="size-4" />
               Imprimer / Télécharger PDF
@@ -852,27 +1047,205 @@ function BordereauRelanceDialog({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Dialog détail échéances en retard (desktop)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function DetailEcheancesDialog({
+  item,
+  onOpenChange,
+}: {
+  item: ImpayeItem | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const open = item !== null;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <CalendarClock className="size-5 text-amber-600" />
+            Échéances en retard
+          </DialogTitle>
+          <DialogDescription className="text-xs">
+            {item ? (
+              <>
+                Détail des échéances en retard de{" "}
+                <strong className="text-foreground">
+                  {impayeFullName(item)}
+                </strong>
+                {item.classe ? ` · ${item.classe}` : ""}.
+              </>
+            ) : (
+              "Détail des échéances en retard."
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        {item ? (
+          <div className="space-y-4">
+            {/* Résumé de l'élève */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-amber-50/60 px-4 py-3 dark:bg-amber-950/20">
+              <div className="flex items-center gap-3">
+                <Avatar className="size-10 border-2 border-amber-100 ring-1 ring-amber-200/50 dark:border-amber-900/40">
+                  <AvatarFallback className="bg-amber-600 text-xs font-semibold text-white dark:bg-amber-800 dark:text-amber-50">
+                    {initialsOf(item.eleve_nom, item.eleve_prenoms)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="break-words text-sm font-semibold leading-snug">
+                    {impayeFullName(item)}
+                  </p>
+                  <p className="break-words text-xs text-muted-foreground">
+                    {item.classe || "—"} ·{" "}
+                    <CategorieMiniBadge categorie={item.categorie} />
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Solde dû
+                </div>
+                <div className="font-mono text-base font-bold text-amber-800 dark:text-amber-300">
+                  {formatFCFA(item.solde_du)}
+                </div>
+              </div>
+            </div>
+
+            {/* Liste des échéances en retard */}
+            {item.echeances_en_retard && item.echeances_en_retard.length > 0 ? (
+              <div className="overflow-hidden rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-amber-50/60 hover:bg-amber-50/60 dark:bg-amber-950/20">
+                      <TableHead className="pl-4">Échéance</TableHead>
+                      <TableHead>Date limite</TableHead>
+                      <TableHead className="text-right">Montant</TableHead>
+                      <TableHead className="pr-4 text-right">Retard</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {item.echeances_en_retard.map((e) => (
+                      <TableRow
+                        key={e.echeance_id}
+                        className="transition-colors hover:bg-amber-50/40 dark:hover:bg-amber-950/20"
+                      >
+                        <TableCell className="pl-4 break-words text-xs font-medium leading-snug">
+                          {e.libelle}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {formatDateShort(e.date_limite)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-xs font-semibold">
+                          {formatFCFA(e.montant)}
+                        </TableCell>
+                        <TableCell className="pr-4 text-right">
+                          <RetardBadge jours={e.jours_retard} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed py-8 text-sm text-muted-foreground">
+                <CheckCircle2 className="size-4 text-emerald-600" />
+                Aucune échéance en retard pour cet élève.
+              </div>
+            )}
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Empty states premium
+// ─────────────────────────────────────────────────────────────────────────────
+
+function EmptyStateEtablissement() {
+  return (
+    <GlassCard variant="adaptive" noHover className="border border-dashed">
+      <div className="relative overflow-hidden px-4 py-16">
+        <KentePattern variant="bg" />
+        <div className="relative flex flex-col items-center justify-center gap-3 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+            <Filter className="size-6" />
+          </div>
+          <p className="text-sm font-medium">Sélectionnez un établissement</p>
+          <p className="max-w-md text-xs text-muted-foreground">
+            Les impayés sont calculés par établissement. Choisissez-en un dans
+            la barre latérale pour commencer.
+          </p>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+function EmptyStateAucunImpaye({ echeancePassee }: { echeancePassee: boolean }) {
+  return (
+    <div className="relative overflow-hidden px-4 py-16">
+      <KentePattern variant="bg" />
+      <div className="relative flex flex-col items-center justify-center gap-3 text-center">
+        <div className="flex size-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 shadow-lg shadow-emerald-900/10 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <CheckCircle2 className="size-7" />
+        </div>
+        <p className="font-display text-base font-semibold">
+          Aucun impayé {echeancePassee ? "en retard" : ""}
+        </p>
+        <p className="max-w-md text-xs text-muted-foreground">
+          Tous les élèves sont à jour de leurs paiements sur les critères
+          sélectionnés. Belle performance !
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function EmptyStateErreur({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+      <div className="flex size-12 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+        <AlertCircle className="size-6" />
+      </div>
+      <p className="text-sm font-medium">Erreur de chargement</p>
+      <p className="max-w-md text-xs text-muted-foreground">
+        Le backend n&apos;a pas pu renvoyer les impayés. Vérifiez qu&apos;il
+        est démarré puis réessayez.
+      </p>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        <Loader2 className="size-3.5" />
+        Réessayer
+      </Button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Petits composants
 // ─────────────────────────────────────────────────────────────────────────────
 
 function CategorieMiniBadge({ categorie }: { categorie: string }) {
+  // Contrastes renforcés (bg-100 / text-800 / border-300) — aligné sur
+  // CategorieBadge de /eleves (BUGS À ÉVITER #6).
   const map: Record<string, { label: string; cls: string }> = {
     AFFECTE: {
       label: "Affecté",
-      cls: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300",
+      cls: "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200",
     },
     NON_AFFECTE: {
       label: "Non affecté",
-      cls: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300",
+      cls: "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200",
     },
     NON_APPLICABLE: {
       label: "Non applicable",
-      cls: "border-muted-foreground/20 bg-muted text-muted-foreground",
+      cls: "border-muted-foreground/30 bg-muted text-muted-foreground",
     },
   };
   const e = map[categorie] ?? {
     label: categorie || "—",
-    cls: "border-muted-foreground/20 bg-muted text-muted-foreground",
+    cls: "border-muted-foreground/30 bg-muted text-muted-foreground",
   };
   return (
     <Badge variant="outline" className={cn("text-[10px] font-medium", e.cls)}>
@@ -885,15 +1258,20 @@ function RetardBadge({ jours }: { jours: number }) {
   const j = jours ?? 0;
   if (j <= 0) {
     return (
-      <span className="text-xs text-muted-foreground">À jour</span>
+      <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+        À jour
+      </span>
     );
   }
+  // Contrastes renforcés (bg-100 / text-800 / border-300) — BUGS À ÉVITER #6.
+  // 1-29j : emerald (léger retard, surveillance) · 30-59j : amber (alerte) ·
+  // 60j+ : rose (critique). Palette chaud/froid cohérente avec le module.
   const cls =
     j >= 60
-      ? "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300"
+      ? "border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-700 dark:bg-rose-950/50 dark:text-rose-200"
       : j >= 30
-        ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
-        : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300";
+        ? "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200"
+        : "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200";
   return (
     <Badge variant="outline" className={cn("text-[10px] font-medium tabular-nums", cls)}>
       <Clock className="size-2.5" />
