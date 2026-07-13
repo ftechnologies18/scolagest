@@ -35,6 +35,7 @@ import {
   FileBarChart,
   Coins,
   CalendarDays,
+  CalendarRange,
   UserCog,
   BookOpen,
   Smartphone,
@@ -50,7 +51,6 @@ import {
   LifeBuoy,
   ScrollText,
   CreditCard,
-  ArrowRight,
   MailOpen,
   GraduationCap,
   Clock,
@@ -186,23 +186,20 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
       {
-        href: "/annees",
-        label: "Années scolaires",
-        icon: CalendarDays,
+        // Page unifiée Années scolaires & Passage de classe (fusion UX) :
+        // un seul point d'entrée pour la gestion du cycle annuel. L'utilisateur
+        // configure les années scolaires puis bascule sur l'onglet Passage pour
+        // l'opération de fin d'année. Anciennes routes /annees et /passage-masse
+        // redirigent ici.
+        href: "/annees-passage",
+        label: "Années & Passage",
+        icon: CalendarRange,
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
       {
         href: "/utilisateurs",
         label: "Utilisateurs",
         icon: UserCog,
-        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
-      },
-      {
-        // Passage de classe en masse : opération de fin d'année (Phase 3,
-        // Innovation 2). Réservé à la direction et aux directeurs.
-        href: "/passage-masse",
-        label: "Passage de classe",
-        icon: ArrowRight,
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
     ],
