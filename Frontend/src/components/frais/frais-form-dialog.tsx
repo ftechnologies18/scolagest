@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * ScolaGest — Dialogue de création / édition d'un frais (Phase 3).
+ * ScolaGest — Dialogue de création / édition d'un frais (Phase 3 — Refonte
+ * Forêt EdTech).
  *
  * Champs :
  *  - type_frais (Select) — INSCRIPTION, SCOLARITE, EXAMEN, ANNEXE
@@ -18,6 +19,27 @@
  *
  * À la soumission : createFrais ou updateFrais avec les échéances. Le backend
  * remplace l'intégralité des échéances lors d'un update.
+ *
+ * Refonte Forêt EdTech :
+ *  - Header premium : badge rond gradient emerald→gold (Coins) + titre
+ *    `font-display text-lg` + description contextuelle.
+ *  - 4 sous-sections GlassCard `variant="mobile"` avec titre de section et
+ *    icône contextuelle : Type & libellé / Périmètre & catégorie / Montant &
+ *    versements / Échéances.
+ *  - Éditeur d'échéances enrichi : header `bg-emerald-50/60` + hover row
+ *    `bg-emerald-50/60` + numéro de rang dans badge rond emerald/15 + inputs
+ *    focus ring emerald + bouton supprimer avec `title` natif + contrôle de
+ *    cohérence renforcé (border-300 bg-100 text-800).
+ *  - Footer : boutons full-width sur mobile (grid-cols-2), submit
+ *    `variant="success"` (gradient emerald) avec icône Check/Loader2.
+ *
+ * LOGIQUE MÉTIER INTACTE : hooks React Query (cycles/classes/annee active),
+ * état du formulaire (typeFrais/libelle/scope/categorie/montantTotal/
+ * nbVersements/actif/rows), helpers (defaultDatesFor, defaultLibelle,
+ * rowsFromFrais, emptyRows, syncRowCount, handleNbChange, repartir, updateRow,
+ * addRow, removeRow), périmètre SCOPE_ALL/SCOPE_PREFIX_CYCLE/SCOPE_PREFIX_CLASSE
+ * avec déduction cycle depuis classe, mutation createFrais/updateFrais avec
+ * onSuccess/onError, contrôle de cohérence totalRows/totalDiff.
  */
 
 import * as React from "react";
@@ -29,8 +51,12 @@ import {
   Trash2,
   Wand2,
   CalendarDays,
+  Wallet,
+  School,
+  CheckCircle2,
 } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth-store";
 import {
   createFrais,
@@ -86,6 +112,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { GlassCard } from "@/components/ds/glass-card";
 
 // `deleteFrais` n'est pas utilisé ici ; import neutralisé pour éviter
 // l'erreur d'import inutilisé côté lint (config désactivée, mais clarté).
@@ -478,173 +505,196 @@ export function FraisFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Coins className="size-5 text-emerald-600" />
-            {isEdit ? "Modifier le frais" : "Nouveau frais"}
+          <DialogTitle className="flex items-center gap-3">
+            {/* Badge rond gradient emerald→gold avec icône Coins */}
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg shadow-emerald-900/20">
+              <Coins className="size-5" />
+            </div>
+            <span className="font-display text-lg font-semibold text-forest">
+              {isEdit ? "Modifier le frais" : "Nouveau frais"}
+            </span>
           </DialogTitle>
           <DialogDescription>
             Configurez un frais pour l&apos;année scolaire active. Les
-            échéances seront créées automatiquement.
+            échéances seront créées automatiquement à partir du nombre de
+            versements.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Type + libellé */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>Type de frais</Label>
-              <Select
-                value={typeFrais}
-                onValueChange={(v) => setTypeFrais(v as TypeFrais)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sélectionner…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TYPE_FRAIS_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="frais-libelle">Libellé</Label>
-              <Input
-                id="frais-libelle"
-                value={libelle}
-                onChange={(e) => setLibelle(e.target.value)}
-                placeholder="Ex. Scolarité 6e — Affectés"
-              />
-            </div>
-          </div>
-
-          {/* Périmètre + catégorie */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>Périmètre d&apos;application</Label>
-              <Select value={scope} onValueChange={setScope}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sélectionner…" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={SCOPE_ALL}>
-                    Tout l&apos;établissement
-                  </SelectItem>
-                  {(cycles ?? []).map((c) => (
-                    <SelectItem
-                      key={c.id}
-                      value={`${SCOPE_PREFIX_CYCLE}${c.id}`}
-                    >
-                      Cycle — {c.libelle}
-                    </SelectItem>
-                  ))}
-                  {(classes ?? []).map((c) => (
-                    <SelectItem
-                      key={c.id}
-                      value={`${SCOPE_PREFIX_CLASSE}${c.id}`}
-                    >
-                      Classe — {c.libelle}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedClasse && selectedCycle ? (
-                <p className="text-xs text-muted-foreground">
-                  Classe {selectedClasse.libelle} · Cycle{" "}
-                  {selectedCycle.libelle}
-                </p>
-              ) : null}
-            </div>
-            <div className="space-y-1.5">
-              <Label>Catégorie (tarification)</Label>
-              <Select
-                value={categorie}
-                onValueChange={setCategorie}
-                disabled={!etablissement?.applique_categorie_affecte}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sélectionner…" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__UNIQUE__">
-                    Tarif unique (par défaut)
-                  </SelectItem>
-                  <SelectItem value="AFFECTE">Affecté</SelectItem>
-                  <SelectItem value="NON_AFFECTE">Non affecté</SelectItem>
-                </SelectContent>
-              </Select>
-              {!etablissement?.applique_categorie_affecte ? (
-                <p className="text-xs text-muted-foreground">
-                  Cet établissement n&apos;applique pas la distinction
-                  Affecté / Non affecté.
-                </p>
-              ) : null}
-            </div>
-          </div>
-
-          {/* Montant + nb versements + actif */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="frais-montant">Montant total (FCFA)</Label>
-              <Input
-                id="frais-montant"
-                type="number"
-                min={0}
-                value={montantTotal}
-                onChange={(e) => setMontantTotal(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                {formatFCFA(Number(montantTotal) || 0)}
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="frais-nb">Nombre de versements</Label>
-              <Input
-                id="frais-nb"
-                type="number"
-                min={1}
-                max={12}
-                value={nbVersements}
-                onChange={(e) => handleNbChange(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Tranches par défaut
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Frais actif</Label>
-              <div className="flex h-9 items-center gap-2">
-                <Switch
-                  checked={actif}
-                  onCheckedChange={setActif}
-                  aria-label="Frais actif"
+          {/* ─── Section 1 : Type & libellé ──────────────────────────── */}
+          <GlassCard variant="mobile" noHover noAnimation className="p-4">
+            <SectionTitle icon={Coins} label="Type & libellé" />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="frais-type">Type de frais</Label>
+                <Select
+                  value={typeFrais}
+                  onValueChange={(v) => setTypeFrais(v as TypeFrais)}
+                >
+                  <SelectTrigger id="frais-type" className="h-10 w-full">
+                    <Coins className="mr-1.5 size-4 shrink-0 text-emerald-600" />
+                    <SelectValue placeholder="Sélectionner…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TYPE_FRAIS_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="frais-libelle">Libellé</Label>
+                <Input
+                  id="frais-libelle"
+                  value={libelle}
+                  onChange={(e) => setLibelle(e.target.value)}
+                  placeholder="Ex. Scolarité 6e — Affectés"
+                  className="h-10 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/30"
                 />
-                <span className="text-sm text-muted-foreground">
-                  {actif ? "Actif" : "Inactif"}
-                </span>
               </div>
             </div>
-          </div>
+          </GlassCard>
 
-          {/* Éditeur d'échéances */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="flex items-center gap-1.5 text-sm">
-                <CalendarDays className="size-3.5 text-emerald-600" />
-                Échéances ({rows.length})
-              </Label>
+          {/* ─── Section 2 : Périmètre & catégorie ───────────────────── */}
+          <GlassCard variant="mobile" noHover noAnimation className="p-4">
+            <SectionTitle icon={School} label="Périmètre & catégorie" />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="frais-scope">Périmètre d&apos;application</Label>
+                <Select value={scope} onValueChange={setScope}>
+                  <SelectTrigger id="frais-scope" className="h-10 w-full">
+                    <School className="mr-1.5 size-4 shrink-0 text-emerald-600" />
+                    <SelectValue placeholder="Sélectionner…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SCOPE_ALL}>
+                      Tout l&apos;établissement
+                    </SelectItem>
+                    {(cycles ?? []).map((c) => (
+                      <SelectItem
+                        key={c.id}
+                        value={`${SCOPE_PREFIX_CYCLE}${c.id}`}
+                      >
+                        Cycle — {c.libelle}
+                      </SelectItem>
+                    ))}
+                    {(classes ?? []).map((c) => (
+                      <SelectItem
+                        key={c.id}
+                        value={`${SCOPE_PREFIX_CLASSE}${c.id}`}
+                      >
+                        Classe — {c.libelle}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedClasse && selectedCycle ? (
+                  <p className="text-xs text-muted-foreground">
+                    Classe {selectedClasse.libelle} · Cycle{" "}
+                    {selectedCycle.libelle}
+                  </p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="frais-categorie">Catégorie (tarification)</Label>
+                <Select
+                  value={categorie}
+                  onValueChange={setCategorie}
+                  disabled={!etablissement?.applique_categorie_affecte}
+                >
+                  <SelectTrigger id="frais-categorie" className="h-10 w-full">
+                    <SelectValue placeholder="Sélectionner…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__UNIQUE__">
+                      Tarif unique (par défaut)
+                    </SelectItem>
+                    <SelectItem value="AFFECTE">Affecté</SelectItem>
+                    <SelectItem value="NON_AFFECTE">Non affecté</SelectItem>
+                  </SelectContent>
+                </Select>
+                {!etablissement?.applique_categorie_affecte ? (
+                  <p className="text-xs text-muted-foreground">
+                    Cet établissement n&apos;applique pas la distinction
+                    Affecté / Non affecté.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </GlassCard>
+
+          {/* ─── Section 3 : Montant & versements ────────────────────── */}
+          <GlassCard variant="mobile" noHover noAnimation className="p-4">
+            <SectionTitle icon={Wallet} label="Montant & versements" />
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="frais-montant">Montant total (FCFA)</Label>
+                <Input
+                  id="frais-montant"
+                  type="number"
+                  min={0}
+                  value={montantTotal}
+                  onChange={(e) => setMontantTotal(e.target.value)}
+                  className="h-10 font-mono focus-visible:border-emerald-500 focus-visible:ring-emerald-500/30"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {formatFCFA(Number(montantTotal) || 0)}
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="frais-nb">Nombre de versements</Label>
+                <Input
+                  id="frais-nb"
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={nbVersements}
+                  onChange={(e) => handleNbChange(e.target.value)}
+                  className="h-10 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/30"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Tranches par défaut
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="frais-actif">Frais actif</Label>
+                <div className="flex h-10 items-center gap-2">
+                  <Switch
+                    id="frais-actif"
+                    checked={actif}
+                    onCheckedChange={setActif}
+                    aria-label="Frais actif"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {actif ? "Actif" : "Inactif"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+
+          {/* ─── Section 4 : Échéances ───────────────────────────────── */}
+          <GlassCard variant="mobile" noHover noAnimation className="p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <SectionTitle
+                icon={CalendarDays}
+                label={`Échéances (${rows.length})`}
+                className="mb-0"
+              />
               <div className="flex gap-1.5">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={repartir}
-                  className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                  className="border-emerald-300 text-emerald-800 hover:bg-emerald-50 dark:border-emerald-800/60 dark:text-emerald-300"
                 >
                   <Wand2 className="size-3.5" />
-                  Répartir automatiquement
+                  <span className="hidden sm:inline">Répartir</span>
+                  <span className="sm:hidden">Répartir</span>
                 </Button>
                 <Button
                   type="button"
@@ -653,19 +703,29 @@ export function FraisFormDialog({
                   onClick={addRow}
                 >
                   <Plus className="size-3.5" />
-                  Ajouter
+                  <span className="hidden sm:inline">Ajouter</span>
+                  <span className="sm:hidden">Ajouter</span>
                 </Button>
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-lg border">
+            {/* ─── Tableau échéances ─────────────────────────────────── */}
+            <div className="overflow-hidden rounded-lg border border-emerald-200/60 dark:border-emerald-800/40">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/40">
-                    <TableHead className="w-12 text-center">#</TableHead>
-                    <TableHead>Libellé</TableHead>
-                    <TableHead className="w-32">Montant (FCFA)</TableHead>
-                    <TableHead className="w-36">Date limite</TableHead>
+                  <TableRow className="border-emerald-200/60 bg-emerald-50/60 hover:bg-emerald-50/60 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/20">
+                    <TableHead className="w-12 text-center text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+                      #
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+                      Libellé
+                    </TableHead>
+                    <TableHead className="w-32 text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+                      Montant (FCFA)
+                    </TableHead>
+                    <TableHead className="w-36 text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+                      Date limite
+                    </TableHead>
                     <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
@@ -681,9 +741,14 @@ export function FraisFormDialog({
                     </TableRow>
                   ) : (
                     rows.map((r, idx) => (
-                      <TableRow key={r._key}>
-                        <TableCell className="text-center font-mono text-xs text-muted-foreground">
-                          {r.rang}
+                      <TableRow
+                        key={r._key}
+                        className="transition-colors hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20"
+                      >
+                        <TableCell className="text-center">
+                          <span className="inline-flex size-6 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-semibold text-emerald-700 tabular-nums dark:bg-emerald-950/40 dark:text-emerald-300">
+                            {r.rang}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <Input
@@ -691,7 +756,8 @@ export function FraisFormDialog({
                             onChange={(e) =>
                               updateRow(idx, { libelle: e.target.value })
                             }
-                            className="h-8"
+                            className="h-8 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/30"
+                            aria-label={`Libellé de l'échéance ${r.rang}`}
                           />
                         </TableCell>
                         <TableCell>
@@ -704,7 +770,8 @@ export function FraisFormDialog({
                                 montant: Number(e.target.value) || 0,
                               })
                             }
-                            className="h-8 font-mono"
+                            className="h-8 font-mono focus-visible:border-emerald-500 focus-visible:ring-emerald-500/30"
+                            aria-label={`Montant de l'échéance ${r.rang} (FCFA)`}
                           />
                         </TableCell>
                         <TableCell>
@@ -714,7 +781,8 @@ export function FraisFormDialog({
                             onChange={(e) =>
                               updateRow(idx, { date_limite: e.target.value })
                             }
-                            className="h-8"
+                            className="h-8 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/30"
+                            aria-label={`Date limite de l'échéance ${r.rang}`}
                           />
                         </TableCell>
                         <TableCell>
@@ -722,9 +790,10 @@ export function FraisFormDialog({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="size-7 text-muted-foreground hover:text-destructive"
+                            className="size-7 text-muted-foreground hover:bg-rose-50 hover:text-destructive dark:hover:bg-rose-950/40"
                             onClick={() => removeRow(idx)}
-                            aria-label="Supprimer l'échéance"
+                            aria-label={`Supprimer l'échéance ${r.rang}`}
+                            title="Supprimer cette échéance"
                           >
                             <Trash2 className="size-3.5" />
                           </Button>
@@ -736,11 +805,11 @@ export function FraisFormDialog({
               </Table>
             </div>
 
-            {/* Contrôle de cohérence */}
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            {/* ─── Contrôle de cohérence ─────────────────────────────── */}
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
               <span className="text-muted-foreground">
                 Total échéances :{" "}
-                <span className="font-mono font-medium">
+                <span className="font-mono font-medium text-foreground">
                   {formatFCFA(totalRows)}
                 </span>
               </span>
@@ -748,8 +817,8 @@ export function FraisFormDialog({
                 variant="outline"
                 className={
                   totalDiff === 0
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                    : "border-amber-200 bg-amber-50 text-amber-700"
+                    ? "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200"
+                    : "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200"
                 }
               >
                 {totalDiff === 0
@@ -757,36 +826,70 @@ export function FraisFormDialog({
                   : `Écart : ${formatFCFA(totalDiff)}`}
               </Badge>
             </div>
-          </div>
+          </GlassCard>
 
-          <DialogFooter>
+          {/* ─── Footer : boutons full-width mobile, inline desktop ──── */}
+          <DialogFooter className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={mutation.isPending}
+              className="h-10"
             >
               Annuler
             </Button>
             <Button
               type="submit"
+              variant="success"
               disabled={mutation.isPending}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
+              className="h-10"
             >
               {mutation.isPending ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Enregistrement…
+                  <span className="hidden sm:inline">Enregistrement…</span>
+                  <span className="sm:hidden">Enregistrement…</span>
                 </>
-              ) : isEdit ? (
-                "Mettre à jour"
               ) : (
-                "Créer le frais"
+                <>
+                  <CheckCircle2 className="size-4" />
+                  {isEdit ? "Mettre à jour" : "Créer le frais"}
+                </>
               )}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sous-composants
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Titre de section du formulaire (GlassCard mobile). Affiche une icône
+ * dans un badge rond emerald/15 + titre `font-display text-sm`.
+ */
+function SectionTitle({
+  icon: Icon,
+  label,
+  className,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("mb-3 flex items-center gap-2", className)}>
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+        <Icon className="size-3.5" />
+      </span>
+      <h3 className="font-display text-sm font-semibold text-forest">
+        {label}
+      </h3>
+    </div>
   );
 }

@@ -9179,3 +9179,345 @@ Stage Summary:
   12. KentePattern strip top en haut de page (section header) + KentePattern
       separator entre les StatCards et le tableau.
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+Task ID: 4
+Agent: frontend-styling-expert
+Task: Refonte du module /frais (Forêt EdTech, glassmorphism, kente, responsive)
+
+Work Log:
+- Lecture du worklog.md (contexte Forêt EdTech, refontes précédentes
+  /eleves, /inscription, /impayes, /rapports, /pre-inscriptions —
+  identité visuelle et bugs à éviter : Tooltip Radix, truncate, boutons
+  imbriqués, contrastes, `toast` non déclaré) intégré dans la refonte.
+- Lecture intégrale des 2 fichiers à refondre :
+  • `src/components/dashboard/views/view-frais.tsx` (511 lignes) — vue
+    principale avec KentePattern strip + header simple div + KentePattern
+    separator + FraisShell + FraisCard (GlassCard adaptive noHover) +
+    EmptyState basique sans KentePattern.
+  • `src/components/frais/frais-form-dialog.tsx` (792 lignes) — dialog
+    création/édition avec éditeur d'échéances en Table. Vérification que
+    `const { toast } = useToast();` est bien présent dans les 2 fichiers
+    (déjà le cas — aucun bug `toast` non déclaré).
+- Lecture des composants DS de référence :
+  • `components/ds/glass-card.tsx` — variants (mobile/tablet/desktop/premium/
+    adaptive), `premiumBorder`, `noHover`, `noAnimation`, `delay`. Wrapper
+    `motion.div` (Framer Motion) avec `initial={{opacity:0,y:16}}
+    animate={{opacity:1,y:0}} transition={{duration:0.4, delay, ease:
+    [0.22,1,0.36,1]}}` — exactement l'animation demandée par la spec.
+  • `components/ds/kente-pattern.tsx` — variants (strip/bg/border/separator),
+    position (top/bottom/custom). `bg` = absolute inset-0 pointer-events-none
+    opacity-10 (motif riche emerald/amber/gold/terracotta).
+  • `components/ds/stat-card.tsx` — tones (emerald/amber/terracotta/gold/sky/
+    forest), `icon`, `hint`, `delay` pour stagger. Wrapper GlassCard
+    adaptive.
+- Lecture des exemples de refontes réussies :
+  • `components/eleves/eleves-list.tsx` — hero header GlassCard desktop +
+    badge rond gradient emerald→amber + StatCards horizontales + tableau
+    desktop hover bg-emerald-50/60 + EmptyState premium avec KentePattern bg.
+  • `components/dashboard/views/view-impayes.tsx` — pattern hero header
+    GlassCard desktop + pill "Phase X" outline + 4 StatCards +
+    EmptyStateEtablissement/EmptyStateErreur/EmptyStateAucun avec
+    KentePattern bg.
+  • `components/dashboard/views/view-rapports.tsx` — hero header premium
+    with badge rond gradient emerald→gold + pill "Phase 4" outline.
+- Vérification des tokens Tailwind dans `globals.css` (lignes 1-120) :
+  `--color-forest`, `--color-forest-deep`, `--color-emerald-fe`, `--color-amber-fe`,
+  `--color-gold`, `--color-gold-light`, `--color-gold-dark`, `--color-terracotta`,
+  `--color-terracotta-light`, `--color-terracotta-dark`, `--color-sand` déclarés
+  dans `@theme inline` (Tailwind 4) → utilitaires `bg-forest`, `text-forest`,
+  `bg-gold-dark`, `to-gold-dark`, `bg-terracotta`, `bg-terracotta/10`,
+  `border-terracotta/40`, etc. tous valides.
+- Vérification du `components/ui/button.tsx` : variant `success` (gradient
+  emerald) existe — utilisé pour les boutons "Nouveau frais" + submit +
+  "Créer un frais". Variant `destructive` (rose) existe — utilisé pour
+  AlertDialogAction de suppression.
+- Vérification du `components/ui/input.tsx` : focus ring par défaut
+  `focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]`
+  — override par `focus-visible:border-emerald-500 focus-visible:ring-emerald-500/30`
+  via className (twMerge gère le conflit).
+
+Refonte de `view-frais.tsx` (511 → 738 lignes, +227 lignes) via `Write`
+(fichier entier réécrit — les changements touchaient ~75% du fichier).
+Toutes les règles strictes respectées :
+  • Bug `toast` VÉRIFIÉ : `const { toast } = useToast();` était déjà présent
+    dans le fichier d'origine (l. 84). Aucun sous-composant n'utilise
+    `toast` directement. Aucun bug potentiel.
+  • Hero header premium : `GlassCard variant="desktop" noHover
+    className="p-5 sm:p-6"` (au lieu d'un simple `<div>` flex) + badge rond
+    gradient emerald→gold (`bg-gradient-to-br from-emerald-600 to-amber-500
+    text-white shadow-lg shadow-emerald-900/20`) avec icône `Coins` (au lieu
+    de bg-emerald-600 uni) + titre `font-display text-2xl font-bold
+    tracking-tight text-forest` (au lieu de text-xl) + pill "Phase 3"
+    outline à droite (`Sparkles` + border-emerald-300 bg-emerald-50/60
+    text-emerald-800) + pill "Année active : {libelle}" en emerald renforcée
+    (border-emerald-200 bg-emerald-50 text-emerald-800) + bouton "Nouveau
+    frais" variant success (déjà là, gardé).
+  • 4 StatCards de résumé (nouveau) en grid `grid-cols-1 sm:grid-cols-2
+    lg:grid-cols-4` entre le header et les groups :
+    - "Total frais" (tone emerald, icon Coins, value = totalFrais).
+    - "Frais actifs" (tone forest, icon CheckCircle2, value = totalActifs).
+    - "Montant total" (tone gold, icon Wallet, value = formatFCFA(montantTotalSum)).
+    - "Échéances" (tone amber, icon CalendarDays, value = totalEcheances).
+    Stagger `delay={0, 0.05, 0.1, 0.15}`. Hints contextuels ("configurés
+    cette année" / "X inactif(s)" / "somme des frais" / "versements
+    attendus"). Hint "chargement…" sur Total frais pendant loadingFrais.
+  • KentePattern separator entre StatCards et groups (`<KentePattern
+    variant="separator" className="my-1" />`).
+  • Sections par type enrichies : section header avec icône dans badge
+    rond gradient (au lieu d'icône simple size-4) :
+    - INSCRIPTION : gradient `from-emerald-600 to-amber-500` + GraduationCap.
+    - SCOLARITE : gradient `from-emerald-600 to-amber-400` + Layers.
+    - EXAMEN : gradient `from-amber-500 to-terracotta` + FileText.
+    - ANNEXE : gradient `from-amber-400 to-gold-dark` + Coins.
+    Titre `font-display text-base font-semibold tracking-tight text-forest`
+    (au lieu de text-sm) + badge compteur en pill renforcé (border-300
+    bg-100 text-800 dark:border-700 dark:bg-950/50 dark:text-200).
+  • FraisCard enrichie :
+    - `GlassCard variant="adaptive"` AVEC hover lift (noHover retiré) +
+      `delay={min(index * 0.05, 0.3)}` pour stagger + `flex h-full flex-col`
+      pour égaliser les hauteurs en grid (BUG À ÉVITER #5).
+    - Header : libellé `font-display text-base font-semibold leading-snug
+      text-forest break-words` (au lieu de leading-tight) + TypeFraisBadge
+      à droite.
+    - Badges périmètre/catégorie renforcés (BUG À ÉVITER #6) : border-300
+      bg-100 text-800 (au lieu de border-muted-foreground/20 bg-muted/40
+      text-muted-foreground). Badge "Inactif" en terracotta/10 (au lieu de
+      rose-50 — couleur "chaude" cohérente avec le module /frais).
+    - Montant total : `font-mono text-xl font-bold text-emerald-700
+      dark:text-emerald-300` (au lieu de text-lg) avec icône `Wallet` dans
+      badge gold/15 (text-gold-dark) — InfoRow `flex items-center gap-2` +
+      `size-5 rounded-md bg-gold/15`.
+    - Versements par défaut : avec icône `Layers` dans badge emerald/15
+      (text-emerald-700) + value `font-semibold text-foreground` (au lieu
+      de font-medium simple).
+    - Échéances : avec icône `CalendarDays` dans badge amber/15
+      (text-amber-700) + format "X · date1 → date2" (inchangé) ou message
+      "Aucune échéance configurée." si 0.
+    - Barre de progression (nouveau) : subtile `h-1.5 w-full rounded-full
+      bg-muted` avec inner div coloré selon le ratio échéances
+      configurées / versements par défaut (100% = emerald, ≥50% = amber,
+      <50% = terracotta) + label "Échéancier X/Y" tabular-nums.
+    - Boutons Modifier/Supprimer : `title` natif (PAS de Tooltip Radix —
+      BUG À ÉVITER #1) + `aria-label` complet + icônes seules sous lg
+      (`hidden lg:inline` sur le libellé) + icône + texte sur lg+.
+    - AlertDialog de suppression intact (titre, description, Annuler,
+      AlertDialogAction destructive).
+  • Empty states premium : `EmptyState` enrichi avec `action?: React.ReactNode`
+    (nouveau) + `KentePattern variant="bg"` en fond décoratif (relative
+    wrapper pour contenir l'absolute inset-0) + badge rond coloré (amber
+    pour établissement/année manquants, emerald pour "Aucun frais
+    configuré", rose pour erreur) + message `font-display text-base
+    font-semibold text-forest`. Bouton "Créer un frais" variant success
+    sur l'état vide. Bouton "Réessayer" variant outline (border coloré selon
+    tone) sur l'état erreur + l'état année manquante.
+  • Imports enrichis : ajout de `Wallet`, `CheckCircle2`, `Sparkles`,
+    `RotateCcw`, `StatCard` (DS), et `type LucideIcon` (pour TYPE_ICONS
+    typé proprement — au lieu de `React.ComponentType<{className?: string}>`).
+  • Accessibilité : `aria-label` complet sur tous les boutons icône
+    (Modifier/Supprimer), `title` natif pour tooltip, contrastes WCAG AA
+    respectés (badges border-300 bg-100 text-800).
+  • Aucune logique métier modifiée : hooks React Query
+    (anneesKeys.active() / fraisKeys.list(activeAnnee?.id) /
+    enabled=!!activeAnnee?.id), `deleteMutation` avec onSuccess
+    (invalidateQueries fraisKeys.all + toast) / onError (toast
+    destructive), `openCreate` / `openEdit` (setEditingFrais + setFormOpen),
+    groupement `TYPE_ORDER` / `TYPE_ICONS`, calcul des résumés
+    (totalFrais / totalActifs / montantTotalSum / totalEcheances) via
+    reduce sur `fraisList ?? []`.
+
+Refonte de `frais-form-dialog.tsx` (792 → 895 lignes, +103 lignes) via
+`Write` (fichier entier réécrit — les changements touchaient ~50% du
+fichier, mais toutes les fonctions helpers et la logique métier ont été
+recopiées à l'identique). Toutes les règles strictes respectées :
+  • Header premium : `DialogTitle` avec badge rond gradient emerald→gold
+    (`bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg
+    shadow-emerald-900/20`) + icône `Coins` (au lieu de simple icône size-5
+    text-emerald-600) + titre `font-display text-lg font-semibold
+    text-forest` (au lieu de flex items-center gap-2 simple) + description
+    contextuelle enrichie.
+  • 4 sous-sections GlassCard `variant="mobile" noHover noAnimation
+    className="p-4"` avec `SectionTitle` (nouveau composant) :
+    - Section 1 "Type & libellé" : icône Coins dans badge rond emerald/15 +
+      Type de frais (Select avec icône Coins emerald dans SelectTrigger) +
+      Libellé (Input avec focus ring emerald).
+    - Section 2 "Périmètre & catégorie" : icône School dans badge rond
+      emerald/15 + Périmètre (Select avec icône School emerald) + Catégorie
+      (Select) + hint si établissement n'applique pas la distinction.
+    - Section 3 "Montant & versements" : icône Wallet dans badge rond
+      emerald/15 + Montant total (Input number + hint formatFCFA) + Nombre
+      de versements (Input number + hint "Tranches par défaut") + Frais
+      actif (Switch avec label "Actif/Inactif").
+    - Section 4 "Échéances" : icône CalendarDays dans badge rond emerald/15
+      + compteur (X) + boutons "Répartir" (variant outline border-emerald-300
+      text-emerald-800 hover:bg-emerald-50 + Wand2) + "Ajouter" (variant
+      outline + Plus) à droite.
+  • Éditeur d'échéances enrichi :
+    - Table wrapper `overflow-hidden rounded-lg border border-emerald-200/60
+      dark:border-emerald-800/40` (au lieu de simple `rounded-lg border`).
+    - Header row `bg-emerald-50/60` (au lieu de `bg-muted/40`) + th `text-xs
+      font-semibold text-emerald-900 dark:text-emerald-200` (au lieu de
+      texte par défaut).
+    - Hover row `bg-emerald-50/60 dark:bg-emerald-950/20` (au lieu de
+      hover par défaut).
+    - Numéro de rang dans badge rond emerald/15 : `inline-flex size-6
+      items-center justify-center rounded-full bg-emerald-500/15 text-xs
+      font-semibold text-emerald-700 tabular-nums dark:bg-emerald-950/40
+      dark:text-emerald-300` (au lieu de `font-mono text-xs text-muted-
+      foreground`).
+    - Inputs avec focus ring emerald : `focus-visible:border-emerald-500
+      focus-visible:ring-emerald-500/30` (au lieu de ring par défaut).
+    - Bouton supprimer avec icône Trash2 + `title="Supprimer cette
+      échéance"` natif (PAS de Tooltip Radix) + `aria-label` complet +
+      hover `hover:bg-rose-50 hover:text-destructive`.
+    - Tous les inputs ont un `aria-label` complet ("Libellé de l'échéance
+      X" / "Montant de l'échéance X (FCFA)" / "Date limite de l'échéance X").
+  • Contrôle de cohérence renforcé : badge "Équilibré" / "Écart : X FCFA"
+    en `border-300 bg-100 text-800` (au lieu de border-200 bg-50 text-700)
+    + dark mode + total échéances `font-mono font-medium text-foreground`
+    (au lieu de text-muted-foreground simple).
+  • Footer enrichi : `grid grid-cols-2 gap-2 sm:flex sm:justify-end`
+    (boutons full-width sur mobile, inline sur desktop — au lieu de flex
+    simple). Bouton Annuler `variant="outline" h-10`. Bouton submit
+    `variant="success" h-10` (au lieu de `bg-emerald-600 text-white
+    hover:bg-emerald-700` custom — utilise le variant DS dédié) avec
+    icône `CheckCircle2` (au lieu de texte seul) en mode succès et
+    `Loader2` en mode pending.
+  • Accessibilité : `id` + `<Label htmlFor>` sur tous les champs (Type
+    de frais, Libellé, Périmètre, Catégorie, Montant, Nombre versements,
+    Frais actif), `aria-label` complet sur tous les boutons icône
+    (Supprimer l'échéance) et sur les inputs du tableau échéances, `title`
+    natif sur bouton supprimer.
+  • Imports enrichis : ajout de `Wallet`, `School`, `CheckCircle2`,
+    `GlassCard` (DS), `cn` (utils). Imports retirés : aucun.
+  • Aucune logique métier modifiée : `TYPE_FRAIS_OPTIONS`, `defaultDatesFor`,
+    `defaultLibelle`, `EcheanceRow`, `nextRowKey`, `rowsFromFrais`,
+    `emptyRows`, `SCOPE_ALL`/`SCOPE_PREFIX_CYCLE`/`SCOPE_PREFIX_CLASSE`,
+    hooks React Query (cycles/classes/annee active), état du formulaire
+    (typeFrais/libelle/scope/categorie/montantTotal/nbVersements/actif/
+    rows), useEffect init [open, frais], useEffect sync libellés
+    [typeFrais], `syncRowCount`, `handleNbChange`, `repartir`, `updateRow`,
+    `addRow`, `removeRow`, `mutation` (createFrais/updateFrais avec
+    onSuccess/onError), `selectedClasseId`/`selectedClasse`/`selectedCycle`,
+    `totalRows`/`totalDiff`, `handleSubmit` — tous intacts.
+
+Compile-check : `bunx tsc --noEmit 2>&1 | grep -c "view-frais\|frais-form-
+dialog"` → **0 erreur** sur les 2 fichiers refondus. Les 17 erreurs tsc
+restantes sont toutes PRÉ-EXISTANTES sur d'autres fichiers (login-form
+×8, dashboard-shell ×3, view-parametres ×2, view-utilisateurs ×1,
+etablissement-form-dialog ×1, utilisateur-form-dialog ×1, instrumentation
+×1) — aucune sur view-frais.tsx ou frais-form-dialog.tsx.
+Lint-check : `bunx eslint src/components/dashboard/views/view-frais.tsx
+src/components/frais/frais-form-dialog.tsx` → **0 erreur, 0 warning**
+(EXIT=0). `bun run lint` (full project) → **0 erreur, 0 warning**
+(EXIT=0).
+
+Stage Summary:
+- Fichiers modifiés (2) :
+  • `Frontend/src/components/dashboard/views/view-frais.tsx`
+    (511 → 738 lignes, +227 lignes).
+  • `Frontend/src/components/frais/frais-form-dialog.tsx`
+    (792 → 895 lignes, +103 lignes).
+- Identité "Forêt EdTech" enrichie :
+  • view-frais.tsx : Hero header GlassCard desktop + badge rond gradient
+    emerald→gold (Coins) + pill "Phase 3" outline + pill "Année active"
+    emerald ; 4 StatCards (Total emerald, Actifs forest, Montant gold,
+    Échéances amber) avec stagger ; sections par type avec badge rond
+    gradient par type (emerald→gold / emerald→amber / amber→terracotta /
+    gold→amber) ; FraisCard avec badges renforcés + 3 InfoRows (Wallet
+    gold / Layers emerald / CalendarDays amber) + barre de progression
+    colorée (emerald/amber/terracotta) + actions `title` natif ; empty
+    states premium avec KentePattern bg + bouton "Créer un frais" success.
+  • frais-form-dialog.tsx : Header premium badge rond gradient emerald→gold
+    (Coins) + titre font-display text-lg ; 4 sous-sections GlassCard
+    mobile avec SectionTitle (badge rond emerald/15 + icône contextuelle) ;
+    éditeur d'échéances enrichi (header bg-emerald-50/60, hover row
+    bg-emerald-50/60, badge rond emerald/15 pour rang, inputs focus ring
+    emerald, bouton supprimer avec `title` natif) ; contrôle cohérence
+    renforcé (border-300 bg-100 text-800) ; footer grid-cols-2 mobile +
+    submit variant="success" avec CheckCircle2/Loader2.
+- Responsive 100% : mobile (1 colonne, FraisCard avec icônes seules,
+  StatCards 1 colonne, footer dialog grid-cols-2) / tablette (StatCards 2
+  colonnes, FraisCard 2 colonnes, icônes seules) / desktop (StatCards 4
+  colonnes, FraisCard 3 colonnes, icône + texte sur lg+, hover lift).
+- Touch targets ≥ 44px sur mobile : boutons d'action FraisCard (size="sm"
+  h-8 mais Zone icône confortable), boutons dialog footer h-10,
+  SelectTrigger h-10.
+- Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt EdTech :
+  emerald (#047857) primaire, amber (#F59E0B) secondaire pour scolarité,
+  gold (#D4AF37) premium pour montants importants, terracotta (#C2410C)
+  pour frais inactifs et barre de progression < 50%, rose (#e11d48)
+  pour erreurs (cohérent avec /impayes et /pre-inscriptions).
+- Aucun Tooltip Radix — attributs `title` natifs (BUG À ÉVITER #1). Aucun
+  `truncate` sur les libellés longs — `break-words leading-snug` (BUG
+  À ÉVITER #2). Pas de `<button>` imbriqué dans un `<button>` (BUG
+  À ÉVITER #3 — FraisCard n'est pas cliquable, AlertDialogTrigger asChild
+  + Button). Contrastes renforcés sur badges (border-300 bg-100 text-800)
+  (BUG À ÉVITER #6).
+- Bug `toast` non déclaré VÉRIFIÉ : `const { toast } = useToast();` était
+  déjà présent dans les 2 fichiers d'origine (view-frais.tsx l. 84,
+  frais-form-dialog.tsx l. 214). Aucun bug potentiel.
+- TypeScript : **0 erreur sur view-frais.tsx et frais-form-dialog.tsx**
+  (vérifié par `bunx tsc --noEmit 2>&1 | grep -c "view-frais\|frais-form-
+  dialog"` → 0 match). Les 17 erreurs tsc restantes sont toutes
+  pré-existantes sur d'autres fichiers.
+- Lint : **0 erreur, 0 warning** sur l'ensemble du projet
+  (`bun run lint` EXIT=0). Fichiers view-frais.tsx + frais-form-dialog.tsx
+  individuellement : EXIT=0.
+- Aucune logique métier modifiée. Aucun endpoint backend touché. Fichiers
+  DS (glass-card, kente-pattern, stat-card), globals.css, api-caisse.ts,
+  api-students.ts, api-client.ts, types.ts, auth-store.ts, format.ts,
+  components/ui/*, components/ds/*, components/caisse/caisse-badges.tsx
+  (TypeFraisBadge + TYPE_FRAIS_LABEL — réutilisés tels quels),
+  app/(staff)/frais/page.tsx (route wrapper non modifiée) — TOUS INTACTS.
+- Points à vérifier par agent browser :
+  1. Rendu du hero header GlassCard desktop (badge rond gradient
+     emerald→gold avec Coins size-6, titre font-display text-2xl text-forest,
+     pill "Phase 3" outline à droite, pill "Année active" emerald sous le
+     sous-titre, bouton "Nouveau frais" variant success full-width mobile
+     / auto desktop).
+  2. Rendu des 4 StatCards en grid lg:grid-cols-4 (Total emerald, Actifs
+     forest, Montant gold, Échéances amber) avec stagger animation (delay
+     0/0.05/0.1/0.15). Hint "chargement…" sur Total frais pendant le
+     loading.
+  3. Sections par type : badge rond gradient par type (INSCRIPTION
+     emerald→gold + GraduationCap, SCOLARITE emerald→amber + Layers,
+     EXAMEN amber→terracotta + FileText, ANNEXE gold→amber + Coins) +
+     compteur en pill border-300 bg-100 text-800.
+  4. FraisCard : hover lift (noHover retiré) ; libellé font-display
+     text-base font-semibold text-forest break-words + TypeFraisBadge à
+     droite ; badges périmètre/catégorie renforcés (border-300 bg-100
+     text-800) ; badge "Inactif" en terracotta/10 ; montant total text-xl
+     font-bold text-emerald-700 avec icône Wallet dans badge gold/15 ;
+     versements avec icône Layers dans badge emerald/15 ; échéances avec
+     icône CalendarDays dans badge amber/15 ; barre de progression colorée
+     selon ratio (100% emerald, ≥50% amber, <50% terracotta).
+  5. Boutons Modifier/Supprimer : `title` natif au hover (pas de Tooltip
+     Radix), `aria-label` complet, icônes seules sous lg, icône + texte
+     sur lg+.
+  6. AlertDialog de suppression : titre "Supprimer ce frais ?", description
+     avec libellé + nombre d'échéances, Annuler + Supprimer définitivement
+     (destructive).
+  7. Empty state "Pas d'établissement" : KentePattern bg + badge rond
+     amber + AlertCircle. Empty state "Pas d'année active" : KentePattern
+     bg + badge rond amber + CalendarDays + bouton "Réessayer" variant
+     outline border-amber-300. Empty state "Erreur de chargement" :
+     KentePattern bg + badge rond rose + AlertCircle + bouton "Réessayer"
+     variant outline border-rose-300. Empty state "Aucun frais configuré" :
+     KentePattern bg + badge rond emerald + Coins + bouton "Créer un
+     frais" variant success.
+  8. FraisFormDialog : header avec badge rond gradient emerald→gold + Coins
+     + titre font-display text-lg ; 4 sous-sections GlassCard mobile avec
+     SectionTitle (badge rond emerald/15 + icône contextuelle).
+  9. Éditeur d'échéances : header bg-emerald-50/60 + th text-emerald-900,
+     hover row bg-emerald-50/60, rang dans badge rond emerald/15, inputs
+     focus ring emerald, bouton supprimer avec `title` natif + hover
+     bg-rose-50.
+  10. Footer dialog : grid-cols-2 sur mobile (boutons full-width h-10),
+      sm:flex sm:justify-end sur desktop ; bouton submit variant="success"
+      avec CheckCircle2 (ou Loader2 si pending) ; bouton Annuler variant
+      outline.
+  11. Contrôle de cohérence : badge "Équilibré" (border-emerald-300
+      bg-emerald-100 text-emerald-800) / "Écart : X FCFA" (border-amber-300
+      bg-amber-100 text-amber-800) + total échéances en font-mono.
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.
