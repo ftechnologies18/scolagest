@@ -351,9 +351,9 @@ export function ParentPortal() {
   // ───────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-br from-emerald-50/60 via-background to-amber-50/40">
+    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-emerald-50/60 via-background to-amber-50/40">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-emerald-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+      <header className="sticky top-0 z-30 shrink-0 border-b border-emerald-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
           <Image
             src="/logo.png"
@@ -433,8 +433,9 @@ export function ParentPortal() {
         </nav>
       </header>
 
-      {/* Contenu principal */}
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+      {/* Contenu principal scrollable — le footer est hors du main pour
+          rester toujours visible en bas du viewport (sticky flex). */}
+      <main className="mx-auto w-full max-w-6xl flex-1 overflow-y-auto px-4 py-6 pb-20 sm:px-6 sm:py-8 sm:pb-24">
         {/* Bandeau d'accueil */}
         <WelcomeBanner
           parentPrenom={parentPrenom}
@@ -634,7 +635,7 @@ export function ParentPortal() {
         </div>
       </footer>
 
-      <Footer />
+      <Footer className="shrink-0" />
 
       {/* Dialogues */}
       <EnfantDetailDialog

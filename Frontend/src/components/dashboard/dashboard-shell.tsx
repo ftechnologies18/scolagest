@@ -1016,14 +1016,17 @@ export function DashboardShell({
             </div>
           </header>
 
-          {/* Contenu principal */}
+          {/* Contenu principal scrollable — le footer est hors du main pour
+              rester toujours visible en bas du viewport (sticky flex). */}
           <main className="flex-1 overflow-y-auto">
-            <div className="mx-auto w-full max-w-7xl p-4 sm:p-6">{children}</div>
-
-            {/* Pied de page */}
-            <KentePattern variant="strip" position="top" />
-            <Footer variant="dark" />
+            <div className="mx-auto w-full max-w-7xl p-4 pb-20 sm:p-6 sm:pb-24">
+              {children}
+            </div>
           </main>
+
+          {/* Pied de page — hors du main scrollable, toujours visible en bas */}
+          <KentePattern variant="strip" position="top" className="shrink-0" />
+          <Footer variant="dark" className="shrink-0" />
         </div>
       </div>
     </div>

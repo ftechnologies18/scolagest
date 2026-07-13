@@ -130,9 +130,9 @@ export default function ProfLayout({
   }
 
   return (
-    <div className="font-body flex min-h-screen flex-col bg-background">
-      <KentePattern variant="strip" position="top" />
-      <header className="sticky top-0 z-30 border-b bg-emerald-600 text-emerald-50 shadow-sm">
+    <div className="font-body flex h-screen flex-col bg-background overflow-hidden">
+      <KentePattern variant="strip" position="top" className="shrink-0" />
+      <header className="sticky top-0 z-30 border-b bg-emerald-600 text-emerald-50 shadow-sm shrink-0">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-4 py-3 sm:px-6">
           <Image
             src="/logo.png"
@@ -163,11 +163,11 @@ export default function ProfLayout({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+      <main className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-4 py-6 pb-20 sm:px-6 sm:py-8 sm:pb-24">
         {children}
       </main>
 
-      <Footer className="mt-auto" />
+      <Footer className="shrink-0" />
     </div>
   );
 }
