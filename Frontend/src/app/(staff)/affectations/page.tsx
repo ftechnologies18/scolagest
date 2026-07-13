@@ -1,26 +1,20 @@
 "use client";
 
 /**
- * ScolaGest — Page liste des affectations (route `/affectations`).
+ * ScolaGest — Redirection /affectations → /matieres-affectations?tab=affectations.
  *
- * Rend la vue `AffectationsList` (module Enseignant — Phase A), protégée par
- * un RoleGuard réservé à la direction, aux directeurs et au secrétariat.
+ * Ancienne route conservée pour la rétrocompatibilité (liens existants,
+ * bookmarks, history). Redirige vers la page unifiée avec l'onglet
+ * Affectations actif.
  */
 
-import { RoleGuard } from "@/components/auth/role-guard";
-import { AffectationsList } from "@/components/enseignants/affectations-list";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-const ALLOWED_ROLES = [
-  "DIRECTION",
-  "DIRECTEUR_ETUDES",
-  "DIRECTEUR_SUPERVISEUR",
-  "SECRETARIAT",
-] as const;
-
-export default function AffectationsPage() {
-  return (
-    <RoleGuard allow={[...ALLOWED_ROLES]}>
-      <AffectationsList />
-    </RoleGuard>
-  );
+export default function AffectationsRedirectPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/matieres-affectations?tab=affectations");
+  }, [router]);
+  return null;
 }

@@ -1,26 +1,20 @@
 "use client";
 
 /**
- * ScolaGest — Page liste des matières (route `/matieres`).
+ * ScolaGest — Redirection /matieres → /matieres-affectations?tab=matieres.
  *
- * Rend la vue `MatieresList` (module Enseignant — Phase A), protégée par un
- * RoleGuard réservé à la direction, aux directeurs et au secrétariat.
+ * Ancienne route conservée pour la rétrocompatibilité (liens existants,
+ * bookmarks, history). Redirige vers la page unifiée avec l'onglet Matières
+ * actif.
  */
 
-import { RoleGuard } from "@/components/auth/role-guard";
-import { MatieresList } from "@/components/enseignants/matieres-list";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-const ALLOWED_ROLES = [
-  "DIRECTION",
-  "DIRECTEUR_ETUDES",
-  "DIRECTEUR_SUPERVISEUR",
-  "SECRETARIAT",
-] as const;
-
-export default function MatieresPage() {
-  return (
-    <RoleGuard allow={[...ALLOWED_ROLES]}>
-      <MatieresList />
-    </RoleGuard>
-  );
+export default function MatieresRedirectPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/matieres-affectations?tab=matieres");
+  }, [router]);
+  return null;
 }

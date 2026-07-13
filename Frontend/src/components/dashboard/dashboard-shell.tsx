@@ -42,6 +42,7 @@ import {
   Menu,
   Search,
   Bell,
+  Layers,
   LogOut,
   Building2,
   ChevronDown,
@@ -222,15 +223,13 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
       },
       {
-        href: "/matieres",
-        label: "Matières",
-        icon: BookOpen,
-        roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
-      },
-      {
-        href: "/affectations",
-        label: "Affectations",
-        icon: CalendarDays,
+        // Page unifiée Matières & Affectations (fusion UX) : un seul point
+        // d'entrée pour la gestion pédagogique prof/matière/classe. Les
+        // anciennes routes /matieres et /affectations redirigent vers cette
+        // page avec l'onglet approprié (rétrocompatibilité).
+        href: "/matieres-affectations",
+        label: "Matières & Affectations",
+        icon: Layers,
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
       },
       {
