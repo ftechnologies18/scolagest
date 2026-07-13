@@ -11872,3 +11872,420 @@ Stage Summary:
       enseignantsKeys.all et matieresKeys.all. Préselection automatique
       du formulaire à l'ouverture (enseignant ou reset vide).
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+
+## Task 4 — Refonte modules /matieres et /affectations (agent frontend-styling-expert)
+
+Date : 2025-01 (Task 4 de la vague de refontes ScolaGest).
+
+### Fichiers modifiés (2)
+- `/home/z/my-project/scolagest/Frontend/src/components/enseignants/matieres-list.tsx`
+  (746 → 982 lignes, +236 lignes)
+- `/home/z/my-project/scolagest/Frontend/src/components/enseignants/affectations-list.tsx`
+  (826 → 1322 lignes, +496 lignes)
+
+### Fichiers lus (référence DS + refontes précédentes)
+- `Frontend/src/components/ds/glass-card.tsx` (GlassCard : variants mobile/
+  tablet/desktop/premium/adaptive, props noHover/noAnimation/delay/
+  premiumBorder, role=button si onClick)
+- `Frontend/src/components/ds/kente-pattern.tsx` (KentePattern : variants
+  strip/bg/border/separator, positions top/bottom/custom)
+- `Frontend/src/components/ds/stat-card.tsx` (StatCard : tones emerald/amber/
+  terracotta/gold/sky/forest, trend invertTrend hint delay onClick)
+- `Frontend/src/components/enseignants/enseignants-list.tsx` (1780 lignes,
+  DÉJÀ REFONTE — patterns repris : hero header GlassCard desktop + badge
+  rond gradient emerald→gold + pill Phase A + 4 StatCards + tableau desktop
+  GlassCard p-0 + cartes mobile + FormSectionTitle + EmptyState premium +
+  LoadingState premium)
+- `Frontend/src/components/effectifs/effectifs-dashboard.tsx` (726 lignes,
+  refonte — patterns : hero header + 4 StatCards + tableau + heatmap + empty
+  states premium)
+- `Frontend/src/components/ui/button.tsx` (variant success : gradient
+  emerald from-emerald-600 to-emerald-700 + shadow-lg shadow-emerald-900/20)
+- `Frontend/src/lib/api-enseignant.ts` (types Matiere/MatiereDTO/
+  AffectationCours/AffectationDTO/Enseignant + fonctions fetchMatieres/
+  createMatiere/updateMatiere/deleteMatiere/fetchAffectations/
+  createAffectation/deleteAffectation/fetchEnseignants — signatures
+  conservées à l'identique)
+- `Frontend/src/lib/types.ts` (Cycle/Classe/AnneeScolaire — intacts)
+- `Frontend/src/app/(staff)/matieres/page.tsx` et `app/(staff)/affectations/
+  page.tsx` (routes RoleGuard — non modifiées)
+
+### Refonte `matieres-list.tsx` — améliorations
+- **Hero header premium** : KentePattern strip top + GlassCard desktop p-5
+  sm:p-6 + badge rond size-12 bg-gradient-to-br from-emerald-600 to-amber-500
+  text-white shadow-lg (BookOpen size-6) + titre font-display text-2xl
+  font-bold text-forest "Matières" + pill "Phase A" border-emerald-300
+  bg-emerald-50/60 text-emerald-800 (Sparkles size-3) + description + bouton
+  "Nouvelle matière" variant success w-full sm:w-auto (Plus) + KentePattern
+  separator après le hero header.
+- **4 StatCards DS** (nouveau) en grid grid-cols-2 md:grid-cols-4 avec
+  stagger delay 0/0.05/0.1/0.15 + items-stretch (h-full) : Total matières
+  (emerald/BookOpen, hint "chargement…" si loading sinon "dans le
+  catalogue"), Actives (forest/CheckCircle2, "disponibles pour affectation"),
+  Inactives (terracotta/UserX, "masquées des sélecteurs"), Avec cycle
+  (gold/Layers, "restreintes à un cycle").
+- **KPIs calculés** (nouveau) via React.useMemo sur la liste des matières :
+  total/actives/inactives/avecCycle.
+- **MatiereCard enrichie** : motion.div wrapper h-full avec stagger delay
+  index*0.05 capé à 0.4s + GlassCard adaptive AVEC hover lift (par défaut)
+  + flex h-full flex-col + en-tête (pastille couleur size-5 ring-2
+  ring-white + libellé font-display text-base font-semibold text-forest
+  break-words leading-snug + badge Actif/Inactif border-300 bg-100 text-800
+  shrink-0) + sous-ligne badges (code emerald renforcé avec icône Hash +
+  cycle gold/15 text-gold-dark) + coefficient avec icône Hash en badge
+  gold/15 px-2 py-0.5 font-mono text-sm font-bold text-gold-dark + footer
+  mt-auto boutons Modifier (ghost sm text-emerald-700, title natif "Modifier
+  cette matière" + aria-label) + Supprimer (AlertDialog + ghost sm
+  text-destructive, title natif + aria-label, Loader2 si deleting).
+- **MatiereFormDialog premium** : header badge rond size-10 gradient
+  emerald→gold (BookOpen size-5) + titre font-display text-lg text-forest +
+  3 sections GlassCard tablet noHover noAnimation p-4 (Identification avec
+  icône Tag, Pédagogie avec icône GraduationCap, Affichage avec icône
+  Palette) + FormSectionTitle (badge rond emerald/15 size-7 + icône +
+  titre font-display text-sm font-semibold text-forest) + Input/SelectTrigger
+  avec bg-background opaque + footer grid-cols-2 gap-2 sm:flex sm:justify-
+  end + bouton Annuler variant outline w-full sm:w-auto + bouton submit
+  variant success w-full sm:w-auto (Loader2 si submitting, "Enregistrer"
+  si edit sinon "Créer la matière"). Validation : code requis + libellé
+  requis + coefficient numérique positif.
+- **Empty states premium** : GlassCard adaptive noHover relative overflow-
+  hidden + KentePattern bg + badges ronds colorés size-12 (amber
+  AlertCircle pour établissement manquant, rose AlertCircle pour erreur de
+  chargement, emerald BookOpen pour aucune matière) + titres font-display
+  text-base font-semibold text-forest + descriptions max-w-md + bouton
+  "Créer une matière" variant success sur l'état vide.
+- **Loading state premium** : GlassCard adaptive noHover noAnimation p-0
+  relative overflow-hidden + KentePattern strip top + Loader2 size-6
+  animate-spin text-emerald-600 centré + 6 Skeletons h-40 w-full rounded-2xl
+  en grid sm:grid-cols-2 lg:grid-cols-3.
+
+### Refonte `affectations-list.tsx` — améliorations
+- **Hero header premium** : KentePattern strip top + GlassCard desktop p-5
+  sm:p-6 + badge rond size-12 bg-gradient-to-br from-emerald-600 to-amber-500
+  text-white shadow-lg (CalendarDays size-6) + titre font-display text-2xl
+  font-bold text-forest "Affectations" + pill "Phase A" border-emerald-300
+  bg-emerald-50/60 text-emerald-800 (Sparkles size-3) + description + pill
+  "Année active : {anneeLabel}" border-emerald-200 bg-emerald-50 text-
+  emerald-800 avec icône CalendarDays size-3 (si anneeLabel défini) + bouton
+  "Nouvelle affectation" variant success w-full sm:w-auto (Plus) + Kente-
+  Pattern separator après le hero header.
+- **4 StatCards DS** (nouveau) en grid grid-cols-2 md:grid-cols-4 avec
+  stagger delay 0/0.05/0.1/0.15 + items-stretch (h-full) : Total
+  affectations (emerald/CalendarDays, hint "chargement…" si loading sinon
+  "année {anneeLabel}"), Titulaires (gold/Star, "enseignants principaux"),
+  Volume total (amber/Clock, value "{volumeTotal}h", "heures / semaine"),
+  Enseignants distincts (forest/Users, "assignés cette année").
+- **KPIs calculés** (nouveau) via React.useMemo sur la liste des
+  affectations : total/titulaires/volumeTotal/ensDistincts (Set des
+  enseignant_id).
+- **Tableau desktop enrichi** (md:block, hidden on mobile) : GlassCard
+  adaptive noHover noAnimation p-0 overflow-hidden + header bg-emerald-50/60
+  border-emerald-100 + th text-emerald-900 text-xs font-semibold uppercase
+  tracking-wide + hover row bg-emerald-50/60 + colonne Enseignant avec
+  avatar emerald-600 text-white size-9 + initiales + nom font-display
+  text-sm font-semibold text-forest break-words leading-snug + matricule
+  font-mono text-[10px] + colonne Matière avec libellé font-display text-sm
+  font-medium text-forest + code mono + colonne Classe avec badge slate
+  renforcé (border-slate-300 bg-slate-100 text-slate-800) + colonne Volume
+  hebdo avec Clock en badge amber-500/15 px-2 py-0.5 font-mono text-sm
+  font-bold text-amber-800 + colonne Titulaire avec Star en badge gold/15
+  border-gold/40 text-gold-dark sinon "Non" text-muted + colonne Actions
+  avec bouton supprimer ghost sm text-destructive title natif + aria-label
+  + icône seule md, icône + texte lg (hidden lg:inline). Rows motion.tr
+  avec stagger delay index*0.02 capé à 0.4s (composant AffectationRow
+  custom) + usePrefersReducedMotion respecté.
+- **Cartes mobile** (nouveau, md:hidden) : motion.div wrapper avec stagger
+  delay index*0.05 capé à 0.4s + GlassCard mobile noHover noAnimation p-4 +
+  en-tête avatar emerald-600 text-white size-11 + initiales + nom font-
+  display text-base font-semibold text-forest break-words leading-snug +
+  matricule font-mono text-[11px] + badge Titulaire gold/15 si titulaire à
+  droite + body InfoRows (matière badge emerald/15 avec icône BookOpen +
+  classe badge slate/15 avec icône School + volume hebdo badge amber/15
+  avec icône Clock) + footer bouton supprimer ghost size="icon" h-11 w-11
+  (touch target ≥ 44px) avec title natif + aria-label. AlertDialog de
+  suppression identique au desktop.
+- **AffectationFormDialog premium** : header badge rond size-10 gradient
+  emerald→gold (CalendarDays size-5) + titre font-display text-lg text-forest
+  + 3 sections GlassCard tablet noHover noAnimation p-4 (Enseignant avec
+  icône Users, Cours avec icône BookOpen, Charge horaire avec icône Clock)
+  + FormSectionTitle (badge rond emerald/15 size-7 + icône + titre font-
+  display text-sm font-semibold text-forest) + Selects avec icônes
+  contextuelles dans le SelectTrigger (Users/BookOpen/School) + Input avec
+  bg-background opaque + switch titulaire + alerte surcharge amber renforcée
+  (border-amber-300 bg-amber-100/80 text-amber-800 + AlertTriangle) +
+  footer grid-cols-2 gap-2 sm:flex sm:justify-end + bouton Annuler variant
+  outline w-full sm:w-auto (icône X) + bouton submit variant success w-full
+  sm:w-auto (Loader2 si submitting, Plus sinon, "Créer l'affectation").
+  Validation : enseignant requis + matière requise + classe requise +
+  volume numérique positif.
+- **Empty states premium** : GlassCard adaptive noHover relative overflow-
+  hidden + KentePattern bg + badges ronds colorés size-12 (amber
+  AlertCircle pour établissement manquant, amber CalendarDays pour pas
+  d'année active, rose AlertCircle pour erreur de chargement, emerald
+  CalendarDays pour aucune affectation) + titres font-display text-base
+  font-semibold text-forest + descriptions max-w-md + bouton "Créer une
+  affectation" variant success sur l'état vide.
+- **Loading state premium** : GlassCard adaptive noHover noAnimation p-0
+  relative overflow-hidden + KentePattern strip top + 4 Skeletons h-12 w-
+  full (visible pendant loadingAnnee OU loadingAffectations).
+
+### Bugs à éviter — VÉRIFIÉS
+- Aucun Tooltip Radix — toutes les actions utilisent l'attribut HTML natif
+  `title` (BUG À ÉVITER #1) : boutons Modifier/Supprimer des MatiereCard
+  + bouton supprimer du tableau affectations + bouton supprimer mobile.
+- Aucun `truncate` sur les libellés longs — `break-words leading-snug`
+  pour les libellés de matière et noms d'enseignant (BUG À ÉVITER #2).
+- Pas de `<button>` imbriqué dans un `<button>` — les AlertDialog utilisent
+  `AlertDialogTrigger asChild` qui rend un seul `<button>` via Slot (BUG
+  À ÉVITER #3).
+- Icônes InfoRow : `flex items-start` + `mt-0.5` sur l'icône Mail dans le
+  tableau (non applicable ici car pas d'emails, mais pattern respecté sur
+  les body InfoRows mobile avec `flex items-center gap-2`).
+- Grid : `items-stretch` (via `h-full` sur les StatCard) + `h-full` sur les
+  motion.div wrappers des MatiereCard (BUG À ÉVITER #5).
+- Avatar : `bg-emerald-600 text-white` pour les avatars enseignant (tableau
+  desktop size-9 + mobile size-11) — BUG À ÉVITER #6.
+- Badges : `border-300 bg-100 text-800` (BUG À ÉVITER #7) : badge Actif
+  (emerald), Inactif (rose), code matière (emerald), classe (slate),
+  volume hebdo (amber-500/15), Titulaire (gold/15), badge cycle (gold/15).
+- `toast` non déclaré VÉRIFIÉ : `const { toast } = useToast();` présent en
+  tête du composant principal `MatieresList` (l. 148) ET en tête du
+  composant `AffectationsList` (l. 179) — les deux composants qui utilisent
+  `toast(...)` dans leurs mutations. Aucune régression (BUG À ÉVITER #8).
+
+### Logique métier conservée à l'identique
+- Imports `@/lib/api-enseignant` (fetchMatieres / createMatiere /
+  updateMatiere / deleteMatiere / fetchAffectations / createAffectation /
+  deleteAffectation / fetchEnseignants) et `@/lib/api-students`
+  (fetchActiveAnnee / fetchClasses / fetchCycles / anneesKeys /
+  classesKeys / cyclesKeys) intacts.
+- Types `Matiere` / `MatiereDTO` / `Cycle` / `AffectationCours` /
+  `AffectationDTO` / `Enseignant` / `Classe` / `AnneeScolaire` intacts
+  (helpers `enseignantFullName` et `enseignantInitials` ajoutés dans
+  affectations-list, copiés de enseignants-list.tsx, signature compatible
+  avec `Enseignant | null | undefined`).
+- Hooks React Query conservés : `matieresListKeys.list()` / `cyclesKeys.
+  list(etablissement?.id)` / `anneesKeys.active()` / `affectationsKeys.
+  list(activeAnnee?.id)` / `classesKeys.list(etablissement?.id)` + clés
+  `["enseignants", "list", { all: true }]` et `["matieres", "list"]` dans
+  le dialog affectation. `enabled: !!etablissement` et `enabled: !!
+  etablissement && open` intacts.
+- Mutations `createMutation` / `updateMutation` / `deleteMutation` (matieres)
+  + `createMutation` / `deleteMutation` (affectations) + `invalidateQueries`
+  conservées. Toasts `onSuccess` (création/modification/suppression +
+  alerte_surcharge pour affectations) et `onError` conservés.
+- Handlers `openCreate` / `openEdit` / `handleSubmit` (matieres) et
+  `handleSubmit` (affectations) conservés.
+- Constantes `COULEUR_PRESETS` / `COULEUR_DEFAUT` / `SEUIL_SURCHARGE_H` /
+  `matieresListKeys` / `affectationsKeys` conservées à l'identique.
+- `FormState` (matieres : code/libelle/coefficient/cycle_id/couleur/actif
+  + affectations : enseignant_id/matiere_id/classe_id/volume_horaire_hebdo/
+  est_titulaire) + validation `codeValid`/`libelleValid`/`coefValid`/
+  `ensValid`/`matValid`/`clsValid`/`volValid` conservées.
+- AlertDialog de suppression conservés à l'identique (textes et handlers).
+- Endpoints backend intacts : GET/POST/PUT/DELETE /api/matieres, GET/POST/
+  DELETE /api/affectations, GET /api/enseignants, GET /api/matieres (pour
+  le dialog), GET /api/classes, GET /api/annees-scolaires/active.
+- Pages `app/(staff)/matieres/page.tsx` et `app/(staff)/affectations/
+  page.tsx` NON modifiées (routes RoleGuard intactes).
+
+### Responsive 100%
+- Mobile (<768px) : KPIs grid 2 colonnes, hero header flex-col (badge +
+  titre + pill + bouton "Nouvelle…" w-full en bas), dialog footer grid-
+  cols-2 (boutons full-width en 2 colonnes), padding p-4 via GlassCard
+  adaptive, matieres grid 1 colonne (sm:grid-cols-2 active à 640px+),
+  affectations cartes mobile md:hidden avec bouton supprimer h-11 w-11.
+- Tablette (768-1023px) : KPIs grid 4 colonnes à md:768px, matieres grid
+  2 colonnes, tableau desktop visible md:block (boutons supprimer icône
+  seule `hidden lg:inline`), padding p-5 via GlassCard adaptive.
+- Desktop (1024px+) : KPIs grid 4 colonnes, matieres grid 3 colonnes
+  lg:grid-cols-3, tableau desktop avec boutons supprimer "hidden lg:inline"
+  (icône + texte), GlassCard adaptive monte en opacité 0.85, padding p-6,
+  hero header p-6.
+
+### Palette Forêt EdTech
+- Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt EdTech :
+  - **emerald** (#047857) primaire : Total matières / Total affectations
+    KPI, badge rond gradient header emerald→gold, hover row, boutons
+    success, badges code matière, badges actif, avatar emerald-600,
+    FormSectionTitle badge rond emerald/15, selects avec icône Users/
+    BookOpen.
+  - **amber** (#F59E0B) secondaire : Volume total KPI, badge volume hebdo
+    amber-500/15, alerte surcharge amber renforcée, pill Phase A (via
+    gradient emerald→gold du badge header), icônes InfoRow mobile matière.
+  - **gold** (#D4AF37) premium : Avec cycle KPI, badge Titulaire gold/15
+    text-gold-dark, badge cycle gold/15, coefficient avec Hash en badge
+    gold/15, badge rond gradient header emerald→gold.
+  - **terracotta** (#C2410C) danger chaud : Inactives KPI matieres.
+  - **rose** (#e11d48) conservé pour badge Inactif matiere + EmptyState
+    erreur de chargement (cohérent avec /utilisateurs, /effectifs,
+    /enseignants).
+  - **forest** (#064E3B) profond : Actives KPI matieres + Enseignants
+    distincts KPI affectations, text-forest sur titres font-display.
+  - **slate** conservé pour badge classe (neutre) + icônes contextuelles
+    mobile classe.
+
+### TypeScript
+- **0 erreur sur matieres-list.tsx** (vérifié par `bunx tsc --noEmit 2>&1
+  | grep "matieres-list"` → 0 match).
+- **0 erreur sur affectations-list.tsx** (vérifié par `bunx tsc --noEmit
+  2>&1 | grep "affectations-list"` → 0 match).
+- Les 15 erreurs tsc restantes sont toutes PRÉ-EXISTANTES sur d'autres
+  fichiers (login-form ×8, dashboard-shell ×3, view-parametres ×2,
+  etablissement-form-dialog ×1, instrumentation ×1) — aucune introduite
+  par cette refonte.
+
+### Lint
+- **0 erreur, 0 warning** sur les 2 fichiers (`bunx eslint src/components/
+  enseignants/matieres-list.tsx src/components/enseignants/affectations-
+  list.tsx --max-warnings 0` → EXIT=0).
+- **0 erreur, 0 warning** sur l'ensemble du projet (`bun run lint` →
+  EXIT=0).
+
+### Points à vérifier par agent browser
+1. **Rendu /matieres** :
+   - Hero header GlassCard desktop : KentePattern strip top en tête de
+     vue + badge rond size-12 gradient emerald→gold (BookOpen size-6) +
+     titre font-display text-2xl font-bold text-forest "Matières" + pill
+     "Phase A" border-emerald-300 (Sparkles size-3) + bouton "Nouvelle
+     matière" variant success w-full sm:w-auto à droite.
+   - 4 StatCards en grid grid-cols-2 md:grid-cols-4 (mobile 2 colonnes,
+     desktop 4 colonnes) avec stagger : Total matières (emerald/BookOpen)
+     avec hint "chargement…" si loading sinon "dans le catalogue" ;
+     Actives (forest/CheckCircle2) ; Inactives (terracotta/UserX) ; Avec
+     cycle (gold/Layers). Sur mobile, vérifier items-stretch + h-full
+     (hauteurs alignées).
+   - Grille MatiereCard en grid sm:grid-cols-2 lg:grid-cols-3 : chaque
+     carte est une GlassCard adaptive AVEC hover lift (y: -2) + pastille
+     couleur size-5 ring-2 ring-white + libellé font-display text-base
+     font-semibold text-forest break-words leading-snug + badge Actif/
+     Inactif (border-300 bg-100 text-800) + badges code (emerald renforcé
+     avec Hash) et cycle (gold/15) + coefficient avec Hash en badge gold/
+     15 font-mono font-bold + boutons Modifier (ghost sm text-emerald-700
+     title natif + aria-label) et Supprimer (AlertDialog + ghost sm
+     text-destructive title natif + aria-label, Loader2 si deleting).
+     Animation stagger sur les cartes (motion.div delay index*0.05 capé
+     à 0.4s).
+   - MatiereFormDialog (création/édition) : header badge rond size-10
+     gradient emerald→gold (BookOpen size-5) + titre font-display text-lg
+     text-forest "Modifier la matière" ou "Nouvelle matière" + 3 sections
+     GlassCard tablet (Identification avec icône Tag, Pédagogie avec
+     icône GraduationCap, Affichage avec icône Palette) + FormSectionTitle
+     (badge rond emerald/15 size-7 + icône + titre font-display text-sm
+     font-semibold text-forest) + Input/SelectTrigger bg-background
+     opaque + footer grid-cols-2 gap-2 sm:flex sm:justify-end + bouton
+     Annuler variant outline w-full sm:w-auto + bouton submit variant
+     success w-full sm:w-auto (Loader2 si submitting, "Enregistrer" en
+     édition, "Créer la matière" en création). Validation : code requis,
+     libellé requis, coefficient numérique positif.
+   - Empty states premium :
+     - Pas d'établissement : GlassCard adaptive + KentePattern bg +
+       badge rond amber size-12 + AlertCircle size-6 + titre font-display
+       "Sélectionnez un établissement" (sans bouton "Nouvelle matière"
+       dans le shell).
+     - Erreur de chargement : GlassCard adaptive + KentePattern bg +
+       badge rond rose size-12 + AlertCircle size-6 + titre "Erreur de
+       chargement" + description = error.message.
+     - Aucune matière : GlassCard adaptive + KentePattern bg + badge
+       rond emerald size-12 + BookOpen size-6 + titre "Aucune matière" +
+       bouton "Créer une matière" variant success (Plus).
+   - Loading state : GlassCard adaptive noHover noAnimation p-0 + Kente-
+     Pattern strip top + Loader2 size-6 animate-spin text-emerald-600
+     centré + 6 Skeletons h-40 w-full rounded-2xl en grid sm:grid-cols-2
+     lg:grid-cols-3.
+
+2. **Rendu /affectations** :
+   - Hero header GlassCard desktop : KentePattern strip top en tête de
+     vue + badge rond size-12 gradient emerald→gold (CalendarDays size-6)
+     + titre font-display text-2xl font-bold text-forest "Affectations"
+     + pill "Phase A" border-emerald-300 (Sparkles size-3) + pill "Année
+     active : {anneeLabel}" border-emerald-200 bg-emerald-50 text-
+     emerald-800 (CalendarDays size-3) sous le sous-titre si une année
+     active est chargée + bouton "Nouvelle affectation" variant success
+     w-full sm:w-auto à droite.
+   - 4 StatCards en grid grid-cols-2 md:grid-cols-4 avec stagger : Total
+     affectations (emerald/CalendarDays, hint "année {anneeLabel}") ;
+     Titulaires (gold/Star) ; Volume total (amber/Clock, value "{X}h") ;
+     Enseignants distincts (forest/Users).
+   - Tableau desktop (md:block) : GlassCard adaptive noHover noAnimation
+     p-0 overflow-hidden + header bg-emerald-50/60 + th text-emerald-900
+     uppercase tracking-wide + hover row bg-emerald-50/60 + colonne
+     Enseignant avec avatar emerald-600 text-white size-9 + initiales +
+     nom font-display text-sm font-semibold text-forest break-words +
+     matricule font-mono + colonne Matière libellé font-display + code
+     mono + colonne Classe badge slate renforcé (border-300 bg-100
+     text-800) + colonne Volume hebdo badge amber-500/15 avec Clock
+     font-mono font-bold + colonne Titulaire badge gold/15 avec Star si
+     titulaire sinon "Non" + colonne Actions bouton supprimer ghost sm
+     text-destructive avec title natif + aria-label + icône seule md,
+     icône + texte sur lg (hidden lg:inline). Animation stagger sur les
+     rows (motion.tr delay index*0.02 capé à 0.4s).
+   - Cartes mobile (md:hidden) : GlassCard mobile p-4 + motion.div
+     wrapper avec stagger delay index*0.05 capé à 0.4s + en-tête avatar
+     emerald-600 text-white size-11 + initiales + nom font-display
+     text-base font-semibold text-forest break-words + matricule font-
+     mono + badge Titulaire gold/15 à droite si titulaire + body InfoRows
+     (matière emerald/15 + classe slate/15 + volume hebdo amber/15) +
+     footer bouton supprimer ghost size="icon" h-11 w-11 text-destructive
+     avec title natif + aria-label. AlertDialog de suppression identique
+     au desktop.
+   - AffectationFormDialog : header badge rond size-10 gradient emerald→
+     gold (CalendarDays size-5) + titre font-display text-lg text-forest
+     "Nouvelle affectation" + 3 sections GlassCard tablet (Enseignant
+     avec icône Users, Cours avec icône BookOpen, Charge horaire avec
+     icône Clock) + FormSectionTitle (badge rond emerald/15 size-7 +
+     icône) + Selects avec icônes contextuelles (Users/BookOpen/School)
+     dans SelectTrigger bg-background + Input volume bg-background +
+     switch titulaire + alerte surcharge amber renforcée (border-amber-
+     300 bg-amber-100/80 text-amber-800 + AlertTriangle) + footer grid-
+     cols-2 gap-2 sm:flex sm:justify-end + bouton Annuler variant
+     outline w-full sm:w-auto (icône X) + bouton submit variant success
+     w-full sm:w-auto (Loader2 si submitting, Plus sinon, "Créer
+     l'affectation"). Validation : enseignant requis, matière requise,
+     classe requise, volume numérique positif.
+   - Empty states premium :
+     - Pas d'établissement : GlassCard adaptive + KentePattern bg +
+       badge rond amber size-12 + AlertCircle + titre "Sélectionnez un
+       établissement".
+     - Pas d'année active : GlassCard adaptive + KentePattern bg +
+       badge rond amber size-12 + CalendarDays + titre "Aucune année
+       scolaire active".
+     - Erreur de chargement : GlassCard adaptive + KentePattern bg +
+       badge rond rose size-12 + AlertCircle + titre "Erreur de
+       chargement" + description = error.message.
+     - Aucune affectation : GlassCard adaptive + KentePattern bg +
+       badge rond emerald size-12 + CalendarDays + titre "Aucune
+       affectation" + bouton "Créer une affectation" variant success
+       (Plus).
+   - Loading state (loadingAnnee OU loadingAffectations) : GlassCard
+     adaptive noHover noAnimation p-0 + KentePattern strip top + 4
+     Skeletons h-12 w-full.
+
+3. **Comportement métier** : bouton "Nouvelle matière" ouvre MatiereFormDialog
+   en mode création (editing=null) ; bouton Modifier ouvre MatiereFormDialog
+   en mode édition (editing=matiere) ; bouton Supprimer ouvre AlertDialog →
+   deleteMutation.mutate(m.id) ; formulaire validation code + libellé +
+   coef → createMutation ou updateMutation ; bouton "Nouvelle affectation"
+   ouvre AffectationFormDialog ; formulaire validation ens + mat + cls +
+   vol → createMutation.mutate(dto) → si result.alerte_surcharge, toast
+   warning sinon toast succès ; bouton supprimer affectation ouvre
+   AlertDialog → deleteMutation.mutate(a.id). Année scolaire présélectionnée
+   sur l'année active (fetchActiveAnnee).
+
+4. **Contrastes** : badges border-300 bg-100 text-800 (PAS border-200 bg-50
+   text-700) pour Actif/Inactif (emerald/rose), code matière (emerald),
+   classe (slate) ; boutons variant success (gradient emerald from-emerald-
+   600 to-emerald-700) ; badges gold/15 text-gold-dark pour cycle,
+   coefficient, Titulaire ; badges amber-500/15 text-amber-800 pour volume
+   hebdo.
+
+5. **Animation** : StatCards avec stagger delay 0/0.05/0.1/0.15 (via DS) ;
+   MatiereCard (motion.div wrapper h-full) avec stagger delay index*0.05
+   capé à 0.4s ; AffectationRow (motion.tr) avec stagger delay index*0.02
+   capé à 0.4s ; AffectationMobileCard (motion.div wrapper) avec stagger
+   delay index*0.05 capé à 0.4s ; usePrefersReducedMotion respecté —
+   animations désactivées si l'utilisateur préfère réduire les animations.
+
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.
