@@ -17,10 +17,6 @@
  *  - Bouton « Se connecter » variant premium (gradient amber, CTA fort) +
  *    animation pulse subtile.
  *  - Bouton « Espace Staff » (variant outline) pour retour.
- *  - Bouton « Activer les notifications » (Web Notifications API) — remplace
- *    l'ancien bouton d'installation PWA (`beforeinstallprompt`, limité à
- *    Chrome/Edge/Android). Les notifications fonctionnent sur tous les
- *    navigateurs modernes (desktop + mobile, iOS Safari 16.4+ via PWA).
  *
  * Animations : Framer Motion (entrée staggerée, orbes flottants en boucle,
  * micro-interactions whileHover / whileFocus / whileTap, AnimatePresence pour
@@ -58,17 +54,14 @@ import {
   Wallet,
   ReceiptText,
   Smartphone,
-  Bell,
-  BellRing,
+  Download,
   UserRound,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-// PWA parent : enregistrement du service worker (offline + cache API).
-import { useParentPWA } from "@/hooks/use-parent-pwa";
-// Notifications navigateur (remplace l'ancien bouton « Installer l'app » PWA).
-import { useBrowserNotification } from "@/hooks/use-browser-notification";
+// PWA parent : enregistrement du service worker + prompt d'installation.
+import { useParentPWA, useParentInstallPrompt } from "@/hooks/use-parent-pwa";
 import {
   InputOTP,
   InputOTPGroup,
@@ -148,61 +141,32 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
   const loginParent = useAuthStore((s) => s.loginParent);
 
   // PWA — enregistre le service worker parent (offline + cache API).
+  // Capture aussi l'événement `beforeinstallprompt` pour afficher un bouton
+  // « Installer l'app » (Chrome/Edge/Android uniquement — iOS Safari ne
+  // déclenche jamais cet événement, le bouton reste caché).
   useParentPWA();
-  // Notifications navigateur — remplace l'ancien bouton d'installation PWA
-  // (`beforeinstallprompt` limité à Chrome/Edge/Android). Les notifications
-  // fonctionnent sur tous les navigateurs modernes (desktop + mobile, y compris
-  // iOS Safari 16.4+ via PWA installée).
-  const { permission, supported, showNotification } = useBrowserNotification();
-  const [notifying, setNotifying] = useState(false);
+  const { canInstall, promptInstall } = useParentInstallPrompt();
+  const [installing, setInstalling] = useState(false);
 
   const [telephone, setTelephone] = useState("");
   const [pin, setPin] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
 
-  /**
-   * Active les notifications navigateur. Si la permission n'est pas encore
-   * accordée, la demande d'abord, puis affiche une notification de bienvenue
-   * pour confirmer que ça fonctionne. Si déjà accordée, affiche une
-   * notification de rappel.
-   */
-  async function handleNotify() {
-    setNotifying(true);
+  /** Déclenche l'installation native de la PWA (Chrome/Edge/Android). */
+  async function handleInstall() {
+    setInstalling(true);
     try {
-      const isFirstTime = permission === "default";
-      const shown = await showNotification(
-        isFirstTime
-          ? "🔔 Notifications activées — ScolaGest Parent"
-          : "🔔 ScolaGest Parent",
-        {
-          body: isFirstTime
-            ? "Vous serez notifié des échéances de paiement et des actualités de vos enfants."
-            : "Rappel : consultez régulièrement votre espace parent pour suivre la scolarité de vos enfants.",
-          icon: "/icon.png",
-          badge: "/icon.png",
-          tag: "scolagest-parent-welcome",
-        },
-      );
-      if (shown) {
+      const accepted = await promptInstall();
+      if (accepted) {
         toast({
-          title: isFirstTime
-            ? "Notifications activées"
-            : "Notification envoyée",
-          description: isFirstTime
-            ? "Vous recevrez les rappels d'échéances et actualités."
-            : "Vérifiez votre centre de notifications.",
-        });
-      } else if (permission === "denied") {
-        toast({
-          title: "Notifications bloquées",
+          title: "Application installée",
           description:
-            "Autorisez les notifications dans les réglages de votre navigateur pour les recevoir.",
-          variant: "destructive",
+            "ScolaGest Parent est maintenant sur votre écran d'accueil.",
         });
       }
     } finally {
-      setNotifying(false);
+      setInstalling(false);
     }
   }
 
@@ -359,34 +323,25 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
               </p>
             </div>
 
-            {/* Bouton « Activer les notifications » (remplace l'ancien bouton
-                d'installation PWA `beforeinstallprompt`). Affiché si le
-                navigateur supporte les notifications ET la permission n'est
-                pas « denied » (refusée — on ne peut plus redemander).
-                Amélioration progressive : masqué sans casser l'UX sinon. */}
-            {supported && permission !== "denied" ? (
+            {/* Bandeau d'installation PWA (uniquement si `beforeinstallprompt`
+                capturé — Chrome/Edge/Android. Caché sur iOS Safari). */}
+            {canInstall ? (
               <motion.button
                 type="button"
-                onClick={handleNotify}
-                disabled={notifying}
+                onClick={handleInstall}
+                disabled={installing}
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
-                whileHover={{ scale: notifying ? 1 : 1.01 }}
-                whileTap={{ scale: notifying ? 1 : 0.99 }}
-                className="relative mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-300 bg-gradient-to-r from-emerald-50 to-amber-50 px-4 py-2 text-xs font-semibold text-emerald-800 shadow-sm transition-colors hover:from-emerald-100 hover:to-amber-100 disabled:opacity-60 sm:mb-5"
+                whileHover={{ scale: installing ? 1 : 1.01 }}
+                whileTap={{ scale: installing ? 1 : 0.99 }}
+                className="relative mb-5 flex w-full items-center justify-center gap-2 rounded-lg border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm transition-colors hover:from-amber-100 hover:to-orange-100 disabled:opacity-60"
               >
-                {notifying ? (
+                {installing ? (
                   <Loader2 className="size-3.5 animate-spin" />
-                ) : permission === "granted" ? (
-                  <BellRing className="size-3.5" />
                 ) : (
-                  <Bell className="size-3.5" />
+                  <Download className="size-3.5" />
                 )}
-                {notifying
-                  ? "Activation…"
-                  : permission === "granted"
-                    ? "M'envoyer une notification"
-                    : "Activer les notifications"}
+                {installing ? "Installation…" : "Installer l'application"}
               </motion.button>
             ) : null}
 
