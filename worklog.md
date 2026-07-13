@@ -8587,3 +8587,252 @@ Stage Summary:
   7. Empty state "Aucun impayé" : KentePattern bg + badge rond emerald +
      CheckCircle2.
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+Task ID: 4
+Agent: frontend-styling-expert
+Task: Refonte du module /rapports (Forêt EdTech, glassmorphism, kente, responsive)
+
+Work Log:
+- Lecture du worklog.md (contexte Forêt EdTech, refontes /eleves + /inscription
+  + /impayes, bugs à éviter : Tooltip Radix, truncate, boutons imbriqués,
+  contrastes, toast non déclaré) — intégré dans la refonte.
+- Lecture intégrale du fichier à refondre (1236 lignes) :
+  `src/components/dashboard/views/view-rapports.tsx` — repérage des 3 onglets
+  (Paiements / Soldes / Recouvrement), des filtres multicritères, des StatCards,
+  de la barre d'actions, des tableaux, de la card "Taux de recouvrement" avec
+  ProgressCircle, du BarChart, des empty states partagés. Vérification que
+  `const { toast } = useToast();` est bien présent dans les 2 panels qui
+  l'utilisent (Paiements + Soldes) — aucun bug `toast` non déclaré.
+- Lecture des composants DS de référence :
+  • `components/ds/glass-card.tsx` — variants (mobile/tablet/desktop/premium/
+    adaptive), `premiumBorder`, `noHover`, `noAnimation`, `delay`. twMerge via
+    `cn()` permet d'override `p-5` par `p-1.5` ou `p-4 sm:p-5`.
+  • `components/ds/kente-pattern.tsx` — variants (strip/bg/border/separator),
+    `position` (top/bottom/custom). `bg` = absolute inset-0 pointer-events-none
+    opacity-10 (motif riche emerald/amber/gold/terracotta).
+  • `components/ds/stat-card.tsx` — tones (emerald/amber/terracotta/gold/sky/
+    forest), `icon`, `hint`, `delay`. Wrapper GlassCard variant="adaptive".
+  • `components/ds/progress-circle.tsx` — gradient emerald→amber, label central
+    text-3xl font-display text-forest.
+- Lecture de `components/eleves/eleves-list.tsx` (refonte réussie à imiter) :
+  hero header GlassCard desktop, badge rond gradient emerald→amber, tabs
+  premium, filtres avec icônes contextuelles, tableau desktop avec hover
+  bg-emerald-50/60, empty state premium avec KentePattern bg.
+- Lecture de `components/dashboard/views/view-impayes.tsx` (refonte réussie
+  précédente) : barre d'actions sticky mobile avec `sticky bottom-0 z-10
+  border-t border-amber-200/60 bg-background/80 backdrop-blur-md`, boutons
+  h-11 en grid-cols-3, attribut `title` natif (pas de Tooltip Radix), badges
+  bg-100 text-800 border-300.
+- Lecture de `lib/api-reports.ts` (fetchRapport*, rapportsKeys,
+  downloadRapportPaiements), `lib/types.ts` (RapportPaiements/Soldes/
+  Recouvrement Filters/Result/Ligne), `components/reports/bar-chart.tsx`
+  (props color/color2/legendLabel/legendLabel2), `components/ui/tabs.tsx`
+  (TabsTrigger avec data-[state=active]:bg-background par défaut — à override
+  par data-[state=active]:bg-emerald-600), `components/ui/input.tsx`
+  (h-9 par défaut, override par h-10 pl-8), `hooks/use-prefers-reduced-motion.ts`
+  (SSR-safe, retourne false au premier rendu).
+- Refonte complète du fichier `view-rapports.tsx` (1236 → 1751 lignes, +515
+  lignes) via `Write` (fichier entier réécrit — les changements touchaient
+  95% du fichier). Toutes les règles strictes respectées :
+  • Hero header : `GlassCard variant="desktop" noHover className="p-5 sm:p-6"`
+    + badge rond gradient emerald→amber (`bg-gradient-to-br from-emerald-600
+    to-amber-500`) avec `FileBarChart` + titre `font-display text-2xl font-bold
+    text-forest` + pill établissement emerald renforcée (`border-emerald-200
+    bg-emerald-50 text-emerald-800`) + pill "Phase 4" outline à droite
+    (`Sparkles` + border-emerald-300 bg-emerald-50/60 text-emerald-800).
+  • TabsList premium : enveloppée dans `GlassCard variant="desktop" noHover
+    noAnimation className="inline-block w-full p-1.5 sm:w-fit"`. TabsList
+    override `grid w-full grid-cols-3 gap-1 bg-transparent p-0 sm:flex sm:w-auto`
+    (corrige le bug `sm:grid-cols-none` du fichier d'origine qui n'existe pas
+    en Tailwind). TabsTrigger `h-10 px-3` + `data-[state=active]:bg-emerald-600
+    data-[state=active]:text-white data-[state=active]:shadow-sm` +
+    `hover:bg-emerald-50 hover:text-emerald-700` + icônes `Wallet/Scale/
+    PieChart` size-4 + texte masqué sous 400px (`hidden min-[400px]:inline`).
+  • TabsContent animés : nouveau composant `TabPanel` wrap `motion.div`
+    `initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition=
+    {duration:0.35, ease:[0.22,1,0.36,1]}` — respecte `usePrefersReducedMotion`
+    (initial=false et duration=0 si l'utilisateur préfère réduire les
+    animations).
+  • Filtres enrichis (3 onglets) : ajout d'icônes contextuelles
+    `text-emerald-600` dans les `SelectTrigger` (Layers pour Cycle, School
+    pour Classe, Tag pour Catégorie, CreditCard pour Mode, User pour Caissier,
+    CircleDot pour Statut). Wrapper `relative` avec `Calendar` absolute
+    left-2.5 + `Input className="h-10 pl-8"` pour les 2 dates Paiements. Tous
+    les Select ont un `id` + un `Label htmlFor` (accessibilité). Bouton
+    "Réinitialiser" : `variant={hasActiveFilter ? "outline" : "ghost"}` avec
+    icône `RotateCcw` (au lieu de `Filter`) et couleur emerald quand filtre
+    actif (`border-emerald-300 text-emerald-800 hover:bg-emerald-50`).
+  • StatCards de résumé :
+    - Paiements (3) : Montant total (emerald, hint "encaissé sur la période"),
+      Nombre (sky, hint "encaissements"), Panier moyen (amber, hint "par
+      paiement"). Stagger delay={0, 0.05, 0.1}.
+    - Soldes (4) : Total attendu (sky), Total payé (emerald), Solde dû
+      (terracotta si soldeDu > 0 SINON emerald — refonte clé pour marquer le
+      danger chaud), Élèves concernés (forest). Hints contextuels.
+    - Recouvrement (3) : Total attendu (sky), Total encaissé (emerald),
+      Taux (card premium voir ci-dessous).
+  • Card "Taux de recouvrement" premium : `GlassCard variant="desktop"
+    premiumBorder noHover className="relative overflow-hidden"` +
+    `KentePattern variant="bg"` en fond décoratif (relative wrapper pour
+    contenir l'absolute inset-0). `%` en `text-3xl font-bold font-display
+    text-forest tabular-nums` (au lieu de text-2xl). Hint contextuel
+    "Excellent" si ≥80, "Correct" si 50-79, "Critique" si <50, "—" si 0 —
+    avec couleur `text-emerald-700` / `text-amber-700` / `text-terracotta`
+    selon le ton. `ProgressCircle value={taux} size={88} strokeWidth={8}`
+    à droite.
+  • Barre d'actions Paiements (desktop + tablette) : compteur enrichi avec
+    `CalendarRange` + `{count} paiement(s) sur la période sélectionnée`.
+    Bouton Actualiser (ghost, `Loader2`). Bouton Export CSV : variant outline
+    `border-emerald-300 text-emerald-800 hover:bg-emerald-50` (au lieu de
+    border-emerald-200) + `title` natif "Télécharger les encaissements au
+    format CSV (UTF-8)". Bouton Export Excel : variant outline
+    `border-amber-300 text-amber-800 hover:bg-amber-50` (différenciation
+    ambre pour Excel) + `title` natif "Télécharger les encaissements au
+    format Excel (.xls)". Pas de Tooltip Radix (BUG À ÉVITER #1).
+  • Barre d'actions sticky (mobile uniquement) : `sticky bottom-0 z-10 mt-2
+    flex flex-col gap-2 border-t border-emerald-200/60 bg-background/80 p-3
+    backdrop-blur-md md:hidden`. Compteur centré + grid-cols-3 (Paiements) ou
+    grid-cols-2 (Soldes) de boutons `h-11` (≥44px). Attributs `aria-label`
+    sur tous les boutons icône.
+  • Tableaux desktop enrichis :
+    - Header `bg-emerald-50/60` (au lieu de `bg-muted/40`) avec
+      `text-emerald-900 dark:text-emerald-200` sur les th.
+    - Hover row `bg-emerald-50/60` (au lieu de `bg-muted/40`) — cohérence
+      thème emerald.
+    - Row "ANNULE" : `opacity-60` (inchangé).
+    - Montants : `text-sm font-bold text-emerald-700 dark:text-emerald-300`
+      (au lieu de `text-xs font-semibold`) pour le montant Paiements, et
+      `text-sm font-bold text-terracotta` pour le solde dû Soldes si > 0.
+    - Noms d'élèves/caissiers : `break-words leading-snug` (au lieu de
+      text-xs simple) — pas de `truncate` (BUG À ÉVITER #2).
+    - `whitespace-nowrap` sur les montants/dates pour éviter les retours
+      de ligne casse-pieds dans le tableau.
+  • Badges contrastés (BUG À ÉVITER #6) :
+    - `SoldeStatutBadge` : `border-300 bg-100 text-800` (au lieu de
+      border-200 bg-50 text-700) + dark mode `border-700 bg-950/50 text-200`.
+    - `RecouvrementTauxBadge` : même renforcement (border-300 bg-100
+      text-800).
+    - Badges avec rose pour IMPAYE / Critique (cohérent avec /impayes).
+  • `TauxMiniBar` : élargie à `w-24` (au lieu de w-20) + ajout du `%` à
+    droite (`text-[10px] font-semibold tabular-nums text-muted-foreground`).
+    Couleurs emerald (≥80) / amber (50-79) / rose (<50).
+  • BarChart premium : `GlassCard variant="adaptive" noHover` (inchangé) +
+    titre `font-display text-base font-semibold` (inchangé). Couleurs
+    cohérentes Forêt EdTech : `color="bg-emerald-500"` pour "Encaissé" et
+    `color2="bg-amber-300 dark:bg-amber-800/40"` pour "Attendu" (au lieu
+    des couleurs par défaut emerald-500/emerald-200). Empty state interne
+    au chart : `PieChart` icône + message minimal (sans KentePattern car
+    déjà dans une GlassCard).
+  • Empty states premium :
+    - `EmptyStateEtablissement` : `GlassCard variant="adaptive" noHover
+      className="relative overflow-hidden"` + `KentePattern variant="bg"` +
+      badge rond amber (`bg-amber-100 text-amber-700`) avec `Filter` size-7 +
+      message "Sélectionnez un établissement".
+    - `EmptyState` générique : accepte `icon` (LucideIcon) + `tone`
+      ("emerald" | "amber" | "muted"). Utilisé 3 fois :
+      • "Aucun paiement" : icon=FileBarChart tone=emerald.
+      • "Aucun solde" : icon=Scale tone=amber.
+      • "Aucune classe" : icon=PieChart tone=muted.
+      Chaque instance a `KentePattern variant="bg"` en fond + badge rond
+      coloré size-14 + message contextuel.
+    - `ErrorState` : `KentePattern variant="bg"` + badge rond rose avec
+      `AlertCircle` + bouton Réessayer.
+  • Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt EdTech :
+    emerald #047857 / amber #F59E0B / gold #D4AF37 / terracotta #C2410C /
+    rose (badge Impayé/Critique, cohérent avec /impayes) / sky (StatCard
+    "Total attendu"/"Nombre paiements", déjà existant).
+  • Aucun `truncate` sur les noms (BUG À ÉVITER #2) — `break-words
+    leading-snug` partout.
+  • Pas de `Tooltip` Radix — attributs `title` natifs sur les boutons
+    d'export (BUG À ÉVITER #1).
+  • Accessibilité : `aria-label` sur tous les boutons icône (Actualiser,
+    Export CSV, Export Excel), `Label htmlFor` + `id` sur tous les Select
+    et les 2 inputs date, `sr-only` sur le span Actualiser mobile.
+  • Aucune logique métier modifiée : hooks React Query (fetchRapport* /
+    rapportsKeys.* / enabled=!!etablissementId / retry:1 / retryDelay:1500),
+    debounce 300ms sur les 3 panels, exports CSV/Excel
+    (downloadRapportPaiements + génération CSV côté client via Blob pour
+    soldes), `useToast` déstructuré en `toast` dans les 2 panels qui
+    l'utilisent, `MODE_OPTIONS`/`CATEGORIE_OPTIONS`/`STATUT_SOLDE_OPTIONS`
+    intacts, `BarChart`/`ModePaiementBadge`/`StatutPaiementBadge` intacts.
+- Compile-check : `bunx tsc --noEmit 2>&1 | grep -E "view-rapports|rapports"`
+  → **0 erreur** sur view-rapports.tsx. Les 17 erreurs tsc restantes sont
+  toutes PRÉ-EXISTANTES sur d'autres fichiers (login-form, dashboard-shell,
+  view-parametres, view-utilisateurs, etablissement-form-dialog,
+  utilisateur-form-dialog, instrumentation) — aucune sur view-rapports.
+- Lint-check : `bun run lint` → **0 erreur, 0 warning** (EXIT=0). Vérifié
+  aussi `bunx eslint src/components/dashboard/views/view-rapports.tsx` →
+  EXIT=0 (0 erreur, 0 warning sur le fichier refondu).
+
+Stage Summary:
+- Fichier modifié : `Frontend/src/components/dashboard/views/view-rapports.tsx`
+  (1236 → 1751 lignes, +515 lignes).
+- Identité "Forêt EdTech" enrichie :
+  • Hero header : GlassCard desktop + badge rond gradient emerald→amber +
+    pill "Phase 4" + pill établissement emerald renforcée.
+  • TabsList premium : GlassCard desktop + tabs actifs bg-emerald-600
+    text-white + icônes (texte masqué sous 400px) + TabsContent animés via
+    TabPanel/motion.div (Framer Motion, respecte prefers-reduced-motion).
+  • Filtres enrichis : icônes contextuelles (Calendar/Layers/School/Tag/
+    CreditCard/User/CircleDot) dans SelectTrigger + wrapper Calendar pour
+    inputs date + bouton Réinitialiser (RotateCcw, variant outline si
+    filtre actif).
+  • Card "Taux de recouvrement" premium : GlassCard desktop + premiumBorder
+    + KentePattern bg + % text-3xl + hint Excellent/Correct/Critique +
+    ProgressCircle.
+  • Empty states premium : KentePattern bg + badges ronds colorés + icônes
+    contextuelles (FileBarChart / Scale / PieChart / Filter / AlertCircle).
+- Responsive 100% : mobile (filtres 1 colonne, barre d'actions sticky
+  full-width h-11, tableaux scroll horizontal, tabs icônes seules sous
+  400px) / tablette (filtres 2 colonnes, StatCards 2 colonnes) / desktop
+  (filtres 4 colonnes ou 3 colonnes selon le panel, StatCards 3-4 colonnes,
+  barre d'actions horizontale, tableau complet).
+- Touch targets ≥ 44px sur mobile (boutons h-11, SelectTrigger h-10).
+- Aucune couleur indigo/bleu ajoutée. Aucun Tooltip Radix. Aucun `truncate`
+  sur les valeurs longues. Contrastes renforcés sur badges (border-300
+  bg-100 text-800). Montants text-sm font-bold. SoldeStatutBadge /
+  RecouvrementTauxBadge en border-300 bg-100 text-800 (au lieu de
+  border-200 bg-50 text-700). TauxMiniBar w-24 + % à droite.
+- Bug `toast` non déclaré VÉRIFIÉ : `const { toast } = useToast();` est
+  bien présent dans `RapportPaiementsPanel` et `RapportSoldesPanel`
+  (panels qui utilisent `toast(...)` dans handleExport). Aucun bug
+  `ReferenceError: toast is not defined` possible.
+- TypeScript : **0 erreur sur view-rapports.tsx** (vérifié par
+  `bunx tsc --noEmit 2>&1 | grep -E "rapports"` → 0 match).
+- Lint : **0 erreur, 0 warning** sur l'ensemble du projet (`bun run lint`
+  EXIT=0). Fichier view-rapports.tsx individuellement : EXIT=0.
+- Aucune logique métier modifiée. Aucun endpoint backend touché. Fichiers
+  DS (glass-card, kente-pattern, stat-card, progress-circle), globals.css,
+  api-reports.ts, api-students.ts, api-client.ts, types.ts, auth-store.ts,
+  format.ts, components/ui/*, components/ds/*, components/reports/*,
+  components/caisse/caisse-badges.tsx, app/(staff)/rapports/page.tsx
+  — TOUS INTACTS.
+- Points à vérifier par agent browser :
+  1. Rendu du hero header GlassCard desktop (gradient emerald→amber du
+     badge, titre font-display text-2xl, pill "Phase 4" à droite).
+  2. Rendu du TabsList premium (GlassCard desktop wrapper + tab actif
+     bg-emerald-600 text-white + icônes + texte masqué sous 400px).
+  3. Animation TabsContent au changement d'onglet (motion.div fade-up
+     0.35s ease).
+  4. Filtres : icônes emerald dans les SelectTrigger + Calendar à gauche
+     des inputs date + bouton Réinitialiser variant outline quand filtre
+     actif (border-emerald-300 text-emerald-800).
+  5. Card "Taux de recouvrement" premium : premiumBorder gold +
+     KentePattern bg en fond + % text-3xl + hint "Excellent/Correct/
+     Critique" coloré selon le taux + ProgressCircle à droite.
+  6. Tableaux : hover row bg-emerald-50/60, header bg-emerald-50/60,
+     montants text-sm font-bold, badges border-300 bg-100 text-800,
+     TauxMiniBar w-24 avec % à droite.
+  7. Mobile : barre d'actions sticky en bas (3 boutons h-11 grid-cols-3
+     pour Paiements, 2 boutons grid-cols-2 pour Soldes, 1 bouton full-width
+     pour Recouvrement) + bordure top emerald + backdrop-blur-md.
+  8. Empty states : "Pas d'établissement" (KentePattern bg + badge rond
+     amber + Filter), "Aucun paiement" (badge rond emerald + FileBarChart),
+     "Aucun solde" (badge rond amber + Scale), "Aucune classe" (badge rond
+     muted + PieChart).
+  9. StatCard "Solde dû" passe en tone=terracotta quand soldeDu > 0 (au
+     lieu de amber) — marquer le danger chaud.
+  10. BarChart "Taux de recouvrement par classe" : barres emerald pour
+      "Encaissé" et amber pour "Attendu" (cohérence palette Forêt EdTech).
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.
