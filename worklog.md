@@ -15769,3 +15769,321 @@ Stage Summary:
       dialog ferme le dialog, setFilterEleveId(enfant.id) et scroll vers
       la section historique.
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+
+## Task 3 — Refonte page /pre-inscription/suivi (ScolaGest — Forêt EdTech)
+
+- Fichier modifié (1) :
+  • `Frontend/src/app/pre-inscription/suivi/page.tsx` (625 → 1485 lignes, +860)
+
+### Contexte relu
+- Worklog (dernières ~3000 lignes) pour BUGS À ÉVITER + patterns DS :
+  GlassCard (variants mobile/tablet/desktop/premium/adaptive, props
+  noHover/noAnimation/delay/premiumBorder), KentePattern (variants strip/
+  bg/border/separator, positions top/bottom/custom), usePrefersReducedMotion
+  hook, palette Forêt EdTech (emerald primaire, amber PRE_INSCRIT, gold
+  premium, terracotta dû, rose erreur, sky EN_REVUE).
+- Fichier à refondre lu en entier (625 lignes) : page publique de suivi,
+  lit ?token=... via useSearchParams (next/navigation), fetchPreInscriptionBy
+  Token avec retry: false, affiche statut + timeline + 3 cartes détails.
+- Composants DS + exemple de refonte réussie lus :
+  • `Frontend/src/components/ds/glass-card.tsx` (165 lignes) — motion.div +
+    usePrefersReducedMotion + getMotion + delay pour stagger + onClick →
+    role=button/tabindex.
+  • `Frontend/src/components/ds/kente-pattern.tsx` (73 lignes) — variants
+    strip/bg/separator avec positions top/bottom/custom. `.kente-strip-top`
+    et `.kente-strip-bottom` ont `position: relative` (overrides via
+    `!absolute` si besoin dans un overlay).
+  • `Frontend/src/components/pre-inscription/pre-inscription-form.tsx`
+    (2291 lignes, DÉJÀ REFONTE Phase 3) — patterns repris : hero header
+    GlassCard desktop + Stepper visuel 5 étapes avec pulse subtil + InfoRow
+    flex items-start + mt-0.5 + SectionHeader avec icône dans badge size-10
+    bg-emerald-100 + SuccessScreen animé spring + KentePattern bg + boutons
+    h-11 text-base.
+  • `Frontend/src/components/parent/parent-portal.tsx` (1499 lignes, DÉJÀ
+    REFONTE Phase 6) — patterns repris : header « wahou » KentePattern strip
+    top + bandeau gradient emerald→amber + logo ring gold + ★ + NavTab
+    premium + KentePattern separator + footer enrichi 3 colonnes +
+    WelcomeBanner GlassCard premium premiumBorder + ProgressCircle +
+    LoadingBlock/ErrorBlock/EmptyState premium avec KentePattern bg.
+
+### Refonte — 10 améliorations apportées
+
+#### 1. Stepper visuel en haut (effet wahou)
+- Stepper 3 étapes : Soumise → En revue → Validée (ou Rejetée en terminal).
+- **Horizontal sur desktop** (`hidden sm:flex`), **vertical sur mobile**
+  (`sm:hidden`) avec lignes de progression verticales.
+- Étape courante : `scale-110` + `ring-4 ring-emerald-500/15` + `animate-ping`
+  subtil (border emerald-500/40) sur l'étape courante — désactivé si
+  prefersReducedMotion (BUG À ÉVITER #8).
+- Précédentes : `border-emerald-600 bg-emerald-600 text-white shadow-md
+  shadow-emerald-600/30` + icône CheckCircle2 (au lieu de l'icône d'origine).
+- Lignes de progression colorées : `bg-gradient-to-r from-emerald-500 to-
+  amber-400` (horizontale desktop) ou `bg-gradient-to-b from-emerald-500 to-
+  amber-400` (verticale mobile) pour les étapes atteintes, rose pour rejet
+  (`from-rose-400 to-rose-300`).
+- Étape rejetée : `border-rose-500 bg-rose-500 text-white shadow-md shadow-
+  rose-500/30` avec icône XCircle.
+- Bandeau supérieur avec Sparkles + "Progression de votre dossier" + Badge
+  statut renforcé (border-300 bg-100 text-800 — BUG À ÉVITER #6).
+- Wrap dans `motion.div` (fade-in + slide-up `y: -8`) au chargement.
+
+#### 2. Message contextuel selon le statut (cœur de la page)
+- Nouveau composant `StatutCard` avec config `STATUT_MSG` par statut :
+  - **SOUMISE** : badge amber (border-amber-300 bg-amber-100 text-amber-800)
+    + icône Clock + titre "Votre dossier a bien été reçu" + sous-titre "Il
+    sera examiné sous peu par le secrétariat. Vous recevrez une notification
+    à chaque étape du traitement."
+  - **EN_REVUE** : badge sky + icône User + titre "Votre dossier est en
+    cours d'examen" + sous-titre "Le secrétariat vérifie les informations
+    transmises. Cette étape prend généralement 24 à 48 heures ouvrées."
+  - **VALIDEE** : badge emerald + icône **CheckCircle2 animée spring**
+    (`type: "spring", stiffness: 260, damping: 18, delay: 0.15`, avec
+    `initial: { scale: 0, rotate: -45 }` et `animate: { scale: 1, rotate:
+    0 }`) + titre "Félicitations, votre enfant est inscrit·e !" + sous-titre
+    "Le secrétariat a validé la pré-inscription. Prochaine étape : finaliser
+    le dossier à l'établissement." + **bloc Prochaines étapes** (3 cartes :
+    Paiement des frais / Documents à apporter / Classe attribuée) avec 2 CTA
+    (Accéder au portail parent → /parent, Contacter le secrétariat → #contact).
+  - **REJETEE** : badge rose + icône XCircle + titre "Votre demande n'a pas
+    pu être acceptée" + sous-titre + **motif du rejet** (notes_staff) affiché
+    clairement dans un bloc rose (`border-rose-200 bg-rose-50/80 p-4`) avec
+    icône XCircle + label "Motif du rejet" + texte en `whitespace-pre-wrap
+    break-words leading-snug text-rose-900`.
+- GlassCard `premiumBorder` (bordure gold/40%) + bandeau coloré selon statut
+  (`config.banner` avec border + bg adaptatifs dark/light) + KentePattern bg
+  opacity 10% + 2 DetailRow (Demande soumise le / Dernier traitement).
+
+#### 3. Récap dossier discret en bas
+- Nouveau composant `RecapDossier` (GlassCard adaptive noHover noAnimation
+  border-dashed p-5 + KentePattern bg opacity 6%).
+- Avatar élève size-12 bg-emerald-600 text-white ring-2 ring-gold/60 + ★ gold
+  (initiales dans badge rond).
+- 3 DetailRow en grid sm:grid-cols-3 : Établissement (Landmark) / Classe
+  souhaitée (School — "À communiquer" si VALIDEE) / Date soumission
+  (CalendarDays).
+- Séparateur vertical entre avatar et infos (desktop).
+- Confirme au parent qu'il regarde le bon dossier (utile s'il a plusieurs
+  enfants pré-inscrits).
+
+#### 4. Bouton "Contacter le secrétariat" toujours visible
+- **3 emplacements** pour filet de sécurité à chaque statut :
+  1. **Header desktop** : bouton outline blanc translucide "Contacter le
+     secrétariat" avec icône Phone, `hidden sm:inline-flex`, pointe vers
+     `#contact` (ancre footer).
+  2. **Footer** : bouton success emerald "Contacter le secrétariat" avec
+     icône MessageSquare dans la 2ᵉ colonne "Besoin d'aide ?".
+  3. **Sticky mobile** : barre fixe en bas (`fixed inset-x-0 bottom-0 z-40
+     border-t border-emerald-200/60 bg-white/85 backdrop-blur sm:hidden`)
+     avec message "Une question sur votre dossier ?" + bouton success
+     emerald "Contacter" avec icône Phone. `pb-24` sur main pour éviter
+     l'overlap.
+- CTA additionnel dans le bloc VALIDEE (Prochaines étapes) : bouton outline
+  emerald "Contacter le secrétariat" avec icône MessageSquare.
+- Aucun bouton imbriqué dans un bouton (BUG À ÉVITER #3) — tous les boutons
+  sont des `<Button asChild>` wrappant des `<a href="#contact">`.
+
+#### 5. Cartes de détails premium
+- Utilisation **GlassCard DS** (variant adaptive) au lieu de Card shadcn.
+- Hover lift activé (par défaut) pour Élève / Tuteur / Classe.
+- Stagger via prop `delay={idx * 0.05}` (index 0/1/2 → 0/0.05/0.1).
+- Carte Classe en `md:col-span-2` (full width sur desktop).
+- Badges renforcés (border-300 bg-100 text-800 — BUG À ÉVITER #6) sur le
+  Badge statut du Stepper et de la StatutCard.
+- Icônes contextuelles dans badges ronds `size-10 rounded-xl bg-emerald-100
+  text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300` (User pour
+  Élève, Users pour Tuteur, School pour Classe).
+- DetailRow : `flex items-start` + `mt-0.5` sur l'icône (BUG À ÉVITER #4) +
+  `break-words leading-snug` sur les valeurs (BUG À ÉVITER #2).
+- Grid `items-stretch` + GlassCard `h-full` (BUG À ÉVITER #5).
+
+#### 6. Hero / header engageant
+- KentePattern strip top (h-6) + bandeau gradient emerald→amber
+  (`from-emerald-700 via-emerald-600 to-amber-500/90` + backdrop-blur) +
+  logo Image 40x40 dans carte blanche avec ring gold + ★ gold + titre
+  "Suivi de votre demande" + sous-titre "ScolaGest · Pré-inscription en
+  ligne" + Pill "Phase 3" outline (Sparkles + text blanc border-white/40
+  bg-white/10 backdrop-blur) + boutons Contacter le secrétariat (desktop) +
+  Pré-inscription (desktop/mobile icon).
+- KentePattern separator (3px) sous le bandeau établissement.
+- Bandeau établissement (animate AnimatePresence fade-in/height) avec
+  Badge emerald (School + nom) + Badge amber (MapPin + ville) + "Page
+  publique · sans authentification".
+- Glassmorphism sur le header (`backdrop-blur` + `supports-[backdrop-
+  filter]:bg-gradient-to-r supports-[backdrop-filter]:from-emerald-700/95...`).
+
+#### 7. Empty states premium
+- **Pas de token** : GlassCard adaptive border-dashed + KentePattern bg +
+  KentePattern strip top absolute + badge rond amber size-14 (AlertCircle)
+  + titre "Token manquant" + description + bouton success "Faire une
+  pré-inscription" (GraduationCap).
+- **Erreur** (token invalide) : GlassCard adaptive border-dashed + KentePattern
+  bg + KentePattern strip top absolute + badge rond rose size-14 (XCircle)
+  + titre "Lien invalide" + message + bouton success "Faire une nouvelle
+  pré-inscription".
+- **Chargement** : GlassCard adaptive border-dashed + KentePattern strip
+  top absolute + Loader2 emerald size-10 animate-spin + titre emerald
+  "Récupération de votre pré-inscription…" + sous-titre muted.
+
+#### 8. Motif Kente enrichi
+- Header : KentePattern strip top (h-6) en haut du header.
+- Footer : KentePattern strip top (h-6) en haut du footer + KentePattern
+  separator entre les 3 colonnes et la note légale.
+- Stepper : KentePattern bg opacity 6% dans la carte.
+- StatutCard : KentePattern bg opacity 10% dans le bandeau coloré.
+- RecapDossier : KentePattern bg opacity 6%.
+- Empty states : KentePattern bg + KentePattern strip top absolute.
+- Bordure premium gold sur StatutCard (`premiumBorder` — bordure gold/40%
+  via `.kente-border-premium`).
+- Texture de fond subtile globale : KentePattern bg opacity 8% dans le
+  PublicShell.
+
+#### 9. Footer enrichi
+- KentePattern strip top + `border-t border-gold/30` + bg gradient from-
+  white/95 to-emerald-50/40 + backdrop-blur.
+- 3 colonnes (`sm:grid-cols-3 items-stretch`) :
+  1. **Établissement** (Landmark) : nom + ville + "Côte d'Ivoire".
+  2. **Besoin d'aide ?** (Phone) : description + bouton "Contacter le
+     secrétariat" success emerald + "Du lundi au vendredi, 8h à 16h."
+  3. **ScolaGest** (Mail) : description app + horaires.
+- KentePattern separator entre les colonnes et la note légale.
+- Note légale : "ScolaGest · Pré-inscription en ligne · Page publique sans
+  authentification" + "Groupe Scolaire Le Chandelier — Dabou, Côte d'Ivoire".
+- `id="contact"` sur le footer (ancre pour les CTA "Contacter le secrétariat").
+
+#### 10. Animation (Framer Motion)
+- **Stepper** : wrap dans motion.div (fade-in + slide-up `y: -8` au
+  chargement). Pulse subtil `animate-ping` sur l'étape courante (désactivé
+  si prefersReducedMotion).
+- **StatutCard** : wrap dans motion.div (fade-in + slide-up `y: 16` au
+  chargement, duration 0.5s). Badge rond icône contextuelle animée spring
+  si VALIDEE (`type: "spring", stiffness: 260, damping: 18, delay: 0.15`,
+  initial scale:0 rotate:-45 → scale:1 rotate:0), sinon fade-in scale:0.8
+  → 1.
+- **Cartes de détails** : stagger via prop `delay={idx * 0.05}` (0/0.05/0.1)
+  sur GlassCard (motion.div interne avec fade-in + slide-up y:16, duration
+  0.4s, ease cubic-bezier).
+- **Bandeau établissement** : AnimatePresence height auto (fade-in +
+  height:0→auto) quand la pré-inscription est chargée.
+- **Respect usePrefersReducedMotion()** : tous les `initial` sont à `false`
+  si prefersReducedMotion, transitions à `duration: 0`. (BUG À ÉVITER #8).
+
+### LOGIQUE MÉTIER INTACTE
+- Imports de `@/lib/api-pre-inscription` conservés à l'identique :
+  `fetchPreInscriptionByToken`, `preInscriptionsKeys`, types `PreInscription`
+  et `StatutPreInscription`.
+- Hook `useQuery` identique : `queryKey: preInscriptionsKeys.publicByToken
+  (token)`, `queryFn: () => fetchPreInscriptionByToken(token)`, `enabled:
+  !!token`, `retry: false`.
+- Hook `useSearchParams` pour lire `?token=...`.
+- Wrapper `React.Suspense` (requis par Next.js pour useSearchParams)
+  conservé avec fallback `<LoadingState />`.
+- Endpoint API backend `GET /api/public/pre-inscriptions/:token` non
+  modifié (côté backend).
+- Helpers conservés à l'identique : `STATUT_LABEL`, `STATUT_BADGE_CLS`
+  (renforcé avec border-300 bg-100 text-800), `sexeLabel`, `categorieLabel`,
+  `lienParenteLabel`.
+- Logique de la Timeline (statut, dateSoumission, dateTraitement) conservée
+  et enrichie dans le nouveau composant `Stepper` (mêmes règles : SOUMISE
+  toujours atteinte, EN_REVUE atteinte si statut ∈ {EN_REVUE, VALIDEE,
+  REJETEE}, VALIDEE atteinte si statut === VALIDEE, REJETEE remplace
+  VALIDEE en terminal isError si statut === REJETEE).
+- Masquage classe si VALIDEE (la classe sera communiquée après paiement)
+  préservé dans `ClasseDetails` (bandeau amber "Classe attribuée") et dans
+  `RecapDossier` (classe = "À communiquer" si VALIDEE).
+- Aucun endpoint backend touché. Aucun fichier DS, lib, globals.css, ui/*
+  modifié.
+
+### Bugs à éviter — VÉRIFICATIONS
+1. ✅ Pas de Tooltip Radix → `title` natif sur tous les boutons (Contacter,
+   Pré-inscription, etc.).
+2. ✅ Pas de truncate → `break-words leading-snug` partout (initialement un
+   `truncate` sur le sticky mobile corrigé en `break-words`).
+3. ✅ Pas de bouton imbriqué dans un bouton — boutons "Contacter" sont des
+   `<Button asChild>` wrappant `<a href="#contact">`.
+4. ✅ Icônes DetailRow : `flex items-start` + `mt-0.5` sur l'icône.
+5. ✅ Grid : `items-stretch` + `h-full` sur les GlassCard de détails.
+6. ✅ Badges : `border-300 bg-100 text-800` (STATUT_BADGE_CLS renforcé,
+   tous les badges du stepper/footer/header respectent cette règle).
+7. ✅ Pas d'inputs sur cette page (lecture seule), mais text-base utilisé
+   partout pour le contenu.
+8. ✅ usePrefersReducedMotion respecté : `prefersReducedMotion ? false :
+   { opacity: 0, y: ... }` sur tous les motion.div, transitions à
+   `duration: 0` si reduced.
+- Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt EdTech :
+  emerald (primaire/VALIDEE), amber (SOUMISE/PRE_INSCRIT), gold (premium
+  border + ★ + avatar ring), sky (EN_REVUE), rose (REJETEE/erreurs),
+  terracotta non utilisé ici, slate (muted-foreground neutre).
+- Aucun `any` (import `type LucideIcon` depuis lucide-react).
+- `import * as React from "react"` en tête de fichier.
+
+### Compile-check
+- `bunx tsc --noEmit 2>&1 | grep "src/app/pre-inscription/suivi/page"` →
+  **0 erreur** sur le fichier refondu.
+- Baseline tsc préservée : 13 erreurs pré-existantes sur 4 fichiers non
+  concernés (login-form.tsx ×8, dashboard-shell.tsx ×3,
+  etablissement-form-dialog.tsx ×1, instrumentation.ts ×1) — aucune
+  introduite par cette refonte.
+
+### Lint-check
+- `bun run lint` (full project) → **0 erreur, 0 warning** (EXIT=0).
+
+### Points à vérifier par agent browser
+1. Rendu du header « wahou » : KentePattern strip top (h-6) + bandeau
+   gradient emerald→amber + logo 40x40 ring gold + ★ gold + titre "Suivi
+   de votre demande" + pill "Phase 3" outline (Sparkles + texte blanc) +
+   bouton "Contacter le secrétariat" outline blanc desktop + bouton
+   "Pré-inscription" ghost blanc desktop + bouton mobile ghost icon.
+2. Rendu du bandeau établissement (si token valide) : AnimatePresence
+   fade-in/height-auto avec Badge emerald (School + nom) + Badge amber
+   (MapPin + ville) + "Page publique · sans authentification" + KentePattern
+   separator en bas.
+3. Rendu du Stepper visuel : 3 étapes (Soumise → En revue → Validée ou
+   Rejetée), horizontal desktop / vertical mobile, pulse subtil animate-ping
+   sur l'étape courante (ring-4 ring-emerald-500/15 + scale-110), lignes
+   gradient emerald→amber (ou rose si rejet), CheckCircle2 sur étapes
+   passées, badge statut renforcé en haut à droite.
+4. Rendu de la StatutCard selon le statut :
+   - SOUMISE : bandeau amber + badge rond Clock + titre "Votre dossier a
+     bien été reçu" + dates (soumission + traitement "En attente").
+   - EN_REVUE : bandeau sky + badge rond User + titre "Votre dossier est
+     en cours d'examen" + dates (soumission + traitement).
+   - VALIDEE : bandeau emerald + badge rond CheckCircle2 animée spring +
+     titre "Félicitations, votre enfant est inscrit·e !" + bloc Prochaines
+     étapes (3 cartes : Paiement frais / Documents / Classe attribuée) +
+     2 CTA (Accéder au portail parent / Contacter le secrétariat).
+   - REJETEE : bandeau rose + badge rond XCircle + titre "Votre demande
+     n'a pas pu être acceptée" + motif du rejet dans bloc rose avec label
+     "Motif du rejet".
+5. Rendu des cartes de détails premium (Élève / Tuteur / Classe) : GlassCard
+   adaptive avec hover lift + stagger delay 0/0.05/0.1 + badge rond size-10
+   emerald avec icône + separator emerald + DetailRow avec icône mt-0.5 +
+   valeurs en break-words leading-snug. Carte Classe en md:col-span-2.
+6. Rendu du RecapDossier discret : GlassCard adaptive border-dashed + avatar
+   élève size-12 bg-emerald-600 ring gold + ★ + 3 DetailRow (Établissement
+   / Classe souhaitée / Date soumission) en grid sm:grid-cols-3 + séparateur
+   vertical desktop.
+7. Rendu du footer enrichi : KentePattern strip top + border-gold/30 + 3
+   colonnes (Établissement / Besoin d'aide ? / ScolaGest) avec icônes dans
+   badges emerald + bouton "Contacter le secrétariat" success emerald +
+   KentePattern separator + note légale.
+8. Rendu du bouton "Contacter le secrétariat" sticky mobile : barre fixe en
+   bas (`fixed inset-x-0 bottom-0 z-40 backdrop-blur`) avec message +
+   bouton success emerald "Contacter". Visible uniquement sur mobile
+   (`sm:hidden`). Le main a `pb-24` pour éviter l'overlap.
+9. Vérifier les empty states : pas de token (badge amber AlertCircle + CTA
+   pré-inscription), erreur (badge rose XCircle + CTA nouvelle pré-
+   inscription), chargement (Loader2 emerald + KentePattern strip top).
+10. Vérifier l'animation spring sur l'icône CheckCircle2 si statut VALIDEE
+    (scale 0→1 + rotate -45→0, duration ~0.5s spring). Désactivée si
+    prefers-reduced-motion.
+11. Vérifier le respect de prefers-reduced-motion : toutes les animations
+    (fade-in StatutCard, stagger cartes détails, pulse stepper, spring
+    CheckCircle2) sont désactivées si l'utilisateur préfère réduire les
+    animations.
+12. Vérifier la navigation : bouton "Accéder au portail parent" dans le bloc
+    VALIDEE → route /parent. Bouton "Pré-inscription" dans le header →
+    route /pre-inscription. Liens "Contacter le secrétariat" → ancre
+    #contact dans le footer.
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.
