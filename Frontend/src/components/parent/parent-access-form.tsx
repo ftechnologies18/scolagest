@@ -1,14 +1,22 @@
 "use client";
 
 /**
- * ScolaGest — Formulaire d'accès Parent (refonte split-screen + glassmorphism).
+ * ScolaGest — Formulaire d'accès Parent (refonte Forêt EdTech).
  *
  * Layout : panneau branding animé à DROITE + formulaire glass à GAUCHE
  * (miroir du login staff qui a branding à gauche / form à droite, afin de
  * distinguer visuellement les deux espaces).
  *
- * Glassmorphism : carte formulaire en `bg-white/70 backdrop-blur-2xl` + orbes
- * flottants en `bg-white/10 backdrop-blur-xl` sur le panneau branding.
+ * Refonte Forêt EdTech :
+ *  - KentePattern strip top + gradient emerald→amber en haut de l'écran.
+ *  - Hero engageant : titre « Accédez au portail familial » + sous-titre
+ *    rassurant dans une GlassCard premium (bordure gold + KentePattern bg).
+ *  - Formulaire glassmorphism : GlassCard desktop + champs avec icônes
+ *    (Phone pour téléphone, KeyRound pour PIN) + focus ring emerald +
+ *    validation en temps réel.
+ *  - Bouton « Se connecter » variant premium (gradient amber, CTA fort) +
+ *    animation pulse subtile.
+ *  - Bouton « Espace Staff » (variant outline) pour retour.
  *
  * Animations : Framer Motion (entrée staggerée, orbes flottants en boucle,
  * micro-interactions whileHover / whileFocus / whileTap, AnimatePresence pour
@@ -47,9 +55,11 @@ import {
   ReceiptText,
   Smartphone,
   Download,
+  UserRound,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 // PWA parent : enregistrement du service worker + prompt d'installation.
 import { useParentPWA, useParentInstallPrompt } from "@/hooks/use-parent-pwa";
 import {
@@ -60,6 +70,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/lib/auth-store";
 import { ApiError } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 const DEMO_TELEPHONE = "+2250701020304";
 const DEMO_PIN = "1234";
@@ -103,6 +116,20 @@ const floatingOrb = (delay: number) => ({
     },
   },
 });
+
+/** Animation pulse subtile pour le bouton « Se connecter ». */
+const pulseAnimation = {
+  boxShadow: [
+    "0 10px 25px -5px rgba(217, 119, 6, 0.30)",
+    "0 10px 35px -3px rgba(217, 119, 6, 0.55)",
+    "0 10px 25px -5px rgba(217, 119, 6, 0.30)",
+  ],
+  transition: {
+    duration: 2.2,
+    repeat: Infinity,
+    ease: "easeInOut" as const,
+  },
+};
 
 export interface ParentAccessFormProps {
   /** Retour à la page de choix (Espace staff / Espace parent). */
@@ -166,6 +193,11 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
     return cleaned;
   }
 
+  /** Validation en temps réel : téléphone >= 8 chiffres après normalisation. */
+  const telClean = normalizePhone(telephone);
+  const isTelValid = telClean.length >= 8;
+  const isPinValid = pin.length === 4;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const tel = ensureCountryCode(telephone);
@@ -216,9 +248,19 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
   }
 
   return (
-    <div className="relative flex min-h-screen w-full overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-gray-50">
+    <div className="relative flex min-h-screen w-full overflow-hidden bg-gradient-to-br from-emerald-50/50 via-amber-50 to-orange-50">
+      {/* KentePattern strip top (motif kente enrichi) */}
+      <KentePattern
+        variant="strip"
+        position="top"
+        className="!h-10 fixed top-0 left-0 right-0 z-50"
+      />
+
+      {/* Texture kente subtile en fond */}
+      <KentePattern variant="bg" className="opacity-[0.06]" />
+
       {/* ===== Panneau gauche : Formulaire (glassmorphism) ===== */}
-      <div className="relative flex w-full items-center justify-center p-6 lg:w-1/2 xl:w-[45%]">
+      <div className="relative flex w-full items-center justify-center p-6 pt-16 lg:w-1/2 lg:pt-6 xl:w-[45%]">
         {/* Décorations d'arrière-plan */}
         <div
           aria-hidden
@@ -226,7 +268,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute bottom-0 right-0 size-72 rounded-full bg-orange-200/30 blur-3xl"
+          className="pointer-events-none absolute bottom-0 right-0 size-72 rounded-full bg-emerald-200/30 blur-3xl"
         />
 
         <motion.div
@@ -242,23 +284,39 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
               alt="ScolaGest"
               width={64}
               height={64}
-              className="rounded-2xl shadow-lg shadow-amber-600/20"
+              className="rounded-2xl bg-white p-1 shadow-lg shadow-amber-600/20 ring-1 ring-gold/40"
               priority
             />
-            <h1 className="mt-3 text-xl font-bold">ScolaGest</h1>
+            <h1 className="mt-3 font-display text-xl font-bold">ScolaGest</h1>
             <p className="text-sm text-muted-foreground">Espace Parent</p>
           </div>
 
-          {/* Carte glass */}
-          <motion.div
-            whileHover={{ boxShadow: "0 25px 50px -12px rgba(217, 119, 6, 0.18)" }}
-            transition={{ duration: 0.3 }}
-            className="rounded-2xl border border-white/60 bg-white/70 p-8 shadow-xl backdrop-blur-2xl"
+          {/* Carte glass premium (refonte Forêt EdTech) */}
+          <GlassCard
+            variant="desktop"
+            premiumBorder
+            className="relative overflow-hidden !p-8"
           >
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Espace Parent</h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Accédez avec votre numéro de téléphone et votre code PIN.
+            {/* Texture kente subtile en fond de carte */}
+            <KentePattern variant="bg" className="opacity-[0.05]" />
+
+            {/* Hero engageant : titre + sous-titre rassurant */}
+            <div className="relative mb-6">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="flex size-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-md shadow-emerald-900/20">
+                  <UserRound className="size-5" />
+                </span>
+                <div className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                  <Sparkles className="size-3" />
+                  Portail familial
+                </div>
+              </div>
+              <h2 className="font-display text-2xl font-bold text-forest">
+                Accédez au portail familial
+              </h2>
+              <p className="mt-1.5 break-words text-sm leading-snug text-muted-foreground">
+                Suivez la scolarité de vos enfants, consultez les soldes et
+                réglez en ligne — en toute simplicité.
               </p>
             </div>
 
@@ -273,7 +331,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
                 animate={{ opacity: 1, height: "auto" }}
                 whileHover={{ scale: installing ? 1 : 1.01 }}
                 whileTap={{ scale: installing ? 1 : 0.99 }}
-                className="mb-5 flex w-full items-center justify-center gap-2 rounded-lg border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm transition-colors hover:from-amber-100 hover:to-orange-100 disabled:opacity-60"
+                className="relative mb-5 flex w-full items-center justify-center gap-2 rounded-lg border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm transition-colors hover:from-amber-100 hover:to-orange-100 disabled:opacity-60"
               >
                 {installing ? (
                   <Loader2 className="size-3.5 animate-spin" />
@@ -284,15 +342,19 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
               </motion.button>
             ) : null}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Téléphone */}
+            <form onSubmit={handleSubmit} className="relative space-y-5">
+              {/* Téléphone — icône Phone + focus ring emerald */}
               <motion.div
                 variants={itemVariants}
                 initial="hidden"
                 animate="visible"
                 className="space-y-2"
               >
-                <Label htmlFor="telephone" className="text-sm font-medium text-gray-700">
+                <Label
+                  htmlFor="telephone"
+                  className="flex items-center gap-1.5 text-sm font-medium text-foreground"
+                >
+                  <Phone className="size-3.5 text-emerald-600" />
                   Numéro de téléphone
                 </Label>
                 <motion.div
@@ -300,7 +362,14 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
                   transition={{ type: "spring", stiffness: 400 }}
                 >
                   <div className="relative">
-                    <Phone className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+                    <Phone
+                      className={cn(
+                        "pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 transition-colors",
+                        isTelValid
+                          ? "text-emerald-600"
+                          : "text-muted-foreground",
+                      )}
+                    />
                     <Input
                       id="telephone"
                       type="tel"
@@ -310,26 +379,41 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
                       value={telephone}
                       onChange={(e) => setTelephone(e.target.value)}
                       disabled={submitting}
-                      className="border-gray-200 bg-white/60 pl-9 font-mono backdrop-blur-sm transition-colors focus:border-amber-400 focus:bg-white"
+                      className={cn(
+                        "h-11 border-2 bg-white/70 pl-10 font-mono text-base backdrop-blur-sm transition-colors",
+                        "focus:border-emerald-500 focus:bg-white focus-visible:ring-emerald-500/30",
+                        isTelValid && telephone.length > 0
+                          ? "border-emerald-400"
+                          : "border-muted-foreground/20",
+                      )}
                       required
                     />
+                    {isTelValid && telephone.length > 0 ? (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600">
+                        <ShieldCheck className="size-4" />
+                      </span>
+                    ) : null}
                   </div>
                 </motion.div>
-                <p className="text-[11px] text-gray-400">
+                <p className="break-words text-[11px] leading-snug text-muted-foreground">
                   Indicatif Côte d&apos;Ivoire{" "}
                   <span className="font-mono">+225</span> — ajouté automatiquement
                   si omis.
                 </p>
               </motion.div>
 
-              {/* PIN — InputOTP 4 cases (UX premium) */}
+              {/* PIN — InputOTP 4 cases (UX premium) + icône KeyRound */}
               <motion.div
                 variants={itemVariants}
                 initial="hidden"
                 animate="visible"
                 className="space-y-2"
               >
-                <Label htmlFor="pin" className="text-sm font-medium text-gray-700">
+                <Label
+                  htmlFor="pin"
+                  className="flex items-center gap-1.5 text-sm font-medium text-foreground"
+                >
+                  <KeyRound className="size-3.5 text-emerald-600" />
                   Code PIN (4 chiffres)
                 </Label>
                 <motion.div
@@ -349,27 +433,61 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
                     containerClassName="justify-center"
                   >
                     <InputOTPGroup>
-                      <InputOTPSlot index={0} className="size-12 text-lg" />
-                      <InputOTPSlot index={1} className="size-12 text-lg" />
-                      <InputOTPSlot index={2} className="size-12 text-lg" />
-                      <InputOTPSlot index={3} className="size-12 text-lg" />
+                      <InputOTPSlot
+                        index={0}
+                        className={cn(
+                          "size-12 text-lg",
+                          isPinValid && pin.length === 4
+                            ? "border-emerald-500 ring-2 ring-emerald-500/20"
+                            : "",
+                        )}
+                      />
+                      <InputOTPSlot
+                        index={1}
+                        className={cn(
+                          "size-12 text-lg",
+                          isPinValid && pin.length === 4
+                            ? "border-emerald-500 ring-2 ring-emerald-500/20"
+                            : "",
+                        )}
+                      />
+                      <InputOTPSlot
+                        index={2}
+                        className={cn(
+                          "size-12 text-lg",
+                          isPinValid && pin.length === 4
+                            ? "border-emerald-500 ring-2 ring-emerald-500/20"
+                            : "",
+                        )}
+                      />
+                      <InputOTPSlot
+                        index={3}
+                        className={cn(
+                          "size-12 text-lg",
+                          isPinValid && pin.length === 4
+                            ? "border-emerald-500 ring-2 ring-emerald-500/20"
+                            : "",
+                        )}
+                      />
                     </InputOTPGroup>
                   </InputOTP>
                 </motion.div>
-                <p className="text-[11px] text-gray-400">
+                <p className="break-words text-[11px] leading-snug text-muted-foreground">
                   Le PIN vous a été remis par le secrétariat de
                   l&apos;établissement.
                 </p>
               </motion.div>
 
-              {/* Bouton d'accès */}
+              {/* Bouton « Se connecter » — variant premium (gradient amber)
+                  + animation pulse subtile */}
               <motion.button
                 type="submit"
                 disabled={submitting}
                 whileHover={{ scale: submitting ? 1 : 1.02 }}
                 whileTap={{ scale: submitting ? 1 : 0.98 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-amber-600/25 transition-all hover:from-amber-700 hover:to-orange-700 hover:shadow-amber-600/40 disabled:opacity-60"
+                animate={!submitting ? pulseAnimation : {}}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-600/25 transition-all hover:from-amber-700 hover:to-orange-700 disabled:opacity-60"
               >
                 {submitting ? (
                   <>
@@ -379,7 +497,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
                 ) : (
                   <>
                     <LogIn className="size-4" />
-                    Accéder à mon espace
+                    Se connecter
                   </>
                 )}
               </motion.button>
@@ -388,25 +506,27 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
               <div className="text-center">
                 <Link
                   href="/code-oublie"
-                  className="text-xs text-gray-500 transition-colors hover:text-amber-700 hover:underline"
+                  className="text-xs text-muted-foreground transition-colors hover:text-amber-700 hover:underline"
                 >
                   Code PIN oublié ?
                 </Link>
               </div>
 
-              {/* Lien retour (discret, en bas du formulaire) */}
-              <button
+              {/* Bouton « Espace Staff » — retour au choix d'espace */}
+              <Button
                 type="button"
+                variant="outline"
                 onClick={onBack}
-                className="flex w-full items-center justify-center gap-1.5 text-xs text-gray-400 transition-colors hover:text-amber-700"
+                className="w-full border-emerald-300 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 dark:border-emerald-800 dark:text-emerald-200 dark:hover:bg-emerald-950/30"
+                title="Retour à la page de choix d'espace"
               >
-                <ArrowLeft className="size-3.5" />
-                Retour au choix d&apos;espace
-              </button>
+                <ArrowLeft className="size-4" />
+                Espace Staff
+              </Button>
             </form>
 
             {/* Panneau démo (bascule via AnimatePresence) */}
-            <div className="mt-6 rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 backdrop-blur-sm">
+            <div className="relative mt-6 rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 backdrop-blur-sm">
               <button
                 type="button"
                 onClick={() => setDemoOpen((v) => !v)}
@@ -437,10 +557,10 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
                     className="overflow-hidden"
                   >
                     <div className="space-y-2 pt-3">
-                      <p className="text-[11px] text-amber-800/80">
+                      <p className="break-words text-[11px] leading-snug text-amber-800/80">
                         Cliquez pour pré-remplir le formulaire.
                       </p>
-                      <div className="rounded-lg border border-amber-200 bg-white/80 p-2.5 font-mono text-[11px] leading-relaxed text-amber-900">
+                      <div className="break-all rounded-lg border border-amber-200 bg-white/80 p-2.5 font-mono text-[11px] leading-relaxed text-amber-900">
                         Téléphone = {DEMO_TELEPHONE}
                         <br />
                         PIN = {DEMO_PIN}
@@ -463,15 +583,15 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
             </div>
 
             {/* Note de sécurité (emerald, cohérent avec l'existant) */}
-            <p className="mt-4 flex items-start gap-1.5 text-[11px] text-muted-foreground">
-              <ShieldCheck className="mt-px size-3 shrink-0 text-emerald-600" />
+            <p className="relative mt-4 flex items-start gap-1.5 text-[11px] leading-snug text-muted-foreground">
+              <ShieldCheck className="mt-0.5 size-3 shrink-0 text-emerald-600" />
               Votre session parent est valable 2 heures et limitée à la
               consultation de vos enfants et au paiement en ligne. Aucun accès
               au back-office du personnel.
             </p>
-          </motion.div>
+          </GlassCard>
 
-          <p className="mt-6 text-center text-[10px] leading-relaxed text-gray-400 sm:text-[11px]">
+          <p className="mt-6 break-words text-center text-[10px] leading-relaxed text-muted-foreground sm:text-[11px]">
             © 2026 ScolaGest. Développé par Freelance Technologies Côte d&apos;Ivoire. Tous droits réservés.
           </p>
         </motion.div>
@@ -479,8 +599,8 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
 
       {/* ===== Panneau droit : Branding animé (glassmorphism) ===== */}
       <div className="relative hidden lg:flex lg:w-1/2 xl:w-[55%]">
-        {/* Fond dégradé chaud (amber → orange) */}
-        <div className="absolute inset-0 bg-gradient-to-br from-amber-500 via-amber-600 to-orange-700" />
+        {/* Fond dégradé chaud (amber → orange) avec gradient emerald→amber en haut */}
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-700 via-amber-500 to-orange-700" />
 
         {/* Orbes flottants (glassmorphism) */}
         <motion.div
@@ -520,7 +640,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
           {/* Logo + titre */}
           <div>
             <motion.div variants={itemVariants} className="flex items-center gap-3">
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md ring-1 ring-white/20">
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-gold/40 backdrop-blur-md">
                 <Image
                   src="/logo.png"
                   alt="ScolaGest"
@@ -531,7 +651,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
                 />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white">ScolaGest</h1>
+                <h1 className="font-display text-2xl font-bold text-white">ScolaGest</h1>
                 <p className="text-sm text-amber-100">Espace Parent</p>
               </div>
             </motion.div>
@@ -541,7 +661,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
           <div className="my-12">
             <motion.h2
               variants={itemVariants}
-              className="text-4xl font-bold leading-tight text-white xl:text-5xl"
+              className="font-display text-4xl font-bold leading-tight text-white xl:text-5xl"
             >
               Suivez la{" "}
               <span className="bg-gradient-to-r from-amber-300 to-amber-100 bg-clip-text text-transparent">
@@ -551,7 +671,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
             </motion.h2>
             <motion.p
               variants={itemVariants}
-              className="mt-4 max-w-md text-lg text-amber-50/90"
+              className="mt-4 max-w-md break-words text-lg leading-snug text-amber-50/90"
             >
               Consultez les soldes, les échéances, l&apos;historique de
               paiements et téléchargez vos reçus — directement depuis votre
@@ -570,10 +690,10 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
                     key={feat.label}
                     whileHover={{ scale: 1.05, y: -2 }}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                    className="flex items-center gap-2.5 rounded-xl bg-white/10 px-4 py-3 backdrop-blur-md ring-1 ring-white/15"
+                    className="flex items-center gap-2.5 rounded-xl bg-white/10 px-4 py-3 ring-1 ring-gold/20 backdrop-blur-md"
                   >
                     <Icon className="size-5 text-amber-300" />
-                    <span className="text-sm font-medium text-white">
+                    <span className="break-words text-sm font-medium text-white">
                       {feat.label}
                     </span>
                   </motion.div>
@@ -588,7 +708,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
             className="flex items-center gap-3 text-amber-50/70"
           >
             <Sparkles className="size-4 text-amber-300" />
-            <span className="text-sm">
+            <span className="break-words text-sm">
               Conçu pour les parents · FCFA · Côte d&apos;Ivoire
             </span>
           </motion.div>

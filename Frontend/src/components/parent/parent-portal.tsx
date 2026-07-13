@@ -1,26 +1,41 @@
 "use client";
 
 /**
- * ScolaGest — Portail Parent (Phase 6).
+ * ScolaGest — Portail Parent (Phase 6 — Refonte Forêt EdTech).
  *
  * Interface simplifiée et rassurante pour les parents/tuteurs. Contrairement au
  * tableau de bord du personnel (sidebar + RBAC), le portail parent est une
  * page unique à sections ancrées :
  *
- *   1. « Mes enfants »   : grille de cartes (photo, nom, classe, solde dû).
+ *   1. « Mes enfants »   : grille de cartes premium (avatar ring gold,
+ *                          ProgressCircle mini, badges renforcés, boutons
+ *                          Voir détail / Payer en ligne / Payer à l'école).
  *   2. « Historique »    : table des paiements récents (filtrable par enfant),
  *                          clic sur une ligne → reçu imprimable.
- *   3. « Échéances »     : timeline des prochaines échéances (tous enfants).
+ *   3. « Échéances »     : timeline verticale des prochaines échéances (tous
+ *                          enfants), bordure gauche emerald, points colorés
+ *                          selon statut, GlassCard mobile par échéance.
  *
- * Bandeau d'accueil : « Bonjour {prénom} » + nombre d'enfants + solde dû total.
+ * Header « wahou » : KentePattern strip top + bandeau gradient emerald→amber +
+ * logo + nom parent + avatar avec badge gold + KentePattern strip bottom +
+ * glassmorphism (backdrop-blur).
+ *
+ * Bandeau d'accueil : GlassCard premium avec bordure gold + KentePattern bg
+ * subtil + ProgressCircle animé (taux paiement global) + 3 StatCards (Total
+ * dû / Total payé / Total attendu) + message personnalisé « Bonjour {prénom} ».
  *
  * Toutes les données proviennent des endpoints `/api/parent/*` (clés React
  * Query : `parentKeys`). Le portail rend gracieusement en cas d'erreur backend
- * (états vides / messages d'erreur).
+ * (états vides / messages d'erreur avec KentePattern bg).
+ *
+ * LOGIQUE MÉTIER INTACTE : hooks React Query (fetchEnfants, fetchPaiementsParent,
+ * fetchEcheancesParent, parentKeys), useParentPWA(), helpers (initials,
+ * categorieLabel, modePaiementLabel), refs scroll ancré, dialogs wiring.
  */
 
 import * as React from "react";
 import Image from "next/image";
+import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import {
   LogOut,
@@ -41,6 +56,7 @@ import {
   Heart,
   Smartphone,
   Landmark,
+  Scale,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -49,6 +65,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { GlassCard } from "@/components/ds/glass-card";
 import { KentePattern } from "@/components/ds/kente-pattern";
 import { ProgressCircle } from "@/components/ds/progress-circle";
+import { StatCard } from "@/components/ds/stat-card";
 import { Footer } from "@/components/ds/footer";
 import {
   Select,
@@ -72,6 +89,7 @@ import { useToast } from "@/hooks/use-toast";
 // (cache du shell `/parent` + `/portal` + fallback API). Le hook est une
 // amélioration progressive — aucune erreur n'est remontée à l'utilisateur.
 import { useParentPWA } from "@/hooks/use-parent-pwa";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import {
   fetchEnfants,
   fetchEcheancesParent,
@@ -130,14 +148,14 @@ function modePaiementLabel(mode: string): string {
 function modePaiementClass(mode: string): string {
   switch (mode) {
     case "ESPECES":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300";
+      return "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200";
     case "CHEQUE":
-      return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300";
+      return "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200";
     case "MOBILE_MONEY":
-      return "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-300";
+      return "border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/50 dark:text-orange-200";
     case "VIREMENT":
     default:
-      return "border-muted-foreground/20 bg-muted text-muted-foreground";
+      return "border-muted-foreground/30 bg-muted text-muted-foreground";
   }
 }
 
@@ -157,13 +175,13 @@ function statutPaiementLabel(statut: string): string {
 function statutPaiementClass(statut: string): string {
   switch (statut) {
     case "VALIDE":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300";
+      return "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200";
     case "ANNULE":
-      return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300";
+      return "border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200";
     case "EN_ATTENTE":
-      return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300";
+      return "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200";
     default:
-      return "border-muted-foreground/20 bg-muted text-muted-foreground";
+      return "border-muted-foreground/30 bg-muted text-muted-foreground";
   }
 }
 
@@ -185,15 +203,15 @@ function statutEcheanceLabel(statut: string): string {
 function statutEcheanceClass(statut: string): string {
   switch (statut) {
     case "EN_RETARD":
-      return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300";
+      return "border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200";
     case "PARTIEL":
-      return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300";
+      return "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200";
     case "A_VENIR":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300";
+      return "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200";
     case "PAYE":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300";
+      return "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200";
     default:
-      return "border-muted-foreground/20 bg-muted text-muted-foreground";
+      return "border-muted-foreground/30 bg-muted text-muted-foreground";
   }
 }
 
@@ -351,65 +369,96 @@ export function ParentPortal() {
   // ───────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-emerald-50/60 via-background to-amber-50/40">
-      {/* Header */}
-      <header className="sticky top-0 z-30 shrink-0 border-b border-emerald-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
-          <Image
-            src="/logo.png"
-            alt="ScolaGest"
-            width={40}
-            height={40}
-            className="rounded-xl shadow-sm shadow-emerald-600/20"
-          />
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-base font-bold leading-tight">ScolaGest</p>
-            <p className="truncate text-[11px] text-muted-foreground leading-tight">
-              Portail Parent ·{" "}
-              {etablissement?.nom ?? "Groupe Le Chandelier — Dabou"}
-            </p>
-          </div>
+    <div className="relative flex h-screen flex-col overflow-hidden bg-gradient-to-br from-emerald-50/60 via-background to-amber-50/40">
+      {/* Texture kente subtile en fond (max 10% opacity) */}
+      <KentePattern variant="bg" className="opacity-[0.06]" />
 
-          <div className="ml-auto flex items-center gap-2 sm:gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="text-xs font-medium leading-tight">
-                {tuteur
-                  ? `${tuteur.prenoms ?? ""} ${tuteur.nom ?? ""}`.trim() ||
-                    "Parent"
-                  : "Parent"}
-              </p>
-              <p className="text-[10px] text-muted-foreground leading-tight">
-                {tuteur?.telephone ?? "Parent / Tuteur"}
-              </p>
+      {/* Header « wahou » */}
+      <header className="sticky top-0 z-30 shrink-0">
+        {/* Strip kente top */}
+        <KentePattern variant="strip" position="top" />
+
+        {/* Bandeau gradient emerald→amber + glassmorphism */}
+        <div className="relative border-b border-emerald-200/60 bg-gradient-to-r from-emerald-700 via-emerald-600 to-amber-500/90 backdrop-blur supports-[backdrop-filter]:bg-gradient-to-r supports-[backdrop-filter]:from-emerald-700/95 supports-[backdrop-filter]:via-emerald-600/95 supports-[backdrop-filter]:to-amber-500/85">
+          <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Image
+                  src="/logo.png"
+                  alt="ScolaGest"
+                  width={40}
+                  height={40}
+                  className="rounded-xl bg-white/95 p-0.5 shadow-md shadow-emerald-900/30 ring-1 ring-gold/40"
+                />
+                <span
+                  aria-hidden
+                  className="absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full bg-gold text-[8px] font-bold text-emerald-900 ring-2 ring-white"
+                >
+                  ★
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-display text-base font-bold leading-tight text-white">
+                  ScolaGest
+                </p>
+                <p className="break-words text-[11px] leading-tight text-emerald-50/90">
+                  Portail Parent ·{" "}
+                  {etablissement?.nom ?? "Groupe Le Chandelier — Dabou"}
+                </p>
+              </div>
             </div>
-            <Avatar className="size-9 border">
-              <AvatarFallback className="bg-amber-600 text-xs font-semibold text-white">
-                {initials(tuteur?.nom, tuteur?.prenoms)}
-              </AvatarFallback>
-            </Avatar>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              className="hidden border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 sm:inline-flex dark:border-rose-900/50 dark:text-rose-300 dark:hover:bg-rose-950/30"
-            >
-              <LogOut className="size-4" />
-              Déconnexion
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleLogout}
-              className="sm:hidden text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-              aria-label="Déconnexion"
-            >
-              <LogOut className="size-5" />
-            </Button>
+
+            <div className="ml-auto flex items-center gap-2 sm:gap-3">
+              <div className="hidden text-right sm:block">
+                <p className="break-words text-xs font-semibold leading-tight text-white">
+                  {tuteur
+                    ? `${tuteur.prenoms ?? ""} ${tuteur.nom ?? ""}`.trim() ||
+                      "Parent"
+                    : "Parent"}
+                </p>
+                <p className="break-all text-[10px] leading-tight text-emerald-50/80">
+                  {tuteur?.telephone ?? "Parent / Tuteur"}
+                </p>
+              </div>
+              <div className="relative">
+                <Avatar className="size-9 ring-2 ring-gold/70">
+                  <AvatarFallback className="bg-amber-600 text-xs font-bold text-white">
+                    {initials(tuteur?.nom, tuteur?.prenoms)}
+                  </AvatarFallback>
+                </Avatar>
+                <span
+                  aria-hidden
+                  className="absolute -bottom-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full bg-gold text-[8px] text-emerald-900 ring-2 ring-white"
+                >
+                  ★
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+                className="hidden border-white/40 bg-white/10 text-white hover:bg-white/20 hover:text-white sm:inline-flex"
+                title="Se déconnecter du portail parent"
+              >
+                <LogOut className="size-4" />
+                Déconnexion
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                className="text-white hover:bg-white/20 hover:text-white sm:hidden"
+                aria-label="Déconnexion"
+                title="Se déconnecter"
+              >
+                <LogOut className="size-5" />
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Navigation ancrée */}
-        <nav className="border-t border-emerald-100 bg-emerald-50/40">
+        {/* Navigation ancrée premium */}
+        <nav className="border-b border-emerald-200/60 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/70">
           <div className="mx-auto flex max-w-6xl items-center gap-1 overflow-x-auto px-2 sm:px-6">
             <NavTab
               icon={<Users className="size-4" />}
@@ -431,12 +480,15 @@ export function ParentPortal() {
             />
           </div>
         </nav>
+
+        {/* KentePattern separator sous la nav */}
+        <KentePattern variant="separator" />
       </header>
 
       {/* Contenu principal scrollable — le footer est hors du main pour
           rester toujours visible en bas du viewport (sticky flex). */}
-      <main className="mx-auto w-full max-w-6xl flex-1 overflow-y-auto px-4 py-6 pb-20 sm:px-6 sm:py-8 sm:pb-24">
-        {/* Bandeau d'accueil */}
+      <main className="relative mx-auto w-full max-w-6xl flex-1 overflow-y-auto px-4 py-6 pb-20 sm:px-6 sm:py-8 sm:pb-24">
+        {/* Bandeau d'accueil enrichi */}
         <WelcomeBanner
           parentPrenom={parentPrenom}
           nbEnfants={enfants?.length ?? 0}
@@ -475,11 +527,12 @@ export function ParentPortal() {
               message="Votre compte n'est pas encore lié à un élève. Veuillez contacter le secrétariat de l'établissement."
             />
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {enfants.map((enfant) => (
+            <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {enfants.map((enfant, idx) => (
                 <EnfantCard
                   key={enfant.id}
                   enfant={enfant}
+                  index={idx}
                   onVoirDetail={() => handleVoirDetail(enfant)}
                   onPayerEnLigne={() => handlePayerEnLigne(enfant)}
                   onPayerALecole={() => handlePayerALecole(enfant)}
@@ -582,18 +635,19 @@ export function ParentPortal() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="mt-12 border-t border-emerald-100 bg-white/70">
+      {/* Footer enrichi : KentePattern strip top + 3 colonnes + bordure gold */}
+      <footer className="relative mt-12 shrink-0 overflow-hidden border-t border-gold/30 bg-gradient-to-b from-white/95 to-emerald-50/40 backdrop-blur supports-[backdrop-filter]:bg-white/85">
+        <KentePattern variant="strip" position="top" />
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+          <div className="grid grid-cols-1 items-stretch gap-6 sm:grid-cols-3">
             <FooterBlock
               icon={<Building2 className="size-5 text-emerald-600" />}
               title="Votre établissement"
             >
-              <p className="font-medium">
+              <p className="break-words font-medium leading-snug">
                 {etablissement?.nom ?? "Groupe Le Chandelier"}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="break-words text-xs text-muted-foreground">
                 {etablissement?.ville ? `${etablissement.ville}, ` : ""}
                 Côte d&apos;Ivoire
               </p>
@@ -603,7 +657,7 @@ export function ParentPortal() {
               icon={<Phone className="size-5 text-emerald-600" />}
               title="Besoin d'aide ?"
             >
-              <p className="text-sm">
+              <p className="break-words text-sm leading-snug">
                 Contactez le secrétariat ou la comptabilité de
                 l&apos;établissement pour toute question concernant les
                 paiements ou les soldes.
@@ -617,7 +671,7 @@ export function ParentPortal() {
               icon={<Mail className="size-5 text-emerald-600" />}
               title="ScolaGest"
             >
-              <p className="text-xs text-muted-foreground">
+              <p className="break-words text-xs leading-snug text-muted-foreground">
                 Application de Gestion &amp; Caisse Scolaire.
               </p>
               <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -643,6 +697,7 @@ export function ParentPortal() {
         onOpenChange={setDetailOpen}
         enfant={selectedEnfant}
         onVoirHistorique={handleVoirHistoriqueDepuisDetail}
+        onPayerEnLigne={handlePayerEnLigne}
       />
       <RecuDialogParent
         open={recuOpen}
@@ -682,6 +737,7 @@ function NavTab({
     <button
       type="button"
       onClick={onClick}
+      aria-current={active ? "page" : undefined}
       className={cn(
         "flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors",
         active
@@ -689,7 +745,17 @@ function NavTab({
           : "border-transparent text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-300",
       )}
     >
-      {icon}
+      <span
+        className={cn(
+          "flex size-6 items-center justify-center rounded-md transition-colors",
+          active
+            ? "bg-emerald-600 text-white"
+            : "bg-muted text-muted-foreground",
+        )}
+        aria-hidden
+      >
+        {icon}
+      </span>
       {label}
     </button>
   );
@@ -717,81 +783,140 @@ function WelcomeBanner({
     totalAttendu > 0
       ? Math.min(100, Math.round((totalPaye / totalAttendu) * 100))
       : 0;
+
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-800 p-6 text-white shadow-lg shadow-emerald-700/20 sm:p-8">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-16 -right-16 size-64 rounded-full bg-white/10 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-20 -left-12 size-64 rounded-full bg-amber-300/10 blur-3xl"
-      />
-      <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-sm text-emerald-100">Bienvenue sur votre espace</p>
-          <h1 className="mt-1 font-display text-2xl font-bold sm:text-3xl">
-            Bonjour {parentPrenom} 👋
-          </h1>
-          <p className="mt-2 max-w-xl text-sm text-emerald-100">
-            {loading
-              ? "Nous récupérons les informations de vos enfants…"
-              : error
-                ? "Impossible de charger vos informations pour le moment. Veuillez réessayer."
-                : nbEnfants === 0
-                  ? "Aucun enfant n'est encore rattaché à votre compte. Contactez le secrétariat."
-                  : nbEnfants === 1
-                    ? "Vous suivez 1 enfant scolarisé dans nos établissements."
-                    : `Vous suivez ${nbEnfants} enfants scolarisés dans nos établissements.`}
-          </p>
+    <GlassCard
+      variant="premium"
+      premiumBorder
+      noHover
+      className="relative overflow-hidden p-0"
+    >
+      {/* Bandeau gradient emerald→amber */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-600 to-amber-500 p-6 text-white sm:p-8">
+        {/* Texture kente subtile */}
+        <KentePattern variant="bg" className="opacity-10" />
+        {/* Orbes décoratifs */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-16 -right-16 size-64 rounded-full bg-white/10 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-20 -left-12 size-64 rounded-full bg-amber-300/15 blur-3xl"
+        />
+
+        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          {/* Salutation */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-emerald-50/90">
+              <SparklesHeart />
+              Bienvenue sur votre espace
+            </div>
+            <h1 className="mt-2 font-display text-2xl font-bold leading-tight sm:text-3xl">
+              Bonjour {parentPrenom} 👋
+            </h1>
+            <p className="mt-2 max-w-xl break-words text-sm leading-snug text-emerald-50/95">
+              {loading
+                ? "Nous récupérons les informations de vos enfants…"
+                : error
+                  ? "Impossible de charger vos informations pour le moment. Veuillez réessayer."
+                  : nbEnfants === 0
+                    ? "Aucun enfant n'est encore rattaché à votre compte. Contactez le secrétariat."
+                    : nbEnfants === 1
+                      ? "Vous suivez 1 enfant scolarisé dans nos établissements."
+                      : `Vous suivez ${nbEnfants} enfants scolarisés dans nos établissements.`}
+            </p>
+          </div>
+
+          {/* ProgressCircle global */}
+          {!loading && !error && nbEnfants > 0 ? (
+            <div className="flex shrink-0 items-center justify-center">
+              <div className="relative flex size-32 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm sm:size-36">
+                <ProgressCircle
+                  value={tauxPaiement}
+                  size={120}
+                  strokeWidth={10}
+                  trackColor="rgba(255, 255, 255, 0.25)"
+                  label={
+                    <div className="flex flex-col items-center">
+                      <span className="font-display text-2xl font-bold text-white">
+                        {tauxPaiement}%
+                      </span>
+                      <span className="text-[10px] uppercase tracking-wide text-emerald-50/90">
+                        Payé
+                      </span>
+                    </div>
+                  }
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
 
+        {/* Indicateur solde global */}
         {!loading && !error && nbEnfants > 0 ? (
-          <div className="flex flex-col gap-3 rounded-xl bg-white/10 p-4 backdrop-blur-sm sm:min-w-[280px] sm:flex-row sm:items-center sm:gap-4">
-            <div className="flex size-20 shrink-0 items-center justify-center rounded-full bg-white/15 sm:size-24">
-              <ProgressCircle
-                value={tauxPaiement}
-                size={80}
-                strokeWidth={8}
-                trackColor="rgba(255, 255, 255, 0.2)"
-                label={
-                  <span className="font-display text-lg font-bold text-white">
-                    {tauxPaiement}%
-                  </span>
-                }
-              />
-            </div>
-            <div className="flex min-w-0 flex-col gap-1">
-              <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-emerald-100">
-                <Wallet className="size-3.5" />
-                Solde dû total
-              </div>
-              <div className="font-mono text-2xl font-bold sm:text-3xl">
-                {formatFCFA(totalSoldeDu)}
-              </div>
-              <div
-                className={cn(
-                  "flex items-center gap-1.5 text-xs",
-                  soldeOK ? "text-emerald-100" : "text-amber-200",
-                )}
-              >
-                {soldeOK ? (
-                  <>
-                    <CheckCircle2 className="size-3.5" />
-                    Tous les comptes sont à jour
-                  </>
-                ) : (
-                  <>
-                    <AlertTriangle className="size-3.5" />
-                    Un solde est à régulariser
-                  </>
-                )}
-              </div>
-            </div>
+          <div
+            className={cn(
+              "relative z-10 mt-6 flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 backdrop-blur-sm",
+              soldeOK ? "text-emerald-50" : "text-amber-100",
+            )}
+          >
+            {soldeOK ? (
+              <CheckCircle2 className="size-4" />
+            ) : (
+              <AlertTriangle className="size-4" />
+            )}
+            <span className="text-xs font-medium">
+              {soldeOK
+                ? "Tous les comptes sont à jour"
+                : "Un solde est à régulariser"}
+            </span>
           </div>
         ) : null}
       </div>
-    </div>
+
+      {/* 3 StatCards — Total dû / Total payé / Total attendu */}
+      {!loading && !error && nbEnfants > 0 ? (
+        <div className="grid grid-cols-1 items-stretch gap-3 p-4 sm:grid-cols-3 sm:p-5">
+          <StatCard
+            icon={Wallet}
+            label="Total dû"
+            value={formatFCFA(totalSoldeDu)}
+            tone={soldeOK ? "emerald" : "terracotta"}
+            delay={0}
+            hint={soldeOK ? "Comptes à jour" : "À régulariser"}
+          />
+          <StatCard
+            icon={CheckCircle2}
+            label="Total payé"
+            value={formatFCFA(totalPaye)}
+            tone="emerald"
+            delay={0.05}
+            hint={`${tauxPaiement}% de l'attendu`}
+          />
+          <StatCard
+            icon={Scale}
+            label="Total attendu"
+            value={formatFCFA(totalAttendu)}
+            tone="gold"
+            delay={0.1}
+            hint="Année scolaire en cours"
+          />
+        </div>
+      ) : null}
+    </GlassCard>
+  );
+}
+
+/** Petit motif décoratif (cœur stylisé) pour le badge Bienvenue. */
+function SparklesHeart() {
+  return (
+    <span
+      aria-hidden
+      className="flex size-4 items-center justify-center rounded-full bg-gold/30 text-gold"
+    >
+      <Heart className="size-2.5" />
+    </span>
   );
 }
 
@@ -809,13 +934,15 @@ function SectionTitle({
   return (
     <As className="mb-4 flex flex-col gap-1">
       <div className="flex items-center gap-2">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/40">
+        <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-50 ring-1 ring-emerald-200/60 dark:bg-emerald-950/40 dark:ring-emerald-900/40">
           {icon}
         </div>
         <h2 className="font-display text-lg font-bold sm:text-xl">{title}</h2>
       </div>
       {subtitle ? (
-        <p className="text-sm text-muted-foreground">{subtitle}</p>
+        <p className="break-words text-sm leading-snug text-muted-foreground">
+          {subtitle}
+        </p>
       ) : null}
     </As>
   );
@@ -823,11 +950,13 @@ function SectionTitle({
 
 function EnfantCard({
   enfant,
+  index,
   onVoirDetail,
   onPayerEnLigne,
   onPayerALecole,
 }: {
   enfant: EnfantParent;
+  index: number;
   onVoirDetail: () => void;
   onPayerEnLigne: () => void;
   onPayerALecole: () => void;
@@ -842,61 +971,81 @@ function EnfantCard({
   return (
     <GlassCard
       variant="adaptive"
-      noHover
-      className="flex flex-col gap-4"
+      delay={Math.min(index * 0.05, 0.4)}
+      className="flex h-full flex-col gap-4"
     >
-        {/* En-tête carte */}
-        <div className="flex items-start gap-3">
-          <Avatar className="size-14 border-2 border-emerald-200 dark:border-emerald-900">
-            <AvatarFallback className="bg-emerald-600 text-lg font-bold text-white">
-              {initials(enfant.nom, enfant.prenoms)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate font-bold leading-tight">
-              {enfant.prenoms} {enfant.nom}
-            </h3>
-            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              {enfant.inscription_statut === "PRE_INSCRIT" ? (
-                <>
-                  <Badge className="border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
-                    Pré-inscrit·e
-                  </Badge>
-                  <span className="text-[11px] text-amber-700 dark:text-amber-400">
-                    Classe communiquée après paiement des frais d&apos;inscription
-                  </span>
-                </>
-              ) : enfant.classe_actuelle ? (
-                <Badge className="border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
-                  {enfant.classe_actuelle}
+      {/* En-tête carte */}
+      <div className="flex items-start gap-3">
+        <Avatar className="size-14 ring-2 ring-gold/60">
+          <AvatarFallback className="bg-emerald-600 text-lg font-bold text-white">
+            {initials(enfant.nom, enfant.prenoms)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <h3 className="break-words font-bold leading-tight">
+            {enfant.prenoms} {enfant.nom}
+          </h3>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            {enfant.inscription_statut === "PRE_INSCRIT" ? (
+              <>
+                <Badge className="border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
+                  Pré-inscrit·e
                 </Badge>
-              ) : (
-                <Badge variant="outline" className="text-muted-foreground">
-                  Non inscrit·e
-                </Badge>
-              )}
-              {enfant.categorie && enfant.categorie !== "NON_APPLICABLE" && (
-                <Badge variant="outline" className="text-muted-foreground">
-                  {categorieLabel(enfant.categorie)}
-                </Badge>
-              )}
-            </div>
-            <p className="mt-1 truncate text-xs text-muted-foreground">
-              {enfant.etablissement?.nom ?? "Établissement"}
-              {enfant.etablissement?.ville
-                ? ` · ${enfant.etablissement.ville}`
-                : ""}
-            </p>
+                <span className="break-words text-[11px] leading-snug text-amber-700 dark:text-amber-400">
+                  Classe communiquée après paiement des frais d&apos;inscription
+                </span>
+              </>
+            ) : enfant.classe_actuelle ? (
+              <Badge className="border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                {enfant.classe_actuelle}
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="border-muted-foreground/30 text-muted-foreground"
+              >
+                Non inscrit·e
+              </Badge>
+            )}
+            {enfant.categorie && enfant.categorie !== "NON_APPLICABLE" && (
+              <Badge
+                variant="outline"
+                className="border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200"
+              >
+                {categorieLabel(enfant.categorie)}
+              </Badge>
+            )}
           </div>
+          <p className="mt-1 break-words text-xs leading-snug text-muted-foreground">
+            {enfant.etablissement?.nom ?? "Établissement"}
+            {enfant.etablissement?.ville
+              ? ` · ${enfant.etablissement.ville}`
+              : ""}
+          </p>
         </div>
+      </div>
 
-        {/* Barre de progression */}
-        <div>
+      {/* ProgressCircle mini + barre de progression */}
+      <div className="flex items-center gap-4 rounded-xl bg-muted/40 p-3">
+        <div className="shrink-0">
+          <ProgressCircle
+            value={pourcentage}
+            size={56}
+            strokeWidth={6}
+            trackColor="rgba(4, 120, 87, 0.15)"
+            label={
+              <span className="font-display text-sm font-bold text-forest">
+                {pourcentage}%
+              </span>
+            }
+          />
+        </div>
+        <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
             <span>Progression des paiements</span>
             <span className="font-semibold text-foreground">{pourcentage}%</span>
           </div>
-          <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
+          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
             <div
               className={cn(
                 "h-full rounded-full transition-all",
@@ -910,77 +1059,82 @@ function EnfantCard({
             />
           </div>
         </div>
+      </div>
 
-        {/* Solde dû */}
+      {/* Solde dû */}
+      <div
+        className={cn(
+          "rounded-xl border p-3",
+          soldeOK
+            ? "border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20"
+            : "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20",
+        )}
+      >
         <div
           className={cn(
-            "rounded-xl border p-3",
-            soldeOK
-              ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/20"
-              : "border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20",
+            "flex items-center gap-1.5 text-[11px] uppercase tracking-wide",
+            soldeOK ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300",
           )}
         >
-          <div
-            className={cn(
-              "flex items-center gap-1.5 text-[11px] uppercase tracking-wide",
-              soldeOK ? "text-emerald-700" : "text-amber-700",
-            )}
-          >
-            {soldeOK ? (
-              <CheckCircle2 className="size-3.5" />
-            ) : (
-              <AlertTriangle className="size-3.5" />
-            )}
-            Solde dû
-          </div>
-          <div
-            className={cn(
-              "font-mono text-2xl font-bold",
-              soldeOK
-                ? "text-emerald-800 dark:text-emerald-300"
-                : "text-amber-800 dark:text-amber-300",
-            )}
-          >
-            {formatFCFA(soldeDu)}
-          </div>
-          <div className="mt-0.5 text-[11px] text-muted-foreground">
-            sur {formatFCFA(totalAttendu)} attendus
-          </div>
+          {soldeOK ? (
+            <CheckCircle2 className="size-3.5" />
+          ) : (
+            <AlertTriangle className="size-3.5" />
+          )}
+          Solde dû
         </div>
+        <div
+          className={cn(
+            "font-mono text-2xl font-bold leading-snug",
+            soldeOK
+              ? "text-emerald-800 dark:text-emerald-300"
+              : "text-amber-800 dark:text-amber-300",
+          )}
+        >
+          {formatFCFA(soldeDu)}
+        </div>
+        <div className="mt-0.5 break-words text-[11px] leading-snug text-muted-foreground">
+          sur {formatFCFA(totalAttendu)} attendus
+        </div>
+      </div>
 
-        {/* Boutons d'action : détail + paiements */}
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onVoirDetail}
-          >
-            Voir le détail
-            <ChevronRight className="size-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="success"
-            onClick={onPayerEnLigne}
-            disabled={soldeOK}
-            title={
-              soldeOK
-                ? "Aucun solde dû — paiement inutile"
-                : "Payer en ligne via Mobile Money"
-            }
-          >
-            <Smartphone className="size-4" />
-            Payer en ligne
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onPayerALecole}
-          >
-            <Landmark className="size-4" />
-            Payer à l&apos;école
-          </Button>
-        </div>
+      {/* Boutons d'action : détail + paiements */}
+      <div className="mt-auto grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onVoirDetail}
+          title="Voir le détail du compte de cet enfant"
+          className="border border-emerald-200 text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900 dark:border-emerald-800 dark:text-emerald-200 dark:hover:bg-emerald-950/40"
+        >
+          Voir le détail
+          <ChevronRight className="size-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="success"
+          onClick={onPayerEnLigne}
+          disabled={soldeOK}
+          title={
+            soldeOK
+              ? "Aucun solde dû — paiement inutile"
+              : "Payer en ligne via Mobile Money"
+          }
+        >
+          <Smartphone className="size-4" />
+          Payer en ligne
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onPayerALecole}
+          title="Imprimer un récapitulatif à présenter à la caisse"
+          className="border-amber-300 text-amber-800 hover:bg-amber-50 hover:text-amber-900 dark:border-amber-800 dark:text-amber-200 dark:hover:bg-amber-950/40"
+        >
+          <Landmark className="size-4" />
+          Payer à l&apos;école
+        </Button>
+      </div>
     </GlassCard>
   );
 }
@@ -992,12 +1146,13 @@ function PaiementsTable({
   paiements: PaiementParent[];
   onVoirRecu: (p: PaiementParent) => void;
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion();
+
   return (
     <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
-      <div>
       <Table>
         <TableHeader>
-          <TableRow className="bg-muted/40">
+          <TableRow className="border-emerald-200/60 bg-emerald-50/60 hover:bg-emerald-50/60 dark:bg-emerald-950/30">
             <TableHead className="pl-4">Date</TableHead>
             <TableHead>Enfant</TableHead>
             <TableHead className="hidden md:table-cell">Motif</TableHead>
@@ -1009,57 +1164,71 @@ function PaiementsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paiements.map((p) => (
-            <TableRow
+          {paiements.map((p, idx) => (
+            <motion.tr
               key={p.id}
-              className="cursor-pointer hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20"
+              initial={
+                prefersReducedMotion ? false : { opacity: 0, y: 8 }
+              }
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.3,
+                delay: Math.min(idx * 0.03, 0.4),
+                ease: "easeOut",
+              }}
+              className="cursor-pointer border-b border-emerald-100/60 transition-colors hover:bg-emerald-50/60 dark:border-emerald-900/30 dark:hover:bg-emerald-950/20"
               onClick={() => onVoirRecu(p)}
             >
               <TableCell className="pl-4">
                 <div className="font-medium">
                   {formatDate(p.date_paiement)}
                 </div>
-                <div className="text-[11px] text-muted-foreground">
+                <div className="break-words text-[11px] leading-snug text-muted-foreground">
                   {formatDateTime(p.date_paiement).split(" à ")[1] ?? ""}
                 </div>
               </TableCell>
               <TableCell>
-                <div className="font-medium">
-                  {p.eleve_prenoms} {p.eleve_nom}
-                </div>
-                <div className="text-[11px] text-muted-foreground">
-                  {p.classe || "—"}
+                <div className="flex items-center gap-2">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-semibold text-white ring-1 ring-emerald-200/60 dark:bg-emerald-800 dark:text-emerald-50 dark:ring-emerald-800/40">
+                    {initials(p.eleve_nom, p.eleve_prenoms)}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="break-words font-medium leading-snug">
+                      {p.eleve_prenoms} {p.eleve_nom}
+                    </div>
+                    <div className="break-words text-[11px] leading-snug text-muted-foreground">
+                      {p.classe || "—"}
+                    </div>
+                  </div>
                 </div>
               </TableCell>
               <TableCell className="hidden md:table-cell">
-                {p.frais_libelle ?? "Paiement scolaire"}
+                <span className="break-words leading-snug">
+                  {p.frais_libelle ?? "Paiement scolaire"}
+                </span>
               </TableCell>
               <TableCell className="hidden sm:table-cell">
                 <Badge
                   variant="outline"
-                  className={cn(
-                    "font-medium",
-                    modePaiementClass(p.mode_paiement),
-                  )}
+                  className={cn("font-medium", modePaiementClass(p.mode_paiement))}
                 >
                   {modePaiementLabel(p.mode_paiement)}
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
-                <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-400">
+                <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-300">
                   {formatFCFA(p.montant)}
                 </span>
               </TableCell>
               <TableCell className="hidden font-mono text-xs lg:table-cell">
-                {p.numero_recu || "—"}
+                <span className="break-all leading-snug">
+                  {p.numero_recu || "—"}
+                </span>
               </TableCell>
               <TableCell className="hidden sm:table-cell">
                 <Badge
                   variant="outline"
-                  className={cn(
-                    "font-medium",
-                    statutPaiementClass(p.statut),
-                  )}
+                  className={cn("font-medium", statutPaiementClass(p.statut))}
                 >
                   {statutPaiementLabel(p.statut)}
                 </Badge>
@@ -1070,6 +1239,7 @@ function PaiementsTable({
                   variant="ghost"
                   size="sm"
                   className="h-8 gap-1 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
+                  title="Voir le reçu de ce paiement"
                   onClick={(e) => {
                     e.stopPropagation();
                     onVoirRecu(p);
@@ -1079,11 +1249,10 @@ function PaiementsTable({
                   <span className="hidden sm:inline">Reçu</span>
                 </Button>
               </TableCell>
-            </TableRow>
+            </motion.tr>
           ))}
         </TableBody>
       </Table>
-      </div>
     </GlassCard>
   );
 }
@@ -1093,99 +1262,130 @@ function EcheancesTimeline({
 }: {
   echeances: EcheanceParent[];
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion();
+
   return (
-    <div className="space-y-3">
-      {echeances.map((e) => {
+    <div className="relative space-y-3">
+      {/* Bordure gauche emerald (timeline) */}
+      <div
+        aria-hidden
+        className="absolute bottom-2 left-[22px] top-2 w-0.5 bg-gradient-to-b from-emerald-300 via-amber-200 to-rose-300 sm:left-[26px]"
+      />
+
+      {echeances.map((e, idx) => {
         const enRetard = e.statut === "EN_RETARD" || e.jours_avant < 0;
         const partiel = e.statut === "PARTIEL";
         const reste = Math.max(0, e.montant - e.montant_paye);
+        const pointClass = enRetard
+          ? "bg-rose-500 ring-rose-200 dark:ring-rose-900"
+          : partiel
+            ? "bg-amber-500 ring-amber-200 dark:ring-amber-900"
+            : "bg-emerald-500 ring-emerald-200 dark:ring-emerald-900";
+
         return (
-          <div
+          <motion.div
             key={e.echeance_id}
-            className={cn(
-              "flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center",
-              enRetard
-                ? "border-rose-200 bg-rose-50/50 dark:border-rose-900/50 dark:bg-rose-950/10"
-                : partiel
-                  ? "border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/10"
-                  : "border-emerald-200 bg-emerald-50/30 dark:border-emerald-900/40 dark:bg-emerald-950/10",
-            )}
+            initial={prefersReducedMotion ? false : { opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{
+              duration: 0.35,
+              delay: Math.min(idx * 0.05, 0.5),
+              ease: "easeOut",
+            }}
+            className="relative pl-12 sm:pl-16"
           >
+            {/* Point coloré sur la timeline */}
             <div
               className={cn(
-                "flex size-12 flex-col items-center justify-center rounded-lg font-semibold",
+                "absolute left-3 top-5 flex size-7 items-center justify-center rounded-full ring-4 ring-background sm:left-4 sm:top-6 sm:size-8",
+                pointClass,
+              )}
+              aria-hidden
+            >
+              <CalendarClock className="size-3.5 text-white sm:size-4" />
+            </div>
+
+            <GlassCard
+              variant="mobile"
+              noHover
+              noAnimation
+              className={cn(
+                "border-l-4 p-4",
                 enRetard
-                  ? "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+                  ? "border-l-rose-400 dark:border-l-rose-700"
                   : partiel
-                    ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+                    ? "border-l-amber-400 dark:border-l-amber-700"
+                    : "border-l-emerald-400 dark:border-l-emerald-700",
               )}
             >
-              <CalendarClock className="size-5" />
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-semibold">{e.libelle}</h3>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "font-medium",
-                    statutEcheanceClass(e.statut),
-                  )}
-                >
-                  {statutEcheanceLabel(e.statut)}
-                </Badge>
-              </div>
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">
-                  {e.eleve_nom}
-                </span>
-                {e.classe ? ` · ${e.classe}` : ""}
-              </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Date limite :{" "}
-                <span
-                  className={cn(
-                    "font-medium",
-                    enRetard ? "text-rose-700 dark:text-rose-400" : "",
-                  )}
-                >
-                  {formatDate(e.date_limite)}
-                </span>
-                {e.jours_avant > 0
-                  ? ` · dans ${e.jours_avant} jour${e.jours_avant > 1 ? "s" : ""}`
-                  : e.jours_avant < 0
-                    ? ` · en retard de ${Math.abs(e.jours_avant)} jour${Math.abs(e.jours_avant) > 1 ? "s" : ""}`
-                    : " · aujourd'hui"}
-              </p>
-            </div>
-
-            <div className="flex flex-col items-start gap-1 sm:items-end">
-              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                {partiel || (e.montant_paye > 0 && reste > 0)
-                  ? "Reste à payer"
-                  : "Montant"}
-              </div>
-              <div
-                className={cn(
-                  "font-mono text-lg font-bold",
-                  enRetard
-                    ? "text-rose-800 dark:text-rose-300"
-                    : partiel
-                      ? "text-amber-800 dark:text-amber-300"
-                      : "text-emerald-800 dark:text-emerald-300",
-                )}
-              >
-                {formatFCFA(partiel || (e.montant_paye > 0 && reste > 0) ? reste : e.montant)}
-              </div>
-              {e.montant_paye > 0 ? (
-                <div className="text-[11px] text-muted-foreground">
-                  {formatFCFA(e.montant_paye)} déjà payé
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="break-words font-semibold leading-snug">
+                      {e.libelle}
+                    </h3>
+                    <Badge
+                      variant="outline"
+                      className={cn("font-medium", statutEcheanceClass(e.statut))}
+                    >
+                      {statutEcheanceLabel(e.statut)}
+                    </Badge>
+                  </div>
+                  <p className="mt-0.5 break-words text-sm leading-snug text-muted-foreground">
+                    <span className="font-medium text-foreground">
+                      {e.eleve_nom}
+                    </span>
+                    {e.classe ? ` · ${e.classe}` : ""}
+                  </p>
+                  <p className="mt-0.5 break-words text-xs leading-snug text-muted-foreground">
+                    Date limite :{" "}
+                    <span
+                      className={cn(
+                        "font-medium",
+                        enRetard ? "text-rose-700 dark:text-rose-300" : "",
+                      )}
+                    >
+                      {formatDate(e.date_limite)}
+                    </span>
+                    {e.jours_avant > 0
+                      ? ` · dans ${e.jours_avant} jour${e.jours_avant > 1 ? "s" : ""}`
+                      : e.jours_avant < 0
+                        ? ` · en retard de ${Math.abs(e.jours_avant)} jour${Math.abs(e.jours_avant) > 1 ? "s" : ""}`
+                        : " · aujourd'hui"}
+                  </p>
                 </div>
-              ) : null}
-            </div>
-          </div>
+
+                <div className="flex flex-col items-start gap-1 sm:items-end">
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    {partiel || (e.montant_paye > 0 && reste > 0)
+                      ? "Reste à payer"
+                      : "Montant"}
+                  </div>
+                  <div
+                    className={cn(
+                      "font-mono text-lg font-bold leading-snug",
+                      enRetard
+                        ? "text-rose-800 dark:text-rose-300"
+                        : partiel
+                          ? "text-amber-800 dark:text-amber-300"
+                          : "text-emerald-800 dark:text-emerald-300",
+                    )}
+                  >
+                    {formatFCFA(
+                      partiel || (e.montant_paye > 0 && reste > 0)
+                        ? reste
+                        : e.montant,
+                    )}
+                  </div>
+                  {e.montant_paye > 0 ? (
+                    <div className="break-words text-[11px] leading-snug text-muted-foreground">
+                      {formatFCFA(e.montant_paye)} déjà payé
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </GlassCard>
+          </motion.div>
         );
       })}
     </div>
@@ -1194,10 +1394,12 @@ function EcheancesTimeline({
 
 function LoadingBlock({ label }: { label: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed py-12 text-sm text-muted-foreground">
-      <Loader2 className="size-4 animate-spin" />
-      {label}
-    </div>
+    <GlassCard variant="adaptive" noHover className="border border-dashed">
+      <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin text-emerald-600" />
+        {label}
+      </div>
+    </GlassCard>
   );
 }
 
@@ -1209,29 +1411,36 @@ function ErrorBlock({
   onRetry?: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-rose-200 bg-rose-50/50 py-12 text-center dark:border-rose-900/50 dark:bg-rose-950/10">
-      <AlertCircle className="size-8 text-rose-500" />
-      <div>
-        <p className="text-sm font-medium text-rose-800 dark:text-rose-300">
-          {label}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Vérifiez votre connexion ou réessayez dans quelques instants.
-        </p>
+    <GlassCard variant="adaptive" noHover className="border border-dashed">
+      <div className="relative overflow-hidden px-4 py-12">
+        <KentePattern variant="bg" />
+        <div className="relative flex flex-col items-center justify-center gap-3 text-center">
+          <div className="flex size-14 items-center justify-center rounded-full bg-rose-100 text-rose-700 shadow-lg shadow-rose-900/10 dark:bg-rose-950/40 dark:text-rose-300">
+            <AlertCircle className="size-7" />
+          </div>
+          <div>
+            <p className="break-words text-sm font-semibold text-rose-800 dark:text-rose-300">
+              {label}
+            </p>
+            <p className="mx-auto mt-1 max-w-md break-words text-xs leading-snug text-muted-foreground">
+              Vérifiez votre connexion ou réessayez dans quelques instants.
+            </p>
+          </div>
+          {onRetry ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onRetry}
+              className="border-rose-300 text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/30"
+            >
+              <RefreshCw className="size-4" />
+              Réessayer
+            </Button>
+          ) : null}
+        </div>
       </div>
-      {onRetry ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onRetry}
-          className="border-rose-300 text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:border-rose-900/50 dark:text-rose-300 dark:hover:bg-rose-950/30"
-        >
-          <RefreshCw className="size-4" />
-          Réessayer
-        </Button>
-      ) : null}
-    </div>
+    </GlassCard>
   );
 }
 
@@ -1245,17 +1454,22 @@ function EmptyState({
   message: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-12 text-center">
-      <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        {icon}
+    <GlassCard variant="adaptive" noHover className="border border-dashed">
+      <div className="relative overflow-hidden px-4 py-12">
+        <KentePattern variant="bg" />
+        <div className="relative flex flex-col items-center justify-center gap-3 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+            {icon}
+          </div>
+          <div>
+            <p className="break-words text-sm font-semibold">{title}</p>
+            <p className="mx-auto mt-1 max-w-md break-words text-xs leading-snug text-muted-foreground">
+              {message}
+            </p>
+          </div>
+        </div>
       </div>
-      <div>
-        <p className="text-sm font-medium">{title}</p>
-        <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
-          {message}
-        </p>
-      </div>
-    </div>
+    </GlassCard>
   );
 }
 
@@ -1269,12 +1483,14 @@ function FooterBlock({
   children: React.ReactNode;
 }) {
   return (
-    <div>
+    <div className="h-full">
       <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-        {icon}
+        <span className="flex size-7 items-center justify-center rounded-md bg-emerald-50 ring-1 ring-emerald-200/60 dark:bg-emerald-950/40 dark:ring-emerald-900/40">
+          {icon}
+        </span>
         {title}
       </div>
-      <div className="space-y-0.5 text-sm text-muted-foreground">
+      <div className="space-y-0.5 break-words text-sm leading-snug text-muted-foreground">
         {children}
       </div>
     </div>

@@ -15291,3 +15291,481 @@ Date : 2025-01 (Task 22 — vague de refontes ScolaGest, agent frontend-styling-
     400 dark:bg-emerald-950/30).
 
 ### NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+Task ID: 4
+Agent: frontend-styling-expert
+Task: Refonte totale du module /parent (ScolaGest — Phase 6 — Portail Parent)
+
+Work Log:
+- Lecture du worklog.md (dernières ~3000 lignes) — extraction des BUGS À
+  ÉVITER (Tooltip Radix → `title` natif ; `truncate` → `break-words`/
+  `leading-snug` ; boutons imbriqués → aucun bouton dans bouton ; icônes
+  InfoRow `flex items-start` + `mt-0.5` ; grid `items-stretch` + `h-full` ;
+  avatar parent `bg-amber-600 text-white` (enfants `bg-emerald-600`) ;
+  contrastes `border-300 bg-100 text-800` ; `const { toast } = useToast();`
+  présent ; `text-base` minimum sur inputs ; `usePrefersReducedMotion()`).
+- Lecture intégrale des 6 fichiers cibles (3503 lignes total) :
+  • `parent-portal.tsx` (1282 lignes) : portail principal (header simple,
+    bandeau accueil simple div, EnfantCard GlassCard simple, PaiementsTable
+    GlassCard p-0, EcheancesTimeline simple div, footer simple, NavTab
+    shadcn basique).
+  • `parent-access-form.tsx` (599 lignes) : formulaire split-screen
+    branding droite + form gauche (déjà « wahou » mais sans KentePattern,
+    sans GlassCard, sans variant premium sur le bouton).
+  • `enfant-detail-dialog.tsx` (465 lignes) : dialog avec header simple,
+    pas de badge rond, KpiCard simple, 2 tableaux sans GlassCard, bouton
+    « Voir l'historique » seul.
+  • `payment-momo-dialog.tsx` (385 lignes) : dialog avec header simple,
+    Select dropdown pour provider (pas de cartes visuelles), bouton submit
+    `bg-amber-600` inline.
+  • `recap-caisse-dialog.tsx` (341 lignes) : dialog avec header simple
+    icône Building2, corps imprimable `.recap-print` mais sans GlassCard,
+    bouton Imprimer `bg-amber-600` inline.
+  • `recu-dialog.tsx` (431 lignes) : dialog avec header simple icône
+    ReceiptIcon, corps imprimable `.recu-print` mais sans GlassCard,
+    bouton Imprimer `bg-emerald-600` inline.
+- Lecture des composants DS de référence :
+  • `glass-card.tsx` : variants `mobile`/`tablet`/`desktop`/`premium`/
+    `adaptive` + props `premiumBorder`/`noAnimation`/`noHover`/`delay`
+    + support `onClick` interactif.
+  • `kente-pattern.tsx` : variants `strip` (top/bottom/custom) / `bg`
+    (absolute opacity-10) / `separator`.
+  • `stat-card.tsx` : tones `emerald`/`amber`/`terracotta`/`gold`/`sky`/
+    `forest` + `delay` + `hint` + `onClick`.
+  • `progress-circle.tsx` : gradient stroke emerald→amber, animé, label
+    central customizable.
+  • `footer.tsx` : footer unifié light/dark.
+- Lecture d'un exemple de refonte réussie (`pre-inscriptions-list.tsx`)
+  pour le pattern hero header (badge rond gradient emerald→gold) + pattern
+  DialogHeader premium + pattern EmptyState avec KentePattern bg.
+- Vérification des tokens Tailwind dans `globals.css` : `--color-forest`,
+  `--color-gold`, `--color-gold-dark`, `--color-terracotta`, etc. Tous
+  valides (`bg-forest`, `text-gold-dark`, `ring-gold/60`, etc.).
+- Vérification du `components/ui/button.tsx` : variant `success` (gradient
+  emerald), `premium` (gradient amber), `outline`, `ghost` disponibles.
+- Vérification des règles d'impression dans `globals.css` :
+  `.recu-print`/`.recap-print` (position absolute, visibility visible,
+  masque le reste de la page) — préservées intactes dans la refonte.
+
+Refonte de `parent-portal.tsx` (1282 → 1498 lignes, +216 lignes) via Write
+(fichier entier réécrit). Toutes les règles strictes respectées :
+  • Header « wahou » : `KentePattern variant="strip" position="top"` en tête
+    de header + bandeau `bg-gradient-to-r from-emerald-700 via-emerald-600
+    to-amber-500/90 backdrop-blur` + logo Image 40x40 dans carte blanche
+    `rounded-xl ring-1 ring-gold/40` + badge gold (★) superposé + nom
+    parent + avatar size-9 `bg-amber-600 text-white` (BUG À ÉVITER #6)
+    avec `ring-2 ring-gold/70` + badge gold (★) + bouton Déconnexion
+    variant outline `border-white/40 bg-white/10 text-white` + bouton
+    mobile ghost + NavTab premium (icône dans badge size-6 arrondi,
+    bg-emerald-600 text-white si actif) + `KentePattern variant="separator"`
+    sous la nav.
+  • WelcomeBanner enrichi : `GlassCard variant="premium" premiumBorder
+    noHover` + bandeau interne `bg-gradient-to-br from-emerald-700 via-
+    emerald-600 to-amber-500` + `KentePattern variant="bg" opacity-10` +
+    orbes décoratifs + message personnalisé « Bonjour {prénom} 👋 » en
+    font-display text-2xl + `ProgressCircle` animé (taux paiement global,
+    size 120, label « {taux}% / Payé ») dans conteneur `bg-white/15
+    backdrop-blur-sm` + indicateur solde global (emerald si OK, amber
+    sinon) + section `grid sm:grid-cols-3` avec 3 StatCards (Total dû
+    terracotta/emerald, Total payé emerald, Total attendu gold).
+  • EnfantCard premium : `GlassCard variant="adaptive" delay={idx * 0.05}`
+    (stagger) + `flex h-full flex-col` (BUG À ÉVITER #5) + Avatar size-14
+    `bg-emerald-600 text-white` (enfant = emerald) avec `ring-2 ring-
+    gold/60` + badges renforcés `border-300 bg-100 text-800` (classe
+    PRE_INSCRIT amber, classe_actuelle emerald, categorie emerald) +
+    `ProgressCircle mini` (size 56, label « {pct}% ») à côté d'une barre
+    de progression + block solde dû avec icône CheckCircle2/AlertTriangle
+    + 3 boutons : « Voir le détail » (ghost border emerald, ChevronRight),
+    « Payer en ligne » (variant success, Smartphone), « Payer à l'école »
+    (variant outline amber, Landmark) — tous avec `title` natif (BUG À
+    ÉVITER #1).
+  • PaiementsTable enrichi : `GlassCard variant="adaptive" noHover
+    overflow-hidden p-0` + Table avec TableHeader `bg-emerald-50/60` +
+    `motion.tr` stagger (initial opacity 0 y 8, animate opacity 1 y 0,
+    delay `idx * 0.03`) avec `usePrefersReducedMotion()` (BUG À ÉVITER
+    #10) + hover row `bg-emerald-50/60` + avatar élève size-8 `bg-emerald-
+    600 text-white` dans TableCell + badges mode/statut `border-300 bg-
+    100 text-800` + bouton « Reçu » variant ghost size sm avec `title`
+    natif + `stopPropagation` sur onClick (BUG À ÉVITER #3).
+  • EcheancesTimeline enrichi : timeline verticale avec bordure gauche
+    `absolute w-0.5 bg-gradient-to-b from-emerald-300 via-amber-200 to-
+    rose-300` + points colorés size-7/8 selon statut (emerald/amber/rose)
+    avec `CalendarClock` blanc centré + `motion.div` stagger (initial
+    opacity 0 x -10, animate opacity 1 x 0, delay `idx * 0.05`) avec
+    `usePrefersReducedMotion()` + `GlassCard variant="mobile" noHover
+    noAnimation` pour chaque échéance avec `border-l-4` coloré selon
+    statut.
+  • Footer enrichi : `KentePattern variant="strip" position="top"` en
+    tête de footer + `border-t border-gold/30 bg-gradient-to-b from-
+    white/95 to-emerald-50/40 backdrop-blur` + 3 colonnes `grid sm:grid-
+    cols-3 items-stretch` avec FooterBlock (icône dans badge size-7
+    `bg-emerald-50 ring-1 ring-emerald-200/60`) + `KentePattern
+    variant="separator"` + note légale en bas.
+  • NavTab premium : bouton avec icône dans badge `size-6 rounded-md`
+    (`bg-emerald-600 text-white` si actif, `bg-muted` sinon) + `aria-
+    current="page"` quand actif + scrollable mobile (`overflow-x-auto`).
+  • LoadingBlock/ErrorBlock/EmptyState premium : `GlassCard variant=
+    "adaptive" noHover border border-dashed` + `KentePattern variant="bg"`
+    dans ErrorBlock et EmptyState + badge rond coloré (rose pour erreur,
+    emerald pour vide) + bouton Réessayer variant outline rose.
+  • Bug `toast` VÉRIFIÉ : `const { toast } = useToast();` bien présent
+    (l. 207 du fichier original, conservé).
+  • Avatar parent (tuteur) `bg-amber-600 text-white` (BUG À ÉVITER #6),
+    avatar enfant `bg-emerald-600 text-white` — distinction respectée.
+  • `break-words leading-snug` partout (PAS de truncate — BUG À ÉVITER
+    #2).
+  • Grid `items-stretch` + `h-full` sur EnfantCard et footer (BUG À
+    ÉVITER #5).
+  • `usePrefersReducedMotion()` utilisé pour `motion.tr` et `motion.div`
+    (BUG À ÉVITER #10).
+  • Ajout du wiring `onPayerEnLigne={handlePayerEnLigne}` sur
+    EnfantDetailDialog (nouveau prop optionnel).
+  • LOGIQUE MÉTIER INTACTE : hooks React Query (fetchEnfants /
+    fetchEcheancesParent / fetchPaiementsParent avec parentKeys), état UI
+    (activeSection, filterEleveId, selectedEnfant, detailOpen, momoEnfant,
+    recapEnfant, etc.), refs scroll ancré (enfantsRef/historiqueRef/
+    echeancesRef), handlers (handleVoirDetail, handleVoirHistoriqueDepuis-
+    Detail, handleVoirRecu, handlePayerEnLigne, handlePayerALecole,
+    handleLogout, scrollToSection), useParentPWA() — tous préservés.
+
+Refonte de `parent-access-form.tsx` (599 → 719 lignes, +120 lignes) via
+Write (fichier entier réécrit) :
+  • `KentePattern variant="strip" position="top"` fixed top z-50 (10px
+    height) en haut de l'écran.
+  • `KentePattern variant="bg" opacity-[0.06]` texture subtile en fond.
+  • Carte form : `GlassCard variant="desktop" premiumBorder` avec
+    `KentePattern variant="bg" opacity-[0.05]` en fond interne.
+  • Hero engageant : badge rond size-10 gradient emerald→amber avec
+    UserRound + pill « Portail familial » (Sparkles) + titre font-display
+    text-2xl text-forest « Accédez au portail familial » + sous-titre
+    rassurant.
+  • Champs avec icônes : Label avec icône Phone/KeyRound (emerald) +
+    Input avec icône à gauche (colorée emerald si valide) + focus ring
+    emerald (`focus:border-emerald-500 focus-visible:ring-emerald-500/
+    30`) + checkmark ShieldCheck à droite si valide + bordure 2px
+    (emerald-400 si valide) + `h-11 text-base` (BUG À ÉVITER #9).
+  • InputOTP 4 cases : bordure emerald-500 + ring emerald-500/20 quand
+    PIN complet (validation temps réel).
+  • Bouton « Se connecter » : gradient amber→orange + `animate={pulse-
+    Animation}` (boxShadow pulse 2.2s easeInOut infinite) + whileHover
+    scale 1.02 + whileTap scale 0.98.
+  • Bouton « Espace Staff » : `Button variant="outline"` border emerald
+    pour retour (remplace le bouton discret « Retour au choix d'espace »).
+  • Panneau branding droit : gradient enrichi `from-emerald-700 via-
+    amber-500 to-orange-700` (gradient emerald→amber demandé) + orbes
+    flottants + grille de points + features en cartes `bg-white/10 ring-
+    1 ring-gold/20 backdrop-blur-md`.
+  • LOGIQUE MÉTIER INTACTE : useState telephone/pin/submitting/demoOpen,
+    normalizePhone, handlePinChange, ensureCountryCode, handleSubmit
+    (loginParent), applyDemo, handleInstall (PWA), useParentPWA,
+    useParentInstallPrompt, useToast, useAuthStore, ApiError, DEMO_TELE-
+    PHONE, DEMO_PIN, PARENT_FEATURES — tous préservés.
+
+Refonte de `enfant-detail-dialog.tsx` (465 → 556 lignes, +91 lignes) :
+  • Header premium : `DialogHeader className="border-b border-emerald-100
+    bg-gradient-to-br from-emerald-50 to-amber-50"` + badge rond size-10
+    gradient emerald→gold avec icône User + DialogDescription décalée
+    `ml-[52px]`.
+  • GlassCard tablet pour le contenu : en-tête élève (`GlassCard variant=
+    "tablet" noHover noAnimation`) avec Avatar size-16 `bg-emerald-600
+    text-white ring-2 ring-gold/60` + badges renforcés (classe School
+    emerald, categorie Layers amber) + block « À jour »/« Solde à
+    régulariser ».
+  • 3 KpiCard (Total attendu / Total payé / Solde dû) : `GlassCard
+    variant="adaptive" noHover noAnimation` avec `ring-1` selon tone +
+    icône en haut + valeur font-mono text-xl.
+  • Tableau frais attendus : `GlassCard variant="tablet" noHover
+    noAnimation !p-0 overflow-hidden` + header section `bg-emerald-50/60
+    border-b border-emerald-100` avec Wallet + tableau avec TableHeader
+    `bg-emerald-50/40` + hover row `bg-emerald-50/60` + badges type frais
+    renforcés + montants colorés (payé emerald, solde amber si >0).
+  • Tableau échéances : `GlassCard variant="tablet"` + header section
+    `bg-amber-50/60` avec CalendarClock + TableHeader `bg-amber-50/40` +
+    hover row `bg-amber-50/60` + badges statut renforcés.
+  • Boutons d'action (DialogFooter) : 3 boutons en grid sm:flex-row :
+    « Fermer » (variant outline), « Voir l'historique » (variant outline
+    emerald avec History), « Payer en ligne » (variant success avec
+    Smartphone, disabled si soldeOK) — avec `title` natif.
+  • Nouveau prop optionnel `onPayerEnLigne?: (enfant) => void` ajouté à
+    l'interface (backward compatible).
+  • LOGIQUE MÉTIER INTACTE : useQuery fetchSoldeEnfant avec clé
+    ["parent","solde",enfant?.id], enabled open && !!enfant?.id, retry 1
+    retryDelay 1500 — préservé. DetailBody interface et helpers
+    (initials, categorieLabel, typeFraisLabel, statutEcheanceLabel/
+    Class) — tous préservés.
+
+Refonte de `payment-momo-dialog.tsx` (385 → 485 lignes, +100 lignes) :
+  • Header premium : `DialogHeader className="border-b border-emerald-100
+    bg-gradient-to-br from-emerald-50 to-amber-50"` + badge rond size-10
+    gradient emerald→gold avec icône Smartphone + DialogDescription
+    décalée `ml-[52px]`.
+  • Récap enfant + solde : `GlassCard variant="tablet" noHover
+    noAnimation !p-3` avec 2 lignes (Enfant / Solde dû) séparées par
+    Separator — montant solde en font-mono bold (amber si >0, emerald
+    si 0).
+  • Providers visuels : remplacement du Select dropdown par 3 cartes
+    cliquables `grid grid-cols-3 gap-2` (Orange Money / MTN Money / Wave)
+    avec badge rond size-9 coloré (orange-500 / amber-500 / slate-700) +
+    label + sélection visuelle (`border-2` coloré + `ring-2` + `bg-*-50`
+    quand sélectionné, `aria-pressed`). Note explicative en bas avec
+    provider sélectionné.
+  • Montant : Label avec icône Receipt + Input `h-11 border-2 font-mono
+    text-base focus:border-emerald-500 focus-visible:ring-emerald-500/
+    30` + hint dynamique (trop-perçu rose, solde restant emerald).
+  • Téléphone : Label avec icône Phone + Input avec icône Phone à gauche
+    + `h-11 border-2 pl-10 font-mono text-base focus:border-emerald-500`.
+  • Note sandbox : encart amber avec icône Smartphone.
+  • Footer `DialogFooter grid grid-cols-2 gap-2` : bouton « Annuler »
+    (variant outline, X) + bouton « Payer » (variant success, Send,
+    montant formaté) — `title` natif.
+  • SuccessView premium : badge rond size-16 emerald `ring-4 ring-
+    emerald-50` + CheckCircle2 size-9 + `GlassCard variant="tablet"` pour
+    la carte référence + bouton « Fermer » variant success.
+  • LOGIQUE MÉTIER INTACTE : useMutation payerMobileMoneyParent,
+    onSuccess (setResult + invalidateQueries parentKeys.all + toast),
+    onError (toast destructive), canSubmit logic, handleSubmit,
+    handleClose (mutation.reset + setResult null), useEffect reset
+    formulaire à l'ouverture, useAuthStore tuteur, useToast, formatFCFA,
+    ProviderMomo type — tous préservés.
+  • Import `ProviderMomoBadge` retiré (remplacé par les cartes visuelles
+    inline PROVIDER_CONFIG) — aucune autre dépendance impactée.
+
+Refonte de `recap-caisse-dialog.tsx` (341 → 389 lignes, +48 lignes) :
+  • Header premium : `DialogHeader className="no-print border-b border-
+    emerald-100 bg-gradient-to-br from-emerald-50 to-amber-50"` + badge
+    rond size-10 gradient emerald→gold avec icône Landmark +
+    DialogDescription décalée `ml-[52px]`.
+  • Récap élégant : `GlassCard variant="tablet" noHover noAnimation !p-0
+    overflow-hidden` qui enveloppe le `.recap-print` (impression
+    préservée).
+  • En-tête établissement : `bg-gradient-to-r from-emerald-700 via-
+    emerald-600 to-amber-500` (au lieu de bg-amber-600 uni) + logo dans
+    badge `bg-white/15 ring-1 ring-gold/40` + références mono.
+  • InfoRows avec icônes (nouveau composant `InfoRow`) : User pour élève,
+    Users pour tuteur, CreditCard pour modes acceptés, Clock pour heures
+    d'ouverture. Layout `flex items-start gap-3` avec `mt-0.5` sur le
+    badge icône `size-7 rounded-md bg-emerald-100 text-emerald-700` (BUG
+    À ÉVITER #4).
+  • Synthèse financière : tableau avec header `bg-emerald-50/60` +
+    montants en `text-gold-dark` (BUG À ÉVITER #7, palette gold) + total
+    en `text-lg font-bold text-gold-dark` + tfoot `bg-amber-50`.
+  • Instruction caisse : encart amber avec Wallet + texte bold.
+  • Footer : `DialogFooter flex gap-2 sm:justify-end` avec bouton
+    « Fermer » (variant outline, X) + bouton « Imprimer / Télécharger
+    PDF » (variant success, Printer) — `title` natif.
+  • `.recap-print` class INTACTE sur le wrapper imprimable (règle
+    `@media print .recap-print` de globals.css fonctionne toujours).
+  • LOGIQUE MÉTIER INTACTE : useQuery fetchRecapCaisseParent avec
+    parentKeys.recapCaisse, enabled open && !!enfant?.id, retry 1
+    retryDelay 1500, handlePrint (window.print), RecapBody interface,
+    fallbacks (eleve/tuteur/finances avec enfantFallback) — tous
+    préservés.
+
+Refonte de `recu-dialog.tsx` (431 → 511 lignes, +80 lignes) :
+  • Header premium : `DialogHeader className="no-print border-b border-
+    emerald-100 bg-gradient-to-br from-emerald-50 to-amber-50"` + badge
+    rond size-10 gradient emerald→gold avec icône Receipt +
+    DialogDescription décalée `ml-[52px]`.
+  • Reçu premium : `GlassCard variant="premium" premiumBorder noHover
+    noAnimation !p-0 overflow-hidden` qui enveloppe le `.recu-print`
+    (bordure gold/40% via `.kente-border-premium` + impression
+    préservée). Le `.recu-print` interne a également `border border-
+    gold/40` explicite.
+  • En-tête établissement : `bg-gradient-to-r from-emerald-700 via-
+    emerald-600 to-amber-500` + logo dans badge `bg-white/15 ring-1
+    ring-gold/40` + numéro reçu mono text-lg font-bold.
+  • Méta (Date/Heure/Émis le/Statut) : 4 cartes avec icône contextuelle
+    (Calendar/Clock/Calendar/CheckCircle2) dans badge size-6 `bg-emerald-
+    100 text-emerald-700` (nouveau composant `Meta`).
+  • Élève + Réf. reçu : 2 InfoRows avec icônes (User pour élève, Hash
+    pour réf. reçu) (nouveau composant `InfoRow`).
+  • Détail paiement : tableau avec header `bg-emerald-50/60` + total
+    encaissé en `text-lg font-bold text-gold-dark` + tfoot `bg-emerald-
+    50`.
+  • Mode + solde : InfoRow CreditCard pour mode (label + badge) + block
+    solde restant conditionnel (amber si >0 avec AlertCircle, emerald si
+    0 avec CheckCircle2, neutre si undefined). Montant en `text-gold-dark`
+    si >0.
+  • Pied + QR : `CheckCircle2` emerald + texte justificatif + QR dashed
+    slate.
+  • Footer : `DialogFooter grid grid-cols-2 gap-2 sm:flex sm:justify-end`
+    avec bouton « Fermer » (variant outline, X) + bouton « Imprimer /
+    PDF » (variant success, Printer) — `title` natif.
+  • `.recu-print` class INTACTE (règle `@media print .recu-print` de
+    globals.css fonctionne toujours).
+  • LOGIQUE MÉTIER INTACTE : useQuery fetchRecuParent (retry:0 pour
+    tolérer 404), snapshot JSON.parse avec try/catch, useMemo snapshot,
+    MODE_LABEL/modeBadgeClass/statutLabel, useAuthStore etablissement,
+    handlePrint (window.print), RecuBody interface avec fallbacks
+    snapshot/paiement — tous préservés.
+
+Compile-check : `bunx tsc --noEmit 2>&1 | grep "src/components/parent/"`
+→ **0 erreur** sur les 6 fichiers refondus. Les 13 erreurs tsc restantes
+sont toutes PRÉ-EXISTANTES sur 4 fichiers non concernés (login-form.tsx ×8,
+dashboard-shell.tsx ×3, etablissement-form-dialog.tsx ×1,
+instrumentation.ts ×1) — aucune introduite par cette refonte.
+
+Lint-check : `bunx eslint src/components/parent/ --max-warnings 0` →
+**0 erreur, 0 warning** (EXIT=0). `bun run lint` (full project) → **0
+erreur, 0 warning** (EXIT=0).
+
+Stage Summary:
+- Fichiers modifiés (6) :
+  • `Frontend/src/components/parent/parent-portal.tsx` (1282 → 1498, +216)
+  • `Frontend/src/components/parent/parent-access-form.tsx` (599 → 719, +120)
+  • `Frontend/src/components/parent/enfant-detail-dialog.tsx` (465 → 556, +91)
+  • `Frontend/src/components/parent/payment-momo-dialog.tsx` (385 → 485, +100)
+  • `Frontend/src/components/parent/recap-caisse-dialog.tsx` (341 → 389, +48)
+  • `Frontend/src/components/parent/recu-dialog.tsx` (431 → 511, +80)
+  Total : 3503 → 4158 lignes (+655 lignes).
+- Identité « Forêt EdTech » enrichie :
+  • Motif Kente enrichi : KentePattern strip top dans parent-portal
+    (header) + footer + parent-access-form (top fixed) + KentePattern
+    separator sous nav et entre sections. KentePattern bg subtil (opacity
+    5-10%) dans WelcomeBanner, ErrorBlock, EmptyState, parent-access-form
+    carte et fond global. Bordure gold/40% sur cartes premium
+    (WelcomeBanner, RecuBody) via `premiumBorder`.
+  • Illustrations africaines subtiles : badges ronds gradient emerald→
+    gold sur tous les headers de dialog (enfant-detail: User,
+    payment-momo: Smartphone, recap-caisse: Landmark, recu: Receipt),
+    étoile ★ gold sur logo parent-portal et avatar tuteur, points
+    colorés sur la timeline des échéances, motif kente bg subtil
+    partout.
+  • Palette PARENT = AMBER préservée pour le login (parent-access-form)
+    + bouton « Se connecter » gradient amber + pulse. Boutons d'action
+    dans les dialogs utilisent variant success (emerald) pour cohérence
+    avec le reste de l'app (actions de validation / paiement).
+- Effet wahou :
+  • Header parent-portal : KentePattern strip + gradient emerald→amber
+    + logo ring gold + ★ + avatar ring gold + ★ + boutons blancs
+    translucides + NavTab premium (icônes dans badges emerald) +
+    KentePattern separator.
+  • WelcomeBanner : GlassCard premium + bandeau gradient emerald→amber
+    + KentePattern bg + ProgressCircle animé size 120 + 3 StatCards
+    stagger (Total dû / Total payé / Total attendu) + indicateur solde
+    global.
+  • EnfantCard : GlassCard adaptive + stagger delay + Avatar ring gold
+    + ProgressCircle mini + badges renforcés + 3 boutons colorés.
+  • PaiementsTable : GlassCard p-0 + header bg-emerald-50/60 + motion.tr
+    stagger + avatars enfants emerald + badges renforcés + hover row
+    bg-emerald-50/60.
+  • EcheancesTimeline : timeline verticale avec bordure gauche gradient
+    emerald→amber→rose + points colorés size-7/8 + motion.div stagger +
+    GlassCard mobile par échéance avec border-l-4 coloré.
+  • Dialogs : tous les headers premium avec badge rond gradient
+    emerald→gold + icône contextuelle + DialogDescription décalée.
+- Responsive 100% : mobile (header compact logo+avatar+icon, NavTab
+  scrollable horizontal, grid-cols-1 → sm:grid-cols-2 → lg:grid-cols-3
+  pour EnfantCard, PaiementsTable hidden sm:table-cell sur colonnes
+  Mode/Statut, EcheancesTimeline en GlassCard mobile) / tablette
+  (GlassCard tablet pour les dialogs) / desktop (GlassCard desktop pour
+  la form parent-access, layouts 3 colonnes).
+- Touch targets ≥ 44px : boutons PaiementsTable h-8 (sm), boutons
+  EnfantCard default h-9, boutons dialogs h-9 (sm:w-auto + w-full
+  mobile), inputs `h-11 text-base` (BUG À ÉVITER #9).
+- Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt EdTech :
+  emerald (primaire), amber (PARENT/PRE_INSCRIT/PARTIEL), gold (premium,
+  montants importants), terracotta (soldes dû), rose (erreurs/retards),
+  sky non utilisé ici, slate (Wave + QR placeholder neutre).
+- Aucun Tooltip Radix. Aucun `truncate` sur les valeurs longues (noms,
+  téléphones, références — utilisation de `break-words leading-snug` et
+  `break-all` pour les téléphones/réfs mono).
+- Contrastes renforcés sur badges (border-300 bg-100 text-800). Avatar
+  fallback `bg-amber-600 text-white` (parent) / `bg-emerald-600 text-
+  white` (enfant) (PAS bg-100 text-700 — BUG À ÉVITER #6/#7).
+- Bug `toast` non déclaré VÉRIFIÉ : `const { toast } = useToast();` est
+  bien présent dans parent-portal.tsx (l. 207 original), parent-access-
+  form.tsx, payment-momo-dialog.tsx — conservé.
+- TypeScript : **0 erreur sur les 6 fichiers refondus** (vérifié par
+  `bunx tsc --noEmit 2>&1 | grep "src/components/parent/"` → 0 match).
+  Les 13 erreurs tsc restantes sont toutes pré-existantes sur d'autres
+  fichiers non concernés (login-form ×8, dashboard-shell ×3,
+  etablissement-form-dialog ×1, instrumentation ×1).
+- Lint : **0 erreur, 0 warning** sur l'ensemble du projet (`bun run
+  lint` EXIT=0). Dossier `src/components/parent/` individuellement :
+  EXIT=0 (`bunx eslint src/components/parent/ --max-warnings 0` →
+  EXIT=0).
+- Aucune logique métier modifiée. Aucun endpoint backend touché. Fichiers
+  DS (glass-card, kente-pattern, stat-card, progress-circle, footer),
+  globals.css, api-parent.ts, auth-store.ts, format.ts, types.ts,
+  components/ui/*, app/(parent)/*, app/(auth)/parent/* — TOUS INTACTS.
+  Le seul ajout d'API est le prop optionnel `onPayerEnLigne?` sur
+  EnfantDetailDialog (backward compatible — wired dans parent-portal).
+- Points à vérifier par agent browser :
+  1. Rendu du header parent-portal : KentePattern strip top (motif kente
+     enrichi) + bandeau gradient emerald→amber + logo Image 40x40 dans
+     carte blanche avec ring gold + ★ gold + nom parent + avatar size-9
+     bg-amber-600 text-white avec ring gold + ★ + boutons Déconnexion
+     translucides blancs (sm:inline-flex) + bouton mobile ghost blanc.
+  2. Rendu de la NavTab premium : icônes dans badges size-6 (emerald
+     plein si actif, muted sinon) + labels + scrollable horizontal sur
+     mobile + KentePattern separator sous la nav.
+  3. Rendu du WelcomeBanner : GlassCard premium avec bordure gold + 2
+     zones (bandeau gradient emerald→amber avec KentePattern bg subtil
+     + ProgressCircle animé size 120 + message « Bonjour {prénom} 👋 »
+     en font-display text-2xl + indicateur solde global) et 3 StatCards
+     en grid sm:grid-cols-3 (Total dû terracotta/emerald, Total payé
+     emerald, Total attendu gold) avec stagger delay 0/0.05/0.1.
+  4. Rendu des EnfantCard : GlassCard adaptive avec hover lift + Avatar
+     size-14 bg-emerald-600 text-white ring-2 ring-gold/60 + badges
+     renforcés (border-300 bg-100 text-800) + ProgressCircle mini
+     size 56 + barre de progression + block solde dû coloré + 3 boutons
+     (Voir détail ghost, Payer en ligne success, Payer à l'école outline
+     amber) avec title natif.
+  5. Rendu du PaiementsTable : GlassCard p-0 + TableHeader bg-emerald-
+     50/60 + lignes motion.tr stagger (fade-in + slide-up) + hover row
+     bg-emerald-50/60 + avatar élève size-8 emerald + bouton Reçu avec
+     title natif + stopPropagation sur onClick.
+  6. Rendu de l'EcheancesTimeline : timeline verticale avec bordure
+     gauche gradient emerald→amber→rose + points colorés (emerald/amber/
+     rose) avec icône CalendarClock blanche + motion.div stagger +
+     GlassCard mobile par échéance avec border-l-4 coloré selon statut.
+  7. Rendu du footer : KentePattern strip top + border-gold/30 + 3
+     colonnes (Établissement / Contact / ScolaGest) avec icônes dans
+     badges emerald + KentePattern separator + note légale.
+  8. Rendu du parent-access-form : KentePattern strip top fixed z-50 +
+     KentePattern bg subtil + GlassCard desktop premiumBorder + hero
+     avec badge rond gradient emerald→amber (UserRound) + pill « Portail
+     familial » + titre « Accédez au portail familial » + champs avec
+     icônes (Phone/KeyRound emerald) + focus ring emerald + checkmark
+     ShieldCheck si valide + bouton « Se connecter » gradient amber +
+     animation pulse subtile + bouton « Espace Staff » variant outline
+     emerald + panneau branding droit gradient emerald→amber→orange avec
+     orbes flottants + features en cartes glass.
+  9. Rendu du enfant-detail-dialog : header premium avec badge rond
+     gradient emerald→gold (User) + GlassCard tablet pour en-tête élève
+     (Avatar ring gold + badges School/Layers) + 3 KpiCard avec ring
+     selon tone + 2 tableaux dans GlassCard tablet (frais attendus bg-
+     emerald-50/60 + échéances bg-amber-50/60) + 3 boutons (Fermer /
+     Voir l'historique / Payer en ligne success).
+  10. Rendu du payment-momo-dialog : header premium avec badge rond
+      gradient emerald→gold (Smartphone) + récap enfant dans GlassCard
+      tablet + 3 cartes providers visuels (Orange orange-500, MTN
+      amber-500, Wave slate-700) avec sélection visuelle (border-2 +
+      ring-2 + bg-*-50) + champs Montant/Téléphone avec icônes + Input
+      h-11 text-base + footer grid-cols-2 (Annuler outline + Payer
+      success).
+  11. Rendu du recap-caisse-dialog : header premium avec badge rond
+      gradient emerald→gold (Landmark) + GlassCard tablet enveloppant
+      le .recap-print + en-tête établissement gradient emerald→amber +
+      InfoRows avec icônes (User/Users/CreditCard/Clock) + synthèse
+      financière avec montants en text-gold-dark + footer (Fermer
+      outline + Imprimer success). Vérifier l'impression
+      window.print() → seul le .recap-print est visible.
+  12. Rendu du recu-dialog : header premium avec badge rond gradient
+      emerald→gold (Receipt) + GlassCard premium avec premiumBorder
+      (bordure gold/40%) enveloppant le .recu-print + en-tête
+      établissement gradient emerald→amber + 4 Meta avec icônes
+      (Calendar/Clock/Calendar/CheckCircle2) + 2 InfoRows (User/Hash)
+      + tableau détail paiement avec total en text-gold-dark + mode +
+      solde (amber/emerald selon reste) + footer grid-cols-2 (Fermer
+      outline + Imprimer/PDF success). Vérifier l'impression
+      window.print() → seul le .recu-print est visible.
+  13. Vérifier que le bouton « Payer en ligne » du enfant-detail-dialog
+      ferme le dialog et ouvre le payment-momo-dialog (nouveau prop
+      onPayerEnLigne wired dans parent-portal).
+  14. Vérifier que le bouton « Voir l'historique » du enfant-detail-
+      dialog ferme le dialog, setFilterEleveId(enfant.id) et scroll vers
+      la section historique.
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.
