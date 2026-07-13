@@ -249,11 +249,14 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
 
   return (
     <div className="relative flex min-h-screen w-full overflow-hidden bg-gradient-to-br from-emerald-50/50 via-amber-50 to-orange-50">
-      {/* KentePattern strip top (motif kente enrichi) */}
+      {/* KentePattern strip top (motif kente enrichi).
+          `!fixed` obligatoire : .kente-strip-top { position: relative } dans
+          globals.css (CSS non-layeré) override l'utilitaire `fixed` (layered).
+          Sans `!`, le strip reste dans le flux flex et écrase les panneaux. */}
       <KentePattern
         variant="strip"
         position="top"
-        className="!h-10 fixed top-0 left-0 right-0 z-50"
+        className="!h-10 !fixed top-0 left-0 right-0 z-50"
       />
 
       {/* Texture kente subtile en fond */}
@@ -635,7 +638,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="relative z-10 flex flex-col justify-between p-12 xl:p-16"
+          className="relative z-10 flex flex-col justify-between p-8 lg:p-10 xl:p-14"
         >
           {/* Logo + titre */}
           <div>
@@ -661,7 +664,7 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
           <div className="my-12">
             <motion.h2
               variants={itemVariants}
-              className="font-display text-4xl font-bold leading-tight text-white xl:text-5xl"
+              className="font-display text-3xl font-bold leading-tight text-white lg:text-4xl xl:text-5xl"
             >
               Suivez la{" "}
               <span className="bg-gradient-to-r from-amber-300 to-amber-100 bg-clip-text text-transparent">
