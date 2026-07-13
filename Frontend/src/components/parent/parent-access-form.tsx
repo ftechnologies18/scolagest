@@ -8,7 +8,7 @@
  * distinguer visuellement les deux espaces).
  *
  * Refonte Forêt EdTech :
- *  - KentePattern strip top + gradient emerald→amber en haut de l'écran.
+ *  - Gradient emerald→amber en fond d'écran + texture kente subtile (opacity 6%).
  *  - Hero engageant : titre « Accédez au portail familial » + sous-titre
  *    rassurant dans une GlassCard premium (bordure gold + KentePattern bg).
  *  - Formulaire glassmorphism : GlassCard desktop + champs avec icônes
@@ -249,21 +249,11 @@ export function ParentAccessForm({ onBack }: ParentAccessFormProps) {
 
   return (
     <div className="relative flex min-h-screen w-full overflow-hidden bg-gradient-to-br from-emerald-50/50 via-amber-50 to-orange-50">
-      {/* KentePattern strip top (motif kente enrichi).
-          `!fixed` obligatoire : .kente-strip-top { position: relative } dans
-          globals.css (CSS non-layeré) override l'utilitaire `fixed` (layered).
-          Sans `!`, le strip reste dans le flux flex et écrase les panneaux. */}
-      <KentePattern
-        variant="strip"
-        position="top"
-        className="!h-10 !fixed top-0 left-0 right-0 z-50"
-      />
-
       {/* Texture kente subtile en fond */}
       <KentePattern variant="bg" className="opacity-[0.06]" />
 
       {/* ===== Panneau gauche : Formulaire (glassmorphism) ===== */}
-      <div className="relative flex w-full items-center justify-center p-6 pt-14 sm:pt-16 lg:w-1/2 lg:pt-6 xl:w-[45%]">
+      <div className="relative flex w-full items-center justify-center p-6 lg:w-1/2 lg:pt-6 xl:w-[45%]">
         {/* Décorations d'arrière-plan */}
         <div
           aria-hidden
