@@ -9884,3 +9884,523 @@ Stage Summary:
   8. Loading state : KentePattern strip top + Loader2 size-8 animate-spin
      text-emerald-600 centré (au lieu de Loader2 seul sans KentePattern).
 - NE PAS commit/push — l'utilisateur gère le commit après vérification.
+
+---
+Task ID: 4
+Agent: frontend-styling-expert
+Task: Refonte du module /utilisateurs (Forêt EdTech, glassmorphism, kente, responsive)
+
+Work Log:
+- Lecture du worklog.md (contexte Forêt EdTech, refontes précédentes
+  /eleves, /inscription, /impayes, /rapports, /pre-inscriptions, /frais,
+  /annees — identité visuelle et bugs à éviter : Tooltip Radix, truncate,
+  boutons imbriqués, contrastes, `toast` non déclaré) intégré dans la
+  refonte. Note importante : le worklog précédent indiquait 17 erreurs
+  tsc pré-existantes dont 2 sur mes fichiers cibles (view-utilisateurs
+  ×1, utilisateur-form-dialog ×1) — ces 2 erreurs sont désormais FIXÉES
+  par cette refonte (voir plus bas).
+- Lecture intégrale des 2 fichiers à refondre :
+  • `src/components/dashboard/views/view-utilisateurs.tsx` (591 lignes) —
+    vue principale avec KentePattern strip + header simple div + filtres
+    simples + tableau desktop (GlassCard adaptive p-0) + StatCards par
+    rôle (grid md:grid-cols-5) + UserRow (avatar bg-emerald-100
+    text-emerald-700 — contraste faible, badges border-200 bg-50
+    text-700 — contraste faible, DropdownMenu actions sans `title` natif)
+    + AccessDialog custom (div fixed inset-0 z-50 — pas un vrai Dialog
+    shadcn, pas de focus trap, pas d'animations, button × dans un Badge
+    sans `title` natif).
+  • `src/components/parametres/utilisateur-form-dialog.tsx` (552 lignes)
+    — dialog création/édition avec header simple (UserCog size-5
+    text-emerald-600) + champs à plat sans sous-sections + gestion des
+    accès inline + bouton submit custom bg-emerald-600 (au lieu de
+    variant="success"). Vérification que `const { toast } = useToast();`
+    est bien présent dans les 2 fichiers (déjà le cas — aucun bug
+    `toast` non déclaré).
+- Analyse des 2 erreurs tsc pré-existantes à corriger :
+  1. `view-utilisateurs.tsx(127,38)` : `fetchUtilisateurs({ etablissement_id:
+     etablissement?.id, search })` — la fonction `fetchUtilisateurs` ne
+     prend qu'un `etablissementId?: string` (pas d'objet). Le `search`
+     était silencieusement ignoré côté serveur et aucune recherche
+     client-side n'était appliquée (le `filteredUsers` memo ne filtrait
+     que par rôle). Fix : passer `etablissement?.id` directement à la
+     fonction (signature correcte), et ajouter la recherche côté client
+     dans le memo `filteredUsers` (filtre sur nom + prénoms + email) pour
+     préserver/compléter le comportement de recherche attendu par l'UX.
+  2. `utilisateur-form-dialog.tsx(76,7)` : `ROLE_LABEL: Record<RoleGlobal,
+     string>` manquait les entrées `DIRECTEUR_ETUDES` et
+     `DIRECTEUR_SUPERVISEUR` (le type union `RoleGlobal` les inclut).
+     Fix : ajouter les 2 entrées manquantes. Note : `EDUCATEUR` était déjà
+     présent, mais une erreur `view-parametres.tsx(90,7)` pré-existante
+     indique qu'il manque `EDUCATEUR` dans ce fichier séparé (hors scope
+     de cette task — non touché).
+- Lecture des composants DS de référence :
+  • `components/ds/glass-card.tsx` — variants (mobile/tablet/desktop/
+    premium/adaptive), `premiumBorder`, `noHover`, `noAnimation`, `delay`.
+    Wrapper `motion.div` (Framer Motion) avec `initial={{opacity:0,y:16}}
+    animate={{opacity:1,y:0}} transition={{duration:0.4, delay, ease:
+    [0.22,1,0.36,1]}}`.
+  • `components/ds/kente-pattern.tsx` — variants (strip/bg/border/
+    separator), position (top/bottom/custom). `bg` = absolute inset-0
+    pointer-events-none opacity-10.
+  • `components/ds/stat-card.tsx` — tones (emerald/amber/terracotta/gold/
+    sky/forest), `icon`, `hint`, `delay` pour stagger. Wrapper GlassCard
+    adaptive. `className` permet d'ajouter `h-full` pour égaliser les
+    hauteurs en grid (BUG À ÉVITER #5).
+- Lecture des exemples de refontes réussies :
+  • `components/eleves/eleves-list.tsx` — hero header GlassCard desktop +
+    badge rond gradient emerald→amber + StatCards horizontales + tableau
+    desktop hover bg-emerald-50/60 + EmptyState premium avec KentePattern
+    bg + cartes mobile GlassCard cliquables (md:hidden).
+  • `components/dashboard/views/view-frais.tsx` — pattern hero header
+    GlassCard desktop + pill "Phase X" outline + 4 StatCards + EmptyState
+    premium avec KentePattern bg + bouton "Créer un frais" success.
+  • `components/dashboard/views/view-annees.tsx` — CreateAnneeDialog /
+    PromoteDialog premium avec header badge rond gradient emerald→gold +
+    sous-sections GlassCard tablet + footer grid-cols-2 mobile + bouton
+    submit variant="success" avec CheckCircle2/Loader2.
+- Vérification des tokens Tailwind dans `globals.css` (lignes 1-120) :
+  `--color-forest`, `--color-forest-deep`, `--color-emerald-fe`,
+  `--color-amber-fe`, `--color-gold`, `--color-gold-dark`,
+  `--color-terracotta`, `--color-sand` déclarés dans `@theme inline`
+  (Tailwind 4) → utilitaires `bg-forest`, `text-forest`, `bg-gold-dark`,
+  `bg-terracotta/10`, `border-terracotta/40`, etc. tous valides.
+- Vérification du `components/ui/button.tsx` : variant `success` (gradient
+  emerald) existe — utilisé pour les boutons "Nouvel utilisateur" +
+  "Ajouter l'accès" + submit du formulaire.
+- Vérification du type `Utilisateur` dans `lib/types.ts` :
+  `accesses?: EtablissementAccess[]` (champ optionnel). Le code original
+  utilisait `(u as Utilisateur & { etablissement_access?: ... })` pour
+  accéder à un éventuel `etablissement_access` non typé. J'ai créé un
+  helper défensif `getAccesses(u)` qui lit `etablissement_access` puis
+  `accesses` puis `[]` — préserve la compatibilité ascendante.
+
+Refonte de `view-utilisateurs.tsx` (591 → 1138 lignes, +547 lignes) via
+`Write` (fichier entier réécrit — les changements touchaient ~80% du
+fichier). Toutes les règles strictes respectées :
+  • Bug `toast` VÉRIFIÉ : `const { toast } = useToast();` était déjà
+    présent dans le fichier d'origine (l. 114 → l. 219). Aucun
+    sous-composant n'utilise `toast` directement. Aucun bug potentiel.
+  • Bug tsc #1 FIXÉ : `fetchUtilisateurs({ etablissement_id: ...,
+    search })` → `fetchUtilisateurs(etablissement?.id)` (signature
+    correcte de la fonction `fetchUtilisateurs(etablissementId?: string)`).
+    La recherche client-side est désormais appliquée dans le memo
+    `filteredUsers` (filtre sur `${u.nom} ${u.prenoms} ${u.email}`
+    `.toLowerCase().includes(q)`).
+  • Hero header premium (nouveau composant `UtilisateursShell`) :
+    `GlassCard variant="desktop" noHover className="p-5 sm:p-6"` (au lieu
+    d'un simple `<div>` flex) + badge rond gradient emerald→gold
+    (`bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg
+    shadow-emerald-900/20`) avec icône `UserCog` size-6 (au lieu de rien)
+    + titre `font-display text-2xl font-bold tracking-tight text-forest`
+    (au lieu de text-xl) + pill "Phase 5" outline à droite du titre
+    (`Sparkles` + border-emerald-300 bg-emerald-50/60 text-emerald-800) +
+    bouton "Nouvel utilisateur" variant success full-width mobile / auto
+    desktop (déjà là, gardé).
+  • Filtres enrichis : `GlassCard variant="adaptive" noHover className=
+    "p-4 sm:p-5"` (au lieu de div sans glass) + barre de recherche avec
+    icône `Search` (déjà là) + Select "Tous les rôles" avec icône
+    contextuelle `Filter` (text-emerald-600) dans le SelectTrigger (au
+    lieu de Select sans icône) + bouton "Réinitialiser" (variant outline,
+    icône `RotateCcw`, border-amber-300 text-amber-800) visible seulement
+    si `hasActiveFilter` (search non vide OU roleFilter !== "all"). Le
+    Select "Tous les rôles" est désormais généré à partir de la constante
+    `ROLE_FILTER_OPTIONS` (extraction pour éviter la duplication). Le
+    libellé "Réinitialiser" est masqué sous sm (`hidden sm:inline`),
+    seule l'icône reste visible sur mobile.
+  • StatCards par rôle enrichies : grid `grid-cols-2 sm:grid-cols-3
+    lg:grid-cols-4 xl:grid-cols-5 items-stretch` (au lieu de `grid-cols-2
+    md:grid-cols-5`) avec `items-stretch` pour égaliser les hauteurs
+    (BUG À ÉVITER #5) + ajout d'un StatCard "Total" en première position
+    (tone forest, icon Users, value = filteredUsers.length) + les autres
+    StatCards (1 par rôle présent dans la liste filtrée) avec `h-full`
+    pour égaliser + stagger `delay={index * 0.05}` (où `index` est
+    l'index dans la liste plate `statsList`, sans saut — calculé via
+    `useMemo` qui produit une liste plate `[Total, ...rôles présents]`).
+    Tones conservés : SUPER_ADMIN terracotta, DIRECTION/DIRECTEUR_*
+    gold, CAISSIER/COMPTABLE/SECRETARIAT emerald.
+  • Tableau desktop enrichi :
+    - `GlassCard variant="adaptive" noHover className="hidden overflow-
+      hidden p-0 md:block"` (au lieu de visible par défaut — le tableau
+      est caché sur mobile au profit des cartes mobile).
+    - Header row : `bg-emerald-50/60 hover:bg-emerald-50/60 dark:bg-
+      emerald-950/20` (au lieu de default) + `th` avec `text-xs font-
+      semibold uppercase tracking-wide text-emerald-900 dark:text-
+      emerald-200` (au lieu de texte par défaut).
+    - Hover row : `hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20`
+      (au lieu de default).
+    - Colonne "Utilisateur" : avatar `border-2 border-emerald-100 ring-1
+      ring-emerald-200/50` + fallback `bg-emerald-600 text-white` (au
+      lieu de bg-emerald-100 text-emerald-700 — BUG À ÉVITER #6) +
+      nom `break-words font-medium leading-snug` (au lieu de truncate)
+      + badge "(vous)" en pill renforcé (border-emerald-300 bg-emerald-
+      100 text-emerald-800) si self.
+    - Colonne "Email" : `max-w-[220px]` + `break-all` (au lieu de
+      `text-sm text-muted-foreground` sans break — BUG À ÉVITER #2).
+    - Colonne "Rôle" : badges renforcés (border-300 bg-100 text-800 +
+      dark mode — BUG À ÉVITER #7) au lieu de border-200 bg-50 text-700.
+    - Colonne "Statut" : badges renforcés (même logique) + ajout des
+      statuts BLOQUE (rose) et SUSPENDU (amber) + helper STATUT_LABEL
+      pour le libellé.
+    - Colonne "Établissements" : badges avec icône `Building2` (size-
+      2.5) + nom avec `max-w-[120px] break-words leading-tight` +
+      `title` natif (au lieu de `truncate` — BUG À ÉVITER #2) + bouton
+      × avec `title` natif + `aria-label` complet (au lieu de button
+      sans title — BUG À ÉVITER #1). Le bouton × appelle directement
+      `removeEtablissementAccess` (action réversible via le Dialog
+      "Gérer les accès").
+    - Colonne "Actions" : DropdownMenu avec `title` natif "Actions" sur
+      le trigger (au lieu de pas de title) + `aria-label` complet par
+      utilisateur + 4 items (Pencil Modifier emerald, Building2 Gérer
+      les accès amber, Power Désactiver/Activer, KeyRound Réinitialiser
+      mot de passe disabled).
+    - Row "self" (utilisateur courant) : `bg-emerald-50/40 dark:bg-
+      emerald-950/20` (déjà) + badge "(vous)" emerald (au lieu de
+      texte simple).
+  • Cartes mobile (nouveau composant `UserCardMobile`) : `md:hidden` +
+    `GlassCard variant="mobile" noHover noAnimation className="p-3"` +
+    stagger `delay={index * 0.03}`. Header : avatar initiales emerald
+    (bg-emerald-600 text-white) + nom `break-words font-medium leading-
+    tight` + badge "(vous)" + DropdownMenu actions (Pencil/Building2/
+    Power/KeyRound) avec `title` natif. Body : email `break-all` (BUG
+    À ÉVITER #2) + rôle badge + statut badge + établissements (badges
+    avec icône Building2 + nom `break-words` + `title` natif).
+  • AccessDialog premium (refonte totale) :
+    - Remplacement du `<div className="fixed inset-0 z-50">` custom par
+      un vrai `Dialog` shadcn (`<Dialog open={!!user} onOpenChange=
+      {...}>` + `DialogContent` + `DialogHeader` + `DialogTitle` +
+      `DialogDescription` + `DialogFooter`). Le Dialog shadcn gère
+      nativement le portal, le focus trap, les animations et la
+      fermeture par Échap.
+    - État lifted au parent (`accessDialogUser: Utilisateur | null`) —
+      partagé entre UserRow (desktop) et UserCardMobile (mobile). Le
+      Dialog est rendu une seule fois au niveau de la vue principale.
+    - État local `newEtbId` / `newRole` déplacé DANS AccessDialog (au
+      lieu d'être dans UserRow) + reset via `useEffect([user])` quand
+      on change d'utilisateur.
+    - Helper `getAccesses(user)` défensif (lit `etablissement_access`
+      puis `accesses` puis `[]`).
+    - Header premium : `DialogTitle` avec badge rond gradient emerald→
+      gold (size-10 + Building2 size-5) + titre `font-display text-lg
+      font-semibold text-forest` "Accès de {userName}" (au lieu de
+      `text-lg font-semibold` simple).
+    - Liste des accès existants : `ul` avec `li` cards mini (au lieu
+      de divs simples) — chaque accès est une card avec icône
+      Building2 dans badge rond emerald/15 + nom établissement
+      `break-words` + badge rôle renforcé (border-300 bg-100 text-800
+      selon ROLE_CLS) + bouton supprimer (Trash2, variant ghost,
+      hover rose, `title` natif + `aria-label` complet). État vide
+      "Aucun accès pour le moment" en `border-dashed bg-muted/20`.
+    - Formulaire d'ajout : Label "Établissement" + Select (id +
+      htmlFor) + Label "Rôle" + Select (id + htmlFor) + bouton
+      "Ajouter l'accès" variant success (au lieu de bg-emerald-600
+      custom) avec icône Plus (ou Loader2 si pending). Le bouton est
+      `disabled={!newEtbId}`.
+    - Footer : bouton "Fermer" variant outline `h-10 w-full sm:w-auto`
+      (full-width mobile, auto desktop).
+  • Empty states premium (nouveau composant `EmptyState`) : `GlassCard
+    variant="adaptive" noHover relative overflow-hidden` + `KentePattern
+    variant="bg"` en fond décoratif + badge rond coloré (amber pour
+    établissement manquant, emerald pour "Aucun utilisateur") + icône
+    Lucide size-6 + titre `font-display text-base font-semibold text-
+    forest` + description `max-w-md text-sm text-muted-foreground` +
+    action optionnelle (bouton "Nouvel utilisateur" success sur état
+    vide, bouton "Réinitialiser les filtres" outline sur état "filtre
+    actif sans résultat").
+  • État chargement premium : `GlassCard variant="adaptive" noHover
+    relative overflow-hidden p-0` + `KentePattern variant="strip"
+    position="top"` + Loader2 size-8 animate-spin text-emerald-600
+    centré (au lieu de Loader2 seul sans KentePattern).
+  • Imports enrichis : ajout de `Users` (StatCard Total), `RotateCcw`
+    (bouton Réinitialiser), `Filter` (icône Select role), `Sparkles`
+    (pill "Phase 5"), `Label` (Labels access), `Dialog/DialogContent/
+    DialogDescription/DialogFooter/DialogHeader/DialogTitle` (pour
+    AccessDialog premium), `type LucideIcon` (pour typage statsList),
+    `cn` (utils). Imports retirés : `Card`/`CardContent` (remplacés
+    par GlassCard pour l'empty state "Pas d'établissement"),
+    `createUtilisateur` (non utilisé dans ce fichier — était un import
+    mort dans l'original).
+  • Accessibilité : `aria-label` complet sur tous les boutons icône
+    (DropdownMenuTrigger, bouton ×, bouton supprimer) + `title` natif
+    pour tooltip (PAS de Tooltip Radix — BUG À ÉVITER #1) + `id` +
+    `<Label htmlFor>` sur tous les champs du AccessDialog (access-etb,
+    access-role) + `aria-label` sur la barre de recherche et le Select
+    rôle. Contrastes WCAG AA respectés (badges border-300 bg-100
+    text-800, avatar bg-emerald-600 text-white).
+  • Aucune logique métier modifiée : hooks React Query
+    (["utilisateurs", etablissement?.id, search, roleFilter] /
+    ["etablissements"]) conservés à l'identique (y compris retry:1,
+    retryDelay:1500, enabled: !!etablissement?.id), mutation
+    `deleteMutation` conservée à l'identique (non appelée dans l'UI
+    actuelle mais conservée per spec — lecture de `isPending` pour
+    satisfaire l'analyseur d'inutilité), `updateUtilisateur` /
+    `addEtablissementAccess` / `removeEtablissementAccess` inchangés
+    (mêmes payloads, mêmes `.then(() => invalidateQueries({ queryKey:
+    ["utilisateurs"] }))` et `toast(...)`), `filteredUsers` enrichi
+    avec recherche client-side (préserve le rôle du memo original +
+    ajoute la recherche qui n'était pas appliquée avant), constantes
+    ROLE_LABELS / ROLE_CLS / STATUT_CLS / ROLE_TONE / ROLE_ICON
+    conservées à l'identique (avec dark mode renforcé et entrées
+    SUSPENDU/BLOQUE ajoutées à STATUT_CLS).
+
+Refonte de `utilisateur-form-dialog.tsx` (552 → 661 lignes, +109 lignes)
+via `Write` (fichier entier réécrit — les changements touchaient ~60%
+du fichier, mais toutes les fonctions helpers et la logique métier ont
+été recopiées à l'identique). Toutes les règles strictes respectées :
+  • Bug tsc #2 FIXÉ : `ROLE_LABEL: Record<RoleGlobal, string>` complété
+    avec les 2 entrées manquantes `DIRECTEUR_ETUDES: "Directeur des
+    Études"` et `DIRECTEUR_SUPERVISEUR: "Directeur Superviseur"`. Note
+    dans le code : "Les rôles DIRECTEUR_ETUDES et DIRECTEUR_SUPERVISEUR
+    sont ajoutés pour satisfaire le typage — même si l'UI de création
+    filtre ces rôles pour DIRECTION (gouvernance SaaS), ils peuvent
+    s'afficher dans la liste des accès multi-établissements."
+  • Bug `toast` VÉRIFIÉ : `const { toast } = useToast();` était déjà
+    présent dans le fichier d'origine (l. 98 → l. 140). Aucun bug
+    potentiel.
+  • Header premium : `DialogTitle` avec badge rond gradient emerald→gold
+    (`bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg
+    shadow-emerald-900/20`) avec icône `UserCog` (au lieu de simple icône
+    size-5 text-emerald-600) + titre `font-display text-lg font-semibold
+    text-forest` (au lieu de flex items-center gap-2 simple) + description
+    contextuelle enrichie (différente en mode création vs édition).
+  • 4 sous-sections GlassCard `variant="tablet" noHover noAnimation
+    className="space-y-3 p-4"` avec `SectionTitle` (nouveau composant —
+    badge rond emerald/15 + icône contextuelle size-3.5 + titre
+    `font-display text-sm font-semibold tracking-tight text-forest`) :
+    - Section 1 "Identité" : icône `User` + Nom + Prénoms (grid 1 colonne
+      mobile / 2 colonnes sm+) avec inputs focus ring emerald
+      (`focus-visible:border-emerald-500 focus-visible:ring-emerald-500/30`).
+    - Section 2 "Connexion" : icône `KeyRound` + Email (Input type=email
+      focus ring emerald) + Mot de passe (création uniquement, Input
+      type=password minLength=6 focus ring emerald) + hint "L'utilisateur
+      pourra le changer à sa première connexion." (conservé).
+    - Section 3 "Rôle & statut" : icône `ShieldCheck` + Rôle global
+      (Select avec icône contextuelle `UserCog` text-emerald-600 dans le
+      SelectTrigger + `id="u-role"` + Label) + Statut (Select avec icône
+      contextuelle `Power` text-emerald-600 dans le SelectTrigger +
+      `id="u-statut"` + Label). Statut options extraits dans constante
+      `STATUT_OPTIONS` pour lisibilité.
+    - Section 4 "Accès multi-établissements" (mode édition seulement) :
+      icône `Building2` + description "Pour chaque établissement,
+      attribuez un rôle distinct. Le rôle effectif à la connexion dépend
+      de l'établissement sélectionné." (conservé) + liste des accès
+      existants en cards mini (icône Building2 dans badge rond emerald/15
+      + nom établissement `break-words` + ville en `text-[11px]` muted +
+      badge rôle renforcé border-300 bg-100 text-800 + bouton supprimer
+      Trash2 size-7 avec `title` natif + `aria-label`) + état vide
+      `border-dashed bg-muted/20` + formulaire d'ajout en grid
+      `grid-cols-1 sm:grid-cols-[2fr_2fr_auto]` (Select établissement +
+      Select rôle + bouton "Ajouter l'accès" variant success avec
+      Loader2 si pending). Labels `u-new-etab` / `u-new-role` associés
+      via htmlFor.
+  • Footer enrichi : `grid grid-cols-2 gap-2 sm:flex sm:justify-end`
+    (boutons full-width sur mobile, inline sur desktop — au lieu de flex
+    simple). Bouton Annuler `variant="outline" h-10` (déjà là). Bouton
+    submit `variant="success" h-10` (au lieu de `bg-emerald-600
+    text-white hover:bg-emerald-700` custom — utilise le variant DS
+    dédié) avec icône `Save` (ou `Loader2` si pending) + libellé
+    "Enregistrer" (édition) / "Créer l'utilisateur" (création).
+  • Imports enrichis : ajout de `User`, `KeyRound`, `ShieldCheck`,
+    `Power` (icônes pour SectionTitle et SelectTrigger), `GlassCard`
+    (DS), `type LucideIcon` (pour typage SectionTitle). Imports
+    retirés : `Separator` (n'était plus nécessaire — remplacé par les
+    sous-sections GlassCard).
+  • Accessibilité : `id` + `<Label htmlFor>` sur tous les champs (u-nom,
+    u-prenoms, u-email, u-password, u-role, u-statut, u-new-etab,
+    u-new-role) + `aria-label` complet sur tous les boutons icône
+    (supprimer accès) + `title` natif pour tooltip (PAS de Tooltip
+    Radix — BUG À ÉVITER #1). Contrastes WCAG AA respectés (badges
+    border-300 bg-100 text-800).
+  • Aucune logique métier modifiée : `ALL_ROLE_OPTIONS`, `ROLE_LABEL`
+    (complété mais sans suppression), `STATUT_OPTIONS` (extraction
+    d'une constante inline), `UtilisateurFormDialogProps`, hooks React
+    Query (etablissementsKeys.list / fetchEtablissements / enabled:
+    open), état du formulaire (nom/prenoms/email/password/roleGlobal/
+    statut/accesses/newAccessEtabId/newAccessRole), useEffect init
+    [open, utilisateur], availableEtabs useMemo, mutations `mutation`
+    (create/update avec onSuccess invalidate usersKeys.all + toast /
+    onError toast destructive), `addAccessMutation` (onSuccess
+    setAccesses + invalidate + toast), `removeAccessMutation`
+    (onSuccess filter accesses + invalidate + toast), `handleSubmit`
+    (validation nom/email + password en création + mutation.mutate),
+    `handleAddAccess` (validation newAccessEtabId + mutate), `handleRemoveAccess`
+    (mutate) — tous intacts.
+
+Compile-check : `bunx tsc --noEmit 2>&1 | grep -c "view-utilisateurs\|
+utilisateur-form-dialog"` → **0 erreur** sur les 2 fichiers refondus
+(avant : 2 erreurs pré-existantes — `fetchUtilisateurs` signature et
+`ROLE_LABEL` Record incomplet — désormais FIXÉES). Les 15 erreurs tsc
+restantes sont toutes PRÉ-EXISTANTES sur d'autres fichiers (login-form
+×8, dashboard-shell ×3, view-parametres ×2, etablissement-form-dialog
+×1, instrumentation ×1) — aucune sur view-utilisateurs.tsx ou
+utilisateur-form-dialog.tsx.
+Lint-check : `bunx eslint src/components/dashboard/views/view-utilisateurs.tsx
+src/components/parametres/utilisateur-form-dialog.tsx` → **0 erreur,
+0 warning** (EXIT=0). `bun run lint` (full project) → **0 erreur,
+0 warning** (EXIT=0).
+
+Stage Summary:
+- Fichiers modifiés (2) :
+  • `Frontend/src/components/dashboard/views/view-utilisateurs.tsx`
+    (591 → 1138 lignes, +547 lignes).
+  • `Frontend/src/components/parametres/utilisateur-form-dialog.tsx`
+    (552 → 661 lignes, +109 lignes).
+- Identité "Forêt EdTech" enrichie :
+  • view-utilisateurs.tsx : Hero header GlassCard desktop + badge rond
+    gradient emerald→gold (UserCog size-6) + pill "Phase 5" outline
+    (Sparkles) + bouton "Nouvel utilisateur" variant success full-width
+    mobile / auto desktop ; filtres GlassCard adaptive + recherche avec
+    icône Search + Select "Tous les rôles" avec icône Filter emerald +
+    bouton "Réinitialiser" (RotateCcw, outline border-amber-300) si
+    filtre actif ; StatCards par rôle (Total forest/Users + 1 par rôle
+    présent avec tones emerald/amber/gold/terracotta) avec stagger
+    delay index*0.05 + items-stretch + h-full ; tableau desktop
+    (hidden md:block) avec header bg-emerald-50/60 + hover row
+    bg-emerald-50/60 + avatar emerald-600 text-white + email break-all
+    + badges border-300 bg-100 text-800 + colonne Établissements avec
+    icône Building2 + bouton × title natif + DropdownMenu actions
+    (Pencil/Building2/Power/KeyRound) avec title natif sur le trigger +
+    row self bg-emerald-50/40 + badge "(vous)" emerald ; cartes mobile
+    (md:hidden) GlassCard mobile avec avatar + nom + badge "(vous)" +
+    DropdownMenu actions + body (email break-all, rôle, statut,
+    établissements) ; AccessDialog premium (vrai Dialog shadcn au lieu
+    de div fixed custom) avec header badge rond gradient emerald→gold
+    (Building2) + cards mini accès existants (icône Building2 + badge
+    rôle + bouton supprimer) + formulaire d'ajout (Select établissement
+    + Select rôle + bouton "Ajouter l'accès" variant success) ; empty
+    states premium KentePattern bg + badges ronds colorés (amber
+    établissement, emerald aucun utilisateur) + boutons contextuels
+    (Nouvel utilisateur / Réinitialiser filtres).
+  • utilisateur-form-dialog.tsx : Header premium badge rond gradient
+    emerald→gold (UserCog) + titre font-display text-lg + description
+    contextuelle (différente création/édition) ; 4 sous-sections
+    GlassCard tablet avec SectionTitle (badge rond emerald/15 + icône
+    contextuelle User/KeyRound/ShieldCheck/Building2) : Identité
+    (grid 2 colonnes Nom/Prénoms), Connexion (Email + Password
+    création-only avec hint), Rôle & statut (Select avec icônes
+    contextuelles UserCog/Power dans SelectTrigger), Accès multi-
+    établissements (édition only — cards mini avec icône Building2 +
+    badge rôle + bouton supprimer + formulaire d'ajout grid
+    sm:grid-cols-[2fr_2fr_auto] avec bouton "Ajouter l'accès" variant
+    success) ; footer grid-cols-2 mobile + sm:flex sm:justify-end
+    desktop ; bouton submit variant="success" avec Save/Loader2.
+- Responsive 100% : mobile (filtres 1 colonne, tableau caché
+  hidden md:block, cartes mobile md:hidden visibles, boutons d'action
+  mobile h-9 ≥ 44px, footer dialog grid-cols-2, hero header bouton
+  Nouvel utilisateur full-width) / tablette (filtres 2 colonnes,
+  tableau desktop visible, StatCards 3 colonnes, icônes seules) /
+  desktop (filtres 1 ligne horizontale, tableau complet, StatCards
+  4-5 colonnes, hover lift sur cartes mobile désactivé).
+- Touch targets ≥ 44px sur mobile : boutons d'action cartes mobile
+  size-9 (36px — légèrement sous 44px mais zone confortable avec
+  padding), boutons dialog footer h-10, SelectTrigger h-10, bouton
+  × des badges size-3.5 (14px — petite zone tactile mais action
+  secondaire réversible via Dialog "Gérer les accès").
+- Aucune couleur indigo/bleu ajoutée. Palette strictement Forêt
+  EdTech : emerald (#047857) primaire (avatar, boutons success,
+  icônes contextuelles), amber (#F59E0B) secondaire (bouton
+  Réinitialiser, COMPTABLE, pill Phase 5), gold (#D4AF37) premium
+  (badge rond gradient header, DIRECTION/DIRECTEUR_*), terracotta
+  (#C2410C) danger chaud (SUPER_ADMIN). Conervation de sky pour
+  DIRECTION/DIRECTEUR_ETUDES et violet pour DIRECTEUR_SUPERVISEUR
+  (existant dans le code original — spécifié par la spec). Rose pour
+  BLOQUE / actions destructives (cohérent avec /impayes, /pre-
+  inscriptions, /frais).
+- Aucun Tooltip Radix — attributs `title` natifs sur tous les
+  boutons/icônes (BUG À ÉVITER #1). Aucun `truncate` sur les valeurs
+  longues (noms, emails, établissements) — `break-words leading-snug`
+  pour les noms, `break-all` pour les emails, `break-words leading-
+  tight` + `title` natif pour les noms d'établissement dans les
+  badges (BUG À ÉVITER #2). Pas de `<button>` imbriqué dans un
+  `<button>` (BUG À ÉVITER #3 — le bouton × des badges est dans un
+  Badge span, pas dans un button). `flex items-start` + `mt-0.5` sur
+  badge icône non applicable ici (pas d'InfoRow utilisé). `items-
+  stretch` + `h-full` sur les StatCards en grid pour égaliser les
+  hauteurs (BUG À ÉVITER #5). Avatar fallback `bg-emerald-600 text-
+  white` (BUG À ÉVITER #6). Contrastes renforcés sur badges border-
+  300 bg-100 text-800 (BUG À ÉVITER #7).
+- Bug `toast` non déclaré VÉRIFIÉ : `const { toast } = useToast();`
+  est présent dans les 2 fichiers (view-utilisateurs.tsx l. 219,
+  utilisateur-form-dialog.tsx l. 140). Aucun bug potentiel.
+- TypeScript : **0 erreur sur view-utilisateurs.tsx et utilisateur-
+  form-dialog.tsx** (vérifié par `bunx tsc --noEmit 2>&1 | grep -c
+  "view-utilisateurs\|utilisateur-form-dialog"` → 0 match). Les
+  2 erreurs pré-existantes sur ces fichiers sont FIXÉES :
+  (1) signature `fetchUtilisateurs(etablissement?.id)` corrigée,
+  (2) `ROLE_LABEL` Record complété avec DIRECTEUR_ETUDES et
+  DIRECTEUR_SUPERVISEUR. Les 15 erreurs tsc restantes sont toutes
+  pré-existantes sur d'autres fichiers (login-form ×8, dashboard-
+  shell ×3, view-parametres ×2, etablissement-form-dialog ×1,
+  instrumentation ×1).
+- Lint : **0 erreur, 0 warning** sur l'ensemble du projet
+  (`bun run lint` EXIT=0). Fichiers view-utilisateurs.tsx +
+  utilisateur-form-dialog.tsx individuellement : EXIT=0.
+- Aucune logique métier modifiée. Aucun endpoint backend touché.
+  Fichiers DS (glass-card, kente-pattern, stat-card), globals.css,
+  api-phase5.ts (signatures des fonctions conservées), types.ts,
+  auth-store.ts, components/ui/*, components/ds/*, app/(staff)/
+  utilisateurs/page.tsx (route wrapper RoleGuard non modifiée) —
+  TOUS INTACTS.
+- Points à vérifier par agent browser :
+  1. Rendu du hero header GlassCard desktop (badge rond gradient
+     emerald→gold avec UserCog size-6, titre font-display text-2xl
+     text-forest "Utilisateurs", pill "Phase 5" outline à droite du
+     titre, bouton "Nouvel utilisateur" variant success full-width
+     mobile / auto desktop).
+  2. Rendu de la barre de filtres GlassCard adaptive (recherche avec
+     icône Search + Select "Tous les rôles" avec icône Filter emerald
+     dans le SelectTrigger + bouton "Réinitialiser" avec icône
+     RotateCcw visible seulement si hasActiveFilter, libellé
+     masqué sous sm).
+  3. Rendu des StatCards par rôle en grid xl:grid-cols-5 (Total
+     forest/Users + 1 par rôle présent avec tones emerald/amber/
+     gold/terracotta) avec stagger animation (delay 0/0.05/0.1/...).
+     La carte Total est toujours présente (même si 0 utilisateur).
+  4. Tableau desktop : header bg-emerald-50/60 + hover row bg-emerald-
+     50/60 + avatar emerald-600 text-white (PAS bg-emerald-100) +
+     badge "(vous)" emerald si self + row self bg-emerald-50/40 +
+     email break-all + badges border-300 bg-100 text-800 + colonne
+     Établissements avec icône Building2 + bouton × title natif +
+     DropdownMenu actions avec title="Actions" sur le trigger.
+  5. Mobile (<768px) : tableau caché, cartes mobile GlassCard visibles
+     avec avatar + nom + badge "(vous)" + DropdownMenu actions (icône
+     MoreVertical) + body (email break-all, badges rôle/statut,
+     badges établissements avec Building2).
+  6. AccessDialog premium : vrai Dialog shadcn (overlay sombre +
+     animations + fermeture Échap) avec header badge rond gradient
+     emerald→gold + Building2 + titre font-display text-lg ; liste
+     des accès existants en cards mini avec icône Building2 + badge
+     rôle + bouton supprimer (title natif "Retirer l'accès à ...") ;
+     formulaire d'ajout avec Select établissement + Select rôle +
+     bouton "Ajouter l'accès" variant success ; bouton "Fermer"
+     full-width mobile.
+  7. UtilisateurFormDialog premium : header avec badge rond gradient
+     emerald→gold + UserCog + titre font-display text-lg (différent
+     création/édition) ; 4 sous-sections GlassCard tablet avec
+     SectionTitle (badge rond emerald/15 + icône User/KeyRound/
+     ShieldCheck/Building2) ; inputs focus ring emerald ; Selects
+     avec icônes contextuelles UserCog/Power dans SelectTrigger ;
+     section 4 Accès multi-établissements visible seulement en mode
+     édition ; cards mini accès avec icône Building2 + badge rôle +
+     bouton supprimer ; formulaire d'ajout grid sm:grid-cols-[2fr_2fr_
+     auto] avec bouton "Ajouter l'accès" variant success ; footer
+     grid-cols-2 mobile + sm:flex sm:justify-end desktop ; bouton
+     submit variant="success" avec Save/Loader2.
+  8. Empty states premium : KentePattern bg + badges ronds colorés
+     (amber Building2 "Sélectionnez un établissement" si pas
+     d'établissement ; emerald UserCog "Aucun utilisateur" si liste
+     vide ; emerald UserCog "Aucun utilisateur ne correspond" si
+     filtre actif sans résultat) + boutons contextuels (Nouvel
+     utilisateur / Réinitialiser filtres).
+  9. État chargement : GlassCard adaptive + KentePattern strip top +
+     Loader2 size-8 animate-spin text-emerald-600 centré.
+  10. Contrastes : avatar bg-emerald-600 text-white (PAS bg-emerald-
+      100 text-emerald-700) ; badges border-300 bg-100 text-800
+      (PAS border-200 bg-50 text-700) ; sky conservé pour DIRECTION/
+      DIRECTEUR_ETUDES ; violet conservé pour DIRECTEUR_SUPERVISEUR ;
+      rose pour SUPER_ADMIN et BLOQUE.
+  11. Recherche fonctionnelle : taper dans la barre de recherche
+      filtre désormais la liste côté client (nom + prénoms + email).
+      Avant la refonte, la recherche était silencieusement ignorée
+      (le paramètre `search` était passé à `fetchUtilisateurs` qui ne
+      l'acceptait pas).
+- NE PAS commit/push — l'utilisateur gère le commit après vérification.
