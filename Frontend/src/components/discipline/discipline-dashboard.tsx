@@ -484,6 +484,7 @@ function ElevesRisqueTab() {
           variant="adaptive"
           noHover
           noAnimation
+          premiumBorder
           className="overflow-hidden p-0"
         >
           <div className="overflow-x-auto">
@@ -885,6 +886,7 @@ function TicketsTab() {
           variant="adaptive"
           noHover
           noAnimation
+          premiumBorder
           className="overflow-hidden p-0"
         >
           <div className="overflow-x-auto">
@@ -1314,6 +1316,7 @@ function EmptyState({ icon: Icon, tone, title, description, action }: EmptyState
     <GlassCard
       variant="adaptive"
       noHover
+      premiumBorder
       className="relative overflow-hidden"
     >
       <KentePattern variant="bg" />
