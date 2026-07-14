@@ -1047,7 +1047,6 @@ export function DashboardShell({
           {/* Topbar */}
           {/* ─── Topbar premium unifié (style Forêt EdTech) ─────────────────── */}
           <div className="shrink-0">
-            <KentePattern variant="strip" position="top" />
             <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-emerald-200/60 bg-gradient-to-r from-emerald-700 via-emerald-600 to-amber-500/90 px-4 backdrop-blur supports-[backdrop-filter]:bg-gradient-to-r supports-[backdrop-filter]:from-emerald-700/95 supports-[backdrop-filter]:via-emerald-600/95 supports-[backdrop-filter]:to-amber-500/85">
               {/* Bouton menu mobile (toujours visible <lg) */}
               <Button
