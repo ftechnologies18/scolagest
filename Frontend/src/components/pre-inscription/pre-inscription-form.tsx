@@ -108,6 +108,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 import { GlassCard } from "@/components/ds/glass-card";
@@ -472,6 +473,8 @@ export function PreInscriptionForm() {
     React.useState<StatutAnneePrecedente>("NON_APPLICABLE");
   const [eleveAllergies, setEleveAllergies] = React.useState("");
   const [eleveNotesSante, setEleveNotesSante] = React.useState("");
+  // Toggle santé : si false, les champs allergies + notes santé sont masqués
+  const [hasSanteInfo, setHasSanteInfo] = React.useState(false);
 
   // ─── Détection fratrie (debounce téléphone) ───────────────────────────────
   const [debouncedTelephone, setDebouncedTelephone] = React.useState("");
@@ -878,6 +881,8 @@ export function PreInscriptionForm() {
                     setEleveAllergies={setEleveAllergies}
                     eleveNotesSante={eleveNotesSante}
                     setEleveNotesSante={setEleveNotesSante}
+                    hasSanteInfo={hasSanteInfo}
+                    setHasSanteInfo={setHasSanteInfo}
                     notesParent={notesParent}
                     setNotesParent={setNotesParent}
                   />
@@ -908,6 +913,7 @@ export function PreInscriptionForm() {
                     eleveStatutAnneePrecedente={eleveStatutAnneePrecedente}
                     eleveAllergies={eleveAllergies}
                     eleveNotesSante={eleveNotesSante}
+                    hasSanteInfo={hasSanteInfo}
                     notesParent={notesParent}
                     goToStep={goToStep}
                     isPending={mutation.isPending}
@@ -1403,7 +1409,7 @@ function StepTuteur({
           </Select>
         </Field>
 
-        <Field label="Profession (optionnel)">
+        <Field label="Profession">
           <Input
             value={tuteurProfession}
             onChange={(e) => setTuteurProfession(e.target.value)}
@@ -1413,7 +1419,7 @@ function StepTuteur({
           />
         </Field>
 
-        <Field label="Quartier d'habitation (optionnel)">
+        <Field label="Quartier d'habitation">
           <Input
             value={tuteurAdresse}
             onChange={(e) => setTuteurAdresse(e.target.value)}
@@ -1456,6 +1462,8 @@ function StepClasseInfos({
   setEleveAllergies,
   eleveNotesSante,
   setEleveNotesSante,
+  hasSanteInfo,
+  setHasSanteInfo,
   notesParent,
   setNotesParent,
 }: {
@@ -1476,6 +1484,8 @@ function StepClasseInfos({
   setEleveAllergies: (v: string) => void;
   eleveNotesSante: string;
   setEleveNotesSante: (v: string) => void;
+  hasSanteInfo: boolean;
+  setHasSanteInfo: (v: boolean) => void;
   notesParent: string;
   setNotesParent: (v: string) => void;
 }) {
@@ -1641,60 +1651,86 @@ function StepClasseInfos({
         </div>
       </div>
 
-      {/* Section santé — confidentielle */}
+      {/* Section santé — confidentielle avec toggle conditionnel */}
       <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/15">
-        <div className="mb-3 flex items-start gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-            <Lock className="size-4" aria-hidden="true" />
+        {/* Toggle : "L'élève a-t-il des informations de santé à signaler ?" */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+              <Lock className="size-4" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 space-y-0.5">
+              <p className="break-words leading-snug text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                Informations de santé (confidentielles)
+              </p>
+              <p className="break-words text-[11px] leading-snug text-emerald-800/80 dark:text-emerald-200/80">
+                Ces informations restent confidentielles et ne sont accessibles
+                qu&apos;à l&apos;infirmerie et à la direction.
+              </p>
+            </div>
           </div>
-          <div className="min-w-0 space-y-0.5">
-            <p className="break-words leading-snug text-sm font-semibold text-emerald-900 dark:text-emerald-100">
-              Informations de santé (confidentielles)
-            </p>
-            <p className="break-words text-[11px] leading-snug text-emerald-800/80 dark:text-emerald-200/80">
-              Ces informations restent confidentielles et ne sont accessibles
-              qu&apos;à l&apos;infirmerie et à la direction.
-            </p>
+          <div className="flex shrink-0 items-center gap-2">
+            <Label
+              htmlFor="toggle-sante-public"
+              className="cursor-pointer text-xs font-medium text-emerald-800 dark:text-emerald-200"
+            >
+              {hasSanteInfo ? "Oui" : "Non"}
+            </Label>
+            <Switch
+              id="toggle-sante-public"
+              checked={hasSanteInfo}
+              onCheckedChange={(checked) => {
+                setHasSanteInfo(checked);
+                if (!checked) {
+                  setEleveAllergies("");
+                  setEleveNotesSante("");
+                }
+              }}
+              aria-label="L'élève a-t-il des informations de santé à signaler ?"
+            />
           </div>
         </div>
 
-        <div className="space-y-3">
-          <Field
-            label="Allergies connues"
-            hint="Séparez les allergies par une virgule."
-          >
-            <div className="relative">
-              <HeartPulse
-                className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
+        {/* Champs santé — affichés uniquement si le toggle est activé */}
+        {hasSanteInfo && (
+          <div className="mt-4 space-y-3 border-t border-emerald-200/60 pt-4 dark:border-emerald-900/40">
+            <Field
+              label="Allergies connues"
+              hint="Séparez les allergies par une virgule."
+            >
+              <div className="relative">
+                <HeartPulse
+                  className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  value={eleveAllergies}
+                  onChange={(e) => setEleveAllergies(e.target.value)}
+                  placeholder="Ex : arachides, pénicilline"
+                  autoComplete="off"
+                  className="h-11 pl-9 text-base sm:h-10 sm:text-sm"
+                />
+              </div>
+            </Field>
+            <Field
+              label="Notes santé (maladies chroniques, traitements…)"
+            >
+              <Textarea
+                value={eleveNotesSante}
+                onChange={(e) => setEleveNotesSante(e.target.value)}
+                placeholder="Ex : asthme, port de lunettes"
+                rows={2}
+                className="text-base sm:text-sm"
               />
-              <Input
-                value={eleveAllergies}
-                onChange={(e) => setEleveAllergies(e.target.value)}
-                placeholder="Ex : arachides, pénicilline"
-                autoComplete="off"
-                className="h-11 pl-9 text-base sm:h-10 sm:text-sm"
-              />
-            </div>
-          </Field>
-          <Field
-            label="Notes santé (maladies chroniques, traitements…)"
-          >
-            <Textarea
-              value={eleveNotesSante}
-              onChange={(e) => setEleveNotesSante(e.target.value)}
-              placeholder="Ex : asthme, port de lunettes"
-              rows={2}
-              className="text-base sm:text-sm"
-            />
-          </Field>
-        </div>
+            </Field>
+          </div>
+        )}
       </div>
 
       {/* Notes au secrétariat */}
       <div className="space-y-2">
         <Field
-          label="Message au secrétariat (optionnel)"
+          label="Message au secrétariat"
           hint="Précisions éventuelles : cycle/niveau demandé en seconde intention, infos utiles…"
         >
           <Textarea
@@ -1765,6 +1801,7 @@ function StepConfirmation({
   eleveStatutAnneePrecedente,
   eleveAllergies,
   eleveNotesSante,
+  hasSanteInfo,
   notesParent,
   goToStep,
   isPending,
@@ -1791,6 +1828,7 @@ function StepConfirmation({
   eleveStatutAnneePrecedente: StatutAnneePrecedente;
   eleveAllergies: string;
   eleveNotesSante: string;
+  hasSanteInfo: boolean;
   notesParent: string;
   goToStep: (n: number) => void;
   isPending: boolean;
@@ -1939,24 +1977,22 @@ function StepConfirmation({
         </RecapBlock>
       )}
 
-      {/* Bloc Santé + notes (si renseignés) */}
-      {(eleveAllergies.trim() ||
-        eleveNotesSante.trim() ||
-        notesParent.trim()) && (
+      {/* Bloc Santé + notes (si toggle activé ou notes renseignées) */}
+      {(hasSanteInfo || notesParent.trim()) && (
         <RecapBlock
           title="Santé & notes"
           icon={HeartPulse}
           onEdit={() => goToStep(3)}
           disabled={isPending}
         >
-          {eleveAllergies.trim() && (
+          {hasSanteInfo && eleveAllergies.trim() && (
             <InfoRow
               icon={HeartPulse}
               label="Allergies"
               value={eleveAllergies}
             />
           )}
-          {eleveNotesSante.trim() && (
+          {hasSanteInfo && eleveNotesSante.trim() && (
             <InfoRow
               icon={HeartPulse}
               label="Notes santé"
