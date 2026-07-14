@@ -90,6 +90,8 @@ import { apiGet } from "@/lib/api-client";
 import { fetchCountSoumises } from "@/lib/api-pre-inscription";
 import { fetchFileAttente } from "@/lib/api-caisse";
 import { useToast } from "@/hooks/use-toast";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { KentePattern } from "@/components/ds/kente-pattern";
 import { Footer } from "@/components/ds/footer";
 
@@ -404,6 +406,7 @@ export function DashboardShell({
 }: DashboardShellProps) {
   const { toast } = useToast();
   const pathname = usePathname();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
@@ -1190,12 +1193,31 @@ export function DashboardShell({
 
           {/* Contenu principal scrollable — le footer est hors du main pour
               rester toujours visible en bas du viewport (sticky flex).
-              Fond Forêt EdTech : gradient emerald/amber + texture kente subtile
-              (opacity 6%) comme la page /pre-inscription/suivi. */}
+              Fond Forêt EdTech fidèle à /pre-inscription/suivi : gradient
+              emerald/amber + texture kente 8% + orbes décoratifs glassmorphism. */}
           <main className="relative flex-1 overflow-y-auto bg-gradient-to-br from-emerald-50 via-background to-amber-50">
-            <KentePattern variant="bg" className="opacity-[0.06]" />
-            <div className="relative mx-auto w-full max-w-7xl p-4 pb-20 sm:p-6 sm:pb-24">
-              {children}
+            <KentePattern variant="bg" className="opacity-[0.08]" />
+            {/* Orbes décoratifs glassmorphism (comme page suivi) */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-24 -right-24 z-0 size-96 rounded-full bg-emerald-200/40 blur-3xl"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -bottom-32 -left-24 z-0 size-96 rounded-full bg-amber-200/30 blur-3xl"
+            />
+            <div className="relative z-10 mx-auto w-full max-w-7xl p-4 pb-20 sm:p-6 sm:pb-24">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={pathname}
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={prefersReducedMotion ? undefined : { opacity: 0, y: -8 }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {children}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </main>
 
