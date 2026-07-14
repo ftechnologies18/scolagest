@@ -97,6 +97,8 @@ export function StepScolarite({
   // Cascade Cycle → Niveau → Classe (réutilise la logique Phase 1)
   const [cycleId, setCycleId] = React.useState<string>("all");
   const [niveau, setNiveau] = React.useState<string>("all");
+  // Toggle santé : si false, les champs allergies + notes santé sont masqués
+  const [hasSanteInfo, setHasSanteInfo] = React.useState<boolean>(false);
 
   const { data: cycles } = useQuery<Cycle[]>({
     queryKey: cyclesKeys.list(etablissement?.id),
@@ -440,52 +442,78 @@ export function StepScolarite({
         </div>
       </div>
 
-      {/* Santé confidentielle — encart emerald */}
+      {/* Santé confidentielle — encart emerald avec toggle conditionnel */}
       <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/15">
-        <div className="mb-3 flex items-start gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-            <Lock className="size-4" aria-hidden="true" />
+        {/* Toggle : "L'élève a-t-il des informations de santé à signaler ?" */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+              <Lock className="size-4" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 space-y-0.5">
+              <p className="break-words leading-snug text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                Informations de santé (confidentielles)
+              </p>
+              <p className="break-words text-[11px] leading-snug text-emerald-800/80 dark:text-emerald-200/80">
+                Ces informations restent confidentielles et ne sont accessibles
+                qu&apos;à l&apos;infirmerie et à la direction.
+              </p>
+            </div>
           </div>
-          <div className="min-w-0 space-y-0.5">
-            <p className="break-words leading-snug text-sm font-semibold text-emerald-900 dark:text-emerald-100">
-              Informations de santé (confidentielles)
-            </p>
-            <p className="break-words text-[11px] leading-snug text-emerald-800/80 dark:text-emerald-200/80">
-              Ces informations restent confidentielles et ne sont accessibles
-              qu&apos;à l&apos;infirmerie et à la direction.
-            </p>
+          <div className="flex shrink-0 items-center gap-2">
+            <Label
+              htmlFor="toggle-sante"
+              className="cursor-pointer text-xs font-medium text-emerald-800 dark:text-emerald-200"
+            >
+              {hasSanteInfo ? "Oui" : "Non"}
+            </Label>
+            <Switch
+              id="toggle-sante"
+              checked={hasSanteInfo}
+              onCheckedChange={(checked) => {
+                setHasSanteInfo(checked);
+                // Si on désactive, on nettoie les champs santé
+                if (!checked) {
+                  updateEleve({ allergies: "", notes_sante: "" });
+                }
+              }}
+              aria-label="L'élève a-t-il des informations de santé à signaler ?"
+            />
           </div>
         </div>
 
-        <div className="space-y-4">
-          <Field
-            label="Allergies connues"
-            hint="Séparez les allergies par une virgule."
-          >
-            <div className="relative">
-              <HeartPulse
-                className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
+        {/* Champs santé — affichés uniquement si le toggle est activé */}
+        {hasSanteInfo && (
+          <div className="mt-4 space-y-4 border-t border-emerald-200/60 pt-4 dark:border-emerald-900/40">
+            <Field
+              label="Allergies connues"
+              hint="Séparez les allergies par une virgule."
+            >
+              <div className="relative">
+                <HeartPulse
+                  className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  value={eleve.allergies ?? ""}
+                  onChange={(e) => updateEleve({ allergies: e.target.value })}
+                  placeholder="Ex : arachides, pénicilline"
+                  autoComplete="off"
+                  className="pl-9 focus-visible:ring-emerald-500/40"
+                />
+              </div>
+            </Field>
+            <Field label="Notes santé (maladies chroniques, traitements…)">
+              <Textarea
+                value={eleve.notes_sante ?? ""}
+                onChange={(e) => updateEleve({ notes_sante: e.target.value })}
+                placeholder="Ex : asthme, port de lunettes"
+                rows={2}
+                className="focus-visible:ring-emerald-500/40"
               />
-              <Input
-                value={eleve.allergies ?? ""}
-                onChange={(e) => updateEleve({ allergies: e.target.value })}
-                placeholder="Ex : arachides, pénicilline"
-                autoComplete="off"
-                className="pl-9 focus-visible:ring-emerald-500/40"
-              />
-            </div>
-          </Field>
-          <Field label="Notes santé (maladies chroniques, traitements…)">
-            <Textarea
-              value={eleve.notes_sante ?? ""}
-              onChange={(e) => updateEleve({ notes_sante: e.target.value })}
-              placeholder="Ex : asthme, port de lunettes"
-              rows={2}
-              className="focus-visible:ring-emerald-500/40"
-            />
-          </Field>
-        </div>
+            </Field>
+          </div>
+        )}
       </div>
 
       {/* Notes */}
