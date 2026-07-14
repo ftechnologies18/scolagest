@@ -53,7 +53,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Identifiants invalides"})
 			return
 		}
-		if err.Error() == "compte désactivé ou bloqué" || err.Error() == "accès à cet établissement non autorisé" || err.Error() == "aucun rôle attribué — contactez l'administrateur" {
+		if err.Error() == "compte désactivé ou bloqué" || err.Error() == "accès à cet établissement non autorisé" || err.Error() == "aucun rôle attribué — contactez l'administrateur" || err.Error() == "le SUPER_ADMIN ne peut pas sélectionner d'établissement — utilisez le mode support pour la maintenance" {
 			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 			return
 		}

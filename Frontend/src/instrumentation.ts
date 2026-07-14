@@ -7,13 +7,22 @@
  * IMPORTANT : Les imports de modules Node (node:child_process, node:fs) sont faits
  * dynamiquement à l'intérieur de register() pour éviter les erreurs "Edge Runtime"
  * lors de l'évaluation du module par Next.js.
+ *
+ * Comportement :
+ *  - Si NEXT_PUBLIC_API_BASE_URL est défini (backend distant, ex. Render), le
+ *    démarrage local est entièrement ignoré — inutile et source d'erreurs au boot.
+ *  - Sinon (mode sandbox/dev local), le backend Go est compilé puis lancé sur
+ *    le port BACKEND_PORT. Les paths sont configurables via env vars.
  */
 
-const BACKEND_BIN = "/tmp/scolagest-backend";
-const BACKEND_DIR = "/home/z/my-project/backend";
-const GO_BIN = "/home/z/.local/go/bin/go";
-const BACKEND_LOG = "/home/z/my-project/backend/backend.log";
-const BACKEND_PORT = 8080;
+// Paths configurables via env vars (sûrs pour Edge Runtime — process.env only).
+// Defaults absolus pour le sandbox /home/z/my-project. Pour un autre emplacement
+// (ex. clone /home/z/scolagest), définir BACKEND_DIR et BACKEND_LOG dans Frontend/.env.
+const BACKEND_BIN = process.env.BACKEND_BIN || "/tmp/scolagest-backend";
+const GO_BIN = process.env.GO_BIN || "/home/z/.local/go/bin/go";
+const BACKEND_PORT = parseInt(process.env.BACKEND_PORT || "8080", 10);
+const BACKEND_DIR = process.env.BACKEND_DIR || "/home/z/my-project/backend";
+const BACKEND_LOG = process.env.BACKEND_LOG || (BACKEND_DIR + "/backend.log");
 
 let backendStarted = false;
 
@@ -48,7 +57,20 @@ async function buildBackend(): Promise<boolean> {
         opts: { cwd: string; stdio: "pipe"; timeout: number }
       ) => void;
     };
-    console.log("[instrumentation] Compilation du backend Go...");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("node:fs") as {
+      existsSync: (p: string) => boolean;
+    };
+    // Vérifier que le toolchain Go et le dossier backend existent.
+    if (!fs.existsSync(GO_BIN)) {
+      console.warn(`[instrumentation] Go introuvable (${GO_BIN}) — installez Go ou définissez GO_BIN. Skip du backend local.`);
+      return false;
+    }
+    if (!fs.existsSync(BACKEND_DIR)) {
+      console.warn(`[instrumentation] Dossier backend introuvable (${BACKEND_DIR}) — définissez BACKEND_DIR. Skip du backend local.`);
+      return false;
+    }
+    console.log(`[instrumentation] Compilation du backend Go (cwd=${BACKEND_DIR})...`);
     execFileSync(
       GO_BIN,
       ["build", "-o", BACKEND_BIN, "./cmd/server/"],
@@ -101,11 +123,12 @@ function spawnBackend(): boolean {
     env: {
       ...process.env,
       PORT: String(BACKEND_PORT),
-      DB_PATH: "/home/z/my-project/backend/data/scolagest.db",
-      DATABASE_URL:
-        "postgresql://neondb_owner:npg_kMjD3O1ldNIS@ep-hidden-pond-abyt31ac-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require",
-      JWT_SECRET: "scolagest-dev-secret-change-in-production-2026",
-      APP_ENV: "development",
+      // DB_PATH : SQLite dev local (relatif à BACKEND_DIR). Ignoré si DATABASE_URL est défini.
+      DB_PATH: process.env.DB_PATH || (BACKEND_DIR + "/data/scolagest.db"),
+      // DATABASE_URL / JWT_SECRET : hérités de process.env (ne JAMAIS hardcoder
+      // de secrets en source — utiliser Frontend/.env ou les env vars Render).
+      JWT_SECRET: process.env.JWT_SECRET || "scolagest-dev-secret-change-in-production",
+      APP_ENV: process.env.APP_ENV || "development",
     },
     stdio: ["ignore", "pipe", "pipe"],
     detached: false,
@@ -140,6 +163,16 @@ function spawnBackend(): boolean {
 export async function register() {
   // Uniquement côté serveur
   if (typeof window !== "undefined") return;
+
+  // Mode backend distant : si NEXT_PUBLIC_API_BASE_URL est défini (ex. Render en
+  // prod), on ne démarre PAS de backend local. Cela évite les erreurs ENOENT au
+  // boot quand le toolchain Go ou le dossier backend n'est pas présent.
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    console.log(
+      `[instrumentation] Backend distant configuré (${process.env.NEXT_PUBLIC_API_BASE_URL}) — skip du démarrage local.`
+    );
+    return;
+  }
 
   backendStarted = true;
 
