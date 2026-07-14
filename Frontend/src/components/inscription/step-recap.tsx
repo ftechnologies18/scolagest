@@ -35,12 +35,16 @@ import {
   CalendarDays,
   ClipboardCheck,
   Fingerprint,
+  Flag,
   GraduationCap,
+  HeartPulse,
   Info,
   Loader2,
+  Lock,
   Mail,
   MapPin,
   Phone,
+  School,
   StickyNote,
   Tag,
   User,
@@ -163,6 +167,11 @@ export function StepRecap({
               value={eleve.categorie}
             />
             <RecapRow
+              icon={Flag}
+              label="Nationalité"
+              value={eleve.nationalite || "—"}
+            />
+            <RecapRow
               icon={Fingerprint}
               label="Matricule Min."
               value={eleve.matricule_ministere || "—"}
@@ -276,6 +285,58 @@ export function StepRecap({
           </p>
         </GlassCard>
       )}
+
+      {/* Scolarité antérieure (si renseignée) */}
+      {(eleve.ancien_etablissement ||
+        (eleve.statut_annee_precedente &&
+          eleve.statut_annee_precedente !== "NON_APPLICABLE")) && (
+        <GlassCard variant="mobile" noHover className="p-4">
+          <RecapHeader
+            icon={School}
+            tone="emerald"
+            title="Scolarité antérieure"
+          />
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <RecapRow
+              icon={School}
+              label="Ancien établissement"
+              value={eleve.ancien_etablissement || "—"}
+            />
+            <RecapRow
+              icon={Tag}
+              label="Statut année précédente"
+              value={formatStatutAnnee(eleve.statut_annee_precedente)}
+            />
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Santé (confidentiel — si renseignée) */}
+      {(eleve.allergies || eleve.notes_sante) && (
+        <GlassCard variant="mobile" noHover className="p-4">
+          <RecapHeader
+            icon={Lock}
+            tone="emerald"
+            title="Santé (confidentiel)"
+          />
+          <div className="mt-3 space-y-3">
+            {eleve.allergies && (
+              <RecapRow
+                icon={HeartPulse}
+                label="Allergies"
+                value={eleve.allergies}
+              />
+            )}
+            {eleve.notes_sante && (
+              <RecapRow
+                icon={StickyNote}
+                label="Notes santé"
+                value={eleve.notes_sante}
+              />
+            )}
+          </div>
+        </GlassCard>
+      )}
     </div>
   );
 }
@@ -283,6 +344,19 @@ export function StepRecap({
 // ─────────────────────────────────────────────────────────────────────────────
 // Sous-composants
 // ─────────────────────────────────────────────────────────────────────────────
+
+const STATUT_ANNEE_LABELS: Record<string, string> = {
+  PROMU: "Promu",
+  REDOUBLANT: "Redoublant",
+  AUTRE: "Autre situation",
+  NON_APPLICABLE: "Nouvel entrant (non applicable)",
+  "": "—",
+};
+
+function formatStatutAnnee(value?: string): string {
+  if (!value) return "—";
+  return STATUT_ANNEE_LABELS[value] ?? value;
+}
 
 const TONE_BADGES = {
   emerald: {

@@ -116,6 +116,8 @@ export function InscriptionWizard() {
     sexe: "",
     categorie: "NON_APPLICABLE",
     matricule_ministere: null,
+    // Nationalité par défaut (aligné sur le wizard public — réforme 2026-07).
+    nationalite: "Ivoirienne",
   });
 
   const [tuteurData, setTuteurData] = React.useState<WorkflowTuteur>({
@@ -224,6 +226,8 @@ export function InscriptionWizard() {
       sexe: "",
       categorie: "NON_APPLICABLE",
       matricule_ministere: null,
+      // Nationalité par défaut (aligné sur le wizard public).
+      nationalite: "Ivoirienne",
     });
     setTuteurData({
       tuteur_id: null,
@@ -311,6 +315,9 @@ export function InscriptionWizard() {
       {/* Indicateur d'étapes */}
       <StepIndicator currentStep={step} />
 
+      {/* Barre de progression animée (Framer Motion) */}
+      <ProgressBar currentStep={step} totalSteps={STEPS.length} />
+
       {/* Contenu de l'étape */}
       <GlassCard variant="adaptive" noHover premiumBorder className="p-5 sm:p-6">
         <AnimatePresence mode="wait">
@@ -341,6 +348,8 @@ export function InscriptionWizard() {
                 eleveCategorie={eleveData.categorie}
                 onChange={setInscriptionData}
                 onValidChange={setStep3Valid}
+                eleve={eleveData}
+                onEleveChange={setEleveData}
               />
             )}
             {step === 4 && (
@@ -407,6 +416,48 @@ export function InscriptionWizard() {
             </Button>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Barre de progression animée
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ProgressBar({
+  currentStep,
+  totalSteps,
+}: {
+  currentStep: number;
+  totalSteps: number;
+}) {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const percent = Math.round((currentStep / totalSteps) * 100);
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+        <span>
+          Étape{" "}
+          <span className="font-semibold text-forest">{currentStep}</span> sur{" "}
+          {totalSteps} — {STEPS[currentStep - 1].label}
+        </span>
+        <span className="text-[11px]">{percent}%</span>
+      </div>
+      <div
+        className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-valuenow={percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Progression : ${percent}%`}
+      >
+        <motion.div
+          className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-amber-500"
+          initial={prefersReducedMotion ? {} : { width: 0 }}
+          animate={{ width: `${percent}%` }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        />
       </div>
     </div>
   );

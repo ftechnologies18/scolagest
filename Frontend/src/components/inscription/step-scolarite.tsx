@@ -35,8 +35,10 @@ import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
   GraduationCap,
+  HeartPulse,
   Info,
   Layers,
+  Lock,
   School,
   ShieldAlert,
   type LucideIcon,
@@ -52,7 +54,11 @@ import {
   anneesKeys,
 } from "@/lib/api-students";
 import type { Cycle, Classe, AnneeScolaire, CategorieEleve } from "@/lib/types";
-import type { WorkflowInscription } from "@/lib/api-inscription";
+import type {
+  WorkflowEleve,
+  WorkflowInscription,
+} from "@/lib/api-inscription";
+import type { StatutAnneePrecedente } from "@/lib/api-pre-inscription";
 import { formatNiveau } from "@/lib/format";
 
 import { Input } from "@/components/ui/input";
@@ -73,6 +79,9 @@ interface StepScolariteProps {
   eleveCategorie: CategorieEleve;
   onChange: (data: WorkflowInscription) => void;
   onValidChange: (valid: boolean) => void;
+  /** Élève (pour éditer les champs complémentaires : scolarité antérieure + santé). */
+  eleve: WorkflowEleve;
+  onEleveChange: (eleve: WorkflowEleve) => void;
 }
 
 export function StepScolarite({
@@ -80,6 +89,8 @@ export function StepScolarite({
   eleveCategorie,
   onChange,
   onValidChange,
+  eleve,
+  onEleveChange,
 }: StepScolariteProps) {
   const etablissement = useAuthStore((s) => s.etablissement);
 
@@ -182,6 +193,11 @@ export function StepScolarite({
 
   function update(patch: Partial<WorkflowInscription>) {
     onChange({ ...data, ...patch });
+  }
+
+  /** Met à jour un champ complémentaire de l'élève (nationalité, scolarité antérieure, santé). */
+  function updateEleve(patch: Partial<WorkflowEleve>) {
+    onEleveChange({ ...eleve, ...patch });
   }
 
   // Suggestion de classe (la première disponible du niveau)
@@ -359,6 +375,118 @@ export function StepScolarite({
           </div>
         </div>
       )}
+
+      {/* Scolarité antérieure (transfert) — encart sky */}
+      <div className="rounded-lg border border-sky-200 bg-sky-50/40 p-4 dark:border-sky-900/40 dark:bg-sky-950/15">
+        <div className="mb-3 flex items-start gap-2.5">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
+            <School className="size-4" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 space-y-0.5">
+            <p className="break-words leading-snug text-sm font-semibold text-sky-900 dark:text-sky-100">
+              Scolarité antérieure (si transfert)
+            </p>
+            <p className="break-words text-[11px] leading-snug text-sky-800/80 dark:text-sky-200/80">
+              Renseignez l&apos;établissement précédent et la décision de fin
+              d&apos;année. Laissez vide si l&apos;enfant est nouvel entrant.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field
+            label="Ancien établissement"
+            hint="Nom de l'établissement précédent (si transfert)."
+          >
+            <div className="relative">
+              <School
+                className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                value={eleve.ancien_etablissement ?? ""}
+                onChange={(e) => updateEleve({ ancien_etablissement: e.target.value })}
+                placeholder="Ex : Collège Saint-Michel"
+                autoComplete="off"
+                className="pl-9 focus-visible:ring-sky-500/40"
+              />
+            </div>
+          </Field>
+          <Field
+            label="Statut en fin d'année précédente"
+            hint="Décision de l'ancien établissement (promotion, redoublement…)."
+          >
+            <Select
+              value={eleve.statut_annee_precedente ?? "NON_APPLICABLE"}
+              onValueChange={(v) =>
+                updateEleve({
+                  statut_annee_precedente: v as StatutAnneePrecedente,
+                })
+              }
+            >
+              <SelectTrigger className="w-full focus-visible:ring-sky-500/40">
+                <SelectValue placeholder="Choisir…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NON_APPLICABLE">
+                  Nouvel entrant (non applicable)
+                </SelectItem>
+                <SelectItem value="PROMU">Promu</SelectItem>
+                <SelectItem value="REDOUBLANT">Redoublant</SelectItem>
+                <SelectItem value="AUTRE">Autre situation</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+        </div>
+      </div>
+
+      {/* Santé confidentielle — encart emerald */}
+      <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/15">
+        <div className="mb-3 flex items-start gap-2.5">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+            <Lock className="size-4" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 space-y-0.5">
+            <p className="break-words leading-snug text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+              Informations de santé (confidentielles)
+            </p>
+            <p className="break-words text-[11px] leading-snug text-emerald-800/80 dark:text-emerald-200/80">
+              Ces informations restent confidentielles et ne sont accessibles
+              qu&apos;à l&apos;infirmerie et à la direction.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <Field
+            label="Allergies connues"
+            hint="Séparez les allergies par une virgule."
+          >
+            <div className="relative">
+              <HeartPulse
+                className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                value={eleve.allergies ?? ""}
+                onChange={(e) => updateEleve({ allergies: e.target.value })}
+                placeholder="Ex : arachides, pénicilline"
+                autoComplete="off"
+                className="pl-9 focus-visible:ring-emerald-500/40"
+              />
+            </div>
+          </Field>
+          <Field label="Notes santé (maladies chroniques, traitements…)">
+            <Textarea
+              value={eleve.notes_sante ?? ""}
+              onChange={(e) => updateEleve({ notes_sante: e.target.value })}
+              placeholder="Ex : asthme, port de lunettes"
+              rows={2}
+              className="focus-visible:ring-emerald-500/40"
+            />
+          </Field>
+        </div>
+      </div>
 
       {/* Notes */}
       <Field

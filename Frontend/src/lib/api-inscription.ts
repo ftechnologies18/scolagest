@@ -11,6 +11,7 @@
 
 import { apiGet, apiPost } from "@/lib/api-client";
 import type { Eleve, Inscription, Tuteur } from "@/lib/types";
+import type { StatutAnneePrecedente } from "@/lib/api-pre-inscription";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types du workflow
@@ -43,6 +44,12 @@ export interface WorkflowEleve {
   sexe?: SexeEleve;
   categorie: CategorieEleve;
   matricule_ministere?: string | null;
+  // Champs complémentaires (alignement wizard public — réforme 2026-07)
+  nationalite?: string;
+  ancien_etablissement?: string;
+  statut_annee_precedente?: StatutAnneePrecedente;
+  allergies?: string;
+  notes_sante?: string;
 }
 
 export interface WorkflowInscription {

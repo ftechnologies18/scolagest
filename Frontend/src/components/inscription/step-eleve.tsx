@@ -34,6 +34,7 @@ import {
   AlertTriangle,
   ExternalLink,
   Fingerprint,
+  Flag,
   Loader2,
   Mars,
   Venus,
@@ -271,6 +272,24 @@ export function StepEleve({ data, onChange, onValidChange }: StepEleveProps) {
             </Select>
           </Field>
         )}
+        <Field
+          label="Nationalité"
+          hint="Nationalité telle qu'inscrite sur l'extrait de naissance ou le passeport."
+        >
+          <div className="relative">
+            <Flag
+              className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              value={data.nationalite ?? ""}
+              onChange={(e) => update({ nationalite: e.target.value })}
+              placeholder="Ex : Ivoirienne, Malienne, Burkinabè…"
+              autoComplete="off"
+              className="pl-9 focus-visible:ring-emerald-500/40"
+            />
+          </div>
+        </Field>
       </div>
     </div>
   );
