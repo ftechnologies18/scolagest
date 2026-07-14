@@ -59,7 +59,7 @@ import type {
   WorkflowInscription,
 } from "@/lib/api-inscription";
 import type { StatutAnneePrecedente } from "@/lib/api-pre-inscription";
-import { formatNiveau } from "@/lib/format";
+import { formatCycleCourt, formatNiveau } from "@/lib/format";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -95,8 +95,8 @@ export function StepScolarite({
   const etablissement = useAuthStore((s) => s.etablissement);
 
   // Cascade Cycle → Niveau → Classe (réutilise la logique Phase 1)
-  const [cycleId, setCycleId] = React.useState<string>("all");
-  const [niveau, setNiveau] = React.useState<string>("all");
+  const [cycleId, setCycleId] = React.useState<string>("");
+  const [niveau, setNiveau] = React.useState<string>("");
   // Toggle santé : si false, les champs allergies + notes santé sont masqués
   const [hasSanteInfo, setHasSanteInfo] = React.useState<boolean>(false);
 
@@ -138,7 +138,7 @@ export function StepScolarite({
   React.useEffect(() => {
     if (prevCycle.current !== cycleId) {
       prevCycle.current = cycleId;
-      setNiveau("all");
+      setNiveau("");
       if (data.classe_id) {
         onChange({ ...data, classe_id: "" });
       }
@@ -159,22 +159,21 @@ export function StepScolarite({
   const filteredClasses = React.useMemo(() => {
     if (!classes) return [];
     return classes.filter((c) => {
-      if (cycleId !== "all" && c.cycle_id !== cycleId) return false;
-      if (niveau !== "all" && c.niveau !== Number(niveau)) return false;
+      if (cycleId && c.cycle_id !== cycleId) return false;
+      if (niveau && c.niveau !== Number(niveau)) return false;
       return true;
     });
   }, [classes, cycleId, niveau]);
 
   const availableNiveaux = React.useMemo(() => {
-    if (!classes) return [];
-    const filtered =
-      cycleId !== "all" ? classes.filter((c) => c.cycle_id === cycleId) : classes;
+    if (!classes || !cycleId) return [];
+    const filtered = classes.filter((c) => c.cycle_id === cycleId);
     return [...new Set(filtered.map((c) => c.niveau))].sort((a, b) => a - b);
   }, [classes, cycleId]);
 
   // Libellé du cycle sélectionné (pour mapper niveau → libellé français).
   const selectedCycleLibelle = React.useMemo(() => {
-    if (cycleId === "all") return undefined;
+    if (cycleId === "") return undefined;
     return cycles?.find((cy) => cy.id === cycleId)?.libelle;
   }, [cycles, cycleId]);
 
@@ -222,13 +221,12 @@ export function StepScolarite({
         <Field label="Cycle" icon={Layers}>
           <Select value={cycleId} onValueChange={setCycleId}>
             <SelectTrigger className="w-full focus-visible:ring-emerald-500/40">
-              <SelectValue placeholder="Tous cycles" />
+              <SelectValue placeholder="Choisir un cycle" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous cycles</SelectItem>
               {cycles?.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
-                  {c.libelle}
+                  {formatCycleCourt(c.libelle)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -238,10 +236,9 @@ export function StepScolarite({
         <Field label="Niveau" icon={BarChart3}>
           <Select value={niveau} onValueChange={setNiveau}>
             <SelectTrigger className="w-full focus-visible:ring-emerald-500/40">
-              <SelectValue placeholder="Tous niveaux" />
+              <SelectValue placeholder="Choisir un niveau" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous niveaux</SelectItem>
               {availableNiveaux.map((n) => (
                 <SelectItem key={n} value={String(n)}>
                   {formatNiveau(selectedCycleLibelle, n)}
