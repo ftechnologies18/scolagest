@@ -96,13 +96,15 @@ export function StepEleve({ data, onChange, onValidChange }: StepEleveProps) {
 
   const doublons = doublonData?.doublons ?? [];
 
-  // Validation : nom + sexe + (catégorie si appliqueCategorie) requis
+  // Validation : nom + sexe + (catégorie si appliqueCategorie) + matricule si Collège/Lycée
   const isValid = React.useMemo(() => {
     if (!data.nom.trim()) return false;
     if (!data.sexe) return false;
     if (appliqueCategorie && data.categorie === "NON_APPLICABLE") return false;
+    // Collège/Lycée : matricule ministériel obligatoire
+    if (appliqueCategorie && !(data.matricule_ministere ?? "").trim()) return false;
     return true;
-  }, [data.nom, data.sexe, data.categorie, appliqueCategorie]);
+  }, [data.nom, data.sexe, data.categorie, appliqueCategorie, data.matricule_ministere]);
 
   React.useEffect(() => {
     onValidChange(isValid);
@@ -118,10 +120,15 @@ export function StepEleve({ data, onChange, onValidChange }: StepEleveProps) {
         num={1}
         icon={User}
         title="Identité de l'élève"
-        subtitle="Renseignez l'état civil. L'identifiant interne est généré automatiquement."
+        subtitle={
+          appliqueCategorie
+            ? "Renseignez l'état civil. Le matricule ministériel est obligatoire."
+            : "Renseignez l'état civil. L'identifiant interne est généré automatiquement."
+        }
       />
 
-      {/* Aperçu identifiant auto — card premium mobile */}
+      {/* Aperçu identifiant auto — UNIQUEMENT pour Primaire/Préscolaire (pas Collège/Lycée) */}
+      {!appliqueCategorie && (
       <GlassCard variant="mobile" noHover className="p-4">
         <div className="flex items-center gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
@@ -147,6 +154,7 @@ export function StepEleve({ data, onChange, onValidChange }: StepEleveProps) {
           </Badge>
         </div>
       </GlassCard>
+      )}
 
       {/* Détection doublon — alerte amber */}
       {doublons.length > 0 && (
@@ -244,7 +252,15 @@ export function StepEleve({ data, onChange, onValidChange }: StepEleveProps) {
             className="focus-visible:ring-emerald-500/40"
           />
         </Field>
-        <Field label="Matricule ministériel">
+        <Field
+          label="Matricule ministériel"
+          required={appliqueCategorie}
+          hint={
+            appliqueCategorie
+              ? "Obligatoire pour le Collège/Lycée. Fourni par le Ministère de l'Éducation."
+              : "Optionnel pour le Primaire/Préscolaire."
+          }
+        >
           <Input
             value={data.matricule_ministere ?? ""}
             onChange={(e) => update({ matricule_ministere: e.target.value || null })}
