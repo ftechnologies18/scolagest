@@ -1430,7 +1430,7 @@ function RapportRecouvrementPanel() {
       <KentePattern variant="separator" className="my-1" />
 
       {/* ─── Graphique ───────────────────────────────────────────────── */}
-      <GlassCard variant="adaptive" noHover>
+      <GlassCard variant="adaptive" noHover premiumBorder>
         <div className="mb-3">
           <h3 className="font-display text-base font-semibold">
             Taux de recouvrement par classe
