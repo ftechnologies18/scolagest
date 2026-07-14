@@ -439,6 +439,7 @@ export default function UtilisateursView() {
           <GlassCard
             variant="adaptive"
             noHover
+            premiumBorder
             className="hidden overflow-hidden p-0 md:block"
           >
             <div className="overflow-x-auto">
