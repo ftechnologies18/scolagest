@@ -2,6 +2,15 @@ name: Deploy Backend to Render
 
 # Déploie le backend sur Render UNIQUEMENT quand des fichiers du dossier backend/ changent.
 # Vercel gère le frontend séparément (avec vercel.json ignoredBuildStep pour filtrer).
+#
+# Service Render cible : scolagest-backend
+#   - URL publique : https://scolagest-backend.onrender.com
+#   - Dashboard    : https://dashboard.render.com/web/srv-d98v5omcjfls73fddck0
+#   - Le SERVICE_ID ci-dessous DOIT correspondre à l'id du service Render actif
+#     (vérifiable via l'API Render : GET /v1/services). Un id obsolète renvoie
+#     HTTP 404 "not found: service ..." et fait échouer ce workflow.
+#   - Note : Render autoDeploy=yes est aussi actif sur ce service ; ce workflow
+#     agit comme déclencheur explicite redondant (belt-and-suspenders).
 
 on:
   push:
@@ -19,7 +28,7 @@ jobs:
       - name: Trigger Render deploy
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          SERVICE_ID: srv-d98mdrv7f7vs73bdlm60
+          SERVICE_ID: srv-d98v5omcjfls73fddck0
         run: |
           echo "Déclenchement du déploiement Render pour le backend..."
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
