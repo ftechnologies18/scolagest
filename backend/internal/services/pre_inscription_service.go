@@ -35,11 +35,15 @@ type PreInscriptionDTO struct {
         EleveLieuNaissance string `json:"eleve_lieu_naissance"`
         EleveSexe          string `json:"eleve_sexe"`
         EleveCategorie     string `json:"eleve_categorie"`
+        EleveNationalite   string `json:"eleve_nationalite"`
 
-        // Champs supplémentaires (transfert, santé)
-        EleveAncienEtablissement string `json:"eleve_ancien_etablissement"`
-        EleveAllergies           string `json:"eleve_allergies"`
-        EleveNotesSante          string `json:"eleve_notes_sante"`
+        // Scolarité antérieure (transfert)
+        EleveAncienEtablissement   string `json:"eleve_ancien_etablissement"`
+        EleveStatutAnneePrecedente string `json:"eleve_statut_annee_precedente"`
+
+        // Santé
+        EleveAllergies  string `json:"eleve_allergies"`
+        EleveNotesSante string `json:"eleve_notes_sante"`
 
         TuteurNom         string `json:"tuteur_nom"`
         TuteurPrenoms     string `json:"tuteur_prenoms"`
@@ -129,7 +133,9 @@ func (s *PreInscriptionService) Submit(dto PreInscriptionDTO) (*models.PreInscri
                 EleveLieuNaissance:       dto.EleveLieuNaissance,
                 EleveSexe:                models.Sexe(dto.EleveSexe),
                 EleveCategorie:           categorie,
+                EleveNationalite:         dto.EleveNationalite,
                 EleveAncienEtablissement: dto.EleveAncienEtablissement,
+                EleveStatutAnneePrecedente: models.StatutAnneePrecedente(dto.EleveStatutAnneePrecedente),
                 EleveAllergies:           dto.EleveAllergies,
                 EleveNotesSante:          dto.EleveNotesSante,
                 TuteurNom:                dto.TuteurNom,

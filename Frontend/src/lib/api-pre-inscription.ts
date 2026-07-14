@@ -44,6 +44,14 @@ export type CategorieEleve = "AFFECTE" | "NON_AFFECTE" | "NON_APPLICABLE";
 /** Lien de parenté du tuteur. */
 export type LienParente = "PERE" | "MERE" | "TUTEUR_LEGAL" | "AUTRE" | "";
 
+/** Statut de fin d'année dans l'établissement précédent (transferts). */
+export type StatutAnneePrecedente =
+  | "PROMU" // admis en classe supérieure
+  | "REDOUBLANT" // redouble la même classe
+  | "AUTRE" // autre situation (exclu, transféré sans décision…)
+  | "NON_APPLICABLE" // nouvel entrant (pas d'année précédente)
+  | ""; // valeur vide tolérée (legacy)
+
 /**
  * Pré-inscription soumise par un parent en ligne (réponse du backend).
  * Les champs `etablissement?` et `classe?` sont préchargés par le backend
@@ -63,9 +71,13 @@ export interface PreInscription {
   eleve_lieu_naissance: string;
   eleve_sexe: SexeEleve;
   eleve_categorie: CategorieEleve;
+  eleve_nationalite?: string;
 
-  // ── Champs supplémentaires (transfert, santé) ──
+  // ── Scolarité antérieure (transfert) ──
   eleve_ancien_etablissement?: string;
+  eleve_statut_annee_precedente?: StatutAnneePrecedente;
+
+  // ── Santé (confidentiel) ──
   eleve_allergies?: string;
   eleve_notes_sante?: string;
 
@@ -111,8 +123,11 @@ export interface PreInscriptionDTO {
   eleve_lieu_naissance?: string;
   eleve_sexe: SexeEleve;
   eleve_categorie: CategorieEleve;
-  // Champs supplémentaires (transfert, santé)
+  eleve_nationalite?: string;
+  // Scolarité antérieure (transfert)
   eleve_ancien_etablissement?: string;
+  eleve_statut_annee_precedente?: StatutAnneePrecedente;
+  // Santé
   eleve_allergies?: string;
   eleve_notes_sante?: string;
   tuteur_nom: string;

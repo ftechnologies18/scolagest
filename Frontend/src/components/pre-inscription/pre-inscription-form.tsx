@@ -51,6 +51,7 @@ import {
   ClipboardCheck,
   ClipboardCopy,
   Clock,
+  Flag,
   GraduationCap,
   HeartPulse,
   IdCard,
@@ -85,6 +86,7 @@ import {
   type LienParente,
   type PreInscriptionDTO,
   type SexeEleve,
+  type StatutAnneePrecedente,
   type SubmitResult,
   type TuteurFratrieResult,
 } from "@/lib/api-pre-inscription";
@@ -466,9 +468,12 @@ export function PreInscriptionForm() {
 
   const [notesParent, setNotesParent] = React.useState("");
 
-  // ─── Champs complémentaires (transfert + santé) ───────────────────────────
+  // ─── Champs complémentaires (nationalité, transfert, santé) ───────────────
+  const [eleveNationalite, setEleveNationalite] = React.useState("Ivoirienne");
   const [eleveAncienEtablissement, setEleveAncienEtablissement] =
     React.useState("");
+  const [eleveStatutAnneePrecedente, setEleveStatutAnneePrecedente] =
+    React.useState<StatutAnneePrecedente>("NON_APPLICABLE");
   const [eleveAllergies, setEleveAllergies] = React.useState("");
   const [eleveNotesSante, setEleveNotesSante] = React.useState("");
 
@@ -625,8 +630,10 @@ export function PreInscriptionForm() {
       eleve_lieu_naissance: eleveLieuNaissance.trim(),
       eleve_sexe: eleveSexe,
       eleve_categorie: appliqueCategorie ? eleveCategorie : "NON_APPLICABLE",
+      eleve_nationalite: eleveNationalite.trim() || undefined,
       eleve_ancien_etablissement:
         eleveAncienEtablissement.trim() || undefined,
+      eleve_statut_annee_precedente: eleveStatutAnneePrecedente,
       eleve_allergies: eleveAllergies.trim() || undefined,
       eleve_notes_sante: eleveNotesSante.trim() || undefined,
       tuteur_nom: tuteurNom.trim(),
@@ -858,8 +865,12 @@ export function PreInscriptionForm() {
                     niveau={niveau}
                     setNiveau={setNiveau}
                     availableNiveaux={availableNiveaux}
+                    eleveNationalite={eleveNationalite}
+                    setEleveNationalite={setEleveNationalite}
                     eleveAncienEtablissement={eleveAncienEtablissement}
                     setEleveAncienEtablissement={setEleveAncienEtablissement}
+                    eleveStatutAnneePrecedente={eleveStatutAnneePrecedente}
+                    setEleveStatutAnneePrecedente={setEleveStatutAnneePrecedente}
                     eleveAllergies={eleveAllergies}
                     setEleveAllergies={setEleveAllergies}
                     eleveNotesSante={eleveNotesSante}
@@ -887,7 +898,9 @@ export function PreInscriptionForm() {
                     tuteurLienParente={tuteurLienParente}
                     selectedCycle={selectedCycle}
                     selectedNiveau={niveau}
+                    eleveNationalite={eleveNationalite}
                     eleveAncienEtablissement={eleveAncienEtablissement}
+                    eleveStatutAnneePrecedente={eleveStatutAnneePrecedente}
                     eleveAllergies={eleveAllergies}
                     eleveNotesSante={eleveNotesSante}
                     notesParent={notesParent}
@@ -1400,8 +1413,12 @@ function StepClasseInfos({
   niveau,
   setNiveau,
   availableNiveaux,
+  eleveNationalite,
+  setEleveNationalite,
   eleveAncienEtablissement,
   setEleveAncienEtablissement,
+  eleveStatutAnneePrecedente,
+  setEleveStatutAnneePrecedente,
   eleveAllergies,
   setEleveAllergies,
   eleveNotesSante,
@@ -1416,8 +1433,12 @@ function StepClasseInfos({
   niveau: string;
   setNiveau: (v: string) => void;
   availableNiveaux: number[];
+  eleveNationalite: string;
+  setEleveNationalite: (v: string) => void;
   eleveAncienEtablissement: string;
   setEleveAncienEtablissement: (v: string) => void;
+  eleveStatutAnneePrecedente: StatutAnneePrecedente;
+  setEleveStatutAnneePrecedente: (v: StatutAnneePrecedente) => void;
   eleveAllergies: string;
   setEleveAllergies: (v: string) => void;
   eleveNotesSante: string;
@@ -1435,9 +1456,33 @@ function StepClasseInfos({
     <div className="space-y-5">
       <SectionHeader
         icon={BookOpen}
-        title="Cycle & niveau souhaités"
+        title="Cycle, niveau & informations complémentaires"
         description="Cycle et niveau sont obligatoires. La classe définitive est attribuée par l'établissement lors de la finalisation de l'inscription (paiement des frais à la caisse)."
       />
+      <Separator />
+
+      {/* Nationalité de l'élève */}
+      <div className="space-y-3">
+        <Field
+          label="Nationalité de l'élève"
+          hint="Nationalité telle qu'inscrite sur l'extrait de naissance ou le passeport."
+        >
+          <div className="relative">
+            <Flag
+              className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              value={eleveNationalite}
+              onChange={(e) => setEleveNationalite(e.target.value)}
+              placeholder="Ex : Ivoirienne, Malienne, Burkinabè…"
+              autoComplete="off"
+              className="h-11 pl-9 text-base sm:h-10 sm:text-sm"
+            />
+          </div>
+        </Field>
+      </div>
+
       <Separator />
 
       {/* Cascade Cycle / Niveau (obligatoires) */}
@@ -1497,6 +1542,72 @@ function StepClasseInfos({
         </div>
       )}
 
+      <Separator />
+
+      {/* Scolarité antérieure (transfert) */}
+      <div className="rounded-xl border border-sky-200 bg-sky-50/40 p-4 dark:border-sky-900/40 dark:bg-sky-950/15">
+        <div className="mb-3 flex items-start gap-2.5">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
+            <School className="size-4" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 space-y-0.5">
+            <p className="break-words leading-snug text-sm font-semibold text-sky-900 dark:text-sky-100">
+              Scolarité antérieure (si transfert)
+            </p>
+            <p className="break-words text-[11px] leading-snug text-sky-800/80 dark:text-sky-200/80">
+              Renseignez l&apos;établissement précédent et la décision de fin
+              d&apos;année. Laissez vide si l&apos;enfant est nouvel entrant.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field
+            label="Ancien établissement"
+            hint="Nom de l'établissement précédent (si transfert)."
+          >
+            <div className="relative">
+              <School
+                className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                value={eleveAncienEtablissement}
+                onChange={(e) =>
+                  setEleveAncienEtablissement(e.target.value)
+                }
+                placeholder="Ex : Collège Saint-Michel"
+                autoComplete="off"
+                className="h-11 pl-9 text-base sm:h-10 sm:text-sm"
+              />
+            </div>
+          </Field>
+          <Field
+            label="Statut en fin d'année précédente"
+            hint="Décision de l'ancien établissement (promotion, redoublement…)."
+          >
+            <Select
+              value={eleveStatutAnneePrecedente}
+              onValueChange={(v) =>
+                setEleveStatutAnneePrecedente(v as StatutAnneePrecedente)
+              }
+            >
+              <SelectTrigger className="h-11 w-full text-base sm:h-10 sm:text-sm">
+                <SelectValue placeholder="Choisir…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NON_APPLICABLE">
+                  Nouvel entrant (non applicable)
+                </SelectItem>
+                <SelectItem value="PROMU">Promu</SelectItem>
+                <SelectItem value="REDOUBLANT">Redoublant</SelectItem>
+                <SelectItem value="AUTRE">Autre situation</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+        </div>
+      </div>
+
       {/* Section santé — confidentielle */}
       <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/15">
         <div className="mb-3 flex items-start gap-2.5">
@@ -1514,27 +1625,7 @@ function StepClasseInfos({
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field
-            label="Ancien établissement (si transfert)"
-            hint="Précédent établissement fréquenté par l'enfant."
-          >
-            <div className="relative">
-              <School
-                className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <Input
-                value={eleveAncienEtablissement}
-                onChange={(e) =>
-                  setEleveAncienEtablissement(e.target.value)
-                }
-                placeholder="Ex: Collège Saint-Michel"
-                autoComplete="off"
-                className="h-11 pl-9 text-base sm:h-10 sm:text-sm"
-              />
-            </div>
-          </Field>
+        <div className="space-y-3">
           <Field
             label="Allergies connues"
             hint="Séparez les allergies par une virgule."
@@ -1547,24 +1638,24 @@ function StepClasseInfos({
               <Input
                 value={eleveAllergies}
                 onChange={(e) => setEleveAllergies(e.target.value)}
-                placeholder="Ex: arachides, pénicilline"
+                placeholder="Ex : arachides, pénicilline"
                 autoComplete="off"
                 className="h-11 pl-9 text-base sm:h-10 sm:text-sm"
               />
             </div>
           </Field>
+          <Field
+            label="Notes santé (maladies chroniques, traitements…)"
+          >
+            <Textarea
+              value={eleveNotesSante}
+              onChange={(e) => setEleveNotesSante(e.target.value)}
+              placeholder="Ex : asthme, port de lunettes"
+              rows={2}
+              className="text-base sm:text-sm"
+            />
+          </Field>
         </div>
-        <Field
-          label="Notes santé (maladies chroniques, traitements…)"
-        >
-          <Textarea
-            value={eleveNotesSante}
-            onChange={(e) => setEleveNotesSante(e.target.value)}
-            placeholder="Ex: asthme, port de lunettes"
-            rows={2}
-            className="text-base sm:text-sm"
-          />
-        </Field>
       </div>
 
       {/* Notes au secrétariat */}
@@ -1610,6 +1701,14 @@ const LIEN_PARENTE_LABEL: Record<LienParente, string> = {
   "": "Autre",
 };
 
+const STATUT_ANNEE_PRECEDENTE_LABEL: Record<StatutAnneePrecedente, string> = {
+  PROMU: "Promu",
+  REDOUBLANT: "Redoublant",
+  AUTRE: "Autre situation",
+  NON_APPLICABLE: "Nouvel entrant (non applicable)",
+  "": "—",
+};
+
 function StepConfirmation({
   selectedEtablissement,
   eleveNom,
@@ -1626,7 +1725,9 @@ function StepConfirmation({
   tuteurLienParente,
   selectedCycle,
   selectedNiveau,
+  eleveNationalite,
   eleveAncienEtablissement,
+  eleveStatutAnneePrecedente,
   eleveAllergies,
   eleveNotesSante,
   notesParent,
@@ -1648,7 +1749,9 @@ function StepConfirmation({
   tuteurLienParente: LienParente;
   selectedCycle?: Cycle;
   selectedNiveau: string;
+  eleveNationalite: string;
   eleveAncienEtablissement: string;
+  eleveStatutAnneePrecedente: StatutAnneePrecedente;
   eleveAllergies: string;
   eleveNotesSante: string;
   notesParent: string;
@@ -1697,6 +1800,9 @@ function StepConfirmation({
           />
         )}
         <InfoRow icon={IdCard} label="Sexe" value={SEXE_LABEL[eleveSexe]} />
+        {eleveNationalite.trim() && (
+          <InfoRow icon={Flag} label="Nationalité" value={eleveNationalite} />
+        )}
         {appliqueCategorie && (
           <InfoRow
             icon={ClipboardCheck}
@@ -1764,14 +1870,12 @@ function StepConfirmation({
         )}
       </RecapBlock>
 
-      {/* Bloc Santé + notes (si renseignés) */}
+      {/* Bloc Scolarité antérieure (si renseignée) */}
       {(eleveAncienEtablissement.trim() ||
-        eleveAllergies.trim() ||
-        eleveNotesSante.trim() ||
-        notesParent.trim()) && (
+        eleveStatutAnneePrecedente !== "NON_APPLICABLE") && (
         <RecapBlock
-          title="Santé & notes"
-          icon={HeartPulse}
+          title="Scolarité antérieure"
+          icon={School}
           onEdit={() => goToStep(4)}
           disabled={isPending}
         >
@@ -1782,6 +1886,26 @@ function StepConfirmation({
               value={eleveAncienEtablissement}
             />
           )}
+          {eleveStatutAnneePrecedente !== "NON_APPLICABLE" && (
+            <InfoRow
+              icon={ClipboardCheck}
+              label="Statut fin d'année précédente"
+              value={STATUT_ANNEE_PRECEDENTE_LABEL[eleveStatutAnneePrecedente] ?? "—"}
+            />
+          )}
+        </RecapBlock>
+      )}
+
+      {/* Bloc Santé + notes (si renseignés) */}
+      {(eleveAllergies.trim() ||
+        eleveNotesSante.trim() ||
+        notesParent.trim()) && (
+        <RecapBlock
+          title="Santé & notes"
+          icon={HeartPulse}
+          onEdit={() => goToStep(4)}
+          disabled={isPending}
+        >
           {eleveAllergies.trim() && (
             <InfoRow
               icon={HeartPulse}
@@ -2063,6 +2187,13 @@ function SuccessScreen({
                     label="Élève"
                     value={eleveNomComplet || "—"}
                   />
+                  {pre.eleve_nationalite && (
+                    <InfoRow
+                      icon={Flag}
+                      label="Nationalité"
+                      value={pre.eleve_nationalite}
+                    />
+                  )}
                   {pre.etablissement && (
                     <InfoRow
                       icon={School}

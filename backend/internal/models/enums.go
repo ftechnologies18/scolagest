@@ -80,6 +80,18 @@ const (
         StatutEleveDiplome   StatutEleve = "DIPLOME"
 )
 
+// StatutAnneePrecedente : décision de fin d'année dans l'établissement
+// précédent (pour les transferts / pré-inscriptions). Sert à indiquer si
+// l'élève a été promu, s'il redouble, ou s'il est nouveau entrant.
+type StatutAnneePrecedente string
+
+const (
+        StatutAnneePromu            StatutAnneePrecedente = "PROMU"            // élève admis en classe supérieure
+        StatutAnneeRedoublant       StatutAnneePrecedente = "REDOUBLANT"       // élève redouble la même classe
+        StatutAnneeAutre            StatutAnneePrecedente = "AUTRE"            // autre situation (exclu, transféré sans décision…)
+        StatutAnneeNonApplicable    StatutAnneePrecedente = "NON_APPLICABLE"   // nouvel entrant (pas d'année précédente)
+)
+
 // RoleUtilisateur : rôles RBAC de l'application.
 // SUPER_ADMIN = propriétaire SaaS (gère la plateforme, pas les établissements)
 // DIRECTION = admin d'établissement (gère son établissement)

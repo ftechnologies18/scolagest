@@ -50,7 +50,9 @@ import {
   BookOpen,
   Calendar,
   CheckCircle2,
+  ClipboardCheck,
   Eye,
+  Flag,
   Inbox,
   Layers,
   Loader2,
@@ -222,6 +224,24 @@ function lienParenteLabel(l: PreInscription["tuteur_lien_parente"]): string {
       return "Tuteur légal";
     case "AUTRE":
       return "Autre";
+    default:
+      return "—";
+  }
+}
+
+/** Libellé du statut de fin d'année précédente (transferts). */
+function statutAnneeLabel(
+  s: PreInscription["eleve_statut_annee_precedente"],
+): string {
+  switch (s) {
+    case "PROMU":
+      return "Promu";
+    case "REDOUBLANT":
+      return "Redoublant";
+    case "AUTRE":
+      return "Autre situation";
+    case "NON_APPLICABLE":
+      return "Nouvel entrant (non applicable)";
     default:
       return "—";
   }
@@ -1484,18 +1504,38 @@ function DetailDialog({
               value={sexeLabel(pre.eleve_sexe)}
             />
             <DetailRow
+              icon={Flag}
+              label="Nationalité"
+              value={pre.eleve_nationalite || "—"}
+            />
+            <DetailRow
               icon={Layers}
               label="Catégorie"
               value={categorieLabel(pre.eleve_categorie)}
             />
-            {pre.eleve_ancien_etablissement && (
+          </DetailSection>
+
+          {/* Scolarité antérieure (transfert) */}
+          {(pre.eleve_ancien_etablissement ||
+            (pre.eleve_statut_annee_precedente &&
+              pre.eleve_statut_annee_precedente !== "NON_APPLICABLE")) && (
+            <DetailSection
+              title="Scolarité antérieure"
+              icon={School}
+              tone="sky"
+            >
               <DetailRow
                 icon={School}
                 label="Ancien établissement"
-                value={pre.eleve_ancien_etablissement}
+                value={pre.eleve_ancien_etablissement || "—"}
               />
-            )}
-          </DetailSection>
+              <DetailRow
+                icon={ClipboardCheck}
+                label="Statut fin d'année précédente"
+                value={statutAnneeLabel(pre.eleve_statut_annee_precedente)}
+              />
+            </DetailSection>
+          )}
 
           {/* Tuteur */}
           <DetailSection title="Tuteur / Parent" icon={Users} tone="amber">
@@ -1604,13 +1644,15 @@ function DetailSection({
 }: {
   title: string;
   icon: React.ElementType;
-  tone: "emerald" | "amber";
+  tone: "emerald" | "amber" | "sky";
   children: React.ReactNode;
 }) {
   const badgeCls =
     tone === "emerald"
       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-      : "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300";
+      : tone === "amber"
+        ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+        : "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300";
   return (
     <GlassCard variant="mobile" noHover noAnimation className="space-y-3 p-4">
       {/* SectionHeader : icône dans badge rond emerald/15 (ou amber/15) */}

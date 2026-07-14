@@ -44,9 +44,18 @@ type PreInscription struct {
         EleveLieuNaissance   string             `json:"eleve_lieu_naissance"`
         EleveSexe            Sexe               `json:"eleve_sexe"`
         EleveCategorie       CategorieEleve     `gorm:"default:NON_APPLICABLE" json:"eleve_categorie"`
+        // Nationalité de l'élève (texte libre — ex: "Ivoirienne", "Malienne").
+        // Vide par défaut pour les pré-inscriptions héritées (avant l'ajout du champ).
+        EleveNationalite     string             `json:"eleve_nationalite"`
 
-        // ── Champs supplémentaires (transfert, santé) ──
-        EleveAncienEtablissement string `json:"eleve_ancien_etablissement"`  // pour les transferts
+        // ── Scolarité antérieure (transfert) ──
+        // EleveAncienEtablissement : nom de l'établissement précédent (si transfert).
+        // EleveStatutAnneePrecedente : décision de fin d'année dans l'ancien établissement
+        //   (PROMU / REDOUBLANT / AUTRE / NON_APPLICABLE pour les nouveaux entrants).
+        EleveAncienEtablissement    string                 `json:"eleve_ancien_etablissement"`
+        EleveStatutAnneePrecedente  StatutAnneePrecedente  `gorm:"default:NON_APPLICABLE" json:"eleve_statut_annee_precedente"`
+
+        // ── Santé (confidentiel) ──
         EleveAllergies           string `json:"eleve_allergies"`             // infos santé (allergies, conditions particulières)
         EleveNotesSante          string `json:"eleve_notes_sante"`           // autres notes santé
 
