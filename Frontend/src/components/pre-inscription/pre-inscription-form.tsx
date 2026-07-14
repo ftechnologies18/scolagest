@@ -791,6 +791,7 @@ export function PreInscriptionForm() {
             variant="adaptive"
             noHover
             noAnimation
+            premiumBorder
             className="min-h-[280px] p-5 sm:p-6"
           >
             <AnimatePresence mode="wait" initial={false}>
