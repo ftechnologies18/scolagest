@@ -121,34 +121,27 @@ import { motion, AnimatePresence } from "framer-motion";
 const STEPS = [
   {
     id: 1,
-    label: "Établissement",
-    short: "Étab.",
-    icon: School,
-    description: "Choisir l'école",
-  },
-  {
-    id: 2,
     label: "Élève",
     short: "Élève",
     icon: User,
-    description: "Identité de l'enfant",
+    description: "Établissement & identité",
   },
   {
-    id: 3,
+    id: 2,
     label: "Tuteur",
     short: "Tuteur",
     icon: Users,
     description: "Parent / responsable",
   },
   {
-    id: 4,
+    id: 3,
     label: "Classe & infos",
     short: "Classe",
     icon: BookOpen,
     description: "Classe & santé",
   },
   {
-    id: 5,
+    id: 4,
     label: "Confirmation",
     short: "Récap",
     icon: ClipboardCheck,
@@ -574,24 +567,25 @@ export function PreInscriptionForm() {
   ]);
 
   // ─── Validation par étape (découpe de isValid pour le wizard) ─────────────
-  const step1Valid = !!etablissementId;
-  const step2Valid =
+  // Étape 1 : établissement + élève (fusion des anciennes étapes 1+2)
+  const step1Valid =
+    !!etablissementId &&
     !!eleveNom.trim() &&
     !!eleveSexe &&
     (!appliqueCategorie || eleveCategorie !== "NON_APPLICABLE");
-  const step3Valid = !!tuteurNom.trim() && !!tuteurTelephone.trim();
-  // Étape 4 : cycle + niveau obligatoires (réforme 2026-07). La classe est
+  // Étape 2 : tuteur
+  const step2Valid = !!tuteurNom.trim() && !!tuteurTelephone.trim();
+  // Étape 3 : cycle + niveau obligatoires (réforme 2026-07). La classe est
   // attribuée par le staff lors de la validation — non demandée au parent.
-  const step4Valid = !!cycleId && !!niveau;
-  // Étape 5 : validation globale (toutes les conditions cumulées)
-  const step5Valid = isValid;
+  const step3Valid = !!cycleId && !!niveau;
+  // Étape 4 : validation globale (toutes les conditions cumulées)
+  const step4Valid = isValid;
 
   const stepValidMap: Record<number, boolean> = {
     1: step1Valid,
     2: step2Valid,
     3: step3Valid,
     4: step4Valid,
-    5: step5Valid,
   };
 
   // ─── Navigation ───────────────────────────────────────────────────────────
@@ -810,39 +804,39 @@ export function PreInscriptionForm() {
                 transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                 className="space-y-5"
               >
-                {/* ─── Étape 1 : Établissement ──────────────────────────── */}
+                {/* ─── Étape 1 : Établissement + Élève (fusion) ────────── */}
                 {step === 1 && (
-                  <StepEtablissement
-                    etablissements={etablissements}
-                    etabsLoading={etabsLoading}
-                    etablissementId={etablissementId}
-                    setEtablissementId={setEtablissementId}
-                    selectedEtablissement={selectedEtablissement}
-                    appliqueCategorie={appliqueCategorie}
-                  />
+                  <>
+                    <StepEtablissement
+                      etablissements={etablissements}
+                      etabsLoading={etabsLoading}
+                      etablissementId={etablissementId}
+                      setEtablissementId={setEtablissementId}
+                      selectedEtablissement={selectedEtablissement}
+                      appliqueCategorie={appliqueCategorie}
+                    />
+                    {etablissementId && (
+                      <StepEleve
+                        eleveNom={eleveNom}
+                        setEleveNom={setEleveNom}
+                        elevePrenoms={elevePrenoms}
+                        setElevePrenoms={setElevePrenoms}
+                        eleveDateNaissance={eleveDateNaissance}
+                        setEleveDateNaissance={setEleveDateNaissance}
+                        eleveLieuNaissance={eleveLieuNaissance}
+                        setEleveLieuNaissance={setEleveLieuNaissance}
+                        eleveSexe={eleveSexe}
+                        setEleveSexe={setEleveSexe}
+                        eleveCategorie={eleveCategorie}
+                        setEleveCategorie={setEleveCategorie}
+                        appliqueCategorie={appliqueCategorie}
+                      />
+                    )}
+                  </>
                 )}
 
-                {/* ─── Étape 2 : Élève ─────────────────────────────────── */}
+                {/* ─── Étape 2 : Tuteur ────────────────────────────────── */}
                 {step === 2 && (
-                  <StepEleve
-                    eleveNom={eleveNom}
-                    setEleveNom={setEleveNom}
-                    elevePrenoms={elevePrenoms}
-                    setElevePrenoms={setElevePrenoms}
-                    eleveDateNaissance={eleveDateNaissance}
-                    setEleveDateNaissance={setEleveDateNaissance}
-                    eleveLieuNaissance={eleveLieuNaissance}
-                    setEleveLieuNaissance={setEleveLieuNaissance}
-                    eleveSexe={eleveSexe}
-                    setEleveSexe={setEleveSexe}
-                    eleveCategorie={eleveCategorie}
-                    setEleveCategorie={setEleveCategorie}
-                    appliqueCategorie={appliqueCategorie}
-                  />
-                )}
-
-                {/* ─── Étape 3 : Tuteur ────────────────────────────────── */}
-                {step === 3 && (
                   <StepTuteur
                     tuteurNom={tuteurNom}
                     setTuteurNom={setTuteurNom}
@@ -864,8 +858,8 @@ export function PreInscriptionForm() {
                   />
                 )}
 
-                {/* ─── Étape 4 : Classe & infos ────────────────────────── */}
-                {step === 4 && (
+                {/* ─── Étape 3 : Classe & infos ────────────────────────── */}
+                {step === 3 && (
                   <StepClasseInfos
                     etablissementId={etablissementId}
                     cycles={cycles}
@@ -889,8 +883,8 @@ export function PreInscriptionForm() {
                   />
                 )}
 
-                {/* ─── Étape 5 : Confirmation ──────────────────────────── */}
-                {step === 5 && (
+                {/* ─── Étape 4 : Confirmation ──────────────────────────── */}
+                {step === 4 && (
                   <StepConfirmation
                     selectedEtablissement={selectedEtablissement}
                     eleveNom={eleveNom}
@@ -1824,7 +1818,7 @@ function StepConfirmation({
       <RecapBlock
         title="Élève"
         icon={User}
-        onEdit={() => goToStep(2)}
+        onEdit={() => goToStep(1)}
         disabled={isPending}
       >
         <InfoRow icon={User} label="Nom complet" value={eleveNomComplet || "—"} />
@@ -1859,7 +1853,7 @@ function StepConfirmation({
       <RecapBlock
         title="Tuteur / Parent"
         icon={Users}
-        onEdit={() => goToStep(3)}
+        onEdit={() => goToStep(2)}
         disabled={isPending}
       >
         <InfoRow icon={Users} label="Nom complet" value={tuteurNomComplet || "—"} />
@@ -1925,7 +1919,7 @@ function StepConfirmation({
         <RecapBlock
           title="Scolarité antérieure"
           icon={School}
-          onEdit={() => goToStep(4)}
+          onEdit={() => goToStep(3)}
           disabled={isPending}
         >
           {eleveAncienEtablissement.trim() && (
@@ -1952,7 +1946,7 @@ function StepConfirmation({
         <RecapBlock
           title="Santé & notes"
           icon={HeartPulse}
-          onEdit={() => goToStep(4)}
+          onEdit={() => goToStep(3)}
           disabled={isPending}
         >
           {eleveAllergies.trim() && (
