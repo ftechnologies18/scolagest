@@ -689,9 +689,7 @@ export function PreInscriptionForm() {
   const canGoPrev = step > 1;
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-gradient-to-br from-emerald-50 via-background to-amber-50">
-      {/* Texture kente subtile en fond (fixed pour couvrir toute la page scrollable) */}
-      <KentePattern variant="bg" className="opacity-[0.08] fixed inset-0 z-0" />
+    <div className="kente-bg-content relative flex min-h-screen flex-col overflow-x-hidden">
       {/* Orbes décoratifs (glassmorphism léger) */}
       <div
         aria-hidden="true"
@@ -2229,9 +2227,7 @@ function SuccessScreen({
   });
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-gradient-to-br from-emerald-50 via-background to-amber-50">
-      {/* Texture kente subtile en fond (fixed pour couvrir toute la page) */}
-      <KentePattern variant="bg" className="opacity-[0.08] fixed inset-0 z-0" />
+    <div className="kente-bg-content relative flex min-h-screen flex-col overflow-x-hidden">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-24 -right-24 size-96 rounded-full bg-emerald-200/40 blur-3xl"
