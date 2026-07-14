@@ -76,6 +76,7 @@ import {
   MapPin,
   MessageSquare,
   Phone,
+  RefreshCw,
   School,
   Sparkles,
   User,
@@ -243,12 +244,26 @@ function SuiviPreInscriptionContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
 
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: preInscriptionsKeys.publicByToken(token),
-    queryFn: () => fetchPreInscriptionByToken(token),
-    enabled: !!token,
-    retry: false,
-  });
+  const { data, isLoading, isError, error, refetch, isFetching, dataUpdatedAt } =
+    useQuery({
+      queryKey: preInscriptionsKeys.publicByToken(token),
+      queryFn: () => fetchPreInscriptionByToken(token),
+      enabled: !!token,
+      retry: false,
+      // ─── Mises à jour automatiques ─────────────────────────────────────────
+      // Rafraîchit la donnée quand l'utilisateur revient sur l'onglet
+      // (comportement naturel : on revient voir si ça a bougé).
+      refetchOnWindowFocus: true,
+      // Polling adaptatif : tant que le statut est non-terminal (SOUMISE /
+      // EN_REVUE), on rafraîchit toutes les 30s (comme le dashboard caisse).
+      // Dès que le statut devient terminal (VALIDEE / REJETEE), on arrête
+      // le polling — la donnée ne changera plus.
+      refetchInterval: (query) => {
+        const s = query.state.data?.statut;
+        if (s === "VALIDEE" || s === "REJETEE") return false;
+        return 30_000; // 30 secondes
+      },
+    });
 
   // ─── Pas de token ─────────────────────────────────────────────────────────
   if (!token) {
@@ -284,7 +299,12 @@ function SuiviPreInscriptionContent() {
   // ─── Succès : carte détaillée ─────────────────────────────────────────────
   return (
     <PublicShell pre={data}>
-      <SuiviCard pre={data} />
+      <SuiviCard
+        pre={data}
+        onRefresh={refetch}
+        isRefreshing={isFetching && !isLoading}
+        lastUpdatedAt={dataUpdatedAt}
+      />
     </PublicShell>
   );
 }
@@ -596,7 +616,131 @@ function ErrorState({ message }: { message: string }) {
 // Carte de suivi (succès)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SuiviCard({ pre }: { pre: PreInscription }) {
+/**
+ * Hook utilitaire : retourne un libellé "il y a Xs/min/h" pour un timestamp,
+ * recalculé toutes les 5 secondes pour rester frais sans surcharger le DOM.
+ */
+function useLastUpdateLabel(timestampMs: number): string {
+  const [label, setLabel] = React.useState(() =>
+    formatRelative(timestampMs),
+  );
+  React.useEffect(() => {
+    setLabel(formatRelative(timestampMs));
+    const id = setInterval(() => {
+      setLabel(formatRelative(timestampMs));
+    }, 5_000);
+    return () => clearInterval(id);
+  }, [timestampMs]);
+  return label;
+}
+
+/** Formate un timestamp en libellé relatif français. */
+function formatRelative(timestampMs: number): string {
+  if (!timestampMs) return "à l'instant";
+  const diffMs = Date.now() - timestampMs;
+  const sec = Math.floor(diffMs / 1000);
+  if (sec < 5) return "à l'instant";
+  if (sec < 60) return `il y a ${sec}s`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `il y a ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `il y a ${h} h`;
+  const d = Math.floor(h / 24);
+  return `il y a ${d} j`;
+}
+
+/**
+ * Barre discrète affichée en haut de la carte de suivi :
+ *  - un indicateur "Mis à jour il y a X" (polling 30s actif),
+ *  - un bouton "Actualiser" pour rafraîchir manuellement,
+ *  - un message spécifique quand le statut est terminal (polling arrêté).
+ */
+function LiveUpdateBar({
+  isRefreshing,
+  isTerminal,
+  lastUpdateLabel,
+  onRefresh,
+}: {
+  isRefreshing: boolean;
+  isTerminal: boolean;
+  lastUpdateLabel: string;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200/60 bg-emerald-50/40 px-4 py-2.5 text-xs dark:border-emerald-900/40 dark:bg-emerald-950/15">
+      <div className="flex min-w-0 items-center gap-2 text-emerald-800 dark:text-emerald-200">
+        {isTerminal ? (
+          <>
+            <CheckCircle2
+              className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+              aria-hidden="true"
+            />
+            <span className="break-words leading-snug">
+              Dossier clôturé — mise à jour automatique arrêtée.
+            </span>
+          </>
+        ) : (
+          <>
+            <span
+              className={cn(
+                "relative flex size-2 shrink-0",
+                isRefreshing ? "text-emerald-500" : "text-emerald-400",
+              )}
+              aria-hidden="true"
+            >
+              <span
+                className={cn(
+                  "absolute inline-flex h-full w-full rounded-full bg-current opacity-75",
+                  isRefreshing && "animate-ping",
+                )}
+              />
+              <span className="relative inline-flex size-2 rounded-full bg-current" />
+            </span>
+            <span className="break-words leading-snug">
+              {isRefreshing ? (
+                "Vérification en cours…"
+              ) : (
+                <>
+                  Suivi en direct —{" "}
+                  <span className="text-emerald-700 dark:text-emerald-300">
+                    mis à jour {lastUpdateLabel}
+                  </span>
+                </>
+              )}
+            </span>
+          </>
+        )}
+      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={onRefresh}
+        disabled={isRefreshing}
+        className="h-8 shrink-0 gap-1.5 px-2.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100/60 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-200"
+        aria-label="Actualiser le statut du dossier"
+      >
+        <RefreshCw
+          className={cn("size-3.5", isRefreshing && "animate-spin")}
+          aria-hidden="true"
+        />
+        <span className="hidden sm:inline">Actualiser</span>
+      </Button>
+    </div>
+  );
+}
+
+function SuiviCard({
+  pre,
+  onRefresh,
+  isRefreshing,
+  lastUpdatedAt,
+}: {
+  pre: PreInscription;
+  onRefresh: () => void;
+  isRefreshing: boolean;
+  lastUpdatedAt: number;
+}) {
   const prefersReducedMotion = usePrefersReducedMotion();
   const eleveNomComplet = [pre.eleve_prenoms, pre.eleve_nom]
     .filter(Boolean)
@@ -606,6 +750,12 @@ function SuiviCard({ pre }: { pre: PreInscription }) {
     .filter(Boolean)
     .join(" ")
     .trim();
+
+  // Statut terminal ? (utilisé pour masquer la barre de polling)
+  const isTerminal = pre.statut === "VALIDEE" || pre.statut === "REJETEE";
+
+  // "Dernière mise à jour il y a Xs" — recalculé toutes les 5s pour rester frais
+  const lastUpdateLabel = useLastUpdateLabel(lastUpdatedAt);
 
   // Cartes de détails (pour le stagger)
   const detailCards = [
@@ -632,6 +782,14 @@ function SuiviCard({ pre }: { pre: PreInscription }) {
 
   return (
     <div className="space-y-6">
+      {/* ─── Barre de mise à jour (polling + refresh manuel) ──────────────── */}
+      <LiveUpdateBar
+        isRefreshing={isRefreshing}
+        isTerminal={isTerminal}
+        lastUpdateLabel={lastUpdateLabel}
+        onRefresh={onRefresh}
+      />
+
       {/* ─── Stepper visuel (en haut) ─────────────────────────────────────── */}
       <motion.div
         initial={prefersReducedMotion ? false : { opacity: 0, y: -8 }}
