@@ -254,7 +254,7 @@ export default function ImpayesView() {
       <KentePattern variant="strip" position="top" />
 
       {/* ─── Hero header ────────────────────────────────────────────── */}
-      <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
+      <GlassCard variant="desktop" noHover premiumBorder className="p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3 sm:gap-4">
             {/* Badge rond gradient amber→terracotta avec icône AlertTriangle */}
@@ -481,7 +481,7 @@ export default function ImpayesView() {
           </div>
 
           {/* ─── Tableau (desktop + tablette + mobile) ──────────────── */}
-          <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+          <GlassCard variant="adaptive" noHover premiumBorder className="overflow-hidden p-0">
             <div>
               {isLoading ? (
                 <div className="space-y-2 p-4">
