@@ -296,29 +296,22 @@ func (s *InscriptionWorkflowService) generateIdentifiantTx(tx *gorm.DB, etabliss
 }
 
 // createNextClasseTx crée une nouvelle section de classe quand le quota est
-// atteint (ex: 6e A plein → 6e B créée). Dans la transaction.
+// atteint (ex: "6e 1" pleine → "6e 2" créée). Dans la transaction.
+//
+// Convention de nommage ScolaGest (depuis 2026-07) :
+//   - si le libellé finit par " <nombre>" (ex: "6e 1", "Terminale D 1"), on
+//     incrémente ce nombre ;
+//   - sinon (ex: "CP1", "CM2"), on ajoute " 2" (première section créée).
 func (s *InscriptionWorkflowService) createNextClasseTx(tx *gorm.DB, classeID uuid.UUID) (*models.Classe, error) {
         var classe models.Classe
         if err := tx.First(&classe, "id = ?", classeID).Error; err != nil {
                 return nil, errors.New("classe introuvable")
         }
 
-        // Dériver la prochaine lettre : "6e A" → "6e B", "6e B" → "6e C", etc.
-        // On extrait le dernier caractère et on l'incrémente.
-        base := classe.Libelle
-        suffix := ""
-        if len(base) > 0 {
-                last := base[len(base)-1]
-                if last >= 'A' && last < 'Z' {
-                        suffix = string(last + 1)
-                        base = base[:len(base)-1]
-                } else if last == 'Z' {
-                        // Cas extrême : on ajoute un numéro
-                        suffix = "Z2"
-                        base = base[:len(base)-1]
-                }
-        }
-        newLibelle := base + suffix
+        // Déléguer la génération du libellé au helper commun. siblingCount est
+        // ignoré ici (on est en transaction, on ne recompte pas les siblings) :
+        // on se fie à l'incrémentation du suffixe numérique du libellé courant.
+        newLibelle := utils.NextClasseLibelle(classe.Libelle, 0)
 
         newClasse := models.Classe{
                 CycleID:         classe.CycleID,

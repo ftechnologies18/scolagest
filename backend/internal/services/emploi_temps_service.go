@@ -46,7 +46,7 @@ type ConflitInfo struct {
 	Type        string `json:"type"` // PROF_CONFLIT / CLASSE_CONFLIT
 	Message     string `json:"message"`
 	CreneauID   string `json:"creneau_id_existant"`
-	Description string `json:"description"` // ex: "M. KOUADIO a déjà Maths en 5e A"
+	Description string `json:"description"` // ex: "M. KOUADIO a déjà Maths en 5e 1"
 }
 
 // ListCreneaux retourne tous les créneaux d'un établissement, optionnellement

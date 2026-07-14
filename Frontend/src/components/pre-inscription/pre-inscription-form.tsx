@@ -91,7 +91,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { cn } from "@/lib/utils";
-import { formatNiveau } from "@/lib/format";
+import { formatCycleCourt, formatNiveau } from "@/lib/format";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1510,7 +1510,7 @@ function StepClasseInfos({
                   <SelectItem value="all">Tous cycles</SelectItem>
                   {cycles?.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
-                      {c.libelle}
+                      {formatCycleCourt(c.libelle)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1714,7 +1714,7 @@ function StepClasseInfos({
           <Textarea
             value={notesParent}
             onChange={(e) => setNotesParent(e.target.value)}
-            placeholder="Ex : Nous souhaiterions une classe de 6e A si possible. Merci de nous contacter le soir."
+            placeholder="Ex : Nous souhaiterions une classe de 6e 1 si possible. Merci de nous contacter le soir."
             rows={3}
             className="text-base sm:text-sm"
           />

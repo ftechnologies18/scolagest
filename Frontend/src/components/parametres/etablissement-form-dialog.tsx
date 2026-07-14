@@ -201,7 +201,7 @@ export function EtablissementFormDialog({
             </Label>
             <p className="text-xs text-muted-foreground">
               Nombre maximum d&apos;élèves par classe. Quand le quota est atteint,
-              une nouvelle classe est créée automatiquement (ex: 6e A → 6e B).
+              une nouvelle classe est créée automatiquement (ex: 6e 1 → 6e 2).
             </p>
             <Input
               id="etab-quota"

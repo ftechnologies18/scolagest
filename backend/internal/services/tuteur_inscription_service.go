@@ -9,6 +9,7 @@ import (
         "github.com/google/uuid"
         "github.com/scolagest/backend/internal/database"
         "github.com/scolagest/backend/internal/models"
+        "github.com/scolagest/backend/internal/utils"
         "gorm.io/gorm"
 )
 
@@ -164,7 +165,7 @@ func (s *InscriptionService) ListByEleve(eleveID uuid.UUID) ([]models.Inscriptio
 
 // Create crée une inscription pour un élève.
 // Si la classe sélectionnée est pleine (quota atteint), crée automatiquement
-// une nouvelle classe du même niveau (ex: 6e A → 6e B).
+// une nouvelle classe du même niveau (ex: 6e 1 → 6e 2).
 func (s *InscriptionService) Create(eleveID uuid.UUID, dto InscriptionDTO, userID uuid.UUID) (*models.Inscription, error) {
         // Récupérer l'élève pour déterminer l'établissement
         var eleve models.Eleve
@@ -278,8 +279,8 @@ func (s *InscriptionService) Update(id uuid.UUID, dto InscriptionDTO, userID uui
 }
 
 // createNextClasse crée une nouvelle classe du même niveau (même cycle, même niveau)
-// avec une lettre incrémentée (A → B → C...).
-// Exemple : "6e A" → "6e B", "CP1" → "CP1 B"
+// avec un numéro de section incrémenté (1 → 2 → 3...).
+// Exemple : "6e 1" → "6e 2", "Terminale D 1" → "Terminale D 2", "CP1" → "CP1 2"
 func (s *InscriptionService) createNextClasse(classeID, etablissementID uuid.UUID) (*models.Classe, error) {
 	db := database.Current()
 
@@ -293,10 +294,10 @@ func (s *InscriptionService) createNextClasse(classeID, etablissementID uuid.UUI
 	var siblings []models.Classe
 	db.Where("cycle_id = ? AND niveau = ?", classe.CycleID, classe.Niveau).Find(&siblings)
 
-	// Déterminer la prochaine lettre
-	// Si le libellé contient une lettre finale (A, B, C...), incrémenter
-	// Sinon, ajouter " B"
-	newLibelle := s.nextClasseLibelle(classe.Libelle, len(siblings))
+	// Déterminer le prochain libellé selon la convention de nommage ScolaGest :
+	// - si le libellé finit par " <nombre>" (ex: "6e 1", "Terminale D 1"), incrémenter ce nombre ;
+	// - sinon (ex: "CP1", "CM2"), ajouter " <N>" où N = nombre de sections existantes + 1.
+	newLibelle := utils.NextClasseLibelle(classe.Libelle, len(siblings))
 
 	// Créer la nouvelle classe
 	newClasse := models.Classe{
@@ -313,24 +314,10 @@ func (s *InscriptionService) createNextClasse(classeID, etablissementID uuid.UUI
 	return &newClasse, nil
 }
 
-// nextClasseLibelle génère le libellé de la prochaine classe.
-// "6e A" → "6e B", "CP1" → "CP1 B", "Terminale D" → "Terminale D B"
+// nextClasseLibelle est conservé pour compatibilité ascendante mais délègue au
+// helper commun utils.NextClasseLibelle. Préférez l'usage direct de ce dernier.
+//
+// "6e 1" → "6e 2", "Terminale D 1" → "Terminale D 2", "CP1" → "CP1 2"
 func (s *InscriptionService) nextClasseLibelle(current string, siblingCount int) string {
-	// Si le libellé se termine par une lettre unique (A-Z), incrémenter
-	if len(current) >= 3 {
-		last := current[len(current)-1]
-		secondLast := current[len(current)-2]
-		if secondLast == ' ' && last >= 'A' && last < 'Z' {
-			return current[:len(current)-1] + string(last+1)
-		}
-		if secondLast == ' ' && last == 'Z' {
-			return current + " AA" // cas extrême (Z → AA)
-		}
-	}
-	// Sinon, ajouter " B" (premier split)
-	letter := byte('A' + byte(siblingCount))
-	if siblingCount > 25 {
-		letter = 'Z'
-	}
-	return current + " " + string(letter)
+	return utils.NextClasseLibelle(current, siblingCount)
 }

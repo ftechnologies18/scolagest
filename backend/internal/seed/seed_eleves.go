@@ -32,14 +32,14 @@ func SeedEleves() {
         var annee models.AnneeScolaire
         db.Where("est_active = ?", true).First(&annee)
 
-        // Classes du collège
-        var classe6eA, classe3eA, classeTermD models.Classe
+        // Classes du Collège Privé Le Chandelier (premier cycle + second cycle)
+        var classe6e1, classe3e1, classeTermD1 models.Classe
         db.Joins("JOIN cycles ON cycles.id = classes.cycle_id").
-                Where("cycles.etablissement_id = ? AND classes.libelle = ?", college.ID, "6e A").First(&classe6eA)
+                Where("cycles.etablissement_id = ? AND classes.libelle = ?", college.ID, "6e 1").First(&classe6e1)
         db.Joins("JOIN cycles ON cycles.id = classes.cycle_id").
-                Where("cycles.etablissement_id = ? AND classes.libelle = ?", college.ID, "3e A").First(&classe3eA)
+                Where("cycles.etablissement_id = ? AND classes.libelle = ?", college.ID, "3e 1").First(&classe3e1)
         db.Joins("JOIN cycles ON cycles.id = classes.cycle_id").
-                Where("cycles.etablissement_id = ? AND classes.libelle = ?", college.ID, "Terminale D").First(&classeTermD)
+                Where("cycles.etablissement_id = ? AND classes.libelle = ?", college.ID, "Terminale D 1").First(&classeTermD1)
 
         // Classes de l'EPV
         var classeCP1, classeCM2 models.Classe
@@ -103,13 +103,14 @@ func SeedEleves() {
         log.Printf("  + %d élèves créés (%d collège + %d EPV)", totalEleves, len(elevesCollege), len(elevesEPV))
 
         // ===== Inscriptions pour l'année active =====
-        // Collège : Yann(6eA), Awa(6eA), David(3eA), Mariam(3eA), Olivier(TermD)
+        // Premier cycle : Yann(6e 1), Awa(6e 1), David(3e 1), Mariam(3e 1)
+        // Second cycle : Olivier(Terminale D 1)
         inscriptions := []models.Inscription{
-                {EleveID: elevesCollege[0].ID, EtablissementID: college.ID, ClasseID: classe6eA.ID, AnneeScolaireID: annee.ID, DateInscription: time.Now(), Statut: models.StatutInscrit},
-                {EleveID: elevesCollege[1].ID, EtablissementID: college.ID, ClasseID: classe6eA.ID, AnneeScolaireID: annee.ID, DateInscription: time.Now(), Statut: models.StatutInscrit, DerogationInscription: true, MotifDerogation: "Raison sociale — échelonnement accordé"},
-                {EleveID: elevesCollege[2].ID, EtablissementID: college.ID, ClasseID: classe3eA.ID, AnneeScolaireID: annee.ID, DateInscription: time.Now(), Statut: models.StatutInscrit},
-                {EleveID: elevesCollege[3].ID, EtablissementID: college.ID, ClasseID: classe3eA.ID, AnneeScolaireID: annee.ID, DateInscription: time.Now(), Statut: models.StatutInscrit},
-                {EleveID: elevesCollege[4].ID, EtablissementID: college.ID, ClasseID: classeTermD.ID, AnneeScolaireID: annee.ID, DateInscription: time.Now(), Statut: models.StatutInscrit},
+                {EleveID: elevesCollege[0].ID, EtablissementID: college.ID, ClasseID: classe6e1.ID, AnneeScolaireID: annee.ID, DateInscription: time.Now(), Statut: models.StatutInscrit},
+                {EleveID: elevesCollege[1].ID, EtablissementID: college.ID, ClasseID: classe6e1.ID, AnneeScolaireID: annee.ID, DateInscription: time.Now(), Statut: models.StatutInscrit, DerogationInscription: true, MotifDerogation: "Raison sociale — échelonnement accordé"},
+                {EleveID: elevesCollege[2].ID, EtablissementID: college.ID, ClasseID: classe3e1.ID, AnneeScolaireID: annee.ID, DateInscription: time.Now(), Statut: models.StatutInscrit},
+                {EleveID: elevesCollege[3].ID, EtablissementID: college.ID, ClasseID: classe3e1.ID, AnneeScolaireID: annee.ID, DateInscription: time.Now(), Statut: models.StatutInscrit},
+                {EleveID: elevesCollege[4].ID, EtablissementID: college.ID, ClasseID: classeTermD1.ID, AnneeScolaireID: annee.ID, DateInscription: time.Now(), Statut: models.StatutInscrit},
                 // EPV : Sarah(CP1), Ibrahim(CP1), Grace(CM2)
                 {EleveID: elevesEPV[0].ID, EtablissementID: epv.ID, ClasseID: classeCP1.ID, AnneeScolaireID: annee.ID, DateInscription: time.Now(), Statut: models.StatutInscrit},
                 {EleveID: elevesEPV[1].ID, EtablissementID: epv.ID, ClasseID: classeCP1.ID, AnneeScolaireID: annee.ID, DateInscription: time.Now(), Statut: models.StatutInscrit},

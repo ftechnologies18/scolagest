@@ -80,7 +80,7 @@ import {
   exportElevesExcel,
   exportElevesPDF,
 } from "@/lib/export-students";
-import { formatNiveau } from "@/lib/format";
+import { formatCycleCourt, formatNiveau } from "@/lib/format";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -540,7 +540,7 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
                 <SelectItem value="all">Tous cycles</SelectItem>
                 {cycles?.map((cy) => (
                   <SelectItem key={cy.id} value={cy.id}>
-                    {cy.libelle}
+                    {formatCycleCourt(cy.libelle)}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -157,14 +157,28 @@ const (
         SexeF Sexe = "F"
 )
 
-// LibelleCycle : libellés des cycles scolaires.
+// LibelleCycle : codes enum des cycles scolaires (stockés en DB).
+//
+// RAPPEL DÉNOMINATION (2026-07) : les codes enum restent stables en base
+// (COLLEGE / LYCEE) pour ne pas casser les données existantes, mais les
+// libellés affichés à l'utilisateur final sont traduits côté frontend via
+// formatCycleCourt() :
+//   - COLLEGE → "Premier cycle"
+//   - LYCEE   → "Second cycle"
+// Les identifiants Go ci-dessous (CyclePremierCycle / CycleSecondCycle)
+// reflètent la nouvelle dénomination, mais leurs valeurs string sont
+// inchangées ("COLLEGE" / "LYCEE").
 type LibelleCycle string
 
 const (
-        CyclePrescolaire LibelleCycle = "PRESCOLAIRE"
-        CyclePrimaire    LibelleCycle = "PRIMAIRE"
-        CycleCollege     LibelleCycle = "COLLEGE"
-        CycleLycee       LibelleCycle = "LYCEE"
+        CyclePrescolaire   LibelleCycle = "PRESCOLAIRE"
+        CyclePrimaire      LibelleCycle = "PRIMAIRE"
+        CyclePremierCycle  LibelleCycle = "COLLEGE" // ex-Collège → "Premier cycle" à l'affichage
+        CycleSecondCycle   LibelleCycle = "LYCEE"   // ex-Lycée   → "Second cycle"   à l'affichage
+        // Alias historiques (dépréciés) — conservés pour compatibilité ascendante
+        // du code existant. À migrer progressivement vers CyclePremierCycle / CycleSecondCycle.
+        CycleCollege = CyclePremierCycle
+        CycleLycee   = CycleSecondCycle
 )
 
 // StatutCloture : état d'une clôture de caisse.

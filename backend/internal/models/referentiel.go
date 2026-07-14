@@ -24,7 +24,7 @@ type Etablissement struct {
         Actif                   bool   `gorm:"not null;default:true" json:"actif"`
         // QuotaClasse : nombre maximum d'élèves par classe (défaut 45).
         // Quand le quota est atteint, une nouvelle classe est créée automatiquement
-        // (ex: 6e A rempli → 6e B créée). Configurable dans les réglages.
+        // (ex: 6e 1 rempli → 6e 2 créée). Configurable dans les réglages.
         QuotaClasse             int    `gorm:"not null;default:45" json:"quota_classe"`
         // Geofencing : coordonnées GPS de l'établissement pour la validation
         // des pointages enseignants (anti-fraude). Le rayon (mètres) définit
@@ -49,8 +49,9 @@ type AnneeScolaire struct {
 
 func (AnneeScolaire) TableName() string { return "annees_scolaires" }
 
-// Cycle représente un cycle scolaire (préscolaire, primaire, collège, lycée)
-// rattaché à un établissement.
+// Cycle représente un cycle scolaire (préscolaire, primaire, premier cycle, second cycle)
+// rattaché à un établissement. Codes enum DB : PRESCOLAIRE / PRIMAIRE / COLLEGE / LYCEE
+// (les libellés "Premier cycle" / "Second cycle" sont des traductions frontend).
 type Cycle struct {
         BaseModel
         EtablissementID uuid.UUID    `gorm:"type:uuid;index;not null" json:"etablissement_id"`
@@ -62,7 +63,9 @@ type Cycle struct {
 
 func (Cycle) TableName() string { return "cycles" }
 
-// Classe représente une classe (ex. CP1, 6e A, Terminale D) rattachée à un cycle.
+// Classe représente une classe (ex. CP1, 6e 1, Terminale D 1) rattachée à un cycle.
+// Convention 2026-07 : les classes portent un numéro de section (pas une lettre),
+// et le second cycle distingue les séries A / C / D.
 type Classe struct {
         BaseModel
         CycleID          uuid.UUID `gorm:"type:uuid;index;not null" json:"cycle_id"`

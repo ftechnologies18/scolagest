@@ -89,7 +89,7 @@ import {
   type ValiderBody,
 } from "@/lib/api-pre-inscription";
 import { useToast } from "@/hooks/use-toast";
-import { formatDate, formatDateTime, formatNiveau } from "@/lib/format";
+import { formatDate, formatCycleCourt, formatDateTime, formatNiveau } from "@/lib/format";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1156,7 +1156,7 @@ function ValiderDialog({
                   <SelectItem value="all">Tous cycles</SelectItem>
                   {cycles?.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
-                      {c.libelle}
+                      {formatCycleCourt(c.libelle)}
                     </SelectItem>
                   ))}
                 </SelectContent>

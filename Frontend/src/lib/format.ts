@@ -111,12 +111,17 @@ export function dateInputToISO(value: string): string {
  * la signification dépend du cycle :
  *   - PRÉSCOLAIRE : 1=PS, 2=MS, 3=GS
  *   - PRIMAIRE    : 1=CP1, 2=CP2, 3=CE1, 4=CE2, 5=CM1, 6=CM2
- *   - COLLÈGE     : 1=6ème, 2=5ème, 3=4ème, 4=3ème
- *   - LYCÉE       : 1=2nde, 2=1ère, 3=Terminale
+ *   - PREMIER CYCLE (COLLEGE) : 1=6ème, 2=5ème, 3=4ème, 4=3ème
+ *   - SECOND CYCLE  (LYCEE)   : 1=2nde, 2=1ère, 3=Terminale
  *
- * Rappel : la classe elle-même a un `libelle` (ex: "6e A", "1ère D",
- * "Terminale D") qui identifie la subdivision. Le `niveau` est l'année
- * scolaire dans le cycle (ex: 6ème = 1ère année du collège).
+ * Rappel : la classe elle-même a un `libelle` (ex: "6e 1", "Première D 1",
+ * "Terminale D 1") qui identifie la subdivision (numéro de section, et série
+ * A/C/D pour le second cycle). Le `niveau` est l'année scolaire dans le cycle
+ * (ex: 6ème = 1ère année du premier cycle).
+ *
+ * Note dénomination (2026-07) : les codes enum DB COLLEGE / LYCEE restent
+ * inchangés en base, mais sont affichés comme "Premier cycle" / "Second cycle"
+ * via formatCycleCourt() ci-dessous.
  */
 const NIVEAUX_BY_CYCLE: Record<string, Record<number, string>> = {
   PRESCOLAIRE: { 1: "Petite Section", 2: "Moyenne Section", 3: "Grande Section" },
@@ -145,7 +150,14 @@ export function formatNiveau(
 
 /**
  * Retourne le libellé court du cycle (pour affichage compact).
- * @example formatCycleCourt("COLLEGE") → "Collège"
+ *
+ * Dénomination 2026-07 : "Collège" → "Premier cycle", "Lycée" → "Second cycle".
+ * Les codes enum DB (COLLEGE / LYCEE) restent inchangés en base ; cette
+ * fonction assure la traduction vers le libellé affiché à l'utilisateur final.
+ *
+ * @example formatCycleCourt("COLLEGE") → "Premier cycle"
+ * @example formatCycleCourt("LYCEE")   → "Second cycle"
+ * @example formatCycleCourt("PRIMAIRE") → "Primaire"
  */
 export function formatCycleCourt(
   cycleLibelle: string | null | undefined,
@@ -156,9 +168,9 @@ export function formatCycleCourt(
     case "PRIMAIRE":
       return "Primaire";
     case "COLLEGE":
-      return "Collège";
+      return "Premier cycle";
     case "LYCEE":
-      return "Lycée";
+      return "Second cycle";
     default:
       return cycleLibelle ?? "—";
   }

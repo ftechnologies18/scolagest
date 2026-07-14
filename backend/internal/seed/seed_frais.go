@@ -29,38 +29,40 @@ func SeedFrais() {
         var annee models.AnneeScolaire
         db.Where("est_active = ?", true).First(&annee)
 
-        // ===== COLLÈGE / LYCÉE (distinction affecté / non-affecté) =====
+        // ===== PREMIER CYCLE / SECOND CYCLE (distinction affecté / non-affecté) =====
+        // Dénomination 2026-07 : "Collège" → "Premier cycle", "Lycée" → "Second cycle".
+        // Les codes enum DB restent COLLEGE / LYCEE (inchangés).
 
-        // Cycles du collège
-        var cycleCollege, cycleLycee models.Cycle
-        db.Where("etablissement_id = ? AND libelle = ?", college.ID, models.CycleCollege).First(&cycleCollege)
-        db.Where("etablissement_id = ? AND libelle = ?", college.ID, models.CycleLycee).First(&cycleLycee)
+        // Cycles du Collège Privé Le Chandelier (premier cycle + second cycle)
+        var cyclePremierCycle, cycleSecondCycle models.Cycle
+        db.Where("etablissement_id = ? AND libelle = ?", college.ID, models.CycleCollege).First(&cyclePremierCycle)
+        db.Where("etablissement_id = ? AND libelle = ?", college.ID, models.CycleLycee).First(&cycleSecondCycle)
 
-        // --- Frais d'inscription (Collège + Lycée) ---
+        // --- Frais d'inscription (Premier cycle + Second cycle) ---
         // Non affecté : 60 000 F ; Affecté : 85 000 F (en 1 versement)
         catNA := models.CategorieNonAffecte
         catA := models.CategorieAffecte
 
-        createFrais(college.ID, annee.ID, &cycleCollege.ID, nil, models.TypeFraisInscription, &catNA,
-                "Frais d'inscription — Collège (non affecté)", 60000, 1, []echeanceDef{
+        createFrais(college.ID, annee.ID, &cyclePremierCycle.ID, nil, models.TypeFraisInscription, &catNA,
+                "Frais d'inscription — Premier cycle (non affecté)", 60000, 1, []echeanceDef{
                         {1, "Inscription (1 versement)", 60000, "2026-09-15"},
                 })
-        createFrais(college.ID, annee.ID, &cycleCollege.ID, nil, models.TypeFraisInscription, &catA,
-                "Frais d'inscription — Collège (affecté)", 85000, 1, []echeanceDef{
+        createFrais(college.ID, annee.ID, &cyclePremierCycle.ID, nil, models.TypeFraisInscription, &catA,
+                "Frais d'inscription — Premier cycle (affecté)", 85000, 1, []echeanceDef{
                         {1, "Inscription (1 versement)", 85000, "2026-09-15"},
                 })
-        createFrais(college.ID, annee.ID, &cycleLycee.ID, nil, models.TypeFraisInscription, &catNA,
-                "Frais d'inscription — Lycée (non affecté)", 60000, 1, []echeanceDef{
+        createFrais(college.ID, annee.ID, &cycleSecondCycle.ID, nil, models.TypeFraisInscription, &catNA,
+                "Frais d'inscription — Second cycle (non affecté)", 60000, 1, []echeanceDef{
                         {1, "Inscription (1 versement)", 60000, "2026-09-15"},
                 })
-        createFrais(college.ID, annee.ID, &cycleLycee.ID, nil, models.TypeFraisInscription, &catA,
-                "Frais d'inscription — Lycée (affecté)", 85000, 1, []echeanceDef{
+        createFrais(college.ID, annee.ID, &cycleSecondCycle.ID, nil, models.TypeFraisInscription, &catA,
+                "Frais d'inscription — Second cycle (affecté)", 85000, 1, []echeanceDef{
                         {1, "Inscription (1 versement)", 85000, "2026-09-15"},
                 })
 
         // --- Scolarité (non affectés uniquement) ---
         // 1er cycle (6e-3e) : 160 000 F en 5 tranches (oct→fév) : 40k, 40k, 35k, 35k, 10k
-        createFrais(college.ID, annee.ID, &cycleCollege.ID, nil, models.TypeFraisScolarite, &catNA,
+        createFrais(college.ID, annee.ID, &cyclePremierCycle.ID, nil, models.TypeFraisScolarite, &catNA,
                 "Scolarité annuelle — 1er cycle (6e-3e)", 160000, 5, []echeanceDef{
                         {1, "1er versement", 40000, "2026-10-05"},
                         {2, "2e versement", 40000, "2026-11-05"},
@@ -69,7 +71,7 @@ func SeedFrais() {
                         {5, "5e versement", 10000, "2027-02-05"},
                 })
         // 2nd cycle (2nde-Tle) : 180 000 F en 5 tranches : 50k, 50k, 35k, 35k, 10k
-        createFrais(college.ID, annee.ID, &cycleLycee.ID, nil, models.TypeFraisScolarite, &catNA,
+        createFrais(college.ID, annee.ID, &cycleSecondCycle.ID, nil, models.TypeFraisScolarite, &catNA,
                 "Scolarité annuelle — 2nd cycle (2nde-Tle)", 180000, 5, []echeanceDef{
                         {1, "1er versement", 50000, "2026-10-05"},
                         {2, "2e versement", 50000, "2026-11-05"},
@@ -79,14 +81,14 @@ func SeedFrais() {
                 })
 
         // --- Frais d'examen (classes d'examen) ---
-        // 3e : 3 000 F ; Terminale : 6 000 F
-        var classe3e, classeTerm models.Classe
+        // 3e 1 : 3 000 F ; Terminale : 6 000 F
+        var classe3e1, classeTerm models.Classe
         db.Joins("JOIN cycles ON cycles.id = classes.cycle_id").
-                Where("cycles.etablissement_id = ? AND classes.libelle = ?", college.ID, "3e A").First(&classe3e)
+                Where("cycles.etablissement_id = ? AND classes.libelle = ?", college.ID, "3e 1").First(&classe3e1)
         db.Joins("JOIN cycles ON cycles.id = classes.cycle_id").
                 Where("cycles.etablissement_id = ? AND classes.libelle LIKE ?", college.ID, "Terminale%").First(&classeTerm)
-        if classe3e.ID != uuid.Nil {
-                createFrais(college.ID, annee.ID, nil, &classe3e.ID, models.TypeFraisExamen, nil,
+        if classe3e1.ID != uuid.Nil {
+                createFrais(college.ID, annee.ID, nil, &classe3e1.ID, models.TypeFraisExamen, nil,
                         "Frais d'examen — 3e", 3000, 1, []echeanceDef{
                                 {1, "Examen (1 versement)", 3000, "2027-01-15"},
                         })

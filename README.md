@@ -24,11 +24,11 @@ Application web de digitalisation du cycle d'encaissement scolaire pour le **Gro
 
 ## Aperçu
 
-ScolaGest couvre l'ensemble du parcours éducatif (Préscolaire → Primaire → Collège → Lycée) avec une gestion multi-établissements. Le Groupe est composé de deux entités distinctes opérant sur le même site :
+ScolaGest couvre l'ensemble du parcours éducatif (Préscolaire → Primaire → Premier cycle → Second cycle) avec une gestion multi-établissements. Le Groupe est composé de deux entités distinctes opérant sur le même site :
 
 | Établissement | Cycles | Code officiel | Distinction affecté/non-affecté |
 |---|---|---|---|
-| Collège Privé Le Chandelier | Collège + Lycée | `013062` | ✅ Active |
+| Collège Privé Le Chandelier | Premier cycle + Second cycle | `013062` | ✅ Active |
 | École Primaire Privée Le Chandelier / EPV | Préscolaire + Primaire | `0103105091` | ❌ Tarif unique |
 
 ---

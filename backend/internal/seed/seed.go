@@ -131,18 +131,22 @@ func seedCyclesEtClasses(db *gorm.DB) {
                         examen  bool
                 }{{"CP1", 1, false}, {"CP2", 2, false}, {"CE1", 3, false}, {"CE2", 4, false}, {"CM1", 5, false}, {"CM2", 6, true}}},
         }
-        // Collège : collège + lycée
+        // Collège Privé Le Chandelier : premier cycle (ex-collège) + second cycle (ex-lycée).
+        // Dénomination 2026-07 : les libellés affichés "Premier cycle" / "Second cycle"
+        // sont gérés côté frontend via formatCycleCourt() ; les codes enum DB restent
+        // COLLEGE / LYCEE. Les classes portent un numéro de section (pas une lettre),
+        // et le second cycle distingue les séries A / C / D (enseignement général ivoirien).
         collegeCycles := []cycleDef{
                 {models.CycleCollege, 3, []struct {
                         libelle string
                         niveau  int
                         examen  bool
-                }{{"6e A", 1, false}, {"6e B", 1, false}, {"5e A", 2, false}, {"4e A", 3, false}, {"3e A", 4, true}}},
+                }{{"6e 1", 1, false}, {"6e 2", 1, false}, {"5e 1", 2, false}, {"4e 1", 3, false}, {"3e 1", 4, true}}},
                 {models.CycleLycee, 4, []struct {
                         libelle string
                         niveau  int
                         examen  bool
-                }{{"2nde A", 1, false}, {"1ère D", 2, false}, {"1ère A", 2, false}, {"Terminale D", 3, true}, {"Terminale A", 3, true}}},
+                }{{"2nde A 1", 1, false}, {"Première A 1", 2, false}, {"Première C 1", 2, false}, {"Première D 1", 2, false}, {"Terminale A 1", 3, true}, {"Terminale D 1", 3, true}}},
         }
 
         createCycles := func(etbID uuid.UUID, cycles []cycleDef) {

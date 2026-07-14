@@ -104,7 +104,7 @@ Année scolaire commune aux établissements (calendrier ivoirien : septembre→j
 |---|---|---|---|
 | id | UUID | PK | |
 | etablissement_id | UUID | FK→Etablissement, NN | |
-| libelle | ENUM | NN | PRESCOLAIRE | PRIMAIRE | COLLEGE | LYCEE |
+| libelle | ENUM | NN | PRESCOLAIRE \| PRIMAIRE \| COLLEGE \| LYCEE. **Note dénomination (2026-07)** : les codes enum restent stables en DB, mais COLLEGE est affiché comme « Premier cycle » et LYCEE comme « Second cycle » côté frontend (via `formatCycleCourt()`). |
 | ordre | INT | NN | 1, 2, 3, 4 |
 | actif | BOOL | NN | |
 | created_at / updated_at | DATETIME | * | |
@@ -117,9 +117,9 @@ Année scolaire commune aux établissements (calendrier ivoirien : septembre→j
 |---|---|---|---|
 | id | UUID | PK | |
 | cycle_id | UUID | FK→Cycle, NN | |
-| libelle | STRING | NN | Ex. « CP1 », « 6e A », « Terminale D » |
+| libelle | STRING | NN | Ex. « CP1 », « 6e 1 », « Terminale D 1 ». **Convention 2026-07** : les classes portent un numéro de section (pas une lettre), et le second cycle distingue les séries A / C / D (enseignement général ivoirien). Exemples : « 6e 1 », « 6e 2 », « 2nde A 1 », « Première C 1 », « Terminale D 1 ». |
 | niveau | INT | NN | ordre dans le cycle (1..n) |
-| est_classe_examen | BOOL | NN | true pour CM2, 3e, Terminale |
+| est_classe_examen | BOOL | NN | true pour CM2, 3e 1, Terminale (classes d'examen) |
 | effectif_max | INT | | |
 | actif | BOOL | NN | |
 | created_at / updated_at | DATETIME | * | |

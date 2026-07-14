@@ -551,7 +551,7 @@ export function FraisFormDialog({
                   id="frais-libelle"
                   value={libelle}
                   onChange={(e) => setLibelle(e.target.value)}
-                  placeholder="Ex. Scolarité 6e — Affectés"
+                  placeholder="Ex. Scolarité 6e 1 — Affectés"
                   className="h-10 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/30"
                 />
               </div>

@@ -300,7 +300,7 @@ export default function LandingPage() {
                   </div>
                   <div className="flex items-center justify-between rounded-xl bg-emerald-50 p-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">Yann Kouassi — 6e A</p>
+                      <p className="text-sm font-medium text-gray-900">Yann Kouassi — 6e 1</p>
                       <p className="text-xs text-gray-500">Solde dû</p>
                     </div>
                     <p className="text-xl font-bold text-emerald-700">100 000 F</p>
@@ -499,7 +499,7 @@ export default function LandingPage() {
               { q: "ScolaGest fonctionne-t-il avec Mobile Money ?", a: "Oui. ScolaGest intègre Orange Money, MTN Money et Wave. Les parents peuvent payer en ligne directement depuis l'espace parent." },
               { q: "Puis-je gérer plusieurs établissements ?", a: "Oui. ScolaGest est multi-tenant. Chaque établissement a ses propres données (élèves, paiements, frais). Le SUPER_ADMIN gère la plateforme, chaque Directeur gère son établissement." },
               { q: "Les données sont-elles sécurisées ?", a: "Absolument. ScolaGest utilise Row-Level Security (RLS) au niveau base de données PostgreSQL. Chaque établissement ne voit que ses propres données. L'isolation est garantie même en cas de bug applicatif." },
-              { q: "Que se passe-t-il quand une classe est pleine ?", a: "Quand le quota d'élèves est atteint (configurable, défaut 45), ScolaGest crée automatiquement une nouvelle classe. Par exemple, 6e A devient pleine → 6e B est créée." },
+              { q: "Que se passe-t-il quand une classe est pleine ?", a: "Quand le quota d'élèves est atteint (configurable, défaut 45), ScolaGest crée automatiquement une nouvelle classe. Par exemple, 6e 1 devient pleine → 6e 2 est créée." },
               { q: "Comment sont gérés les élèves affectés par l'État ?", a: "ScolaGest distingue les élèves affectés (exonérés de scolarité) des non-affectés. Les frais d'inscription différent selon la catégorie. Le système gère aussi les dérogations sociales en 3 tranches." },
             ].map((faq, i) => (
               <AccordionItem key={i} value={`item-${i}`}>
