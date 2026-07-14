@@ -1604,12 +1604,8 @@ function StepClasseInfos({
           <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 text-xs text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-200">
             <Sparkles className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             <p className="break-words leading-snug">
-              La <strong>classe définitive</strong> (ex&nbsp;: 6e&nbsp;1, 2nde&nbsp;A&nbsp;1,
-              Terminale&nbsp;D&nbsp;1) est <strong>attribuée par
-              l&apos;administration</strong> de l&apos;établissement lors de la
-              finalisation de l&apos;inscription à la caisse (paiement des frais
-              d&apos;inscription). Le cycle et le niveau ci-dessus sont
-              transmis au secrétariat comme préférence.
+              La <strong>classe définitive</strong> est attribuée par
+              l&apos;établissement lors du paiement des frais d&apos;inscription.
             </p>
           </div>
         </div>
