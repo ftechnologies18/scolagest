@@ -912,8 +912,8 @@ export function DashboardShell({
                 aria-label="Mode d'affichage de la sidebar"
               >
                 {sidebarMode === "expanded" && "Étendu"}
-                {sidebarMode === "collapsed" && "Réduit"}
                 {sidebarMode === "hover" && "Survol"}
+                {/* Pas de label "Réduit" : en mode collapsed ce dropdown est masqué (sidebarCollapsed = true) */}
                 <ChevronDown className="size-3" aria-hidden="true" />
               </button>
             </DropdownMenuTrigger>
@@ -935,14 +935,14 @@ export function DashboardShell({
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => { changeSidebarMode("collapsed"); setHoverActive(false); }}
-                className={cn("gap-2 text-xs", sidebarMode === "collapsed" && "bg-white/10 text-amber-300")}
+                className="gap-2 text-xs"
               >
                 <PanelLeftClose className="size-3.5" />
                 <div className="flex flex-col">
                   <span className="font-medium">Réduit</span>
                   <span className="text-[10px] text-muted-foreground">Icônes seules, label au survol</span>
                 </div>
-                {sidebarMode === "collapsed" && <CheckCircle2 className="ml-auto size-3.5 text-amber-300" />}
+                {/* Pas de coche/highlight : en mode collapsed ce menu est masqué (voir !sidebarCollapsed ci-dessus) */}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => { changeSidebarMode("hover"); setHoverActive(false); }}

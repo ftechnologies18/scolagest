@@ -129,7 +129,7 @@ function spawnBackend(): boolean {
     }
   });
 
-  child.on("error", (err: Error) => {
+  child.on("error", (err) => {
     console.error("[instrumentation] Erreur backend Go:", err);
   });
 

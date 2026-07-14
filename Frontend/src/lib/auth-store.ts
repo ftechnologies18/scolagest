@@ -61,6 +61,8 @@ export interface Etablissement {
   ville?: string;
   applique_categorie_affecte?: boolean;
   actif?: boolean;
+  /** Nombre maximum d'élèves par classe (défaut 45). Miroir du backend models.Etablissement.QuotaClasse. */
+  quota_classe?: number;
 }
 
 /** Tuteur renvoyé par POST /api/parent/access. */

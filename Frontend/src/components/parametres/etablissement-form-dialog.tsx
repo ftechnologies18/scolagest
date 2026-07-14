@@ -66,7 +66,7 @@ export function EtablissementFormDialog({
       setVille(etablissement.ville ?? "");
       setAppliqueCategorie(etablissement.applique_categorie_affecte ?? true);
       setActif(etablissement.actif ?? true);
-      setQuotaClasse((etablissement as Etablissement & { quota_classe?: number }).quota_classe ?? 45);
+      setQuotaClasse(etablissement.quota_classe ?? 45);
     } else {
       setNom("");
       setCodeOfficiel("");
