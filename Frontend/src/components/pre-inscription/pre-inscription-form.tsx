@@ -1386,7 +1386,6 @@ function StepTuteur({
 
         <Field
           label="Contact d'urgence"
-          hint="Numéro à contacter en cas d'urgence si le tuteur est injoignable."
         >
           <div className="relative">
             <Phone
