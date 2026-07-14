@@ -468,6 +468,7 @@ function ExercicesPanel() {
           variant="adaptive"
           noHover
           noAnimation
+          premiumBorder
           className="overflow-hidden p-0"
         >
           <div className="overflow-x-auto">
@@ -1153,6 +1154,7 @@ function EcrituresPanel() {
           variant="adaptive"
           noHover
           noAnimation
+          premiumBorder
           className="overflow-hidden p-0"
         >
           <div className="overflow-x-auto">
@@ -1725,6 +1727,7 @@ function GrandLivreCompteCard({
       variant="adaptive"
       noHover
       noAnimation
+      premiumBorder
       className="overflow-hidden p-0"
     >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-100 bg-emerald-50/60 px-5 py-3 dark:border-emerald-900/40 dark:bg-emerald-950/20">
@@ -2033,6 +2036,7 @@ function BilanDetailTable({
       variant="adaptive"
       noHover
       noAnimation
+      premiumBorder
       className="overflow-hidden p-0"
     >
       <div className="bg-emerald-50/60 px-5 py-3 dark:bg-emerald-950/20">
