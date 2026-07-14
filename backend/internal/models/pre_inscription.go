@@ -58,8 +58,23 @@ type PreInscription struct {
         TuteurLienParente LienParente `gorm:"default:AUTRE" json:"tuteur_lien_parente"`
 
         // ── Classe souhaitée ──
+        // Depuis la réforme pré-inscription (2026-07) : le parent ne choisit plus
+        // une classe précise (elle est attribuée par l'établissement lors de la
+        // validation staff / finalisation à la caisse). Il exprime uniquement une
+        // préférence cycle + niveau. Le champ ClasseID reste présent (nullable)
+        // pour compat ascendante et est désormais toujours NULL à la soumission.
         ClasseID *uuid.UUID `gorm:"type:uuid;index" json:"classe_id,omitempty"`
         Classe   *Classe    `gorm:"foreignKey:ClasseID" json:"classe,omitempty"`
+
+        // ── Préférence cycle + niveau (choix du parent) ──
+        // CycleID       : cycle souhaité (FK vers cycles). Nullable car non requis
+        //                 pour les pré-inscriptions héritées (avant la réforme).
+        // NiveauSouhaite : ordinal du niveau dans le cycle (1, 2, 3...). Nullable.
+        // Le staff utilise cette préférence pour pré-filtrer la cascade
+        // Cycle → Niveau → Classe dans le ValiderDialog.
+        CycleID        *uuid.UUID `gorm:"type:uuid;index" json:"cycle_id,omitempty"`
+        Cycle          *Cycle     `gorm:"foreignKey:CycleID" json:"cycle,omitempty"`
+        NiveauSouhaite *int       `json:"niveau_souhaite,omitempty"`
 
         // ── Méta ──
         NotesParent string `json:"notes_parent"`        // message du parent

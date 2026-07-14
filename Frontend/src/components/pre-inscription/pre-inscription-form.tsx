@@ -403,9 +403,8 @@ export function PreInscriptionForm() {
     !!selectedEtablissement?.applique_categorie_affecte;
 
   // ─── Cycles & Classes (cascade) ───────────────────────────────────────────
-  const [cycleId, setCycleId] = React.useState<string>("all");
-  const [niveau, setNiveau] = React.useState<string>("all");
-  const [classeId, setClasseId] = React.useState<string>("");
+  const [cycleId, setCycleId] = React.useState<string>("");
+  const [niveau, setNiveau] = React.useState<string>("");
 
   const { data: cycles } = useQuery<Cycle[]>({
     queryKey: cyclesKeys.list(etablissementId || undefined),
@@ -428,52 +427,25 @@ export function PreInscriptionForm() {
     retry: false,
   });
 
-  // Cascade : reset niveau + classe quand cycle change
+  // Cascade : reset niveau quand cycle change
   const prevCycle = React.useRef(cycleId);
   React.useEffect(() => {
     if (prevCycle.current !== cycleId) {
       prevCycle.current = cycleId;
-      setNiveau("all");
-      setClasseId("");
+      setNiveau("");
     }
   }, [cycleId]);
-  const prevNiveau = React.useRef(niveau);
-  React.useEffect(() => {
-    if (prevNiveau.current !== niveau) {
-      prevNiveau.current = niveau;
-      setClasseId("");
-    }
-  }, [niveau]);
 
   const availableNiveaux = React.useMemo(() => {
-    if (!classes) return [];
-    const filtered =
-      cycleId !== "all" ? classes.filter((c) => c.cycle_id === cycleId) : classes;
+    if (!classes || !cycleId) return [];
+    const filtered = classes.filter((c) => c.cycle_id === cycleId);
     return [...new Set(filtered.map((c) => c.niveau))].sort((a, b) => a - b);
   }, [classes, cycleId]);
 
-  const filteredClasses = React.useMemo(() => {
-    if (!classes) return [];
-    return classes.filter((c) => {
-      if (cycleId !== "all" && c.cycle_id !== cycleId) return false;
-      if (niveau !== "all" && c.niveau !== Number(niveau)) return false;
-      return true;
-    });
-  }, [classes, cycleId, niveau]);
-
-  /** Map cycle_id → tone (palette emerald/amber/terracotta/sky/gold). */
-  const cycleToneById = React.useMemo(() => {
-    const map: Record<string, (typeof CYCLE_TONES)[number]> = {};
-    cycles?.forEach((c, i) => {
-      map[c.id] = CYCLE_TONES[i % CYCLE_TONES.length];
-    });
-    return map;
-  }, [cycles]);
-
-  /** Libellé de la classe sélectionnée (pour récap / stepper). */
-  const selectedClasse = React.useMemo(
-    () => classes?.find((c) => c.id === classeId),
-    [classes, classeId],
+  /** Cycle sélectionné (pour récap / stepper). */
+  const selectedCycle = React.useMemo(
+    () => cycles?.find((c) => c.id === cycleId),
+    [cycles, cycleId],
   );
 
   // ─── État du formulaire ───────────────────────────────────────────────────
@@ -600,8 +572,9 @@ export function PreInscriptionForm() {
     !!eleveSexe &&
     (!appliqueCategorie || eleveCategorie !== "NON_APPLICABLE");
   const step3Valid = !!tuteurNom.trim() && !!tuteurTelephone.trim();
-  // Étape 4 : tous les champs sont optionnels (classe souhaitée + santé + notes)
-  const step4Valid = true;
+  // Étape 4 : cycle + niveau obligatoires (réforme 2026-07). La classe est
+  // attribuée par le staff lors de la validation — non demandée au parent.
+  const step4Valid = !!cycleId && !!niveau;
   // Étape 5 : validation globale (toutes les conditions cumulées)
   const step5Valid = isValid;
 
@@ -661,7 +634,8 @@ export function PreInscriptionForm() {
       tuteur_telephone: tuteurTelephone.trim(),
       tuteur_email: tuteurEmail.trim(),
       tuteur_lien_parente: tuteurLienParente,
-      classe_id: classeId || undefined,
+      cycle_id: cycleId,
+      niveau: niveau,
       notes_parent: notesParent.trim(),
     };
     mutation.mutate(dto);
@@ -879,16 +853,11 @@ export function PreInscriptionForm() {
                   <StepClasseInfos
                     etablissementId={etablissementId}
                     cycles={cycles}
-                    classes={classes}
                     cycleId={cycleId}
                     setCycleId={setCycleId}
                     niveau={niveau}
                     setNiveau={setNiveau}
-                    classeId={classeId}
-                    setClasseId={setClasseId}
                     availableNiveaux={availableNiveaux}
-                    filteredClasses={filteredClasses}
-                    cycleToneById={cycleToneById}
                     eleveAncienEtablissement={eleveAncienEtablissement}
                     setEleveAncienEtablissement={setEleveAncienEtablissement}
                     eleveAllergies={eleveAllergies}
@@ -916,7 +885,8 @@ export function PreInscriptionForm() {
                     tuteurTelephone={tuteurTelephone}
                     tuteurEmail={tuteurEmail}
                     tuteurLienParente={tuteurLienParente}
-                    selectedClasse={selectedClasse}
+                    selectedCycle={selectedCycle}
+                    selectedNiveau={niveau}
                     eleveAncienEtablissement={eleveAncienEtablissement}
                     eleveAllergies={eleveAllergies}
                     eleveNotesSante={eleveNotesSante}
@@ -1425,16 +1395,11 @@ function StepTuteur({
 function StepClasseInfos({
   etablissementId,
   cycles,
-  classes,
   cycleId,
   setCycleId,
   niveau,
   setNiveau,
-  classeId,
-  setClasseId,
   availableNiveaux,
-  filteredClasses,
-  cycleToneById,
   eleveAncienEtablissement,
   setEleveAncienEtablissement,
   eleveAllergies,
@@ -1446,16 +1411,11 @@ function StepClasseInfos({
 }: {
   etablissementId: string;
   cycles?: Cycle[];
-  classes?: Classe[];
   cycleId: string;
   setCycleId: (v: string) => void;
   niveau: string;
   setNiveau: (v: string) => void;
-  classeId: string;
-  setClasseId: (v: string) => void;
   availableNiveaux: number[];
-  filteredClasses: Classe[];
-  cycleToneById: Record<string, (typeof CYCLE_TONES)[number]>;
   eleveAncienEtablissement: string;
   setEleveAncienEtablissement: (v: string) => void;
   eleveAllergies: string;
@@ -1467,47 +1427,37 @@ function StepClasseInfos({
 }) {
   // Libellé du cycle sélectionné (pour mapper niveau → libellé français).
   const selectedCycleLibelle = React.useMemo(() => {
-    if (cycleId === "all") return undefined;
+    if (!cycleId) return undefined;
     return cycles?.find((cy) => cy.id === cycleId)?.libelle;
   }, [cycles, cycleId]);
-
-  /** Récupère le libellé du cycle d'une classe (via cycle_id ou cycle peuplé). */
-  const getCycleLibelleForClasse = React.useCallback(
-    (classe: { cycle_id: string; cycle?: { libelle?: string } | null }) => {
-      if (classe.cycle?.libelle) return classe.cycle.libelle;
-      return cycles?.find((cy) => cy.id === classe.cycle_id)?.libelle ?? selectedCycleLibelle;
-    },
-    [cycles, selectedCycleLibelle],
-  );
 
   return (
     <div className="space-y-5">
       <SectionHeader
         icon={BookOpen}
-        title="Classe souhaitée & informations complémentaires"
-        description="Tous ces champs sont optionnels. La classe définitive est attribuée par l'établissement après paiement."
+        title="Cycle & niveau souhaités"
+        description="Cycle et niveau sont obligatoires. La classe définitive est attribuée par l'établissement lors de la finalisation de l'inscription (paiement des frais à la caisse)."
       />
       <Separator />
 
-      {/* Cascade Cycle / Niveau / Classe visuelle */}
+      {/* Cascade Cycle / Niveau (obligatoires) */}
       {!etablissementId ? (
         <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           <p className="break-words leading-snug">
             Sélectionnez d&apos;abord un établissement (étape 1) pour voir les
-            classes disponibles.
+            cycles et niveaux disponibles.
           </p>
         </div>
       ) : (
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Cycle">
+            <Field label="Cycle" required>
               <Select value={cycleId} onValueChange={setCycleId}>
                 <SelectTrigger className="h-11 w-full text-base sm:h-10 sm:text-sm">
-                  <SelectValue placeholder="Tous cycles" />
+                  <SelectValue placeholder="Choisir un cycle" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tous cycles</SelectItem>
                   {cycles?.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {formatCycleCourt(c.libelle)}
@@ -1516,13 +1466,12 @@ function StepClasseInfos({
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Niveau">
+            <Field label="Niveau" required>
               <Select value={niveau} onValueChange={setNiveau}>
                 <SelectTrigger className="h-11 w-full text-base sm:h-10 sm:text-sm">
-                  <SelectValue placeholder="Tous niveaux" />
+                  <SelectValue placeholder="Choisir un niveau" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tous niveaux</SelectItem>
                   {availableNiveaux.map((n) => (
                     <SelectItem key={n} value={String(n)}>
                       {formatNiveau(selectedCycleLibelle, n)}
@@ -1533,104 +1482,17 @@ function StepClasseInfos({
             </Field>
           </div>
 
-          {/* Classes affichées en cartes visuelles (icônes par cycle) */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Classe souhaitée</Label>
-              <span className="text-[11px] text-muted-foreground">
-                {filteredClasses.length} classe
-                {filteredClasses.length > 1 ? "s" : ""} disponible
-                {filteredClasses.length > 1 ? "s" : ""}
-              </span>
-            </div>
-            {filteredClasses.length === 0 ? (
-              <div className="flex items-start gap-2 rounded-lg border border-muted bg-muted/30 p-3 text-xs text-muted-foreground">
-                <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                <p className="break-words leading-snug">
-                  Aucune classe ne correspond aux filtres. Essayez un autre
-                  cycle ou niveau.
-                </p>
-              </div>
-            ) : (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {/* Option "Non précisée" */}
-                <button
-                  type="button"
-                  onClick={() => setClasseId("")}
-                  aria-pressed={classeId === ""}
-                  title="Ne pas préciser de classe — l'établissement attribuera la classe définitive"
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl border-2 border-dashed p-3 text-left transition-all",
-                    classeId === ""
-                      ? "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30"
-                      : "border-border bg-background hover:border-emerald-300 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/10",
-                  )}
-                >
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                    <Sparkles className="size-4" aria-hidden="true" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="break-words leading-snug text-sm font-medium text-foreground">
-                      Non précisée
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      L&apos;établissement choisira pour vous
-                    </p>
-                  </div>
-                  {classeId === "" ? (
-                    <CheckCircle2
-                      className="size-5 shrink-0 text-emerald-600"
-                      aria-hidden="true"
-                    />
-                  ) : null}
-                </button>
-
-                {/* Classes disponibles */}
-                {filteredClasses.map((c) => {
-                  const tone = cycleToneById[c.cycle_id] ?? DEFAULT_TONE;
-                  const isSelected = c.id === classeId;
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setClasseId(c.id)}
-                      aria-pressed={isSelected}
-                      title={`Sélectionner la classe ${c.libelle}`}
-                      className={cn(
-                        "flex items-center gap-3 rounded-xl border-2 p-3 text-left transition-all",
-                        isSelected
-                          ? "border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-emerald-950/30"
-                          : "border-border bg-background hover:border-emerald-300 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/10",
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "flex size-9 shrink-0 items-center justify-center rounded-lg",
-                          tone.badge,
-                        )}
-                      >
-                        <BookOpen className="size-4" aria-hidden="true" />
-                      </div>
-                      <div className="min-w-0 flex-1 space-y-0.5">
-                        <p className="break-words leading-snug text-sm font-medium text-foreground">
-                          {c.libelle}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {formatNiveau(getCycleLibelleForClasse(c), c.niveau)}
-                          {c.est_classe_examen ? " · Examen" : ""}
-                        </p>
-                      </div>
-                      {isSelected ? (
-                        <CheckCircle2
-                          className="size-5 shrink-0 text-emerald-600"
-                          aria-hidden="true"
-                        />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+          {/* Note explicative : la classe est attribuée par l'établissement */}
+          <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 text-xs text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-200">
+            <Sparkles className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <p className="break-words leading-snug">
+              La <strong>classe définitive</strong> (ex&nbsp;: 6e&nbsp;1, 2nde&nbsp;A&nbsp;1,
+              Terminale&nbsp;D&nbsp;1) est <strong>attribuée par
+              l&apos;administration</strong> de l&apos;établissement lors de la
+              finalisation de l&apos;inscription à la caisse (paiement des frais
+              d&apos;inscription). Le cycle et le niveau ci-dessus sont
+              transmis au secrétariat comme préférence.
+            </p>
           </div>
         </div>
       )}
@@ -1709,12 +1571,12 @@ function StepClasseInfos({
       <div className="space-y-2">
         <Field
           label="Message au secrétariat (optionnel)"
-          hint="Précisions éventuelles : classe demandée en seconde intention, infos utiles…"
+          hint="Précisions éventuelles : cycle/niveau demandé en seconde intention, infos utiles…"
         >
           <Textarea
             value={notesParent}
             onChange={(e) => setNotesParent(e.target.value)}
-            placeholder="Ex : Nous souhaiterions une classe de 6e 1 si possible. Merci de nous contacter le soir."
+            placeholder="Ex : Nous souhaiterions inscrire notre enfant en 6e 1. Merci de nous contacter le soir."
             rows={3}
             className="text-base sm:text-sm"
           />
@@ -1762,7 +1624,8 @@ function StepConfirmation({
   tuteurTelephone,
   tuteurEmail,
   tuteurLienParente,
-  selectedClasse,
+  selectedCycle,
+  selectedNiveau,
   eleveAncienEtablissement,
   eleveAllergies,
   eleveNotesSante,
@@ -1783,7 +1646,8 @@ function StepConfirmation({
   tuteurTelephone: string;
   tuteurEmail: string;
   tuteurLienParente: LienParente;
-  selectedClasse?: Classe;
+  selectedCycle?: Cycle;
+  selectedNiveau: string;
   eleveAncienEtablissement: string;
   eleveAllergies: string;
   eleveNotesSante: string;
@@ -1879,8 +1743,17 @@ function StepConfirmation({
         />
         <InfoRow
           icon={BookOpen}
-          label="Classe souhaitée"
-          value={selectedClasse?.libelle ?? "Non précisée"}
+          label="Cycle & niveau souhaités"
+          value={
+            selectedCycle
+              ? `${formatCycleCourt(selectedCycle.libelle)} · ${formatNiveau(selectedCycle.libelle, Number(selectedNiveau))}`
+              : "—"
+          }
+        />
+        <InfoRow
+          icon={Sparkles}
+          label="Classe définitive"
+          value="Attribuée par l'établissement (à la caisse)"
         />
         {appliqueCategorie && (
           <InfoRow
@@ -2197,13 +2070,22 @@ function SuccessScreen({
                       value={pre.etablissement.nom}
                     />
                   )}
-                  {pre.classe && (
+                  {pre.cycle && (
                     <InfoRow
                       icon={BookOpen}
-                      label="Classe souhaitée"
-                      value={pre.classe.libelle}
+                      label="Cycle & niveau"
+                      value={`${formatCycleCourt(pre.cycle.libelle)}${
+                        pre.niveau_souhaite
+                          ? ` · ${formatNiveau(pre.cycle.libelle, pre.niveau_souhaite)}`
+                          : ""
+                      }`}
                     />
                   )}
+                  <InfoRow
+                    icon={Sparkles}
+                    label="Classe définitive"
+                    value="Attribuée par l'établissement (à la caisse)"
+                  />
                   <InfoRow
                     icon={CalendarDays}
                     label="Soumise le"

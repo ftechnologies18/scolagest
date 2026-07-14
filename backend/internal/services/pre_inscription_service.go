@@ -47,8 +47,10 @@ type PreInscriptionDTO struct {
         TuteurEmail       string `json:"tuteur_email"`
         TuteurLienParente string `json:"tuteur_lien_parente"`
 
-        ClasseID    string `json:"classe_id"`
-        NotesParent string `json:"notes_parent"`
+        ClasseID       string `json:"classe_id"` // @deprecated : non envoyé par le wizard depuis la réforme 2026-07 (classe attribuée par le staff). Conservé pour compat ascendante.
+        CycleID        string `json:"cycle_id"`  // cycle souhaité par le parent (UUID)
+        Niveau         string `json:"niveau"`    // niveau souhaité dans le cycle (ordinal 1..n, en string)
+        NotesParent    string `json:"notes_parent"`
 }
 
 // Submit crée une nouvelle pré-inscription (route publique, sans auth).
@@ -84,11 +86,30 @@ func (s *PreInscriptionService) Submit(dto PreInscriptionDTO) (*models.PreInscri
                 categorie = models.CategorieNonApplicable
         }
 
-        // Classe optionnelle
+        // Classe optionnelle (@deprecated — non envoyé par le wizard depuis la
+        // réforme 2026-07, mais conservé pour compat ascendante)
         var classeID *uuid.UUID
         if dto.ClasseID != "" {
                 if id, err := uuid.Parse(dto.ClasseID); err == nil {
                         classeID = &id
+                }
+        }
+
+        // Préférence cycle + niveau (réforme 2026-07) : le parent exprime une
+        // préférence qui sera utilisée par le staff pour pré-filtrer la cascade
+        // lors de la validation. Cycle et niveau sont optionnels côté backend
+        // (le wizard les rend obligatoires côté UI).
+        var cycleID *uuid.UUID
+        if dto.CycleID != "" {
+                if id, err := uuid.Parse(dto.CycleID); err == nil {
+                        cycleID = &id
+                }
+        }
+        var niveauSouhaite *int
+        if dto.Niveau != "" {
+                var n int
+                if _, err := fmt.Sscanf(dto.Niveau, "%d", &n); err == nil && n > 0 {
+                        niveauSouhaite = &n
                 }
         }
 
@@ -117,6 +138,8 @@ func (s *PreInscriptionService) Submit(dto PreInscriptionDTO) (*models.PreInscri
                 TuteurEmail:              dto.TuteurEmail,
                 TuteurLienParente:        models.LienParente(dto.TuteurLienParente),
                 ClasseID:                 classeID,
+                CycleID:                  cycleID,
+                NiveauSouhaite:           niveauSouhaite,
                 NotesParent:              dto.NotesParent,
         }
 
@@ -141,6 +164,7 @@ func (s *PreInscriptionService) GetByToken(token string) (*models.PreInscription
         if err := database.Current().
                 Preload("Etablissement").
                 Preload("Classe").
+                Preload("Cycle").
                 First(&pre, "token_suivi = ?", token).Error; err != nil {
                 if errors.Is(err, gorm.ErrRecordNotFound) {
                         return nil, errors.New("pré-inscription introuvable")
@@ -163,7 +187,7 @@ func (s *PreInscriptionService) List(etablissementID uuid.UUID, statut *models.S
                 q = q.Where("statut = ?", *statut)
         }
         var pres []models.PreInscription
-        if err := q.Preload("Classe").
+        if err := q.Preload("Classe").Preload("Cycle").
                 Order("date_soumission DESC").
                 Find(&pres).Error; err != nil {
                 return nil, err
@@ -268,6 +292,7 @@ func (s *PreInscriptionService) Get(id uuid.UUID) (*models.PreInscription, error
         if err := database.Current().
                 Preload("Etablissement").
                 Preload("Classe").
+                Preload("Cycle").
                 First(&pre, "id = ?", id).Error; err != nil {
                 return nil, errors.New("pré-inscription introuvable")
         }

@@ -47,6 +47,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   BarChart3,
+  BookOpen,
   Calendar,
   CheckCircle2,
   Eye,
@@ -179,7 +180,19 @@ function classeLibelle(pre: PreInscription): string {
   if (pre.classe) {
     return pre.classe.libelle;
   }
-  return "Non précisée";
+  return "À attribuer";
+}
+
+/** Affiche la préférence cycle + niveau saisie par le parent (réforme 2026-07). */
+function cycleNiveauLibelle(pre: PreInscription): string {
+  if (!pre.cycle_id) return "—";
+  const cycleLabel = pre.cycle?.libelle
+    ? formatCycleCourt(pre.cycle.libelle)
+    : "—";
+  const niveauLabel = pre.niveau_souhaite
+    ? formatNiveau(pre.cycle?.libelle, pre.niveau_souhaite)
+    : "";
+  return niveauLabel ? `${cycleLabel} · ${niveauLabel}` : cycleLabel;
 }
 
 function categorieLabel(c: PreInscription["eleve_categorie"]): string {
@@ -426,7 +439,7 @@ export function PreInscriptionsList() {
                           Tuteur
                         </TableHead>
                         <TableHead className="text-emerald-900 dark:text-emerald-200">
-                          Classe souhaitée
+                          Classe
                         </TableHead>
                         <TableHead className="w-[110px] text-emerald-900 dark:text-emerald-200">
                           Statut
@@ -1037,8 +1050,14 @@ function ValiderDialog({
   isPending: boolean;
 }) {
   const etablissement = useAuthStore((s) => s.etablissement);
-  const [cycleId, setCycleId] = React.useState<string>("all");
-  const [niveau, setNiveau] = React.useState<string>("all");
+  // Pré-remplissage depuis la préférence cycle + niveau du parent (réforme 2026-07).
+  // Le parent ne choisit plus de classe précise — le staff l'attribue ici.
+  // Si pre.cycle_id est défini, on présélectionne le cycle et le niveau pour
+  // faciliter la cascade (le staff peut changer).
+  const [cycleId, setCycleId] = React.useState<string>(pre.cycle_id ?? "all");
+  const [niveau, setNiveau] = React.useState<string>(
+    pre.niveau_souhaite ? String(pre.niveau_souhaite) : "all",
+  );
   const [classeId, setClasseId] = React.useState<string>(pre.classe_id ?? "");
   const [anneeId, setAnneeId] = React.useState<string>("");
   const [notes, setNotes] = React.useState<string>("");
@@ -1502,11 +1521,16 @@ function DetailDialog({
             />
           </DetailSection>
 
-          {/* Classe souhaitée & notes */}
-          <DetailSection title="Classe souhaitée & notes" icon={Send} tone="emerald">
+          {/* Cycle & niveau souhaités + classe attribuée + notes */}
+          <DetailSection title="Classe & notes" icon={Send} tone="emerald">
+            <DetailRow
+              icon={BookOpen}
+              label="Cycle & niveau souhaités"
+              value={cycleNiveauLibelle(pre)}
+            />
             <DetailRow
               icon={School}
-              label="Classe"
+              label="Classe attribuée"
               value={classeLibelle(pre)}
             />
 

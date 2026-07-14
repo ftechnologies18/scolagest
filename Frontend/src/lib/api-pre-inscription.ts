@@ -77,7 +77,17 @@ export interface PreInscription {
   tuteur_lien_parente: LienParente;
 
   // ── Classe souhaitée ──
+  // @deprecated : non envoyé par le wizard depuis la réforme 2026-07 (la classe
+  // est attribuée par le staff lors de la validation). Conservé pour compat
+  // ascendante (pré-inscriptions héritées avant la réforme).
   classe_id?: string | null;
+
+  // ── Préférence cycle + niveau (réforme 2026-07) ──
+  // Le parent exprime une préférence (cycle + niveau) qui sera utilisée par le
+  // staff pour pré-filtrer la cascade Cycle → Niveau → Classe dans le
+  // ValiderDialog. La classe définitive est attribuée par l'établissement.
+  cycle_id?: string | null;
+  niveau_souhaite?: number | null;
 
   // ── Méta ──
   notes_parent: string;
@@ -89,6 +99,7 @@ export interface PreInscription {
   classe?: Pick<Classe, "id" | "libelle" | "niveau" | "cycle_id"> & {
     cycle?: { id: string; libelle: string };
   };
+  cycle?: { id: string; libelle: string };
 }
 
 /** Payload de soumission publique (parent). */
@@ -109,7 +120,12 @@ export interface PreInscriptionDTO {
   tuteur_telephone: string;
   tuteur_email?: string;
   tuteur_lien_parente: LienParente;
+  // @deprecated : classe_id non envoyé depuis la réforme 2026-07 (classe
+  // attribuée par le staff). Conservé pour compat ascendante.
   classe_id?: string;
+  // Réforme 2026-07 : préférence cycle + niveau (obligatoires côté wizard UI)
+  cycle_id: string;
+  niveau: string; // ordinal en string (ex: "1", "2"...)
   notes_parent?: string;
 }
 
