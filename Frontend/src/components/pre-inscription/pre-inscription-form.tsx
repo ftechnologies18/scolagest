@@ -113,6 +113,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { GlassCard } from "@/components/ds/glass-card";
 import { KentePattern } from "@/components/ds/kente-pattern";
+import { Footer } from "@/components/ds/footer";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1000,14 +1001,7 @@ export function PreInscriptionForm() {
       </main>
 
       {/* Pied de page */}
-      <footer className="relative z-10 mt-auto border-t border-emerald-100/60 bg-white/70 backdrop-blur dark:border-emerald-900/30 dark:bg-emerald-950/20">
-        <div className="mx-auto flex max-w-4xl flex-col items-center justify-between gap-1.5 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:px-6">
-          <p>ScolaGest · Pré-inscription en ligne</p>
-          <p className="text-[11px]">
-            Groupe Scolaire Le Chandelier — Dabou, Côte d&apos;Ivoire
-          </p>
-        </div>
-      </footer>
+      <Footer className="shrink-0" />
     </div>
   );
 }
@@ -2417,14 +2411,7 @@ function SuccessScreen({
         </motion.div>
       </main>
 
-      <footer className="relative z-10 mt-auto border-t border-emerald-100/60 bg-white/70 backdrop-blur dark:border-emerald-900/30 dark:bg-emerald-950/20">
-        <div className="mx-auto flex max-w-2xl flex-col items-center justify-between gap-1.5 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:px-6">
-          <p>ScolaGest · Pré-inscription en ligne</p>
-          <p className="text-[11px]">
-            Groupe Scolaire Le Chandelier — Dabou, Côte d&apos;Ivoire
-          </p>
-        </div>
-      </footer>
+      <Footer className="shrink-0" />
     </div>
   );
 }
