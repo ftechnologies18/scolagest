@@ -48,6 +48,7 @@ type PreInscriptionDTO struct {
         TuteurNom         string `json:"tuteur_nom"`
         TuteurPrenoms     string `json:"tuteur_prenoms"`
         TuteurTelephone   string `json:"tuteur_telephone"`
+        TuteurTelephone2  string `json:"tuteur_telephone_urgence"` // contact d'urgence
         TuteurEmail       string `json:"tuteur_email"`
         TuteurLienParente string `json:"tuteur_lien_parente"`
         TuteurAdresse     string `json:"tuteur_adresse"`     // quartier d'habitation
@@ -143,6 +144,7 @@ func (s *PreInscriptionService) Submit(dto PreInscriptionDTO) (*models.PreInscri
                 TuteurNom:                dto.TuteurNom,
                 TuteurPrenoms:            dto.TuteurPrenoms,
                 TuteurTelephone:          dto.TuteurTelephone,
+                TuteurTelephone2:         dto.TuteurTelephone2,
                 TuteurEmail:              dto.TuteurEmail,
                 TuteurLienParente:        models.LienParente(dto.TuteurLienParente),
                 TuteurAdresse:            dto.TuteurAdresse,

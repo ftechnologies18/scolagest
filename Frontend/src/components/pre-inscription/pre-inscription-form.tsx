@@ -457,6 +457,7 @@ export function PreInscriptionForm() {
   const [tuteurNom, setTuteurNom] = React.useState("");
   const [tuteurPrenoms, setTuteurPrenoms] = React.useState("");
   const [tuteurTelephone, setTuteurTelephone] = React.useState("");
+  const [tuteurTelephoneUrgence, setTuteurTelephoneUrgence] = React.useState("");
   const [tuteurEmail, setTuteurEmail] = React.useState("");
   const [tuteurAdresse, setTuteurAdresse] = React.useState("");
   const [tuteurProfession, setTuteurProfession] = React.useState("");
@@ -639,6 +640,7 @@ export function PreInscriptionForm() {
       tuteur_nom: tuteurNom.trim(),
       tuteur_prenoms: tuteurPrenoms.trim(),
       tuteur_telephone: tuteurTelephone.trim(),
+      tuteur_telephone_urgence: tuteurTelephoneUrgence.trim() || undefined,
       tuteur_email: tuteurEmail.trim(),
       tuteur_lien_parente: tuteurLienParente,
       tuteur_adresse: tuteurAdresse.trim() || undefined,
@@ -847,6 +849,8 @@ export function PreInscriptionForm() {
                     setTuteurPrenoms={setTuteurPrenoms}
                     tuteurTelephone={tuteurTelephone}
                     setTuteurTelephone={setTuteurTelephone}
+                    tuteurTelephoneUrgence={tuteurTelephoneUrgence}
+                    setTuteurTelephoneUrgence={setTuteurTelephoneUrgence}
                     tuteurEmail={tuteurEmail}
                     setTuteurEmail={setTuteurEmail}
                     tuteurAdresse={tuteurAdresse}
@@ -902,6 +906,7 @@ export function PreInscriptionForm() {
                     tuteurNom={tuteurNom}
                     tuteurPrenoms={tuteurPrenoms}
                     tuteurTelephone={tuteurTelephone}
+                    tuteurTelephoneUrgence={tuteurTelephoneUrgence}
                     tuteurEmail={tuteurEmail}
                     tuteurAdresse={tuteurAdresse}
                     tuteurProfession={tuteurProfession}
@@ -1287,6 +1292,8 @@ function StepTuteur({
   setTuteurPrenoms,
   tuteurTelephone,
   setTuteurTelephone,
+  tuteurTelephoneUrgence,
+  setTuteurTelephoneUrgence,
   tuteurEmail,
   setTuteurEmail,
   tuteurAdresse,
@@ -1305,6 +1312,8 @@ function StepTuteur({
   setTuteurPrenoms: (v: string) => void;
   tuteurTelephone: string;
   setTuteurTelephone: (v: string) => void;
+  tuteurTelephoneUrgence: string;
+  setTuteurTelephoneUrgence: (v: string) => void;
   tuteurEmail: string;
   setTuteurEmail: (v: string) => void;
   tuteurAdresse: string;
@@ -1374,6 +1383,28 @@ function StepTuteur({
             ) : null}
           </div>
         </Field>
+
+        <Field
+          label="Contact d'urgence"
+          hint="Numéro à contacter en cas d'urgence si le tuteur est injoignable."
+        >
+          <div className="relative">
+            <Phone
+              className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              type="tel"
+              inputMode="tel"
+              value={tuteurTelephoneUrgence}
+              onChange={(e) => setTuteurTelephoneUrgence(e.target.value)}
+              placeholder="Ex : +225 05 00 00 00 00"
+              autoComplete="tel"
+              className="h-11 pl-9 text-base sm:h-10 sm:text-sm"
+            />
+          </div>
+        </Field>
+
         <Field label="Email">
           <div className="relative">
             <Mail
@@ -1790,6 +1821,7 @@ function StepConfirmation({
   tuteurNom,
   tuteurPrenoms,
   tuteurTelephone,
+  tuteurTelephoneUrgence,
   tuteurEmail,
   tuteurAdresse,
   tuteurProfession,
@@ -1817,6 +1849,7 @@ function StepConfirmation({
   tuteurNom: string;
   tuteurPrenoms: string;
   tuteurTelephone: string;
+  tuteurTelephoneUrgence: string;
   tuteurEmail: string;
   tuteurAdresse: string;
   tuteurProfession: string;
@@ -1896,6 +1929,9 @@ function StepConfirmation({
       >
         <InfoRow icon={Users} label="Nom complet" value={tuteurNomComplet || "—"} />
         <InfoRow icon={Phone} label="Téléphone" value={tuteurTelephone} />
+        {tuteurTelephoneUrgence.trim() && (
+          <InfoRow icon={Phone} label="Contact d'urgence" value={tuteurTelephoneUrgence} />
+        )}
         {tuteurEmail.trim() && (
           <InfoRow icon={Mail} label="Email" value={tuteurEmail} />
         )}

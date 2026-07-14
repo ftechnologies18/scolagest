@@ -85,6 +85,7 @@ export interface PreInscription {
   tuteur_nom: string;
   tuteur_prenoms: string;
   tuteur_telephone: string;
+  tuteur_telephone_urgence?: string;
   tuteur_email: string;
   tuteur_lien_parente: LienParente;
   tuteur_adresse?: string;
@@ -135,6 +136,7 @@ export interface PreInscriptionDTO {
   tuteur_nom: string;
   tuteur_prenoms?: string;
   tuteur_telephone: string;
+  tuteur_telephone_urgence?: string;
   tuteur_email?: string;
   tuteur_lien_parente: LienParente;
   tuteur_adresse?: string;

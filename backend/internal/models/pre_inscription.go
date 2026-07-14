@@ -63,6 +63,7 @@ type PreInscription struct {
         TuteurNom         string     `gorm:"not null" json:"tuteur_nom"`
         TuteurPrenoms     string     `json:"tuteur_prenoms"`
         TuteurTelephone   string     `gorm:"not null" json:"tuteur_telephone"`
+        TuteurTelephone2  string     `json:"tuteur_telephone_urgence"` // contact d'urgence
         TuteurEmail       string     `json:"tuteur_email"`
         TuteurLienParente LienParente `gorm:"default:AUTRE" json:"tuteur_lien_parente"`
         TuteurAdresse     string     `json:"tuteur_adresse"`     // quartier d'habitation
