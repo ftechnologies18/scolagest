@@ -608,7 +608,7 @@ function EmploiTempsShell({
       <KentePattern variant="strip" position="top" />
 
       {/* ─── Hero header premium ──────────────────────────────────────── */}
-      <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
+      <GlassCard variant="desktop" noHover premiumBorder className="p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3 sm:gap-4">
             {/* Badge rond gradient emerald→gold avec icône CalendarDays */}
@@ -716,6 +716,7 @@ function DesktopCalendarGrid({
       variant="adaptive"
       noHover
       noAnimation
+      premiumBorder
       className="hidden overflow-hidden p-3 sm:p-4 md:block"
     >
       <div className="overflow-x-auto">
