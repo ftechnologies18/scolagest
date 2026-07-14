@@ -368,7 +368,7 @@ export function ParentPortal() {
   return (
     <div className="relative flex h-screen flex-col overflow-hidden bg-gradient-to-br from-emerald-50/60 via-background to-amber-50/40">
       {/* Texture kente subtile en fond (max 10% opacity) */}
-      <KentePattern variant="bg" className="opacity-[0.06]" />
+      <KentePattern variant="bg" className="opacity-[0.08]" />
 
       {/* Header « wahou » */}
       <header className="sticky top-0 z-30 shrink-0">
@@ -1092,7 +1092,7 @@ function PaiementsTable({
   const prefersReducedMotion = usePrefersReducedMotion();
 
   return (
-    <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+    <GlassCard variant="adaptive" noHover premiumBorder className="overflow-hidden p-0">
       <Table>
         <TableHeader>
           <TableRow className="border-emerald-200/60 bg-emerald-50/60 hover:bg-emerald-50/60 dark:bg-emerald-950/30">
