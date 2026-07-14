@@ -50,10 +50,6 @@ import {
 } from "@/lib/api-saas-billing";
 import { formatFCFA, formatDateTime } from "@/lib/format";
 
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -249,8 +245,8 @@ export default function SaasDashboardView({
             ))}
           </div>
         ) : statsError ? (
-          <Card className="border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20">
-            <CardContent className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+          <GlassCard variant="adaptive" noHover className="border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20">
+            <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
               <div className="flex size-11 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
                 <XCircle className="size-5" />
               </div>
@@ -268,8 +264,8 @@ export default function SaasDashboardView({
                 <RotateCw className="size-3.5" />
                 Réessayer
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard
@@ -373,12 +369,12 @@ export default function SaasDashboardView({
             ))}
           </div>
         ) : billingError ? (
-          <Card className="border-amber-200 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/20">
-            <CardContent className="flex items-center gap-2 py-4 text-xs text-amber-800 dark:text-amber-300">
+          <GlassCard variant="adaptive" noHover className="border-amber-200 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/20">
+            <div className="flex items-center gap-2 py-4 text-xs text-amber-800 dark:text-amber-300">
               <AlertCircle className="size-4 shrink-0" />
               Statistiques de facturation indisponibles pour le moment.
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
         ) : (
           <div className="grid gap-4 sm:grid-cols-3">
             <GlassCard variant="premium" premiumBorder noHover className="p-5">

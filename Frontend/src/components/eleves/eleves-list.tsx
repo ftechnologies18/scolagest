@@ -86,7 +86,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
 import { GlassCard } from "@/components/ds/glass-card";
 import { KentePattern } from "@/components/ds/kente-pattern";
 import { StatCard } from "@/components/ds/stat-card";
@@ -374,8 +373,8 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
           appliqueCategorie={false}
           total={0}
         />
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+        <GlassCard variant="adaptive" noHover>
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
               <AlertCircle className="size-6" />
             </div>
@@ -389,8 +388,8 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
                 correspondants.
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       </div>
     );
   }
@@ -651,8 +650,8 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
 
       {/* Erreur */}
       {isError && !isLoading && (
-        <Card>
-          <CardContent className="flex items-center gap-3 py-6 text-sm">
+        <GlassCard variant="adaptive" noHover>
+          <div className="flex items-center gap-3 py-6 text-sm">
             <AlertCircle className="size-5 text-destructive" />
             <div>
               <p className="font-medium text-destructive">
@@ -664,8 +663,8 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
                   : "Veuillez réessayer dans un instant."}
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       )}
 
       {/* Chargement */}
@@ -1010,8 +1009,8 @@ function EleveRowMobile({
 
 function ListSkeleton() {
   return (
-    <Card>
-      <CardContent className="space-y-2">
+    <GlassCard variant="adaptive" noHover className="p-0">
+      <div className="space-y-2 p-5">
         {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
@@ -1026,8 +1025,8 @@ function ListSkeleton() {
             <Skeleton className="h-6 w-16" />
           </div>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }
 

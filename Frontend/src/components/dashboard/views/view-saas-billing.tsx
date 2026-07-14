@@ -71,10 +71,6 @@ import {
   formatDateTime,
 } from "@/lib/format";
 
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -366,8 +362,8 @@ function OverviewTab() {
   }
   if (isError) {
     return (
-      <Card className="border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20">
-        <CardContent className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+      <GlassCard variant="adaptive" noHover className="border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20">
+        <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
           <div className="flex size-11 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
             <XCircle className="size-5" />
           </div>
@@ -384,8 +380,8 @@ function OverviewTab() {
             <RotateCw className={cn("size-3.5", isFetching && "animate-spin")} />
             Réessayer
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     );
   }
 
@@ -542,8 +538,8 @@ function PlansTab({ onEdit }: { onEdit: (plan: SaaPlan) => void }) {
   }
   if (isError) {
     return (
-      <Card className="border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20">
-        <CardContent className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+      <GlassCard variant="adaptive" noHover className="border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20">
+        <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
           <AlertCircle className="size-5 text-rose-600" />
           <p className="text-sm font-medium">Plans indisponibles</p>
           <Button
@@ -555,18 +551,18 @@ function PlansTab({ onEdit }: { onEdit: (plan: SaaPlan) => void }) {
             <RotateCw className={cn("size-3.5", isFetching && "animate-spin")} />
             Réessayer
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     );
   }
   if ((plans ?? []).length === 0) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center text-sm text-muted-foreground">
+      <GlassCard variant="adaptive" noHover className="border-dashed">
+        <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-sm text-muted-foreground">
           <CreditCard className="size-6 text-muted-foreground/70" />
           <p>Aucun plan tarifaire enregistré.</p>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     );
   }
 
@@ -753,8 +749,8 @@ function SubscriptionsTab() {
   }
   if (isError) {
     return (
-      <Card className="border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20">
-        <CardContent className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+      <GlassCard variant="adaptive" noHover className="border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20">
+        <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
           <AlertCircle className="size-5 text-rose-600" />
           <p className="text-sm font-medium">Abonnements indisponibles</p>
           <Button
@@ -766,18 +762,18 @@ function SubscriptionsTab() {
             <RotateCw className={cn("size-3.5", isFetching && "animate-spin")} />
             Réessayer
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     );
   }
   if ((subs ?? []).length === 0) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center text-sm text-muted-foreground">
+      <GlassCard variant="adaptive" noHover className="border-dashed">
+        <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-sm text-muted-foreground">
           <CalendarClock className="size-6 text-muted-foreground/70" />
           <p>Aucun abonnement enregistré.</p>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     );
   }
 

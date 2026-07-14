@@ -59,7 +59,6 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { GlassCard } from "@/components/ds/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -645,41 +644,41 @@ function SoldeCard({
 }) {
   if (!eleve) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+      <GlassCard variant="adaptive" noHover className="border-dashed">
+        <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
           <User className="size-8 text-muted-foreground/40" />
           <p className="text-sm text-muted-foreground">
             Sélectionnez un élève pour afficher son solde.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     );
   }
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div className="px-5 py-4">
           <Skeleton className="h-5 w-32" />
-        </CardHeader>
-        <CardContent className="space-y-2">
+        </div>
+        <div className="space-y-2 px-5 pb-5">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full" />
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     );
   }
   if (error || !solde) {
     return (
-      <Card className="border-amber-200 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/10">
-        <CardContent className="flex items-center gap-2 py-6 text-sm">
+      <GlassCard variant="adaptive" noHover className="border-amber-200 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/10">
+        <div className="flex items-center gap-2 py-6 text-sm">
           <AlertCircle className="size-4 text-amber-600" />
           <span className="text-amber-800 dark:text-amber-300">
             Solde indisponible pour cet élève. Vous pouvez tout même encaisser
             un paiement.
           </span>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     );
   }
 

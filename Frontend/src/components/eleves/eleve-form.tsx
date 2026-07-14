@@ -71,11 +71,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-} from "@/components/ui/card";
 import { GlassCard } from "@/components/ds/glass-card";
 import { KentePattern } from "@/components/ds/kente-pattern";
 import {
@@ -315,8 +310,8 @@ export function EleveForm({ eleveId, onSaved, onCancel }: EleveFormProps) {
     return (
       <div className="space-y-4">
         <BackButton onClick={onCancel} />
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+        <GlassCard variant="adaptive" noHover>
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
             <AlertCircle className="size-10 text-amber-600" />
             <p className="text-base font-medium">
               Sélectionnez un établissement
@@ -325,8 +320,8 @@ export function EleveForm({ eleveId, onSaved, onCancel }: EleveFormProps) {
               Vous devez sélectionner un établissement dans la barre latérale
               avant de créer ou modifier un élève.
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       </div>
     );
   }
@@ -787,19 +782,19 @@ function FormSkeleton({ onCancel }: { onCancel: () => void }) {
       <BackButton onClick={onCancel} />
       <Skeleton className="h-7 w-48" />
       {Array.from({ length: 2 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader>
+        <GlassCard key={i} variant="adaptive" noHover className="overflow-hidden p-0">
+          <div className="px-5 py-4">
             <Skeleton className="h-5 w-32" />
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
+          </div>
+          <div className="grid gap-4 p-5 pt-0 sm:grid-cols-2">
             {Array.from({ length: 4 }).map((_, j) => (
               <div key={j} className="space-y-1.5">
                 <Skeleton className="h-3.5 w-20" />
                 <Skeleton className="h-9 w-full" />
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       ))}
     </div>
   );

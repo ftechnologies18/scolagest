@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 import { fetchPaiement, fetchRecu } from "@/lib/api-caisse";
 import { useAuthStore } from "@/lib/auth-store";
@@ -128,6 +129,7 @@ export function RecuDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl gap-0 p-0 sm:max-w-3xl">
+        <KentePattern variant="strip" position="top" />
         <DialogHeader className="no-print border-b px-6 py-4">
           <DialogTitle className="flex items-center gap-2 text-base">
             <span className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg shadow-emerald-900/20">

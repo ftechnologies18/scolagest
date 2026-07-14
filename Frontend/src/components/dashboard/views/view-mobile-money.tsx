@@ -53,10 +53,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
 import { GlassCard } from "@/components/ds/glass-card";
 import { KentePattern } from "@/components/ds/kente-pattern";
 import {
@@ -147,8 +143,8 @@ export default function MobileMoneyView() {
       <KentePattern variant="separator" className="my-4" />
 
       {!etablissement?.id ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+        <GlassCard variant="adaptive" noHover className="border-dashed">
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
               <Filter className="size-6" />
             </div>
@@ -157,8 +153,8 @@ export default function MobileMoneyView() {
               Les transactions Mobile Money sont rattachées à un établissement.
               Choisissez-en un dans la barre latérale.
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       ) : (
         <Tabs defaultValue="transactions" className="w-full">
           <TabsList className="flex w-full justify-start gap-1 overflow-x-auto sm:w-auto">

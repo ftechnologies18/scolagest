@@ -9,14 +9,8 @@ import {
   Database,
   type LucideIcon,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { GlassCard } from "@/components/ds/glass-card";
 
 type Domain = {
   id: number;
@@ -119,27 +113,29 @@ export function DataModelOverview() {
         {DOMAINS.map((domain) => {
           const Icon = domain.icon;
           return (
-            <Card
+            <GlassCard
               key={domain.id}
-              className="border-l-4 border-l-emerald-500 hover:shadow-md transition-shadow"
+              variant="adaptive"
+              noHover
+              className="overflow-hidden border-l-4 border-l-emerald-500 p-0"
             >
-              <CardHeader className="pb-3">
+              <div className="pb-3 px-5 pt-5">
                 <div className="flex items-center gap-2">
                   <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
                     <Icon className="size-5" />
                   </div>
                   <div>
-                    <CardTitle className="text-base">
+                    <h3 className="font-display text-base font-semibold text-forest">
                       {domain.id}. {domain.name}
-                    </CardTitle>
-                    <CardDescription className="text-xs">
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
                       {domain.entities.length} entité
                       {domain.entities.length > 1 ? "s" : ""}
-                    </CardDescription>
+                    </p>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
+              </div>
+              <div className="space-y-2 px-5 pb-5">
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   {domain.description}
                 </p>
@@ -153,20 +149,20 @@ export function DataModelOverview() {
                     </code>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </GlassCard>
           );
         })}
       </div>
 
-      <Card className="border-amber-200 bg-amber-50/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden border-amber-200 bg-amber-50/50 p-0">
+        <div className="px-5 py-4">
+          <h2 className="flex items-center gap-2 font-display text-base font-semibold text-forest">
             <span className="size-2 rounded-full bg-amber-500" />
             Règles métier clés
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </h2>
+        </div>
+        <div className="px-5 pb-5">
           <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
             <li>
               <strong className="text-foreground">Catégorie d&apos;élève :</strong>{" "}
@@ -199,8 +195,8 @@ export function DataModelOverview() {
               par établissement (un caissier peut travailler sur 2 sites).
             </li>
           </ol>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     </div>
   );
 }

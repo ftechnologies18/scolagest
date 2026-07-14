@@ -9,7 +9,7 @@
  */
 
 import type { LucideIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
 import { Badge } from "@/components/ui/badge";
 
 interface PlaceholderViewProps {
@@ -55,14 +55,14 @@ export function PlaceholderView({
         </Badge>
       </div>
 
-      <Card className="border-dashed">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+      <GlassCard variant="adaptive" noHover className="overflow-hidden border-dashed p-0">
+        <div className="border-b border-emerald-100/60 px-5 py-4">
+          <h2 className="flex items-center gap-2 font-display text-base font-semibold text-forest">
             <span className="size-2 rounded-full bg-amber-500" />
             Module en cours de développement
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </h2>
+        </div>
+        <div className="space-y-4 p-5">
           <p className="text-sm text-muted-foreground">
             Cet écran fait partie du périmètre <strong>{phase}</strong> de
             ScolaGest. La structure de navigation et le squelette de l&apos;UI
@@ -82,8 +82,8 @@ export function PlaceholderView({
               ))}
             </ul>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     </div>
   );
 }

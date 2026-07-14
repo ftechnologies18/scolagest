@@ -50,6 +50,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 import { fetchRecuParent, type PaiementParent } from "@/lib/api-parent";
 import { useAuthStore } from "@/lib/auth-store";
@@ -141,6 +142,7 @@ export function RecuDialogParent({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl gap-0 p-0 sm:max-w-3xl">
+        <KentePattern variant="strip" position="top" />
         {/* Header premium : badge rond gradient emerald→gold + Receipt */}
         <DialogHeader className="no-print border-b border-emerald-100 bg-gradient-to-br from-emerald-50 to-amber-50 px-6 py-5 dark:from-emerald-950/20 dark:to-amber-950/10">
           <DialogTitle className="flex items-center gap-3 text-base">

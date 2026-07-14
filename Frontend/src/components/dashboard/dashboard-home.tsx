@@ -39,13 +39,7 @@ import {
   RotateCw,
 } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -72,7 +66,6 @@ import { useAuthStore } from "@/lib/auth-store";
 import { apiGet, ApiError } from "@/lib/api-client";
 import { fetchDashboard, dashboardKeys } from "@/lib/api-reports";
 import { BarChart } from "@/components/reports/bar-chart";
-import { GlassCard } from "@/components/ds/glass-card";
 import { StatCard } from "@/components/ds/stat-card";
 import { ProgressCircle } from "@/components/ds/progress-circle";
 import { KentePattern } from "@/components/ds/kente-pattern";
@@ -361,8 +354,8 @@ export function DashboardHome({ onNavigate }: DashboardHomeProps) {
           etablissementNom={etablissement?.nom}
           user={user}
         />
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+        <GlassCard variant="adaptive" noHover className="border-dashed">
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
               <AlertTriangle className="size-6" />
             </div>
@@ -373,8 +366,8 @@ export function DashboardHome({ onNavigate }: DashboardHomeProps) {
               Choisissez un établissement dans la barre latérale pour afficher
               les indicateurs et graphiques du tableau de bord.
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
         <SystemStatusCard
           health={health}
           loading={healthLoading}
@@ -489,8 +482,8 @@ export function DashboardHome({ onNavigate }: DashboardHomeProps) {
             ))}
           </div>
         ) : dashboardError ? (
-          <Card className="border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20">
-            <CardContent className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+          <GlassCard variant="adaptive" noHover className="border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20">
+            <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
               <div className="flex size-11 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
                 <XCircle className="size-5" />
               </div>
@@ -510,8 +503,8 @@ export function DashboardHome({ onNavigate }: DashboardHomeProps) {
                 <RotateCw className="size-3.5" />
                 Réessayer
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
@@ -854,8 +847,12 @@ function WelcomeCard({
   user: { nom?: string; prenoms?: string } | null;
 }) {
   return (
-    <Card className="overflow-hidden border-emerald-200 bg-gradient-to-br from-emerald-50 via-background to-background dark:border-emerald-900/40">
-      <CardContent className="p-6">
+    <GlassCard
+      variant="adaptive"
+      noHover
+      className="overflow-hidden border-emerald-200 bg-gradient-to-br from-emerald-50 via-background to-background p-0 dark:border-emerald-900/40"
+    >
+      <div className="p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/20">
@@ -909,8 +906,8 @@ function WelcomeCard({
             </p>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }
 
@@ -924,15 +921,15 @@ function SystemStatusCard({
   error: string | null;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 font-display text-base">
+    <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+      <div className="border-b border-emerald-100/60 px-5 py-4">
+        <h2 className="flex items-center gap-2 font-display text-base font-semibold text-forest">
           <Activity className="size-4 text-emerald-600" />
           Statut du système
-        </CardTitle>
-        <CardDescription>État du backend Go sur le port 8080.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
+        </h2>
+        <p className="mt-1 text-xs text-muted-foreground">État du backend Go sur le port 8080.</p>
+      </div>
+      <div className="space-y-3 p-5">
         <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2.5">
           <span className="text-xs text-muted-foreground">API</span>
           {loading ? (
@@ -976,8 +973,8 @@ function SystemStatusCard({
               : "En attente de réponse du backend…"}
           </p>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }
 

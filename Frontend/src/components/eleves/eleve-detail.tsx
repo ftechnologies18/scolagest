@@ -65,7 +65,6 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { GlassCard } from "@/components/ds/glass-card";
 import { KentePattern } from "@/components/ds/kente-pattern";
 import { ProgressCircle } from "@/components/ds/progress-circle";
@@ -218,8 +217,8 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
     return (
       <div className="space-y-4">
         <BackButton onClick={onBack} />
-        <Card>
-          <CardContent className="flex items-center gap-3 py-10 text-sm">
+        <GlassCard variant="adaptive" noHover>
+          <div className="flex items-center gap-3 py-10 text-sm">
             <AlertCircle className="size-5 text-destructive" />
             <div>
               <p className="font-medium text-destructive">
@@ -231,8 +230,8 @@ export function EleveDetail({ eleveId, onBack, onEdit }: EleveDetailProps) {
                   : "La fiche demandée n'existe pas ou n'est pas accessible."}
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       </div>
     );
   }
@@ -697,8 +696,8 @@ function DetailSkeleton({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-4">
       <BackButton onClick={onBack} />
-      <Card>
-        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <GlassCard variant="adaptive" noHover>
+        <div className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <Skeleton className="size-20 rounded-full" />
             <div className="space-y-2">
@@ -714,15 +713,15 @@ function DetailSkeleton({ onBack }: { onBack: () => void }) {
             <Skeleton className="h-9 w-24" />
             <Skeleton className="h-9 w-28" />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
       <div className="grid gap-4 lg:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <Card key={i}>
-            <CardHeader>
+          <GlassCard key={i} variant="adaptive" noHover className="overflow-hidden p-0">
+            <div className="px-5 py-4">
               <Skeleton className="h-5 w-32" />
-            </CardHeader>
-            <CardContent className="space-y-3">
+            </div>
+            <div className="space-y-3 p-5 pt-0">
               {Array.from({ length: 4 }).map((_, j) => (
                 <div key={j} className="flex items-center gap-3">
                   <Skeleton className="size-4" />
@@ -732,20 +731,20 @@ function DetailSkeleton({ onBack }: { onBack: () => void }) {
                   </div>
                 </div>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
         ))}
       </div>
-      <Card>
-        <CardHeader>
+      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <div className="px-5 py-4">
           <Skeleton className="h-5 w-48" />
-        </CardHeader>
-        <CardContent className="space-y-2">
+        </div>
+        <div className="space-y-2 p-5 pt-0">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full" />
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     </div>
   );
 }

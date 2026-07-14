@@ -41,7 +41,6 @@ import type { ModePaiement } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { GlassCard } from "@/components/ds/glass-card";
 import { StatCard } from "@/components/ds/stat-card";
 import { KentePattern } from "@/components/ds/kente-pattern";
@@ -255,8 +254,8 @@ export function DashboardCaissePanel({
   // Pas d'établissement
   if (!etablissement) {
     return (
-      <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900/40 dark:bg-amber-950/20">
-        <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
+      <GlassCard variant="adaptive" noHover className="border-amber-200 bg-amber-50/50 dark:border-amber-900/40 dark:bg-amber-950/20">
+        <div className="flex flex-col items-center gap-2 py-10 text-center">
           <AlertCircle className="size-8 text-amber-600" />
           <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
             Aucun établissement sélectionné
@@ -265,8 +264,8 @@ export function DashboardCaissePanel({
             Sélectionnez un établissement dans la barre latérale pour voir le
             tableau de bord de la caisse.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     );
   }
 
@@ -290,8 +289,8 @@ export function DashboardCaissePanel({
   // Erreur
   if (isError) {
     return (
-      <Card className="border-rose-200 bg-rose-50/50 dark:border-rose-900/40 dark:bg-rose-950/20">
-        <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+      <GlassCard variant="adaptive" noHover className="border-rose-200 bg-rose-50/50 dark:border-rose-900/40 dark:bg-rose-950/20">
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
           <AlertCircle className="size-8 text-rose-600" />
           <p className="text-sm font-medium text-rose-800 dark:text-rose-200">
             Impossible de charger le tableau de bord
@@ -305,8 +304,8 @@ export function DashboardCaissePanel({
             <RefreshCw className="mr-1.5 size-3.5" />
             Réessayer
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     );
   }
 

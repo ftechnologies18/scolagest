@@ -51,6 +51,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Validation
@@ -170,7 +171,9 @@ export function TuteurDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="overflow-hidden p-0 sm:max-w-2xl">
+        <KentePattern variant="strip" position="top" />
+        <div className="p-6 pt-5">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2.5">
             <span className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-md shadow-emerald-900/20">
@@ -323,6 +326,7 @@ export function TuteurDialog({
             </Button>
           </DialogFooter>
         </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
