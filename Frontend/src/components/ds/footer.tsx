@@ -40,7 +40,7 @@ export function Footer({ variant = "light", className }: FooterProps) {
       <p
         className={cn(
           // Mobile-first : text-[10px] sur très petits écrans, text-xs (12px) sm+
-          "mx-auto max-w-7xl px-4 py-3 text-center text-[10px] leading-relaxed sm:px-6 sm:text-xs",
+          "mx-auto max-w-7xl px-4 py-1.5 text-center text-[10px] leading-relaxed sm:px-6 sm:text-xs",
           // Discret : gris clair (light) ou gris-vert (dark sur fond forest)
           isDark ? "text-emerald-100/50" : "text-muted-foreground/70",
         )}
