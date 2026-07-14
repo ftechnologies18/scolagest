@@ -8,8 +8,10 @@
  * vue vers son chemin App Router puis on appelle `router.push`.
  */
 
+import { LayoutDashboard } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { DashboardHome, type DashboardViewId } from "@/components/dashboard/dashboard-home";
+import { ModuleHero } from "@/components/ds/module-hero";
 
 /** Mapping `DashboardViewId` → chemin App Router. */
 const VIEW_TO_PATH: Record<DashboardViewId, string> = {
@@ -46,11 +48,18 @@ export default function DashboardPage() {
   const router = useRouter();
 
   return (
-    <DashboardHome
-      onNavigate={(view) => {
-        const path = VIEW_TO_PATH[view] ?? "/dashboard";
-        router.push(path);
-      }}
-    />
+    <>
+      <ModuleHero
+        icon={LayoutDashboard}
+        title="Tableau de bord"
+        subtitle="Vue d'ensemble de l'établissement"
+      />
+      <DashboardHome
+        onNavigate={(view) => {
+          const path = VIEW_TO_PATH[view] ?? "/dashboard";
+          router.push(path);
+        }}
+      />
+    </>
   );
 }

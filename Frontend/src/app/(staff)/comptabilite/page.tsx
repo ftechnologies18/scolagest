@@ -11,12 +11,19 @@
  * d'accéder au contenu : il affiche un écran « Accès refusé » à la place.
  */
 
+import { Calculator } from "lucide-react";
 import { RoleGuard } from "@/components/auth/role-guard";
+import { ModuleHero } from "@/components/ds/module-hero";
 import ComptabiliteView from "@/components/dashboard/views/view-comptabilite";
 
 export default function ComptabilitePage() {
   return (
     <RoleGuard allow={["COMPTABLE"]}>
+      <ModuleHero
+        icon={Calculator}
+        title="Comptabilité"
+        subtitle="Exercices, plan comptable et écritures"
+      />
       <ComptabiliteView />
     </RoleGuard>
   );

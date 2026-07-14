@@ -29,9 +29,10 @@
 
 import { useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { MailOpen, UserPlus } from "lucide-react";
+import { GraduationCap, MailOpen, UserPlus } from "lucide-react";
 import { RoleGuard } from "@/components/auth/role-guard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ModuleHero } from "@/components/ds/module-hero";
 import { InscriptionWizard } from "@/components/inscription/inscription-wizard";
 import { PreInscriptionsList } from "@/components/pre-inscription/pre-inscriptions-list";
 
@@ -54,6 +55,11 @@ function useTabFromUrl(searchParams: URLSearchParams): TabValue {
 export default function InscriptionsPage() {
   return (
     <RoleGuard allow={[...ALLOWED_ROLES]}>
+      <ModuleHero
+        icon={GraduationCap}
+        title="Inscriptions"
+        subtitle="Workflow d'inscription des élèves"
+      />
       <InscriptionsContent />
     </RoleGuard>
   );

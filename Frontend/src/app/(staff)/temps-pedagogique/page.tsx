@@ -27,9 +27,10 @@
 
 import { useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, Clock } from "lucide-react";
+import { BookOpen, CalendarDays, Clock } from "lucide-react";
 import { RoleGuard } from "@/components/auth/role-guard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ModuleHero } from "@/components/ds/module-hero";
 import { EmploiTempsDashboard } from "@/components/emploi-temps/emploi-temps-dashboard";
 import { EcranPointage } from "@/components/pointage/ecran-pointage";
 
@@ -52,6 +53,11 @@ function useTabFromUrl(searchParams: URLSearchParams): TabValue {
 export default function TempsPedagogiquePage() {
   return (
     <RoleGuard allow={[...ALLOWED_ROLES]}>
+      <ModuleHero
+        icon={BookOpen}
+        title="Temps pédagogique"
+        subtitle="Matières, affectations et emploi du temps"
+      />
       <TempsPedagogiqueContent />
     </RoleGuard>
   );

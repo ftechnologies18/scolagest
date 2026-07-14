@@ -8,7 +8,9 @@
  * (vie scolaire).
  */
 
+import { ShieldAlert } from "lucide-react";
 import { RoleGuard } from "@/components/auth/role-guard";
+import { ModuleHero } from "@/components/ds/module-hero";
 import { DisciplineDashboard } from "@/components/discipline/discipline-dashboard";
 
 const ALLOWED_ROLES = [
@@ -22,6 +24,11 @@ const ALLOWED_ROLES = [
 export default function DisciplinePage() {
   return (
     <RoleGuard allow={[...ALLOWED_ROLES]}>
+      <ModuleHero
+        icon={ShieldAlert}
+        title="Discipline"
+        subtitle="Tickets d'incidents et suivi disciplinaire"
+      />
       <DisciplineDashboard />
     </RoleGuard>
   );

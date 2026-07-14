@@ -31,9 +31,10 @@
 
 import { useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, CalendarDays } from "lucide-react";
+import { ArrowRight, CalendarDays, CalendarRange } from "lucide-react";
 import { RoleGuard } from "@/components/auth/role-guard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ModuleHero } from "@/components/ds/module-hero";
 import AnneesView from "@/components/dashboard/views/view-annees";
 import { PassageMasseDashboard } from "@/components/passage-masse/passage-masse-dashboard";
 
@@ -59,6 +60,11 @@ function useTabFromUrl(searchParams: URLSearchParams): TabValue {
 export default function AnneesPassagePage() {
   return (
     <RoleGuard allow={[...ALLOWED_ROLES]}>
+      <ModuleHero
+        icon={CalendarRange}
+        title="Années scolaires"
+        subtitle="Gestion des années et passage de classe en masse"
+      />
       <AnneesPassageContent />
     </RoleGuard>
   );

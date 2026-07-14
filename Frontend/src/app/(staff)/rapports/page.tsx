@@ -7,7 +7,9 @@
  * DIRECTION/DIRECTEUR_ETUDES/DIRECTEUR_SUPERVISEUR, SECRETARIAT, EDUCATEUR.
  */
 
+import { BarChart3 } from "lucide-react";
 import { RoleGuard } from "@/components/auth/role-guard";
+import { ModuleHero } from "@/components/ds/module-hero";
 import RapportsView from "@/components/dashboard/views/view-rapports";
 
 export default function RapportsPage() {
@@ -23,6 +25,11 @@ export default function RapportsPage() {
         "EDUCATEUR",
       ]}
     >
+      <ModuleHero
+        icon={BarChart3}
+        title="Rapports"
+        subtitle="Tableaux de bord et exports analytiques"
+      />
       <RapportsView />
     </RoleGuard>
   );

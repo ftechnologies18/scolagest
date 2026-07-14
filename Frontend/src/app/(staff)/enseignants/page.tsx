@@ -7,7 +7,9 @@
  * un RoleGuard réservé à la direction, aux directeurs et au secrétariat.
  */
 
+import { UserCog } from "lucide-react";
 import { RoleGuard } from "@/components/auth/role-guard";
+import { ModuleHero } from "@/components/ds/module-hero";
 import { EnseignantsList } from "@/components/enseignants/enseignants-list";
 
 const ALLOWED_ROLES = [
@@ -20,6 +22,11 @@ const ALLOWED_ROLES = [
 export default function EnseignantsPage() {
   return (
     <RoleGuard allow={[...ALLOWED_ROLES]}>
+      <ModuleHero
+        icon={UserCog}
+        title="Enseignants"
+        subtitle="Gestion du corps enseignant"
+      />
       <EnseignantsList />
     </RoleGuard>
   );

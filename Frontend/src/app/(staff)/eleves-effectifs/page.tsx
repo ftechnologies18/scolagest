@@ -33,6 +33,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { BarChart3, Users } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ModuleHero } from "@/components/ds/module-hero";
 import ElevesView from "@/components/dashboard/views/view-eleves";
 import { EffectifsDashboard } from "@/components/effectifs/effectifs-dashboard";
 
@@ -97,7 +98,13 @@ function ElevesEffectifsContent() {
   );
 
   return (
-    <div className="relative mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+    <>
+      <ModuleHero
+        icon={Users}
+        title="Élèves & Effectifs"
+        subtitle="Gestion des élèves et effectifs par classe"
+      />
+      <div className="relative mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
       {/* ─── Onglets Élèves / Effectifs ──────────────────────────────────── */}
       <Tabs value={tab} onValueChange={handleTabChange} className="space-y-0">
         <TabsList className="h-10">
@@ -127,6 +134,7 @@ function ElevesEffectifsContent() {
           </TabsContent>
         ) : null}
       </Tabs>
-    </div>
+      </div>
+    </>
   );
 }

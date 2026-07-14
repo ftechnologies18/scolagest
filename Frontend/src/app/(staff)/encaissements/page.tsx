@@ -29,9 +29,10 @@
 
 import { useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Smartphone, Wallet } from "lucide-react";
+import { HandCoins, Smartphone, Wallet } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ModuleHero } from "@/components/ds/module-hero";
 import CaisseView from "@/components/dashboard/views/view-caisse";
 import MobileMoneyView from "@/components/dashboard/views/view-mobile-money";
 
@@ -92,7 +93,14 @@ function EncaissementsContent() {
   );
 
   return (
-    <div className="relative mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+    <>
+      <ModuleHero
+        icon={HandCoins}
+        title="Encaissements"
+        subtitle="Guichet de paiement multi-mode — caisse & Mobile Money"
+        badge="Caisse"
+      />
+      <div className="relative mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
       {/* ─── Onglets Caisse / Mobile Money ──────────────────────────────── */}
       <Tabs value={tab} onValueChange={handleTabChange} className="space-y-0">
         <TabsList className="h-10">
@@ -117,6 +125,7 @@ function EncaissementsContent() {
           </TabsContent>
         ) : null}
       </Tabs>
-    </div>
+      </div>
+    </>
   );
 }
