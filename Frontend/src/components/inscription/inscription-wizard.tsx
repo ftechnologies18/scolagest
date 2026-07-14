@@ -286,7 +286,7 @@ export function InscriptionWizard() {
       <KentePattern variant="strip" position="top" />
 
       {/* Hero header */}
-      <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
+      <GlassCard variant="desktop" noHover premiumBorder className="p-5 sm:p-6">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-start gap-3.5">
             <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-amber-500 text-white shadow-md shadow-emerald-900/20">
@@ -312,7 +312,7 @@ export function InscriptionWizard() {
       <StepIndicator currentStep={step} />
 
       {/* Contenu de l'étape */}
-      <GlassCard variant="adaptive" noHover className="p-5 sm:p-6">
+      <GlassCard variant="adaptive" noHover premiumBorder className="p-5 sm:p-6">
         <AnimatePresence mode="wait">
           <motion.div
             key={step}

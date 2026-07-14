@@ -433,7 +433,7 @@ export function PreInscriptionsList() {
           <KentePattern variant="separator" className="my-1" />
 
           {/* ─── Tableau desktop + cartes mobile ─────────────────────────── */}
-          <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+          <GlassCard variant="adaptive" noHover premiumBorder className="overflow-hidden p-0">
             {isLoading ? (
               <div className="space-y-3 p-6">
                 {Array.from({ length: 4 }).map((_, i) => (
@@ -549,7 +549,7 @@ function HeroHeader({
   isFetching: boolean;
 }) {
   return (
-    <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
+    <GlassCard variant="desktop" noHover premiumBorder className="p-5 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3 sm:gap-4">
           {/* Badge rond gradient emerald→gold avec icône MailOpen */}
