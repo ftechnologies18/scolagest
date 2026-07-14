@@ -53,6 +53,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth-store";
+import { formatNiveau } from "@/lib/format";
 import {
   effectifsKeys,
   fetchEffectifs,
@@ -368,7 +369,7 @@ export function EffectifsDashboard() {
                           </span>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span className="text-[11px] text-muted-foreground">
-                              Niveau {c.niveau}
+                              {formatNiveau(c.cycle_libelle, c.niveau)}
                             </span>
                             {c.est_classe_examen ? (
                               <Badge

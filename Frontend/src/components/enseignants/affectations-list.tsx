@@ -1125,10 +1125,7 @@ function AffectationFormDialog({
                     <SelectContent>
                       {(classes ?? []).map((c) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.libelle}{" "}
-                          <span className="text-[10px] text-muted-foreground">
-                            (niveau {c.niveau})
-                          </span>
+                          {c.libelle}
                         </SelectItem>
                       ))}
                     </SelectContent>

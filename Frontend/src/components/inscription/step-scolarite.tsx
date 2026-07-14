@@ -53,6 +53,7 @@ import {
 } from "@/lib/api-students";
 import type { Cycle, Classe, AnneeScolaire, CategorieEleve } from "@/lib/types";
 import type { WorkflowInscription } from "@/lib/api-inscription";
+import { formatNiveau } from "@/lib/format";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -158,6 +159,12 @@ export function StepScolarite({
     return [...new Set(filtered.map((c) => c.niveau))].sort((a, b) => a - b);
   }, [classes, cycleId]);
 
+  // Libellé du cycle sélectionné (pour mapper niveau → libellé français).
+  const selectedCycleLibelle = React.useMemo(() => {
+    if (cycleId === "all") return undefined;
+    return cycles?.find((cy) => cy.id === cycleId)?.libelle;
+  }, [cycles, cycleId]);
+
   // La dérogation n'est proposée que pour les élèves AFFECTE
   const canDerogation = eleveCategorie === "AFFECTE";
 
@@ -219,7 +226,7 @@ export function StepScolarite({
               <SelectItem value="all">Tous niveaux</SelectItem>
               {availableNiveaux.map((n) => (
                 <SelectItem key={n} value={String(n)}>
-                  Niveau {n}
+                  {formatNiveau(selectedCycleLibelle, n)}
                 </SelectItem>
               ))}
             </SelectContent>

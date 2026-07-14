@@ -80,6 +80,7 @@ import {
   exportElevesExcel,
   exportElevesPDF,
 } from "@/lib/export-students";
+import { formatNiveau } from "@/lib/format";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -302,6 +303,12 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
     );
     return niveaux;
   }, [classes, cycleId]);
+
+  // Libellé du cycle sélectionné (pour mapper niveau → libellé français).
+  const selectedCycleLibelle = React.useMemo(() => {
+    if (cycleId === "all") return undefined;
+    return cycles?.find((cy) => cy.id === cycleId)?.libelle;
+  }, [cycles, cycleId]);
 
   // Libellé de la classe sélectionnée (pour le nom de fichier d'export)
   const selectedClasseLibelle = React.useMemo(() => {
@@ -549,7 +556,7 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
                 <SelectItem value="all">Tous niveaux</SelectItem>
                 {availableNiveaux.map((n) => (
                   <SelectItem key={n} value={String(n)}>
-                    Niveau {n}
+                    {formatNiveau(selectedCycleLibelle, n)}
                   </SelectItem>
                 ))}
               </SelectContent>

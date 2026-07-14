@@ -100,3 +100,67 @@ export function dateInputToISO(value: string): string {
   if (!y || !m || !d) return new Date().toISOString();
   return new Date(y, m - 1, d, 12, 0, 0).toISOString();
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Niveaux scolaires (mapping cycle + niveau → libellé français)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Mapping `niveau` (entier relatif au cycle, stocké en DB) → libellé français
+ * affiché à l'utilisateur final. Le `niveau` est un ordinal (1, 2, 3...) dont
+ * la signification dépend du cycle :
+ *   - PRÉSCOLAIRE : 1=PS, 2=MS, 3=GS
+ *   - PRIMAIRE    : 1=CP1, 2=CP2, 3=CE1, 4=CE2, 5=CM1, 6=CM2
+ *   - COLLÈGE     : 1=6ème, 2=5ème, 3=4ème, 4=3ème
+ *   - LYCÉE       : 1=2nde, 2=1ère, 3=Terminale
+ *
+ * Rappel : la classe elle-même a un `libelle` (ex: "6e A", "1ère D",
+ * "Terminale D") qui identifie la subdivision. Le `niveau` est l'année
+ * scolaire dans le cycle (ex: 6ème = 1ère année du collège).
+ */
+const NIVEAUX_BY_CYCLE: Record<string, Record<number, string>> = {
+  PRESCOLAIRE: { 1: "Petite Section", 2: "Moyenne Section", 3: "Grande Section" },
+  PRIMAIRE: { 1: "CP1", 2: "CP2", 3: "CE1", 4: "CE2", 5: "CM1", 6: "CM2" },
+  COLLEGE: { 1: "6ème", 2: "5ème", 3: "4ème", 4: "3ème" },
+  LYCEE: { 1: "2nde", 2: "1ère", 3: "Terminale" },
+};
+
+/**
+ * Formate un `niveau` (entier) en libellé français lisible, en fonction du
+ * cycle. Retourne "Niveau N" si le cycle est inconnu (fallback sûr).
+ *
+ * @example formatNiveau("COLLEGE", 1) → "6ème"
+ * @example formatNiveau("LYCEE", 3)   → "Terminale"
+ * @example formatNiveau("PRIMAIRE", 6) → "CM2"
+ */
+export function formatNiveau(
+  cycleLibelle: string | null | undefined,
+  niveau: number | null | undefined,
+): string {
+  if (niveau == null) return "—";
+  const map = cycleLibelle ? NIVEAUX_BY_CYCLE[cycleLibelle] : undefined;
+  const label = map?.[niveau];
+  return label ?? `Niveau ${niveau}`;
+}
+
+/**
+ * Retourne le libellé court du cycle (pour affichage compact).
+ * @example formatCycleCourt("COLLEGE") → "Collège"
+ */
+export function formatCycleCourt(
+  cycleLibelle: string | null | undefined,
+): string {
+  switch (cycleLibelle) {
+    case "PRESCOLAIRE":
+      return "Préscolaire";
+    case "PRIMAIRE":
+      return "Primaire";
+    case "COLLEGE":
+      return "Collège";
+    case "LYCEE":
+      return "Lycée";
+    default:
+      return cycleLibelle ?? "—";
+  }
+}
+

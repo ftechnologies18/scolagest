@@ -91,6 +91,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { cn } from "@/lib/utils";
+import { formatNiveau } from "@/lib/format";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1464,6 +1465,21 @@ function StepClasseInfos({
   notesParent: string;
   setNotesParent: (v: string) => void;
 }) {
+  // Libellé du cycle sélectionné (pour mapper niveau → libellé français).
+  const selectedCycleLibelle = React.useMemo(() => {
+    if (cycleId === "all") return undefined;
+    return cycles?.find((cy) => cy.id === cycleId)?.libelle;
+  }, [cycles, cycleId]);
+
+  /** Récupère le libellé du cycle d'une classe (via cycle_id ou cycle peuplé). */
+  const getCycleLibelleForClasse = React.useCallback(
+    (classe: { cycle_id: string; cycle?: { libelle?: string } | null }) => {
+      if (classe.cycle?.libelle) return classe.cycle.libelle;
+      return cycles?.find((cy) => cy.id === classe.cycle_id)?.libelle ?? selectedCycleLibelle;
+    },
+    [cycles, selectedCycleLibelle],
+  );
+
   return (
     <div className="space-y-5">
       <SectionHeader
@@ -1509,7 +1525,7 @@ function StepClasseInfos({
                   <SelectItem value="all">Tous niveaux</SelectItem>
                   {availableNiveaux.map((n) => (
                     <SelectItem key={n} value={String(n)}>
-                      Niveau {n}
+                      {formatNiveau(selectedCycleLibelle, n)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1600,7 +1616,7 @@ function StepClasseInfos({
                           {c.libelle}
                         </p>
                         <p className="text-[11px] text-muted-foreground">
-                          Niveau {c.niveau}
+                          {formatNiveau(getCycleLibelleForClasse(c), c.niveau)}
                           {c.est_classe_examen ? " · Examen" : ""}
                         </p>
                       </div>

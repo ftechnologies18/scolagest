@@ -89,7 +89,7 @@ import {
   type ValiderBody,
 } from "@/lib/api-pre-inscription";
 import { useToast } from "@/hooks/use-toast";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime, formatNiveau } from "@/lib/format";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1093,6 +1093,12 @@ function ValiderDialog({
     return [...new Set(filtered.map((c) => c.niveau))].sort((a, b) => a - b);
   }, [classes, cycleId]);
 
+  // Libellé du cycle sélectionné (pour mapper niveau → libellé français).
+  const selectedCycleLibelle = React.useMemo(() => {
+    if (cycleId === "all") return undefined;
+    return cycles?.find((cy) => cy.id === cycleId)?.libelle;
+  }, [cycles, cycleId]);
+
   const filteredClasses = React.useMemo(() => {
     if (!classes) return [];
     return classes.filter((c) => {
@@ -1169,7 +1175,7 @@ function ValiderDialog({
                   <SelectItem value="all">Tous niveaux</SelectItem>
                   {availableNiveaux.map((n) => (
                     <SelectItem key={n} value={String(n)}>
-                      Niveau {n}
+                      {formatNiveau(selectedCycleLibelle, n)}
                     </SelectItem>
                   ))}
                 </SelectContent>
