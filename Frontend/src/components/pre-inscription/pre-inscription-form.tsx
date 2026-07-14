@@ -690,6 +690,8 @@ export function PreInscriptionForm() {
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-gradient-to-br from-emerald-50 via-background to-amber-50">
+      {/* Texture kente subtile en fond (max 8% opacity) */}
+      <KentePattern variant="bg" className="opacity-[0.08]" />
       {/* Orbes décoratifs (glassmorphism léger) */}
       <div
         aria-hidden="true"
