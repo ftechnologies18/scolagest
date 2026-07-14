@@ -22,12 +22,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookMarked, BookOpen, CalendarDays } from "lucide-react";
+import { BookOpen, CalendarDays } from "lucide-react";
 import { RoleGuard } from "@/components/auth/role-guard";
 import { MatieresList } from "@/components/enseignants/matieres-list";
 import { AffectationsList } from "@/components/enseignants/affectations-list";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ModuleHero } from "@/components/ds/module-hero";
 
 const ALLOWED_ROLES = [
   "DIRECTION",
@@ -48,11 +47,6 @@ function readTabFromParams(searchParams: URLSearchParams): TabValue {
 export default function MatieresAffectationsPage() {
   return (
     <RoleGuard allow={[...ALLOWED_ROLES]}>
-      <ModuleHero
-        icon={BookMarked}
-        title="Matières & Affectations"
-        subtitle="Gestion des matières et affectations des cours"
-      />
       <MatieresAffectationsContent />
     </RoleGuard>
   );

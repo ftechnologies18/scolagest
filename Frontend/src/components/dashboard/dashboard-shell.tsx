@@ -98,6 +98,8 @@ export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** Sous-titre descriptif affiché dans le topbar premium. */
+  subtitle?: string;
   /** Rôles autorisés. Si `undefined`, tous les rôles. */
   roles?: Role[];
 }
@@ -138,6 +140,7 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/dashboard",
         label: "Tableau de bord",
         icon: LayoutDashboard,
+        subtitle: "Vue d'ensemble de l'établissement",
         roles: ["CAISSIER", "COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT", "EDUCATEUR"],
       },
       {
@@ -147,6 +150,7 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/eleves-effectifs",
         label: "Élèves & Effectifs",
         icon: School,
+        subtitle: "Gestion des élèves et effectifs par classe",
         roles: ["CAISSIER", "COMPTABLE", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT", "EDUCATEUR"],
       },
       {
@@ -155,6 +159,7 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/inscriptions",
         label: "Inscriptions",
         icon: ClipboardList,
+        subtitle: "Workflow d'inscription des élèves",
         roles: ["SECRETARIAT", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
       {
@@ -163,12 +168,14 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/discipline",
         label: "Discipline",
         icon: ShieldAlert,
+        subtitle: "Tickets d'incidents et suivi disciplinaire",
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT", "EDUCATEUR"],
       },
       {
         href: "/rapports",
         label: "Rapports",
         icon: FileBarChart,
+        subtitle: "Tableaux de bord et exports analytiques",
         roles: ["CAISSIER", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "COMPTABLE", "SECRETARIAT", "EDUCATEUR"],
       },
     ],
@@ -186,12 +193,14 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/encaissements",
         label: "Encaissements",
         icon: HandCoins,
+        subtitle: "Guichet de paiement multi-mode — caisse & Mobile Money",
         roles: ["CAISSIER", "COMPTABLE"],
       },
       {
         href: "/impayes",
         label: "Impayés & relances",
         icon: AlertTriangle,
+        subtitle: "Suivi des soldes impayés et relances SMS/email",
         roles: ["CAISSIER", "DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "COMPTABLE"],
       },
       {
@@ -201,6 +210,7 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/paie",
         label: "Paie enseignants",
         icon: Banknote,
+        subtitle: "Bulletins de paie et avances sur salaire",
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
       {
@@ -209,6 +219,7 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/comptabilite",
         label: "Comptabilité",
         icon: Calculator,
+        subtitle: "Exercices, plan comptable et écritures",
         roles: ["COMPTABLE"],
       },
     ],
@@ -222,6 +233,7 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/enseignants",
         label: "Enseignants",
         icon: GraduationCap,
+        subtitle: "Gestion du corps enseignant",
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
       },
       {
@@ -230,6 +242,7 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/matieres-affectations",
         label: "Matières & Affectations",
         icon: Layers,
+        subtitle: "Gestion des matières et affectations des cours",
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
       },
       {
@@ -239,6 +252,7 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/temps-pedagogique",
         label: "Temps pédagogique",
         icon: Timer,
+        subtitle: "Matières, affectations et emploi du temps",
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR", "SECRETARIAT"],
       },
     ],
@@ -251,6 +265,7 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/frais",
         label: "Frais & échéanciers",
         icon: Coins,
+        subtitle: "Grilles tarifaires et échéanciers de paiement",
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
       {
@@ -259,12 +274,14 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/annees-passage",
         label: "Années & Passage",
         icon: CalendarRange,
+        subtitle: "Gestion des années et passage de classe en masse",
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
       {
         href: "/utilisateurs",
         label: "Utilisateurs",
         icon: UserCog,
+        subtitle: "Gestion des comptes et accès",
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
     ],
@@ -279,6 +296,7 @@ export const STAFF_NAV_GROUPS: NavGroup[] = [
         href: "/parametres",
         label: "Paramètres",
         icon: Settings,
+        subtitle: "Configuration de l'établissement",
         roles: ["DIRECTION", "DIRECTEUR_ETUDES", "DIRECTEUR_SUPERVISEUR"],
       },
     ],
@@ -298,30 +316,35 @@ export const SAAS_NAV_GROUPS: NavGroup[] = [
         href: "/saas/dashboard",
         label: "Tableau de bord SaaS",
         icon: LayoutDashboard,
+        subtitle: "Vue d'ensemble de la plateforme ScolaGest",
         roles: ["SUPER_ADMIN"],
       },
       {
         href: "/saas/establishments",
         label: "Établissements",
         icon: Building2,
+        subtitle: "Gestion des établissements abonnés",
         roles: ["SUPER_ADMIN"],
       },
       {
         href: "/saas/audit",
         label: "Audit",
         icon: ScrollText,
+        subtitle: "Journal d'audit et traçabilité",
         roles: ["SUPER_ADMIN"],
       },
       {
         href: "/saas/billing",
         label: "Facturation",
         icon: CreditCard,
+        subtitle: "Plans, abonnements et factures SaaS",
         roles: ["SUPER_ADMIN"],
       },
       {
         href: "/saas/support",
         label: "Mode Support",
         icon: LifeBuoy,
+        subtitle: "Assistance et impersonation d'établissements",
         roles: ["SUPER_ADMIN"],
       },
     ],
@@ -526,15 +549,20 @@ export function DashboardShell({
       .filter((g) => g.items.length > 0);
   }, [navGroups, role]);
 
-  // Titre de la page dérivé du pathname (cherche le nav item actif).
-  const pageTitle = useMemo(() => {
+  // Métadonnées de la page courante (titre + icône + sous-titre) dérivées du
+  // pathname. Recherche le nav item actif dans tous les groupes.
+  const currentNav = useMemo(() => {
     for (const group of navGroups) {
       for (const item of group.items) {
-        if (isActivePath(pathname, item.href)) return item.label;
+        if (isActivePath(pathname, item.href)) return item;
       }
     }
-    return "Tableau de bord";
+    return null;
   }, [pathname, navGroups]);
+
+  const pageTitle = currentNav?.label ?? "Tableau de bord";
+  const PageIcon = currentNav?.icon;
+  const pageSubtitle = currentNav?.subtitle;
 
   // Ferme la sidebar mobile après un clic sur un lien.
   function handleNavClick() {
@@ -1017,39 +1045,63 @@ export function DashboardShell({
         {/* Colonne principale */}
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Topbar */}
-          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-white/10 bg-forest/95 px-4 backdrop-blur-xl">
-            {/* Bouton menu mobile (toujours visible <lg) */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white hover:bg-white/10 focus-visible:ring-amber-400/50 focus-visible:ring-offset-forest lg:hidden"
-              onClick={() => setMobileOpen(true)}
-              aria-label="Ouvrir le menu"
-            >
-              <Menu className="size-5" aria-hidden="true" />
-            </Button>
-            {/* Bouton ouvrir sidebar desktop — visible uniquement en mode Survol
-                fermé (collapsed est déjà visible, expanded aussi). */}
-            {sidebarMode === "hover" && !hoverActive && (
+          {/* ─── Topbar premium unifié (style Forêt EdTech) ─────────────────── */}
+          <div className="shrink-0">
+            <KentePattern variant="strip" position="top" />
+            <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-emerald-200/60 bg-gradient-to-r from-emerald-700 via-emerald-600 to-amber-500/90 px-4 backdrop-blur supports-[backdrop-filter]:bg-gradient-to-r supports-[backdrop-filter]:from-emerald-700/95 supports-[backdrop-filter]:via-emerald-600/95 supports-[backdrop-filter]:to-amber-500/85">
+              {/* Bouton menu mobile (toujours visible <lg) */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="hidden text-white hover:bg-white/10 focus-visible:ring-amber-400/50 focus-visible:ring-offset-forest lg:flex"
-                onClick={() => setHoverActive(true)}
-                aria-label="Ouvrir la sidebar"
+                className="text-white hover:bg-white/10 focus-visible:ring-amber-400/50 focus-visible:ring-offset-forest lg:hidden"
+                onClick={() => setMobileOpen(true)}
+                aria-label="Ouvrir le menu"
               >
-                <PanelLeftOpen className="size-5" aria-hidden="true" />
+                <Menu className="size-5" aria-hidden="true" />
               </Button>
-            )}
+              {/* Bouton ouvrir sidebar desktop — visible uniquement en mode Survol
+                  fermé (collapsed est déjà visible, expanded aussi). */}
+              {sidebarMode === "hover" && !hoverActive && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hidden text-white hover:bg-white/10 focus-visible:ring-amber-400/50 focus-visible:ring-offset-forest lg:flex"
+                  onClick={() => setHoverActive(true)}
+                  aria-label="Ouvrir la sidebar"
+                >
+                  <PanelLeftOpen className="size-5" aria-hidden="true" />
+                </Button>
+              )}
 
-            <div className="flex flex-col">
-              <h1 className="text-base font-semibold font-display leading-tight text-white">
-                {pageTitle}
-              </h1>
-              <p className="hidden text-[11px] text-emerald-100/80 leading-tight sm:block">
-                ScolaGest · Gestion &amp; Caisse Scolaire
-              </p>
-            </div>
+              {/* Badge icône du module + ★ gold (style page suivi) */}
+              {PageIcon && (
+                <div className="relative shrink-0">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-amber-500 p-2 text-white shadow-md shadow-emerald-900/30 ring-1 ring-gold/40">
+                    <PageIcon className="size-5" aria-hidden="true" />
+                  </div>
+                  <span
+                    aria-hidden="true"
+                    className="absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full bg-gold text-[8px] font-bold text-emerald-900 ring-2 ring-white"
+                  >
+                    ★
+                  </span>
+                </div>
+              )}
+
+              <div className="flex min-w-0 flex-col">
+                <h1 className="truncate text-base font-semibold font-display leading-tight text-white">
+                  {pageTitle}
+                </h1>
+                {pageSubtitle ? (
+                  <p className="hidden truncate text-[11px] leading-tight text-emerald-50/90 sm:block">
+                    {pageSubtitle}
+                  </p>
+                ) : (
+                  <p className="hidden text-[11px] text-emerald-100/80 leading-tight sm:block">
+                    ScolaGest · Gestion &amp; Caisse Scolaire
+                  </p>
+                )}
+              </div>
 
             <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
               {/* Recherche (placeholder non fonctionnel) */}
@@ -1135,6 +1187,7 @@ export function DashboardShell({
               </DropdownMenu>
             </div>
           </header>
+          </div>
 
           {/* Contenu principal scrollable — le footer est hors du main pour
               rester toujours visible en bas du viewport (sticky flex). */}
