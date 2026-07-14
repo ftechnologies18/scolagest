@@ -1194,17 +1194,19 @@ export function DashboardShell({
           {/* Contenu principal scrollable — le footer est hors du main pour
               rester toujours visible en bas du viewport (sticky flex).
               Fond Forêt EdTech fidèle à /pre-inscription/suivi : gradient
-              emerald/amber + texture kente 8% + orbes décoratifs glassmorphism. */}
-          <main className="relative flex-1 overflow-y-auto bg-gradient-to-br from-emerald-50 via-background to-amber-50">
-            <KentePattern variant="bg" className="opacity-[0.08]" />
-            {/* Orbes décoratifs glassmorphism (comme page suivi) */}
+              emerald/amber + texture kente 8% appliqués DIRECTEMENT sur le main
+              (background-repeat couvre toute la hauteur scrollable, pas seulement
+              la viewport) + orbes glassmorphism. */}
+          <main className="kente-bg-content relative flex-1 overflow-y-auto">
+            {/* Orbes décoratifs glassmorphism (comme page suivi) — fixed pour
+                rester visibles pendant le scroll. */}
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute -top-24 -right-24 z-0 size-96 rounded-full bg-emerald-200/40 blur-3xl"
+              className="pointer-events-none fixed right-0 top-16 z-0 size-96 rounded-full bg-emerald-200/40 blur-3xl"
             />
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute -bottom-32 -left-24 z-0 size-96 rounded-full bg-amber-200/30 blur-3xl"
+              className="pointer-events-none fixed bottom-0 left-64 z-0 size-96 rounded-full bg-amber-200/30 blur-3xl"
             />
             <div className="relative z-10 mx-auto w-full max-w-7xl p-4 pb-20 sm:p-6 sm:pb-24">
               <AnimatePresence mode="wait">
