@@ -547,7 +547,7 @@ export function FileAttente() {
   return (
     <div className="space-y-4">
       {/* Hero header local : compteur + refresh */}
-      <GlassCard variant="tablet" noHover className="p-4 sm:p-5">
+      <GlassCard variant="tablet" noHover premiumBorder className="p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg shadow-emerald-900/20">

@@ -338,7 +338,7 @@ export function EleveForm({ eleveId, onSaved, onCancel }: EleveFormProps) {
       <BackButton onClick={onCancel} />
 
       {/* Header avec stepper visuel */}
-      <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
+      <GlassCard variant="desktop" noHover premiumBorder className="p-5 sm:p-6">
         <div className="space-y-4">
           <div className="space-y-1">
             <h2 className="font-display text-xl font-semibold tracking-tight text-forest sm:text-2xl">

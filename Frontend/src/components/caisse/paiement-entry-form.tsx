@@ -272,7 +272,7 @@ export function PaiementEntryForm() {
     <div className="grid gap-4 lg:grid-cols-3">
       {/* Colonne principale : formulaire */}
       <div className="space-y-4 lg:col-span-2">
-        <GlassCard variant="adaptive" noHover>
+        <GlassCard variant="adaptive" noHover premiumBorder>
           <div className="mb-4 flex items-center gap-2">
             <Wallet className="size-4 text-emerald-600" />
             <h3 className="font-display text-base font-semibold">Nouvel encaissement</h3>

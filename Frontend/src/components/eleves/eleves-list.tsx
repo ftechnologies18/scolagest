@@ -672,7 +672,7 @@ export function ElevesList({ onCreate, onSelect, onEdit }: ElevesListProps) {
 
       {/* Tableau */}
       {!isLoading && !isError && (
-        <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <GlassCard variant="adaptive" noHover premiumBorder className="overflow-hidden p-0">
           <div>
             {eleves.length === 0 ? (
               <EmptyState onCreate={onCreate} />
@@ -791,7 +791,7 @@ function ListHeader({
   total: number;
 }) {
   return (
-    <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
+    <GlassCard variant="desktop" noHover premiumBorder className="p-5 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-4">
           {/* Badge rond emerald→amber gradient avec icône Users */}

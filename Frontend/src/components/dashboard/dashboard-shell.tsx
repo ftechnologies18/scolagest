@@ -1189,9 +1189,12 @@ export function DashboardShell({
           </div>
 
           {/* Contenu principal scrollable — le footer est hors du main pour
-              rester toujours visible en bas du viewport (sticky flex). */}
-          <main className="flex-1 overflow-y-auto">
-            <div className="mx-auto w-full max-w-7xl p-4 pb-20 sm:p-6 sm:pb-24">
+              rester toujours visible en bas du viewport (sticky flex).
+              Fond Forêt EdTech : gradient emerald/amber + texture kente subtile
+              (opacity 6%) comme la page /pre-inscription/suivi. */}
+          <main className="relative flex-1 overflow-y-auto bg-gradient-to-br from-emerald-50 via-background to-amber-50">
+            <KentePattern variant="bg" className="opacity-[0.06]" />
+            <div className="relative mx-auto w-full max-w-7xl p-4 pb-20 sm:p-6 sm:pb-24">
               {children}
             </div>
           </main>

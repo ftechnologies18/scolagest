@@ -395,7 +395,7 @@ export function DashboardCaissePanel({
       {/* Répartition + derniers encaissements */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Répartition par mode */}
-        <GlassCard variant="adaptive" noHover>
+        <GlassCard variant="adaptive" noHover premiumBorder>
           <div className="mb-3 flex items-center gap-2">
             <Wallet className="size-4 text-emerald-600" />
             <h3 className="font-display text-sm font-semibold text-forest">Répartition par mode</h3>
@@ -423,7 +423,7 @@ export function DashboardCaissePanel({
         </GlassCard>
 
         {/* Derniers encaissements */}
-        <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+        <GlassCard variant="adaptive" noHover premiumBorder className="overflow-hidden p-0">
           <div className="flex items-center gap-2 p-5 pb-3">
             <Receipt className="size-4 text-sky-600" />
             <h3 className="font-display text-sm font-semibold text-forest">Derniers encaissements</h3>
