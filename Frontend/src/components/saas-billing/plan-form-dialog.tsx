@@ -43,6 +43,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 export interface PlanFormDialogProps {
   open: boolean;
@@ -150,10 +151,14 @@ export function PlanFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px]">
+      <DialogContent className="overflow-hidden p-0 sm:max-w-[560px]">
+        <KentePattern variant="strip" position="top" />
+        <div className="px-6 pt-5">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CreditCard className="size-4 text-emerald-600" />
+            <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+              <CreditCard className="size-4" />
+            </div>
             {isEdit ? "Modifier le plan" : "Nouveau plan tarifaire"}
           </DialogTitle>
           <DialogDescription>
@@ -162,6 +167,9 @@ export function PlanFormDialog({
               : "Définissez un nouveau plan tarifaire pour les établissements."}
           </DialogDescription>
         </DialogHeader>
+        </div>
+
+        <div className="px-6 pb-6 pt-4">
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -318,6 +326,7 @@ export function PlanFormDialog({
             </Button>
           </DialogFooter>
         </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -43,6 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 export interface InvoiceGenerateDialogProps {
   open: boolean;
@@ -129,10 +130,14 @@ export function InvoiceGenerateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="overflow-hidden p-0 sm:max-w-[520px]">
+        <KentePattern variant="strip" position="top" />
+        <div className="px-6 pt-5">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Receipt className="size-4 text-emerald-600" />
+            <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+              <Receipt className="size-4" />
+            </div>
             Générer une facture
           </DialogTitle>
           <DialogDescription>
@@ -140,7 +145,9 @@ export function InvoiceGenerateDialog({
             l&apos;abonnement sélectionné.
           </DialogDescription>
         </DialogHeader>
+        </div>
 
+        <div className="px-6 pb-6 pt-4">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="inv-sub" className="text-xs">
@@ -213,6 +220,7 @@ export function InvoiceGenerateDialog({
             </Button>
           </DialogFooter>
         </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

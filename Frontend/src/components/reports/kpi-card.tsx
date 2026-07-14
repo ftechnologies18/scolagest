@@ -16,9 +16,10 @@
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/card";
+import { GlassCard } from "@/components/ds/glass-card";
 
 export type KpiAccent = "emerald" | "amber" | "rose" | "sky" | "orange" | "slate";
 
@@ -66,8 +67,17 @@ export function KpiCard({
   const trendCls =
     trendUp === undefined ? "" : trendUp ? TREND_UP_CLS : TREND_DOWN_CLS;
   return (
-    <Card className={cn("overflow-hidden", className)}>
-      <CardContent className="p-5">
+    <GlassCard
+      variant="adaptive"
+      noHover
+      className={cn("overflow-hidden p-5", className)}
+    >
+      <motion.div
+        initial={false}
+        whileHover={{ y: -2 }}
+        transition={{ duration: 0.2 }}
+        className="h-full"
+      >
         <div className="flex items-start justify-between gap-2">
           <div
             className={cn(
@@ -100,8 +110,8 @@ export function KpiCard({
         {subtitle ? (
           <p className="mt-1 text-[11px] text-muted-foreground">{subtitle}</p>
         ) : null}
-      </CardContent>
-    </Card>
+      </motion.div>
+    </GlassCard>
   );
 }
 

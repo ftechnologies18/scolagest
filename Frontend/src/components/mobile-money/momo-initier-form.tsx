@@ -32,6 +32,7 @@ import {
   AlertCircle,
   Send,
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth-store";
@@ -45,14 +46,16 @@ import {
   momoKeys,
 } from "@/lib/api-phase5";
 import { useToast } from "@/hooks/use-toast";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { formatFCFA } from "@/lib/format";
 import type { Eleve, InitierMomoDTO, ProviderMomo } from "@/lib/types";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 import {
   Popover,
   PopoverContent,
@@ -88,6 +91,7 @@ function eleveLabel(e: Eleve): string {
 export function MomoInitierForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const [search, setSearch] = React.useState("");
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
@@ -213,14 +217,36 @@ export function MomoInitierForm() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Smartphone className="size-4 text-emerald-600" />
-          Nouvelle transaction Mobile Money
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+    <motion.div
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <GlassCard
+        variant="adaptive"
+        premiumBorder
+        noHover
+        noAnimation
+        className="relative overflow-hidden p-0"
+      >
+        <KentePattern variant="strip" position="top" />
+
+        {/* Header premium : icône dans badge rond emerald + titre */}
+        <div className="flex items-center gap-3 border-b border-emerald-100/60 bg-emerald-50/40 px-5 py-4 dark:border-emerald-900/30 dark:bg-emerald-950/15">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+            <Smartphone className="size-5" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-display text-base font-semibold text-forest">
+              Nouvelle transaction Mobile Money
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Orange Money · MTN Money · Wave
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4 p-5">
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Recherche d&apos;élève */}
           <div className="space-y-1.5">
@@ -319,7 +345,7 @@ export function MomoInitierForm() {
 
           {/* Solde élève */}
           {selectedEleve && (
-            <div className="rounded-md border bg-muted/20 p-3">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900/40 dark:bg-emerald-950/20">
               {loadingSolde ? (
                 <Skeleton className="h-12 w-full" />
               ) : solde ? (
@@ -468,7 +494,8 @@ export function MomoInitierForm() {
             Initier la transaction {montantNum > 0 ? `· ${formatFCFA(montantNum)}` : ""}
           </Button>
         </form>
-      </CardContent>
-    </Card>
+        </div>
+      </GlassCard>
+    </motion.div>
   );
 }
