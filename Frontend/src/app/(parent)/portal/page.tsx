@@ -16,11 +16,10 @@
 import Image from "next/image";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Heart, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { useAuthBootstrap } from "@/hooks/use-auth-bootstrap";
 import { ParentPortal } from "@/components/parent/parent-portal";
-import { ModuleHero } from "@/components/ds/module-hero";
 
 export default function PortalPage() {
   const router = useRouter();
@@ -73,11 +72,6 @@ export default function PortalPage() {
 
   return (
     <div className="font-body">
-      <ModuleHero
-        icon={Heart}
-        title="Portail Parent"
-        subtitle="Suivez vos enfants et leurs paiements"
-      />
       <ParentPortal />
     </div>
   );
