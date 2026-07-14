@@ -410,6 +410,7 @@ function EtablissementsPanel() {
           variant="adaptive"
           noHover
           noAnimation
+          premiumBorder
           className="overflow-hidden p-0"
         >
           <div className="overflow-x-auto">
@@ -713,6 +714,7 @@ function UtilisateursPanel() {
           variant="adaptive"
           noHover
           noAnimation
+          premiumBorder
           className="overflow-hidden p-0"
         >
           <div className="overflow-x-auto">
@@ -1102,6 +1104,7 @@ function AuditPanel() {
           variant="adaptive"
           noHover
           noAnimation
+          premiumBorder
           className="overflow-hidden p-0"
         >
           <div className="overflow-x-auto">
