@@ -413,6 +413,7 @@ export function PaiementsList() {
           variant="adaptive"
           noHover
           noAnimation
+          premiumBorder
           className="overflow-hidden p-0"
         >
           {/* Desktop table */}

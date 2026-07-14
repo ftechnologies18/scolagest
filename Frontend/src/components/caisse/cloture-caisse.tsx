@@ -200,7 +200,7 @@ export function ClotureCaissePanel() {
   return (
     <div className="space-y-4">
       {/* En-tête — récap clôture */}
-      <GlassCard variant="adaptive" noHover>
+      <GlassCard variant="adaptive" noHover premiumBorder>
         <div className="mb-4 flex items-center gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg shadow-emerald-900/20">
             <Lock className="size-5" />
@@ -438,6 +438,7 @@ export function ClotureCaissePanel() {
         variant="adaptive"
         noHover
         noAnimation
+        premiumBorder
         className="overflow-hidden p-0"
       >
         <div className="flex items-center gap-2 p-5 pb-3">
