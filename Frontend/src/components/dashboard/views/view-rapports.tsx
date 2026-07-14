@@ -182,7 +182,7 @@ export default function RapportsView() {
       <KentePattern variant="strip" position="top" />
 
       {/* ─── Hero header premium ──────────────────────────────────────── */}
-      <GlassCard variant="desktop" noHover className="p-5 sm:p-6">
+      <GlassCard variant="desktop" noHover premiumBorder className="p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-4">
             <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg shadow-emerald-900/20">
@@ -668,7 +668,7 @@ function RapportPaiementsPanel() {
       </div>
 
       {/* ─── Tableau ─────────────────────────────────────────────────── */}
-      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+      <GlassCard variant="adaptive" noHover premiumBorder className="overflow-hidden p-0">
         <div>
           {isLoading ? (
             <div className="space-y-2 p-4">
@@ -1112,7 +1112,7 @@ function RapportSoldesPanel() {
       </div>
 
       {/* ─── Tableau ─────────────────────────────────────────────────── */}
-      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+      <GlassCard variant="adaptive" noHover premiumBorder className="overflow-hidden p-0">
         <div>
           {isLoading ? (
             <div className="space-y-2 p-4">
@@ -1466,7 +1466,7 @@ function RapportRecouvrementPanel() {
       </GlassCard>
 
       {/* ─── Tableau ─────────────────────────────────────────────────── */}
-      <GlassCard variant="adaptive" noHover className="overflow-hidden p-0">
+      <GlassCard variant="adaptive" noHover premiumBorder className="overflow-hidden p-0">
         <div className="flex items-center justify-between gap-2 p-5 pb-3">
           <h3 className="font-display text-base font-semibold">
             Détail par classe
