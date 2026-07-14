@@ -350,11 +350,11 @@ export function StepTuteur({ data, onChange, onValidChange }: StepTuteurProps) {
               className="focus-visible:ring-emerald-500/40"
             />
           </Field>
-          <Field label="Adresse" className="sm:col-span-2">
+          <Field label="Quartier d'habitation" className="sm:col-span-2">
             <Input
               value={data.adresse ?? ""}
               onChange={(e) => update({ adresse: e.target.value })}
-              placeholder="Cocody, Abidjan"
+              placeholder="Ex : Cocody Angré, Abidjan"
               className="focus-visible:ring-emerald-500/40"
             />
           </Field>

@@ -65,6 +65,8 @@ type PreInscription struct {
         TuteurTelephone   string     `gorm:"not null" json:"tuteur_telephone"`
         TuteurEmail       string     `json:"tuteur_email"`
         TuteurLienParente LienParente `gorm:"default:AUTRE" json:"tuteur_lien_parente"`
+        TuteurAdresse     string     `json:"tuteur_adresse"`     // quartier d'habitation
+        TuteurProfession  string     `json:"tuteur_profession"`
 
         // ── Classe souhaitée ──
         // Depuis la réforme pré-inscription (2026-07) : le parent ne choisit plus

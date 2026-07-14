@@ -87,6 +87,8 @@ export interface PreInscription {
   tuteur_telephone: string;
   tuteur_email: string;
   tuteur_lien_parente: LienParente;
+  tuteur_adresse?: string;
+  tuteur_profession?: string;
 
   // ── Classe souhaitée ──
   // @deprecated : non envoyé par le wizard depuis la réforme 2026-07 (la classe
@@ -135,6 +137,8 @@ export interface PreInscriptionDTO {
   tuteur_telephone: string;
   tuteur_email?: string;
   tuteur_lien_parente: LienParente;
+  tuteur_adresse?: string;
+  tuteur_profession?: string;
   // @deprecated : classe_id non envoyé depuis la réforme 2026-07 (classe
   // attribuée par le staff). Conservé pour compat ascendante.
   classe_id?: string;

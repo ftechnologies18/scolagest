@@ -44,6 +44,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
   BookOpen,
+  Briefcase,
   Calendar,
   CalendarDays,
   Check,
@@ -463,6 +464,8 @@ export function PreInscriptionForm() {
   const [tuteurPrenoms, setTuteurPrenoms] = React.useState("");
   const [tuteurTelephone, setTuteurTelephone] = React.useState("");
   const [tuteurEmail, setTuteurEmail] = React.useState("");
+  const [tuteurAdresse, setTuteurAdresse] = React.useState("");
+  const [tuteurProfession, setTuteurProfession] = React.useState("");
   const [tuteurLienParente, setTuteurLienParente] =
     React.useState<LienParente>("AUTRE");
 
@@ -641,6 +644,8 @@ export function PreInscriptionForm() {
       tuteur_telephone: tuteurTelephone.trim(),
       tuteur_email: tuteurEmail.trim(),
       tuteur_lien_parente: tuteurLienParente,
+      tuteur_adresse: tuteurAdresse.trim() || undefined,
+      tuteur_profession: tuteurProfession.trim() || undefined,
       cycle_id: cycleId,
       niveau: niveau,
       notes_parent: notesParent.trim(),
@@ -847,6 +852,10 @@ export function PreInscriptionForm() {
                     setTuteurTelephone={setTuteurTelephone}
                     tuteurEmail={tuteurEmail}
                     setTuteurEmail={setTuteurEmail}
+                    tuteurAdresse={tuteurAdresse}
+                    setTuteurAdresse={setTuteurAdresse}
+                    tuteurProfession={tuteurProfession}
+                    setTuteurProfession={setTuteurProfession}
                     tuteurLienParente={tuteurLienParente}
                     setTuteurLienParente={setTuteurLienParente}
                     fratrieFetching={fratrieFetching}
@@ -895,6 +904,8 @@ export function PreInscriptionForm() {
                     tuteurPrenoms={tuteurPrenoms}
                     tuteurTelephone={tuteurTelephone}
                     tuteurEmail={tuteurEmail}
+                    tuteurAdresse={tuteurAdresse}
+                    tuteurProfession={tuteurProfession}
                     tuteurLienParente={tuteurLienParente}
                     selectedCycle={selectedCycle}
                     selectedNiveau={niveau}
@@ -1278,6 +1289,10 @@ function StepTuteur({
   setTuteurTelephone,
   tuteurEmail,
   setTuteurEmail,
+  tuteurAdresse,
+  setTuteurAdresse,
+  tuteurProfession,
+  setTuteurProfession,
   tuteurLienParente,
   setTuteurLienParente,
   fratrieFetching,
@@ -1292,6 +1307,10 @@ function StepTuteur({
   setTuteurTelephone: (v: string) => void;
   tuteurEmail: string;
   setTuteurEmail: (v: string) => void;
+  tuteurAdresse: string;
+  setTuteurAdresse: (v: string) => void;
+  tuteurProfession: string;
+  setTuteurProfession: (v: string) => void;
   tuteurLienParente: LienParente;
   setTuteurLienParente: (v: LienParente) => void;
   fratrieFetching: boolean;
@@ -1388,6 +1407,26 @@ function StepTuteur({
               <SelectItem value="AUTRE">Autre</SelectItem>
             </SelectContent>
           </Select>
+        </Field>
+
+        <Field label="Profession (optionnel)">
+          <Input
+            value={tuteurProfession}
+            onChange={(e) => setTuteurProfession(e.target.value)}
+            placeholder="Ex : Commerçant(e), Enseignant(e)"
+            autoComplete="off"
+            className="h-11 text-base sm:h-10 sm:text-sm"
+          />
+        </Field>
+
+        <Field label="Quartier d'habitation (optionnel)">
+          <Input
+            value={tuteurAdresse}
+            onChange={(e) => setTuteurAdresse(e.target.value)}
+            placeholder="Ex : Cocody Angré, Abidjan"
+            autoComplete="off"
+            className="h-11 text-base sm:h-10 sm:text-sm"
+          />
         </Field>
       </div>
 
@@ -1722,6 +1761,8 @@ function StepConfirmation({
   tuteurPrenoms,
   tuteurTelephone,
   tuteurEmail,
+  tuteurAdresse,
+  tuteurProfession,
   tuteurLienParente,
   selectedCycle,
   selectedNiveau,
@@ -1746,6 +1787,8 @@ function StepConfirmation({
   tuteurPrenoms: string;
   tuteurTelephone: string;
   tuteurEmail: string;
+  tuteurAdresse: string;
+  tuteurProfession: string;
   tuteurLienParente: LienParente;
   selectedCycle?: Cycle;
   selectedNiveau: string;
@@ -1829,6 +1872,12 @@ function StepConfirmation({
           label="Lien de parenté"
           value={LIEN_PARENTE_LABEL[tuteurLienParente]}
         />
+        {tuteurProfession.trim() && (
+          <InfoRow icon={Briefcase} label="Profession" value={tuteurProfession} />
+        )}
+        {tuteurAdresse.trim() && (
+          <InfoRow icon={MapPin} label="Quartier d'habitation" value={tuteurAdresse} />
+        )}
       </RecapBlock>
 
       {/* Bloc Établissement + Classe */}

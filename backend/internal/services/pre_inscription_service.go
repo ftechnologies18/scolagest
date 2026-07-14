@@ -50,6 +50,8 @@ type PreInscriptionDTO struct {
         TuteurTelephone   string `json:"tuteur_telephone"`
         TuteurEmail       string `json:"tuteur_email"`
         TuteurLienParente string `json:"tuteur_lien_parente"`
+        TuteurAdresse     string `json:"tuteur_adresse"`     // quartier d'habitation
+        TuteurProfession  string `json:"tuteur_profession"`
 
         ClasseID       string `json:"classe_id"` // @deprecated : non envoyé par le wizard depuis la réforme 2026-07 (classe attribuée par le staff). Conservé pour compat ascendante.
         CycleID        string `json:"cycle_id"`  // cycle souhaité par le parent (UUID)
@@ -143,6 +145,8 @@ func (s *PreInscriptionService) Submit(dto PreInscriptionDTO) (*models.PreInscri
                 TuteurTelephone:          dto.TuteurTelephone,
                 TuteurEmail:              dto.TuteurEmail,
                 TuteurLienParente:        models.LienParente(dto.TuteurLienParente),
+                TuteurAdresse:            dto.TuteurAdresse,
+                TuteurProfession:         dto.TuteurProfession,
                 ClasseID:                 classeID,
                 CycleID:                  cycleID,
                 NiveauSouhaite:           niveauSouhaite,
