@@ -67,6 +67,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 const TYPE_OPTIONS: { value: TypeCompte; label: string; desc: string }[] = [
   { value: "ACTIF", label: "Actif", desc: "Ce que possède l'établissement" },
@@ -168,7 +169,9 @@ export function CompteFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto overflow-hidden p-0 sm:max-w-md">
+        <KentePattern variant="strip" position="top" />
+        <div className="p-6 pt-5">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             {/* Badge rond gradient emerald→gold avec icône ListTree */}
@@ -316,6 +319,7 @@ export function CompteFormDialog({
             </Button>
           </DialogFooter>
         </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

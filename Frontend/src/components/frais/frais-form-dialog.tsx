@@ -113,6 +113,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 // `deleteFrais` n'est pas utilisé ici ; import neutralisé pour éviter
 // l'erreur d'import inutilisé côté lint (config désactivée, mais clarté).
@@ -503,7 +504,9 @@ export function FraisFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto overflow-hidden p-0 sm:max-w-3xl">
+        <KentePattern variant="strip" position="top" />
+        <div className="p-6 pt-5">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             {/* Badge rond gradient emerald→gold avec icône Coins */}
@@ -860,6 +863,7 @@ export function FraisFormDialog({
             </Button>
           </DialogFooter>
         </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

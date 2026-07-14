@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 export interface EtablissementFormDialogProps {
   open: boolean;
@@ -130,10 +131,14 @@ export function EtablissementFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="overflow-hidden p-0 sm:max-w-md">
+        <KentePattern variant="strip" position="top" />
+        <div className="px-6 pt-5">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Building2 className="size-5 text-emerald-600" />
+            <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+              <Building2 className="size-5" />
+            </div>
             {isEdit ? "Modifier l'établissement" : "Nouvel établissement"}
           </DialogTitle>
           <DialogDescription>
@@ -142,7 +147,9 @@ export function EtablissementFormDialog({
             élèves.
           </DialogDescription>
         </DialogHeader>
+        </div>
 
+        <div className="px-6 pb-6 pt-4">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="etab-nom">Nom</Label>
@@ -254,6 +261,7 @@ export function EtablissementFormDialog({
             </Button>
           </DialogFooter>
         </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

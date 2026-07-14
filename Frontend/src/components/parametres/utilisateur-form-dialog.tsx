@@ -92,6 +92,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 const ALL_ROLE_OPTIONS: { value: RoleGlobal; label: string }[] = [
   { value: "DIRECTEUR_ETUDES", label: "Directeur des Études" },
@@ -353,7 +354,9 @@ export function UtilisateurFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto overflow-hidden p-0 sm:max-w-lg">
+        <KentePattern variant="strip" position="top" />
+        <div className="p-6 pt-5">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-amber-500 text-white shadow-lg shadow-emerald-900/20">
@@ -633,6 +636,7 @@ export function UtilisateurFormDialog({
             </Button>
           </DialogFooter>
         </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

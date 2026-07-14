@@ -66,6 +66,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { GlassCard } from "@/components/ds/glass-card";
+import { KentePattern } from "@/components/ds/kente-pattern";
 
 export interface ExerciceFormDialogProps {
   open: boolean;
@@ -152,7 +153,9 @@ export function ExerciceFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto overflow-hidden p-0 sm:max-w-md">
+        <KentePattern variant="strip" position="top" />
+        <div className="p-6 pt-5">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             {/* Badge rond gradient emerald→gold avec icône CalendarRange */}
@@ -277,6 +280,7 @@ export function ExerciceFormDialog({
             </Button>
           </DialogFooter>
         </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
