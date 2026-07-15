@@ -2,6 +2,7 @@ package services
 
 import (
         "errors"
+	"log"
         "time"
 
         "github.com/google/uuid"
@@ -250,7 +251,7 @@ func (s *AuthService) GetMe(userID uuid.UUID, etablissementID *uuid.UUID) (*mode
 
 // audit enregistre une entrée dans le journal d'audit.
 func (s *AuthService) audit(userID uuid.UUID, etablissementID *uuid.UUID, action models.ActionAudit, entite, entiteID, ip string) {
-        database.Current().Create(&models.JournalAudit{
+        if err := database.Current().Create(&models.JournalAudit{
                 BaseModel:      models.BaseModel{ID: uuid.New()},
                 UtilisateurID:  &userID,
                 EtablissementID: etablissementID,
@@ -259,5 +260,7 @@ func (s *AuthService) audit(userID uuid.UUID, etablissementID *uuid.UUID, action
                 EntiteID:       entiteID,
                 Date:           time.Now(),
                 IPAdresse:      ip,
-        })
+        }).Error; err != nil {
+                log.Printf("[AUDIT] erreur insert journal_audit: %v", err)
+        }
 }
