@@ -2,6 +2,7 @@ package database
 
 import (
         "fmt"
+        "log"
         "os"
         "path/filepath"
 
@@ -71,6 +72,10 @@ func Connect() (*gorm.DB, error) {
                 return nil, fmt.Errorf("createIndexes: %w", err)
         }
 
+        // Logger la répartition des owners pour diagnostiquer les problèmes
+        // d'ownership AutoMigrate (ex: Neon avec multiples roles).
+        LogSchemaInfo(db)
+
         return db, nil
 }
 
@@ -137,7 +142,31 @@ func migrate(db *gorm.DB) error {
                 &models.CreneauEmploiTemps{},
         }
 
-        return db.AutoMigrate(modelsList...)
+        // AutoMigrate par modèle (au lieu de tout-en-un) pour qu'une erreur sur
+        // une table (ex: problème d'ownership Neon) ne bloque pas les autres.
+        // Les erreurs sont loggées mais ne font pas échouer toute la migration.
+        failed := 0
+        succeeded := 0
+        for _, model := range modelsList {
+                if err := db.AutoMigrate(model); err != nil {
+                        tableName := ""
+                        if t, ok := model.(interface{ TableName() string }); ok {
+                                tableName = t.TableName()
+                        }
+                        log.Printf("⚠️  AutoMigrate échec sur %s: %v", tableName, err)
+                        failed++
+                } else {
+                        succeeded++
+                }
+        }
+        if failed > 0 {
+                log.Printf("⚠️  Migration: %d succès, %d échecs (voir logs ci-dessus)", succeeded, failed)
+                // Ne pas retourner d'erreur : le serveur démarre en mode dégradé
+                // mais les tables valides sont utilisables. Les erreurs sont loggées.
+        } else {
+                log.Printf("✓ Migration: %d tables à jour", succeeded)
+        }
+        return nil
 }
 
 // createIndexes crée les index personnalisés non gérables par tags GORM.
@@ -147,4 +176,44 @@ func createIndexes(db *gorm.DB) error {
         // Compatible SQLite ET PostgreSQL (syntaxe CREATE UNIQUE INDEX ... WHERE ...).
         return db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_eleves_matricule_unique 
                 ON eleves(matricule_ministere) WHERE matricule_ministere != ''`).Error
+}
+
+// LogSchemaInfo logge le user DB courant et la répartition des owners de tables.
+// Utile pour diagnostiquer les problèmes d'ownership AutoMigrate (ex: Neon avec
+// multiples roles). Uniquement sur PostgreSQL — no-op sur SQLite.
+func LogSchemaInfo(db *gorm.DB) {
+        if !config.App.IsPostgreSQL() {
+                return
+        }
+        var currentUser string
+        db.Raw("SELECT current_user").Scan(&currentUser)
+        log.Printf("🔌 DB user: %s", currentUser)
+
+        type OwnerCount struct {
+                TableOwner string
+                Count      int64
+        }
+        var counts []OwnerCount
+        db.Raw(`SELECT tableowner, count(*) as count 
+                FROM pg_tables 
+                WHERE schemaname = 'public' 
+                GROUP BY tableowner 
+                ORDER BY count DESC`).Scan(&counts)
+
+        if len(counts) <= 1 {
+                log.Printf("✓ Schema: toutes les tables ont le même owner (%s)", currentUser)
+                return
+        }
+
+        log.Printf("⚠️  Schema: %d owners différents détectés:", len(counts))
+        for _, oc := range counts {
+                marker := ""
+                if oc.TableOwner != currentUser {
+                        marker = " ← AutoMigrate NE PEUT PAS modifier ces tables"
+                }
+                log.Printf("     - %s: %d tables%s", oc.TableOwner, oc.Count, marker)
+        }
+        log.Printf("⚠️  Si des colonnes sont ajoutées aux modèles des tables avec un owner ≠ %s,", currentUser)
+        log.Printf("     AutoMigrate échouera sur ces tables. Solution: uniformiser l'ownership")
+        log.Printf("     (ALTER TABLE ... OWNER TO %s — nécessite d'être owner ou superuser).", currentUser)
 }
