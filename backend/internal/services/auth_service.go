@@ -255,11 +255,12 @@ func (s *AuthService) audit(userID uuid.UUID, etablissementID *uuid.UUID, action
                 BaseModel:      models.BaseModel{ID: uuid.New()},
                 UtilisateurID:  &userID,
                 EtablissementID: etablissementID,
-                Action:         action,
-                Entite:         entite,
-                EntiteID:       entiteID,
-                Date:           time.Now(),
-                IPAdresse:      ip,
+                Action:          action,
+                Entite:          entite,
+                EntiteID:        entiteID,
+                Date:            time.Now(),
+                Details:         "{}", // JSON valide (colonne type:json — empty string rejeté par PostgreSQL)
+                IPAdresse:       ip,
         }).Error; err != nil {
                 log.Printf("[AUDIT] erreur insert journal_audit: %v", err)
         }
