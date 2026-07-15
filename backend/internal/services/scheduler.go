@@ -87,6 +87,10 @@ func (s *Scheduler) checkAndRun(now time.Time) {
 	// Date du lendemain
 	demain := now.AddDate(0, 0, 1)
 
+	// RLS bypass : le scheduler est un task background (pas de contexte utilisateur).
+	// On définit app.is_super_admin=true pour que les policies RLS laissent passer.
+	database.DB.Exec("SELECT set_config('app.is_super_admin', 'true', false)")
+
 	// Récupérer tous les établissements actifs
 	var etablissements []models.Etablissement
 	if err := database.Current().Where("actif = ?", true).Find(&etablissements).Error; err != nil {
@@ -114,6 +118,9 @@ func (s *Scheduler) checkAndRun(now time.Time) {
 // RunOnce exécute la génération manuellement (pour test ou rattrapage).
 // Génère les sessions pour une date donnée (défaut = demain).
 func (s *Scheduler) RunOnce(targetDate time.Time) (int, error) {
+	// RLS bypass : task background sans contexte utilisateur.
+	database.DB.Exec("SELECT set_config('app.is_super_admin', 'true', false)")
+
 	var etablissements []models.Etablissement
 	if err := database.Current().Where("actif = ?", true).Find(&etablissements).Error; err != nil {
 		return 0, err

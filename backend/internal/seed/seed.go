@@ -6,6 +6,7 @@ import (
         "time"
 
         "github.com/google/uuid"
+        "github.com/scolagest/backend/internal/config"
         "github.com/scolagest/backend/internal/database"
         "github.com/scolagest/backend/internal/models"
         "github.com/scolagest/backend/internal/utils"
@@ -22,6 +23,13 @@ import (
 // Idempotent : ne recrée pas ce qui existe déjà.
 func Seed() {
         db := database.DB
+
+        // Désactiver RLS pendant le seed (le seed crée des données multi-tenant
+        // sans contexte utilisateur). On définit app.is_super_admin=true pour
+        // que les policies RLS laissent passer toutes les opérations.
+        if config.App.IsPostgreSQL() {
+                db.Exec("SELECT set_config('app.is_super_admin', 'true', false)")
+        }
 
         seedEtablissements(db)
         seedAnneeScolaire(db)

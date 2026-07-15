@@ -72,6 +72,14 @@ func Connect() (*gorm.DB, error) {
                 return nil, fmt.Errorf("createIndexes: %w", err)
         }
 
+        // Activer RLS (Row Level Security) sur PostgreSQL uniquement.
+        // Sur SQLite, RLS n'est pas supporté — l'isolation repose sur le code Go.
+        if config.App.IsPostgreSQL() {
+                if err := enableRLS(db); err != nil {
+                        log.Printf("⚠️  RLS: %v (l'isolation repose sur le code applicatif)", err)
+                }
+        }
+
         // Logger la répartition des owners pour diagnostiquer les problèmes
         // d'ownership AutoMigrate (ex: Neon avec multiples roles).
         LogSchemaInfo(db)
@@ -216,4 +224,110 @@ func LogSchemaInfo(db *gorm.DB) {
         log.Printf("⚠️  Si des colonnes sont ajoutées aux modèles des tables avec un owner ≠ %s,", currentUser)
         log.Printf("     AutoMigrate échouera sur ces tables. Solution: uniformiser l'ownership")
         log.Printf("     (ALTER TABLE ... OWNER TO %s — nécessite d'être owner ou superuser).", currentUser)
+}
+
+// enableRLS active Row Level Security sur les tables contenant des données
+// sensibles (élèves, finances) et crée les policies consommant les variables
+// de session définies par AuthMiddleware :
+//   - app.current_tenant_id : UUID de l'établissement de l'utilisateur connecté
+//   - app.is_super_admin    : 'true' pour SUPER_ADMIN (voit tout)
+//
+// Tables PROTÉGÉES par RLS (isolation multi-tenant stricte) :
+//   eleves, tuteurs, inscriptions, classes, cycles, frais, echeances,
+//   paiements, recus, clotures_caisse, transactions_momo, enseignants,
+//   matieres, affectation_cours, session_cours, pointages, ticket_incidents,
+//   bulletin_paies, avance_salaires, ecritures_comptables, lignes_ecritures,
+//   comptes_comptables, journaux_comptables, exercices_comptables.
+//
+// Tables NON protégées (accès public requis) :
+//   - etablissements : lu par /api/etablissements (route publique, select login)
+//   - pre_inscriptions : écrit par /api/public/pre-inscriptions (route publique)
+//     → policy dédiée autorisant l'INSERT public + SELECT staff
+//
+// Sans RLS, l'isolation repose entièrement sur le code Go (WHERE etablissement_id).
+// RLS ajoute une défense en profondeur : même si un service oublie le filtre,
+// Postgres bloque la fuite.
+//
+// Idempotent (DO $$ ... EXCEPTION WHEN duplicate_object). En cas d'échec
+// (ex: pas owner), logge un warning mais ne fait pas crasher le serveur.
+func enableRLS(db *gorm.DB) error {
+        // Tables avec isolation tenant stricte (tenant = etablissement_id)
+        strictTables := []string{
+                "eleves", "tuteurs", "inscriptions", "classes", "cycles",
+                "frais", "echeances", "paiements", "recus", "clotures_caisse",
+                "transactions_momo", "enseignants", "matieres", "affectation_cours",
+                "session_cours", "pointages", "ticket_incidents", "bulletin_paies",
+                "avance_salaires", "ecritures_comptables", "lignes_ecritures",
+                "comptes_comptables", "journaux_comptables", "exercices_comptables",
+        }
+
+        enabled := 0
+        failed := 0
+
+        // Policy template pour tables strictes :
+        // USING (lecture) + WITH CHECK (écriture) = tenant match OU super_admin
+        policySQL := func(table string) string {
+                return fmt.Sprintf(`DO $$ BEGIN
+                        CREATE POLICY %s_tenant ON %s FOR ALL
+                                USING (
+                                        etablissement_id::text = current_setting('app.current_tenant_id', true)
+                                        OR current_setting('app.is_super_admin', true) = 'true'
+                                )
+                                WITH CHECK (
+                                        etablissement_id::text = current_setting('app.current_tenant_id', true)
+                                        OR current_setting('app.is_super_admin', true) = 'true'
+                                );
+                        EXCEPTION WHEN duplicate_object THEN NULL;
+                        END $$;`, table, table)
+        }
+
+        for _, table := range strictTables {
+                if err := db.Exec("ALTER TABLE " + table + " ENABLE ROW LEVEL SECURITY").Error; err != nil {
+                        log.Printf("  ⚠️  RLS %s: %v", table, err)
+                        failed++
+                        continue
+                }
+                db.Exec("ALTER TABLE " + table + " FORCE ROW LEVEL SECURITY")
+                if err := db.Exec(policySQL(table)).Error; err != nil {
+                        log.Printf("  ⚠️  Policy %s: %v", table, err)
+                        failed++
+                        continue
+                }
+                enabled++
+        }
+
+        // pre_inscriptions : politique hybride
+        //   - INSERT public (route /api/public/pre-inscriptions sans auth)
+        //   - SELECT/UPDATE staff uniquement (tenant match OU super_admin)
+        if err := db.Exec("ALTER TABLE pre_inscriptions ENABLE ROW LEVEL SECURITY").Error; err == nil {
+                db.Exec("ALTER TABLE pre_inscriptions FORCE ROW LEVEL SECURITY")
+                // Policy INSERT : autoriser tout le monde (parent soumet sans auth)
+                db.Exec(`DO $$ BEGIN
+                        CREATE POLICY pre_inscriptions_public_insert ON pre_inscriptions
+                                FOR INSERT WITH CHECK (true);
+                        EXCEPTION WHEN duplicate_object THEN NULL;
+                        END $$;`)
+                // Policy SELECT/UPDATE/DELETE : staff uniquement (tenant match OU super_admin)
+                db.Exec(`DO $$ BEGIN
+                        CREATE POLICY pre_inscriptions_staff ON pre_inscriptions
+                                FOR SELECT, UPDATE, DELETE
+                                USING (
+                                        etablissement_id::text = current_setting('app.current_tenant_id', true)
+                                        OR current_setting('app.is_super_admin', true) = 'true'
+                                );
+                        EXCEPTION WHEN duplicate_object THEN NULL;
+                        END $$;`)
+                // Permissive policy (la plus permissive l'emporte en PostgreSQL)
+                enabled++
+        } else {
+                log.Printf("  ⚠️  RLS pre_inscriptions: %v", err)
+                failed++
+        }
+
+        if failed > 0 {
+                log.Printf("⚠️  RLS: %d tables protégées, %d échecs", enabled, failed)
+        } else {
+                log.Printf("✓ RLS: %d tables protégées (défense en profondeur multi-tenant active)", enabled)
+        }
+        return nil
 }

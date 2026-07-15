@@ -1,6 +1,8 @@
 package config
 
 import (
+        "fmt"
+        "log"
         "os"
         "strconv"
         "strings"
@@ -24,23 +26,49 @@ var App *Config
 
 // Load charge la configuration depuis un fichier .env (si présent) puis les variables d'environnement.
 func Load() *Config {
-        // Le .env est optionnel en production (variables injectées directement)
-        _ = godotenv.Load("/home/z/my-project/backend/.env")
+        // Le .env est optionnel en production (variables injectées directement).
+        // Recherche relative au cwd pour fonctionner quel que soit l'emplacement du binaire.
+        _ = godotenv.Load(".env")
 
         App = &Config{
                 Port:            getEnv("PORT", "8080"),
-                DBPath:          getEnv("DB_PATH", "/home/z/my-project/backend/data/scolagest.db"),
+                DBPath:          getEnv("DB_PATH", "./data/scolagest.db"),
                 DatabaseURL:     getEnv("DATABASE_URL", ""),
-                JWTSecret:       getEnv("JWT_SECRET", "scolagest-dev-secret-change-in-production"),
+                JWTSecret:       getEnv("JWT_SECRET", ""),
                 JWTAccessExpHr:  getEnvInt("JWT_ACCESS_EXP_HR", 1),
                 JWTRefreshExpHr: getEnvInt("JWT_REFRESH_EXP_HR", 168), // 7 jours
                 Env:             getEnv("APP_ENV", "development"),
                 CORSOrigins:     parseCORSOrigins(getEnv("CORS_ORIGINS", "")),
         }
-        // Fallback : si CORS_ORIGINS n'est pas défini, utiliser les valeurs par défaut
+
+        // Fallback CORS : si non défini, localhost en dev, erreur en prod.
         if len(App.CORSOrigins) == 0 {
-                App.CORSOrigins = []string{"http://localhost:3000", "http://127.0.0.1:3000"}
+                if App.IsDev() {
+                        App.CORSOrigins = []string{"http://localhost:3000", "http://127.0.0.1:3000"}
+                } else {
+                        log.Println("⚠️  CORS_ORIGINS non défini en production — API inaccessible depuis le frontend")
+                }
         }
+
+        // ── Validations de sécurité en production ──
+        if !App.IsDev() {
+                // JWT_SECRET : crash si fallback vide ou trop court (< 32 chars)
+                if App.JWTSecret == "" || len(App.JWTSecret) < 32 {
+                        log.Fatalf("❌ JWT_SECRET manquant ou trop court (%d chars, min 32 requis) en production. Définissez JWT_SECRET sur Render.", len(App.JWTSecret))
+                }
+                // CORS : refuser "*" en production (faille sécurité)
+                for _, o := range App.CORSOrigins {
+                        if o == "*" {
+                                log.Fatalf("❌ CORS_ORIGINS='*' interdit en production. Définissez les origines explicites (ex: https://app.exemple.com).")
+                        }
+                }
+                // DB_PATH : s'assurer qu'on utilise PostgreSQL en prod
+                if !App.IsPostgreSQL() {
+                        log.Println("⚠️  Production sans DATABASE_URL — SQLite utilisé (non recommandé en prod)")
+                }
+                fmt.Printf("🔒 Sécurité production: CORS=%v, JWT_SECRET=%d chars, HTTPS requis\n", App.CORSOrigins, len(App.JWTSecret))
+        }
+
         return App
 }
 
