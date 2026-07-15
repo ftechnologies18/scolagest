@@ -63,11 +63,14 @@ type PreInscription struct {
         TuteurNom         string     `gorm:"not null" json:"tuteur_nom"`
         TuteurPrenoms     string     `json:"tuteur_prenoms"`
         TuteurTelephone   string     `gorm:"not null" json:"tuteur_telephone"`
-        TuteurTelephone2  string     `json:"tuteur_telephone_urgence"` // contact d'urgence
+        // TuteurTelephone2 : contact d'urgence. Le tag GORM column:tuteur_telephone_urgence
+        // aligne le nom de colonne DB sur le tag JSON (cohérence + évite le nom Go
+        // snake_case "tuteur_telephone2" qui divergeait du JSON envoyé par le wizard).
+        TuteurTelephone2  string     `gorm:"column:tuteur_telephone_urgence" json:"tuteur_telephone_urgence"`
         TuteurEmail       string     `json:"tuteur_email"`
         TuteurLienParente LienParente `gorm:"default:AUTRE" json:"tuteur_lien_parente"`
-        TuteurAdresse     string     `json:"tuteur_adresse"`     // quartier d'habitation
-        TuteurProfession  string     `json:"tuteur_profession"`
+        TuteurAdresse     string     `gorm:"column:tuteur_adresse" json:"tuteur_adresse"`     // quartier d'habitation
+        TuteurProfession  string     `gorm:"column:tuteur_profession" json:"tuteur_profession"`
 
         // ── Classe souhaitée ──
         // Depuis la réforme pré-inscription (2026-07) : le parent ne choisit plus

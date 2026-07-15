@@ -51,7 +51,10 @@ type WorkflowTuteurDTO struct {
 type WorkflowEleveDTO struct {
 	Nom                string                `json:"nom"`
 	Prenoms            string                `json:"prenoms"`
-	DateNaissance      *time.Time            `json:"date_naissance"`
+	// DateNaissance : format YYYY-MM-DD (date seule, sans timezone).
+	// Le frontend (wizard) envoie une date simple ; on la parse côté service
+	// pour éviter l'erreur de parsing RFC3339 de *time.Time sur "2010-03-15".
+	DateNaissance      string                `json:"date_naissance"`
 	LieuNaissance      string                `json:"lieu_naissance"`
 	Sexe               models.Sexe           `json:"sexe"`
 	Categorie          models.CategorieEleve `json:"categorie"`
@@ -170,12 +173,19 @@ func (s *InscriptionWorkflowService) Create(dto WorkflowDTO, etablissementID uui
 		}
 
 		statut := models.StatutEleveActif
+		// Parser la date de naissance (format YYYY-MM-DD envoyé par le wizard).
+		var dateNaiss *time.Time
+		if dto.Eleve.DateNaissance != "" {
+			if t, err := time.Parse("2006-01-02", dto.Eleve.DateNaissance); err == nil {
+				dateNaiss = &t
+			}
+		}
 		eleve := models.Eleve{
 			EtablissementID:    etablissementID,
 			IdentifiantInterne: identifiant,
 			Nom:                dto.Eleve.Nom,
 			Prenoms:            dto.Eleve.Prenoms,
-			DateNaissance:      dto.Eleve.DateNaissance,
+			DateNaissance:      dateNaiss,
 			LieuNaissance:      dto.Eleve.LieuNaissance,
 			Sexe:               dto.Eleve.Sexe,
 			Categorie:          cat,

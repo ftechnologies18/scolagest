@@ -323,12 +323,18 @@ func (s *PreInscriptionService) Valider(id uuid.UUID, classeID uuid.UUID, anneeI
                 return nil, errors.New("cette pré-inscription a déjà été validée")
         }
 
-        // Construire le DTO du workflow à partir des données de la pré-inscription
+        // Construire le DTO du workflow à partir des données de la pré-inscription.
+        // Convertir la date de naissance (*time.Time sur le modèle PreInscription)
+        // vers le format string YYYY-MM-DD attendu par WorkflowEleveDTO.
+        dateNaissStr := ""
+        if pre.EleveDateNaissance != nil {
+                dateNaissStr = pre.EleveDateNaissance.Format("2006-01-02")
+        }
         workflowDTO := WorkflowDTO{
                 Eleve: WorkflowEleveDTO{
                         Nom:               pre.EleveNom,
                         Prenoms:           pre.ElevePrenoms,
-                        DateNaissance:     pre.EleveDateNaissance,
+                        DateNaissance:     dateNaissStr,
                         LieuNaissance:     pre.EleveLieuNaissance,
                         Sexe:              pre.EleveSexe,
                         Categorie:         pre.EleveCategorie,

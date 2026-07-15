@@ -39,7 +39,7 @@ export interface WorkflowTuteur {
 export interface WorkflowEleve {
   nom: string;
   prenoms?: string;
-  date_naissance?: string | null; // ISO YYYY-MM-DD
+  date_naissance?: string | null; // YYYY-MM-DD (parsé côté backend, pas RFC3339)
   lieu_naissance?: string;
   sexe?: SexeEleve;
   categorie: CategorieEleve;
