@@ -78,6 +78,17 @@ func (h *UserHandler) Create(c *gin.Context) {
                 c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
                 return
         }
+        // Audit : création d'un utilisateur (avec rôle — action de gouvernance)
+        roleStr := ""
+        if dto.RoleGlobal != nil {
+                roleStr = string(*dto.RoleGlobal)
+        }
+        services.LogAudit(
+                middleware.CurrentUserID(c),
+                nil, // création utilisateur = action globale (pas liée à un établissement)
+                models.AuditCreate, "utilisateur", u.ID.String(), c.ClientIP(),
+                map[string]string{"email": dto.Email, "role": roleStr, "created_by": string(requesterRoleTyped)},
+        )
         c.JSON(http.StatusCreated, u)
 }
 
@@ -115,6 +126,17 @@ func (h *UserHandler) Update(c *gin.Context) {
                 c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
                 return
         }
+        // Audit : modification d'un utilisateur (changement de rôle potentiel — sensible)
+        roleStr := ""
+        if dto.RoleGlobal != nil {
+                roleStr = string(*dto.RoleGlobal)
+        }
+        services.LogAudit(
+                middleware.CurrentUserID(c),
+                nil,
+                models.AuditUpdate, "utilisateur", id.String(), c.ClientIP(),
+                map[string]string{"email": dto.Email, "new_role": roleStr, "updated_by": string(requesterRoleTyped)},
+        )
         c.JSON(http.StatusOK, u)
 }
 

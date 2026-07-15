@@ -126,6 +126,13 @@ func (h *PaiementHandler) Annule(c *gin.Context) {
                 c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
                 return
         }
+        // Audit : annulation d'un paiement (action financière sensible)
+        services.LogAudit(
+                validatorID,
+                etablissementIDPtr(c),
+                models.AuditCancel, "paiement", id.String(), c.ClientIP(),
+                map[string]interface{}{"motif": body.Motif, "montant": p.Montant, "eleve_id": p.EleveID},
+        )
         c.JSON(http.StatusOK, p)
 }
 

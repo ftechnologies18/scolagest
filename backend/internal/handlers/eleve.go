@@ -221,7 +221,24 @@ func (h *EleveHandler) Delete(c *gin.Context) {
                 c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
                 return
         }
+        // Audit : suppression d'un élève (action sensible — RGPD)
+        services.LogAudit(
+                middleware.CurrentUserID(c),
+                etablissementIDPtr(c),
+                models.AuditDelete, "eleve", id.String(), c.ClientIP(),
+                map[string]string{"action": "suppression élève"},
+        )
         c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// etablissementIDPtr extrait l'ID établissement du contexte (helper local).
+func etablissementIDPtr(c *gin.Context) *uuid.UUID {
+        if v, exists := c.Get("etablissement_id"); exists {
+                if id, ok := v.(uuid.UUID); ok {
+                        return &id
+                }
+        }
+        return nil
 }
 
 // RegisterRoutes enregistre les routes élèves (toutes protégées par auth).

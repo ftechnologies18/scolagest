@@ -140,7 +140,13 @@ func (h *PreInscriptionHandler) Valider(c *gin.Context) {
                 c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
                 return
         }
-
+        // Audit : validation d'une pré-inscription (création élève + inscription)
+        services.LogAudit(
+                userID,
+                etablissementIDPtr(c),
+                models.AuditCreate, "pre_inscription", id.String(), c.ClientIP(),
+                map[string]string{"action": "validation", "eleve_cree_id": result.Eleve.ID.String()},
+        )
         c.JSON(http.StatusCreated, result)
 }
 
@@ -163,7 +169,13 @@ func (h *PreInscriptionHandler) Rejeter(c *gin.Context) {
                 c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
                 return
         }
-
+        // Audit : rejet d'une pré-inscription
+        services.LogAudit(
+                userID,
+                etablissementIDPtr(c),
+                models.AuditUpdate, "pre_inscription", id.String(), c.ClientIP(),
+                map[string]string{"action": "rejet", "motif": body.Motif},
+        )
         c.JSON(http.StatusOK, gin.H{"success": true, "date": time.Now()})
 }
 

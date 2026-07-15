@@ -77,6 +77,12 @@ func (h *ClotureHandler) Create(c *gin.Context) {
                 c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
                 return
         }
+        // Audit : création d'une clôture de caisse (action financière)
+        services.LogAudit(
+                caissierID, etbID,
+                models.AuditCreate, "cloture_caisse", cloture.ID.String(), c.ClientIP(),
+                map[string]interface{}{"total_remis": dto.TotalRemis},
+        )
         c.JSON(http.StatusCreated, cloture)
 }
 

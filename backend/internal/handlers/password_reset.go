@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/scolagest/backend/internal/models"
 	"github.com/scolagest/backend/internal/services"
 )
 
@@ -54,7 +56,13 @@ func (h *PasswordResetHandler) ResetPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
+	// Audit : reset de mot de passe staff (action sensible — route publique,
+	// pas d'user_id mais on trace l'IP + le token utilisé)
+	services.LogAudit(
+		uuid.Nil, nil,
+		models.AuditUpdate, "password_reset", body.Token[:8]+"...", c.ClientIP(),
+		map[string]string{"action": "reset_password_staff", "token_prefix": body.Token[:8]},
+	)
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
