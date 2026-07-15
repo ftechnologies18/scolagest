@@ -111,10 +111,16 @@ func (h *AuthHandler) Me(c *gin.Context) {
 }
 
 // RegisterRoutes enregistre les routes d'auth sur le router.
-func (h *AuthHandler) RegisterRoutes(rg *gin.RouterGroup, authMW gin.HandlerFunc) {
+// loginRL est un rate limiter optionnel appliqué au login (peut être nil).
+func (h *AuthHandler) RegisterRoutes(rg *gin.RouterGroup, authMW gin.HandlerFunc, loginRL gin.HandlerFunc) {
 	auth := rg.Group("/auth")
 	{
-		auth.POST("/login", h.Login)
+		// Rate limiting sur login : protection bruteforce (5 tentatives / 15 min / IP)
+		if loginRL != nil {
+			auth.POST("/login", loginRL, h.Login)
+		} else {
+			auth.POST("/login", h.Login)
+		}
 		auth.POST("/refresh", h.Refresh)
 		auth.POST("/logout", authMW, h.Logout)
 		auth.GET("/me", authMW, h.Me)

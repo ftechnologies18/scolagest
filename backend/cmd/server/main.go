@@ -3,6 +3,8 @@ package main
 import (
         "fmt"
         "log"
+        "os"
+        "strings"
         "time"
 
         "github.com/gin-gonic/gin"
@@ -45,15 +47,23 @@ func main() {
                                 return
                         }
                         log.Println("✓ Base de données connectée + migrations appliquées")
-                        // Seed des données de démonstration (idempotent)
-                        if cfg.IsPostgreSQL() {
-                                log.Println("⏳ Seed en arrière-plan (PostgreSQL)...")
-                                go func() {
+                        // Seed des données de démonstration (idempotent).
+                        // En production : désactivé par défaut (sécurité — les comptes
+                        // démo avec mots de passe faibles ne doivent pas exister en prod).
+                        // Pour forcer le seed en prod, définir SEED_ENABLED=true sur Render.
+                        seedEnabled := cfg.IsDev() || getEnvBool("SEED_ENABLED")
+                        if seedEnabled {
+                                if cfg.IsPostgreSQL() {
+                                        log.Println("⏳ Seed en arrière-plan (PostgreSQL)...")
+                                        go func() {
+                                                seed.Seed()
+                                                log.Println("✓ Seed terminé (arrière-plan)")
+                                        }()
+                                } else {
                                         seed.Seed()
-                                        log.Println("✓ Seed terminé (arrière-plan)")
-                                }()
+                                }
                         } else {
-                                seed.Seed()
+                                log.Println("⊘ Seed désactivé en production (définir SEED_ENABLED=true pour forcer)")
                         }
                         return
                 }
@@ -159,9 +169,14 @@ func main() {
         preInscriptionHandler.RegisterPublicRoutes(api) // pré-inscription parent
         passwordResetHandler.RegisterRoutes(api)        // reset password staff + PIN parent
 
+        // Rate limiter pour les endpoints sensibles (login, password reset).
+        // 5 tentatives / 15 min / IP — protection bruteforce.
+        loginLimiter := middleware.NewRateLimiter(5, 15*time.Minute, 15*time.Minute)
+        loginRL := middleware.LoginRateLimit(loginLimiter)
+
         // Routes d'authentification (login/refresh publiques, logout/me protégés)
         authMW := middleware.AuthMiddleware(jwtSvc)
-        authHandler.RegisterRoutes(api, authMW)
+        authHandler.RegisterRoutes(api, authMW, loginRL)
 
         // Routes Phase 2 : élèves, tuteurs, inscriptions, référentiel
         eleveHandler.RegisterRoutes(api, authMW)
@@ -242,4 +257,15 @@ func main() {
         if err := r.Run(addr); err != nil {
                 log.Fatalf("❌ Échec démarrage serveur: %v", err)
         }
+}
+
+// getEnvBool lit une variable d'environnement booléenne.
+// Valeurs truthy : "true", "1", "yes", "on" (case-insensitive).
+func getEnvBool(key string) bool {
+        v := os.Getenv(key)
+        switch strings.ToLower(strings.TrimSpace(v)) {
+        case "true", "1", "yes", "on":
+                return true
+        }
+        return false
 }
